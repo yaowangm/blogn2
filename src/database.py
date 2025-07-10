@@ -1,0 +1,67 @@
+from sqlmodel import SQLModel, Field, create_engine, Session
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
+from sqlalchemy.orm import sessionmaker
+from typing import Optional
+from datetime import datetime
+import os
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv()
+
+# 数据库URL
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://wy:passw0rd@localhost:5432/blogn")
+
+# 创建异步引擎
+async_engine = create_async_engine(
+    DATABASE_URL,
+    echo=True,  # 在开发环境中显示SQL语句
+    future=True
+)
+
+# 创建同步引擎（用于创建表）
+sync_engine = create_engine(
+    DATABASE_URL.replace("+asyncpg", "+psycopg2"),
+    echo=True
+)
+
+# 创建异步会话工厂
+async_session = sessionmaker(
+    async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
+
+# User模型 - 匹配现有数据库表结构
+class User(SQLModel, table=True):
+    __tablename__ = "users"
+    
+    ID: Optional[int] = Field(default=None, primary_key=True, alias="id")
+    name: str = Field(max_length=50, alias="username")
+    password: str = Field(max_length=50)
+    state: int = Field(default=1, alias="is_active")
+    Email: str = Field(max_length=50, alias="email")
+    regtime: datetime = Field(alias="created_at")
+    iplog: Optional[str] = Field(max_length=15, default=None)
+    projectid: Optional[int] = Field(default=None)
+    point: Optional[int] = Field(default=0)
+    lastupdate: Optional[datetime] = Field(default=None, alias="updated_at")
+    intropiid: Optional[int] = Field(default=None)
+    
+    class Config:
+        allow_population_by_field_name = True
+
+# 依赖注入函数
+async def get_async_session() -> AsyncSession:
+    async with async_session() as session:
+        yield session
+
+# 创建所有表
+def create_db_and_tables():
+    SQLModel.metadata.create_all(sync_engine)
+
+# 初始化数据库
+if __name__ == "__main__":
+    create_db_and_tables()
+    print("数据库表创建完成！") 
