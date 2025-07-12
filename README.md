@@ -10,7 +10,24 @@
 pip install -r requirements.txt
 ```
 
-### 2. 启动应用
+### 2. 配置环境变量
+
+复制环境变量模板文件：
+
+```bash
+cp .env.example .env
+```
+
+编辑 `.env` 文件，设置数据库连接信息：
+
+```bash
+# 数据库配置
+DATABASE_URL=postgresql+asyncpg://username:password@localhost:5432/database_name
+```
+
+**重要**: 请确保将实际的数据库连接信息填入 `.env` 文件中，不要使用示例中的占位符。
+
+### 3. 启动应用
 
 ```bash
 python run.py
