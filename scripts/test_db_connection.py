@@ -7,6 +7,12 @@
 import asyncio
 import sys
 import os
+from pathlib import Path
+
+# 添加项目根目录到Python路径
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 from dotenv import load_dotenv
 import contextlib
 
@@ -17,7 +23,7 @@ async def test_database_connection():
     """测试数据库连接"""
     try:
         # 导入数据库相关模块
-        from src.database import async_engine, User, get_async_session
+        from src.database import async_engine, User, async_session
         from sqlmodel import select
         
         print("🔍 正在测试数据库连接...")
@@ -28,9 +34,7 @@ async def test_database_connection():
             print("✅ 数据库引擎连接成功")
             
             # 测试查询
-            session_gen = get_async_session()
-            session = await session_gen.__anext__()
-            try:
+            async with async_session() as session:
                 print("📊 正在测试查询...")
                 # 尝试查询用户表
                 statement = select(User)
@@ -49,8 +53,6 @@ async def test_database_connection():
                     print("ℹ️  用户表为空")
                 
                 return True
-            finally:
-                await session.close()
                 
     except ImportError as e:
         print(f"❌ 导入错误: {e}")
