@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlogN2 - 博客平台</title>
+    <meta name="description" content="BlogN2是一个现代化的博客平台，提供丰富的博客功能和用户体验">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- 顶栏组件 -->
+    <header-component></header-component>
+
+    <!-- 主要内容区域 -->
+    <main class="main-content">
+        <div class="container">
+            <div class="content-grid">
+                <!-- 左边栏 -->
+                <aside class="sidebar sidebar-left">
+                    <!-- 网站统计卡片 -->
+                    <stats-card></stats-card>
+                    
+                    <!-- 全站导航卡片 -->
+                    <navigation-card></navigation-card>
+                    
+                    <!-- 最新加入博客列表 -->
+                    <recent-blogs-card></recent-blogs-card>
+                    
+                    <!-- 最热门博客列表 -->
+                    <popular-blogs-card></popular-blogs-card>
+                    
+                    <!-- 最近评论列表 -->
+                    <recent-comments-card></recent-comments-card>
+                    
+                    <!-- 友情链接 -->
+                    <friend-links-card></friend-links-card>
+                </aside>
+
+                <!-- 右边栏 -->
+                <aside class="sidebar sidebar-right">
+                    <!-- 网站介绍 -->
+                    <about-card></about-card>
+                    
+                    <!-- 最近留言 -->
+                    <recent-messages-card></recent-messages-card>
+                    
+                    <!-- 最新博文摘要列表 -->
+                    <latest-posts-card></latest-posts-card>
+                </aside>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底栏组件 -->
+    <footer-component></footer-component>
+
+    <!-- Web Components -->
+    <script src="/static/js/components/header-component.js"></script>
+    <script src="/static/js/components/footer-component.js"></script>
+    <script src="/static/js/components/stats-card.js"></script>
+    <script src="/static/js/components/navigation-card.js"></script>
+    <script src="/static/js/components/recent-blogs-card.js"></script>
+    <script src="/static/js/components/popular-blogs-card.js"></script>
+    <script src="/static/js/components/recent-comments-card.js"></script>
+    <script src="/static/js/components/friend-links-card.js"></script>
+    <script src="/static/js/components/about-card.js"></script>
+    <script src="/static/js/components/recent-messages-card.js"></script>
+    <script src="/static/js/components/latest-posts-card.js"></script>
+</body>
+</html> 

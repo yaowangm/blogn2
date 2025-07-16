@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import uvicorn
+import os
 
 # 导入路由模块
 from routes import test, user
@@ -21,14 +24,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 挂载静态文件
+app.mount("/static", StaticFiles(directory="src/static"), name="static")
+
 # 注册路由
 app.include_router(test.router, prefix="/api")
 app.include_router(user.router, prefix="/api")
 
-# 根路径
+# 根路径 - 返回首页
 @app.get("/")
 async def root():
-    return {"message": "欢迎使用BlogN2 API", "status": "running"}
+    return FileResponse("src/static/index.html")
+
+# 首页路由
+@app.get("/index.html")
+async def index():
+    return FileResponse("src/static/index.html")
 
 # 健康检查端点
 @app.get("/health")
