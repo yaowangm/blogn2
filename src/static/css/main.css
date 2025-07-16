@@ -97,7 +97,7 @@ body {
 /* 内容网格布局 */
 .content-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 2fr;
     gap: var(--spacing-8);
     align-items: start;
 }
