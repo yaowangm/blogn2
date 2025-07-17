@@ -1,12 +1,19 @@
+import sys
+import os
+from pathlib import Path
+
+# 添加项目根目录到Python路径
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import uvicorn
-import os
 
-# 导入路由模块
-from routes import test, user, metadata
+# 导入控制器模块
+from src.controllers import metadata, user
 
 # 创建FastAPI应用实例
 app = FastAPI(
@@ -28,9 +35,8 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 # 注册路由
-app.include_router(test.router, prefix="/api")
-app.include_router(user.router, prefix="/api")
 app.include_router(metadata.router, prefix="/api")
+app.include_router(user.router, prefix="/api")
 
 # 根路径 - 返回首页
 @app.get("/")
