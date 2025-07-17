@@ -15,10 +15,11 @@ class FooterComponent extends HTMLElement {
             <style>
                 :host {
                     display: block;
-                    background: var(--gray-900);
-                    color: var(--gray-300);
+                    background: var(--white);
+                    color: var(--gray-600);
                     padding: var(--spacing-8) 0;
                     margin-top: auto;
+                    border-top: 1px solid var(--gray-200);
                 }
 
                 .footer-container {
@@ -39,12 +40,12 @@ class FooterComponent extends HTMLElement {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-3);
-                    color: var(--white);
+                    color: var(--gray-900);
                     text-decoration: none;
                 }
 
                 .footer-logo:hover {
-                    color: var(--gray-200);
+                    color: var(--primary-color);
                 }
 
                 .logo-icon {
@@ -63,12 +64,12 @@ class FooterComponent extends HTMLElement {
                 .logo-text {
                     font-size: var(--font-size-lg);
                     font-weight: 600;
-                    color: var(--white);
+                    color: var(--gray-900);
                 }
 
                 .footer-copyright {
                     font-size: var(--font-size-sm);
-                    color: var(--gray-400);
+                    color: var(--gray-500);
                 }
 
                 @media (max-width: 768px) {

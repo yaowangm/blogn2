@@ -98,10 +98,11 @@ header-component {
 /* 底栏组件样式 */
 footer-component {
     display: block;
-    background: var(--gray-900);
-    color: var(--gray-300);
+    background: var(--white);
+    color: var(--gray-600);
     padding: var(--spacing-8) 0;
     margin-top: auto;
+    border-top: 1px solid var(--gray-200);
 }
 
 .footer-container {
@@ -122,17 +123,17 @@ footer-component {
     display: flex;
     align-items: center;
     gap: var(--spacing-3);
-    color: var(--white);
+    color: var(--gray-900);
     text-decoration: none;
 }
 
 .footer-logo:hover {
-    color: var(--gray-200);
+    color: var(--primary-color);
 }
 
 .footer-copyright {
     font-size: var(--font-size-sm);
-    color: var(--gray-400);
+    color: var(--gray-500);
 }
 
 /* 统计卡片样式 */
