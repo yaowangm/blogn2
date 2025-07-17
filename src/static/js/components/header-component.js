@@ -2,16 +2,42 @@ class HeaderComponent extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
+        this.metadata = null;
     }
 
-    connectedCallback() {
+    async connectedCallback() {
+        await this.loadMetadata();
         this.render();
+    }
+
+    async loadMetadata() {
+        try {
+            const response = await fetch('/api/metadata');
+            if (response.ok) {
+                this.metadata = await response.json();
+            } else {
+                console.error('Failed to load metadata:', response.status);
+                this.metadata = {
+                    site_name: 'BlogN',
+                    logo_url: '/static/images/logo.svg'
+                };
+            }
+        } catch (error) {
+            console.error('Error loading metadata:', error);
+            this.metadata = {
+                site_name: 'BlogN',
+                logo_url: '/static/images/logo.svg'
+            };
+        }
     }
 
     render() {
         // 模拟用户登录状态（实际应用中应该从后端获取）
         const isLoggedIn = false;
         const userName = '张三';
+        
+        const siteName = this.metadata?.site_name || 'BlogN';
+        const logoUrl = this.metadata?.logo_url || '/static/images/logo.svg';
 
         this.shadowRoot.innerHTML = `
             <style>
@@ -46,14 +72,16 @@ class HeaderComponent extends HTMLElement {
                 .logo-icon {
                     width: 32px;
                     height: 32px;
-                    background: var(--primary-color);
                     border-radius: var(--radius-md);
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    color: var(--white);
-                    font-weight: 700;
-                    font-size: var(--font-size-lg);
+                }
+
+                .logo-icon img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: contain;
                 }
 
                 .logo-text {
@@ -167,8 +195,10 @@ class HeaderComponent extends HTMLElement {
 
             <div class="header-container">
                 <a href="/" class="header-logo">
-                    <div class="logo-icon">B</div>
-                    <span class="logo-text">BlogN2</span>
+                    <div class="logo-icon">
+                        <img src="${logoUrl}" alt="${siteName} Logo">
+                    </div>
+                    <span class="logo-text">${siteName}</span>
                 </a>
 
                 <div class="header-actions">

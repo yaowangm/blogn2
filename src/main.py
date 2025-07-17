@@ -6,7 +6,7 @@ import uvicorn
 import os
 
 # 导入路由模块
-from routes import test, user
+from routes import test, user, metadata
 
 # 创建FastAPI应用实例
 app = FastAPI(
@@ -30,6 +30,7 @@ app.mount("/static", StaticFiles(directory="src/static"), name="static")
 # 注册路由
 app.include_router(test.router, prefix="/api")
 app.include_router(user.router, prefix="/api")
+app.include_router(metadata.router, prefix="/api")
 
 # 根路径 - 返回首页
 @app.get("/")

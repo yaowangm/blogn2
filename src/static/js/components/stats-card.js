@@ -2,13 +2,39 @@ class StatsCard extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
+        this.metadata = null;
     }
 
-    connectedCallback() {
+    async connectedCallback() {
+        await this.loadMetadata();
         this.render();
     }
 
+    async loadMetadata() {
+        try {
+            const response = await fetch('/api/metadata');
+            if (response.ok) {
+                this.metadata = await response.json();
+            } else {
+                console.error('Failed to load metadata:', response.status);
+                this.metadata = {
+                    user_count: 0,
+                    post_count: 0
+                };
+            }
+        } catch (error) {
+            console.error('Error loading metadata:', error);
+            this.metadata = {
+                user_count: 0,
+                post_count: 0
+            };
+        }
+    }
+
     render() {
+        const userCount = this.metadata?.user_count || 0;
+        const postCount = this.metadata?.post_count || 0;
+
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
@@ -74,6 +100,10 @@ class StatsCard extends HTMLElement {
                     font-weight: 500;
                 }
 
+                .loading {
+                    opacity: 0.6;
+                }
+
                 @media (max-width: 768px) {
                     .stats-grid {
                         grid-template-columns: 1fr;
@@ -88,11 +118,11 @@ class StatsCard extends HTMLElement {
                 <div class="card-body">
                     <div class="stats-grid">
                         <div class="stat-item">
-                            <span class="stat-number">1,234</span>
+                            <span class="stat-number">${userCount.toLocaleString()}</span>
                             <span class="stat-label">注册用户</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-number">5,678</span>
+                            <span class="stat-number">${postCount.toLocaleString()}</span>
                             <span class="stat-label">博文总数</span>
                         </div>
                     </div>
