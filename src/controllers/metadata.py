@@ -21,8 +21,8 @@ async def get_site_metadata(
     metadata_service: MetadataService = Depends(get_metadata_service)
 ):
     """
-    获取网站元数据 (完整MVC架构版本)
-    访问地址: http://localhost:8000/api/metadata/mvc
+    获取网站元数据
+    访问地址: http://localhost:8000/api/metadata/
     """
     try:
         return await metadata_service.get_metadata_dict()

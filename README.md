@@ -45,9 +45,11 @@ python main.py
 启动后，你可以访问以下地址：
 
 - **首页**: http://localhost:8000
-- **测试页面**: http://localhost:8000/api/test
 - **API文档**: http://localhost:8000/docs
 - **健康检查**: http://localhost:8000/health
+- **网站元数据**: http://localhost:8000/api/metadata/
+- **用户统计**: http://localhost:8000/api/users/summary
+- **最新用户**: http://localhost:8000/api/users/listnew
 
 ## 项目结构
 
@@ -55,9 +57,13 @@ python main.py
 blogn2/
 ├── src/
 │   ├── main.py              # FastAPI 主应用
-│   └── routes/
-│       ├── __init__.py
-│       └── test.py          # 测试路由
+│   ├── controllers/         # 路由控制器
+│   │   ├── metadata.py      # 元数据控制器
+│   │   └── user.py          # 用户控制器
+│   ├── services/            # 业务逻辑层
+│   ├── repositories/        # 数据访问层
+│   ├── models/              # 数据模型
+│   └── config/              # 配置文件
 ├── requirements.txt         # 项目依赖
 ├── run.py                  # 启动脚本
 └── README.md              # 项目说明
@@ -70,11 +76,13 @@ blogn2/
 - `GET /` - 首页
 - `GET /health` - 健康检查
 
-### 测试端点
+### API 端点
 
-- `GET /api/test` - 测试页面（HTML）
-- `GET /api/test/json` - 测试数据（JSON）
-- `GET /api/test/error` - 测试错误处理
+- `GET /api/metadata/` - 获取网站元数据
+- `GET /api/users/summary` - 获取用户统计信息
+- `GET /api/users/listnew` - 获取最新注册用户
+- `GET /api/users/count` - 获取用户总数
+- `GET /api/users/{user_id}` - 获取指定用户信息
 
 ## 技术栈
 
