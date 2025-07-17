@@ -31,10 +31,22 @@ class FooterComponent extends HTMLElement {
         }
     }
 
+    getLogoUrl() {
+        // 检测当前主题
+        const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const baseUrl = this.metadata?.logo_url || '/static/images/logo.svg';
+        
+        if (isDarkMode) {
+            return baseUrl.replace('logo.svg', 'logo-dark.svg');
+        } else {
+            return baseUrl.replace('logo.svg', 'logo-light.svg');
+        }
+    }
+
     render() {
         const currentYear = new Date().getFullYear();
         const siteName = this.metadata?.site_name || 'BlogN';
-        const logoUrl = this.metadata?.logo_url || '/static/images/logo.svg';
+        const logoUrl = this.getLogoUrl();
 
         this.shadowRoot.innerHTML = `
             <style>
