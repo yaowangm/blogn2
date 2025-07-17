@@ -76,7 +76,7 @@ body {
     font-size: var(--font-size-base);
     line-height: 1.6;
     color: var(--gray-800);
-    background-color: var(--gray-50);
+    background-color: var(--gray-100);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -97,7 +97,7 @@ body {
 /* 内容网格布局 */
 .content-grid {
     display: grid;
-    grid-template-columns: 1fr 2fr;
+    grid-template-columns: 320px 1fr;
     gap: var(--spacing-8);
     align-items: start;
 }
