@@ -82,8 +82,8 @@ class HeaderComponent extends HTMLElement {
                 }
 
                 .logo-icon {
-                    width: 32px;
-                    height: 32px;
+                    width: 40px;
+                    height: 40px;
                     border-radius: var(--radius-md);
                     display: flex;
                     align-items: center;

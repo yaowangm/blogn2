@@ -34,7 +34,7 @@ async def get_site_metadata(session: AsyncSession = Depends(get_async_session)):
         metadata = {
             "site_name": "BlogN",
             "version": "V1",
-            "logo_url": "/static/images/logo.svg",
+            "logo_url": "/static/images/logo-light.svg",
             "user_count": user_count,
             "post_count": post_count
         }
