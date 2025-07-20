@@ -173,3 +173,57 @@ class BlogService:
                 "content": "内容暂不可用",
                 "link": None
             } 
+    
+    async def get_recent_messages(self, limit: int = 5) -> List[Dict[str, Any]]:
+        """获取最近的留言本记录"""
+        try:
+            messages = await self.post_repo.get_recent_messages(limit)
+            
+            formatted_messages = []
+            for message in messages:
+                # 格式化留言时间为相对时间
+                post_time = message["post_time"]
+                if post_time:
+                    time_str = self._format_relative_time(post_time)
+                else:
+                    time_str = "未知时间"
+                
+                # 检查用户头像是否存在
+                userid = message["userid"]
+                avatar_path = self._check_avatar_exists(userid)
+                
+                # 截断留言内容到50字符
+                content = message["content"] or ""
+                if len(content) > 50:
+                    content = content[:50] + "..."
+                
+                formatted_messages.append({
+                    "id": message["id"],
+                    "author": message["author_name"],
+                    "content": content,
+                    "time": time_str,
+                    "avatar": avatar_path,
+                    "userid": userid
+                })
+            
+            return formatted_messages
+        except Exception as e:
+            # 如果查询失败，返回空列表
+            print(f"Warning: Could not fetch messages: {e}")
+            return []
+    
+    def _format_relative_time(self, post_time: datetime) -> str:
+        """格式化相对时间"""
+        now = datetime.now()
+        diff = now - post_time
+        
+        if diff.days > 0:
+            return f"{diff.days}天前"
+        elif diff.seconds >= 3600:
+            hours = diff.seconds // 3600
+            return f"{hours}小时前"
+        elif diff.seconds >= 60:
+            minutes = diff.seconds // 60
+            return f"{minutes}分钟前"
+        else:
+            return "刚刚" 

@@ -55,4 +55,29 @@ class PostRepository:
             .where(Post.projectitemid == 0)
             .where(Post.status == 1)
         )
-        return result.first() or 0 
+        return result.first() or 0
+    
+    async def get_recent_messages(self, limit: int = 5) -> List[dict]:
+        """获取最近的留言本记录"""
+        query = (
+            select(Post, User.name.label("author_name"))
+            .join(User, Post.userid == User.id)
+            .where(Post.projectitemid == 0)  # 只获取留言本
+            .where(Post.status == 1)  # 只获取正常状态的留言
+            .order_by(Post.posttime.desc())
+            .limit(limit)
+        )
+        
+        result = await self.session.exec(query)
+        messages = []
+        
+        for post, author_name in result:
+            messages.append({
+                "id": post.id,
+                "content": post.content,
+                "author_name": author_name,
+                "post_time": post.posttime,
+                "userid": post.userid
+            })
+        
+        return messages 

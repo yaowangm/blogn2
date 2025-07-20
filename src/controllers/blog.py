@@ -97,4 +97,22 @@ async def get_about_content(
     Returns:
         Dict[str, Any]: 关于页面的内容
     """
-    return await blog_service.get_about_content() 
+    return await blog_service.get_about_content()
+
+@router.get("/blogs/messages/recent", response_model=List[Dict[str, Any]])
+@handle_api_errors("获取最近留言失败")
+async def get_recent_messages(
+    limit: int = 5,
+    blog_service: BlogService = Depends(get_blog_service)
+):
+    """
+    获取最近的留言本记录
+    
+    Args:
+        limit: 返回数量限制，默认5个
+        blog_service: 博客服务实例
+        
+    Returns:
+        List[Dict[str, Any]]: 最近的留言列表
+    """
+    return await blog_service.get_recent_messages(limit) 

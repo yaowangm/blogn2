@@ -1,4 +1,4 @@
-5class RecentMessagesCard extends HTMLElement {
+class RecentMessagesCard extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
@@ -6,32 +6,74 @@
 
     connectedCallback() {
         this.render();
+        this.loadContent();
+    }
+
+    async loadContent() {
+        try {
+            const response = await fetch('/api/blogs/messages/recent');
+            if (!response.ok) {
+                throw new Error('Failed to fetch recent messages');
+            }
+            const data = await response.json();
+            this.updateContent(data);
+        } catch (error) {
+            console.error('Error loading recent messages:', error);
+            this.showError();
+        }
+    }
+
+    updateContent(messages) {
+        const cardBody = this.shadowRoot.querySelector('.card-body');
+        
+        if (cardBody) {
+            if (messages.length === 0) {
+                cardBody.innerHTML = `
+                    <div class="message-list">
+                        <div class="message-item">
+                            <div class="message-content">暂无留言</div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            const messagesHtml = messages.map(message => `
+                <div class="message-item">
+                    <div class="message-header">
+                        <div class="message-author-info">
+                            ${message.avatar ? `<img src="${message.avatar}" alt="${message.author}" class="message-avatar">` : `<div class="message-avatar-placeholder">${message.author.charAt(0).toUpperCase()}</div>`}
+                            <span class="message-author">${message.author}</span>
+                        </div>
+                        <span class="message-time">${message.time}</span>
+                    </div>
+                    <div class="message-content">${message.content}</div>
+                </div>
+            `).join('');
+            
+            cardBody.innerHTML = `
+                <div class="message-list">
+                    ${messagesHtml}
+                </div>
+            `;
+        }
+    }
+
+    showError() {
+        const cardBody = this.shadowRoot.querySelector('.card-body');
+        
+        if (cardBody) {
+            cardBody.innerHTML = `
+                <div class="message-list">
+                    <div class="message-item">
+                        <div class="message-content">加载失败，请稍后重试</div>
+                    </div>
+                </div>
+            `;
+        }
     }
 
     render() {
-        const recentMessages = [
-            { 
-                author: '小明', 
-                content: '这个平台真的很棒，界面简洁美观，功能也很实用！', 
-                time: '1小时前'
-            },
-            { 
-                author: '小红', 
-                content: '希望能增加更多的主题模板，让博客更有个性化。', 
-                time: '3小时前'
-            },
-            { 
-                author: '小李', 
-                content: '社区氛围很好，大家都很友善，学到了很多。', 
-                time: '5小时前'
-            },
-            { 
-                author: '小王', 
-                content: '建议增加更多的互动功能，比如点赞、收藏等。', 
-                time: '1天前'
-            }
-        ];
-
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
@@ -89,6 +131,34 @@
                     margin-bottom: var(--spacing-2);
                 }
 
+                .message-author-info {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                }
+
+                .message-avatar {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    object-fit: cover;
+                    border: 1px solid var(--gray-200);
+                }
+
+                .message-avatar-placeholder {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    background: var(--primary-color);
+                    color: white;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: var(--font-size-xs);
+                    font-weight: 500;
+                    border: 1px solid var(--gray-200);
+                }
+
                 .message-author {
                     font-weight: 500;
                     color: var(--gray-900);
@@ -112,15 +182,9 @@
                 </div>
                 <div class="card-body">
                     <div class="message-list">
-                        ${recentMessages.map(message => `
-                            <div class="message-item">
-                                <div class="message-header">
-                                    <span class="message-author">${message.author}</span>
-                                    <span class="message-time">${message.time}</span>
-                                </div>
-                                <div class="message-content">${message.content}</div>
-                            </div>
-                        `).join('')}
+                        <div class="message-item">
+                            <div class="message-content">正在加载留言...</div>
+                        </div>
                     </div>
                 </div>
             </div>
