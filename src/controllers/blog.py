@@ -120,14 +120,14 @@ async def get_recent_messages(
 @router.get("/blogs/posts/latest", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最新博文失败")
 async def get_latest_posts(
-    limit: int = 5,
+    limit: int = 10,
     blog_service: BlogService = Depends(get_blog_service)
 ):
     """
     获取最新的博文记录
     
     Args:
-        limit: 返回数量限制，默认5个
+        limit: 返回数量限制，默认10个
         blog_service: 博客服务实例
         
     Returns:
