@@ -31,7 +31,7 @@ class RecentMessagesCard extends HTMLElement {
                 cardBody.innerHTML = `
                     <div class="message-list">
                         <div class="message-item">
-                            <div class="message-content">暂无留言</div>
+                            <div class="message-subject">暂无留言</div>
                         </div>
                     </div>
                 `;
@@ -47,7 +47,8 @@ class RecentMessagesCard extends HTMLElement {
                         </div>
                         <span class="message-time">${message.time}</span>
                     </div>
-                    <div class="message-content">${message.content}</div>
+                    <div class="message-subject">${message.subject}</div>
+                    ${message.reply_info ? `<div class="message-reply-info">${message.reply_info}</div>` : ''}
                 </div>
             `).join('');
             
@@ -66,7 +67,7 @@ class RecentMessagesCard extends HTMLElement {
             cardBody.innerHTML = `
                 <div class="message-list">
                     <div class="message-item">
-                        <div class="message-content">加载失败，请稍后重试</div>
+                        <div class="message-subject">加载失败，请稍后重试</div>
                     </div>
                 </div>
             `;
@@ -169,10 +170,18 @@ class RecentMessagesCard extends HTMLElement {
                     color: var(--gray-500);
                 }
 
-                .message-content {
+                .message-subject {
                     font-size: var(--font-size-sm);
                     color: var(--gray-700);
                     line-height: 1.5;
+                    font-weight: 500;
+                    margin-bottom: var(--spacing-1);
+                }
+
+                .message-reply-info {
+                    font-size: var(--font-size-xs);
+                    color: var(--gray-500);
+                    line-height: 1.4;
                 }
             </style>
 
@@ -183,7 +192,7 @@ class RecentMessagesCard extends HTMLElement {
                 <div class="card-body">
                     <div class="message-list">
                         <div class="message-item">
-                            <div class="message-content">正在加载留言...</div>
+                            <div class="message-subject">正在加载留言...</div>
                         </div>
                     </div>
                 </div>

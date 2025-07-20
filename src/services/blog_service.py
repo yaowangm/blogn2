@@ -46,10 +46,10 @@ class BlogService:
         
         blogs = []
         for project in recent_projects:
-            # 格式化创建时间为具体日期
+            # 格式化创建时间
             createtime = project["createtime"]
             if createtime:
-                join_date = createtime.strftime("%Y-%m-%d")
+                join_date = self._format_relative_time(createtime)
             else:
                 join_date = "未知日期"
             
@@ -103,12 +103,12 @@ class BlogService:
             
             formatted_comments = []
             for comment in comments:
-                # 格式化评论时间为具体日期
+                # 格式化评论时间
                 post_time = comment["post_time"]
                 if post_time:
-                    time_str = post_time.strftime("%Y-%m-%d")
+                    time_str = self._format_relative_time(post_time)
                 else:
-                    time_str = "未知日期"
+                    time_str = "未知时间"
                 
                 # 检查用户头像是否存在
                 userid = comment["userid"]
@@ -192,18 +192,27 @@ class BlogService:
                 userid = message["userid"]
                 avatar_path = self._check_avatar_exists(userid)
                 
-                # 截断留言内容到50字符
-                content = message["content"] or ""
-                if len(content) > 50:
-                    content = content[:50] + "..."
+                # 处理留言标题
+                subject = message["subject"] or "无标题"
+                if len(subject) > 50:
+                    subject = subject[:50] + "..."
+                
+                # 处理回复信息
+                reply_info = ""
+                if message["last_reply_author"]:
+                    reply_info = f"最后回复: {message['last_reply_author']}"
+                elif message["reply_count"] > 0:
+                    reply_info = f"回复数: {message['reply_count']}"
                 
                 formatted_messages.append({
                     "id": message["id"],
                     "author": message["author_name"],
-                    "content": content,
+                    "subject": subject,
                     "time": time_str,
                     "avatar": avatar_path,
-                    "userid": userid
+                    "userid": userid,
+                    "reply_info": reply_info,
+                    "reply_count": message["reply_count"]
                 })
             
             return formatted_messages
@@ -213,17 +222,26 @@ class BlogService:
             return []
     
     def _format_relative_time(self, post_time: datetime) -> str:
-        """格式化相对时间"""
+        """格式化时间显示"""
         now = datetime.now()
         diff = now - post_time
         
-        if diff.days > 0:
-            return f"{diff.days}天前"
-        elif diff.seconds >= 3600:
-            hours = diff.seconds // 3600
-            return f"{hours}小时前"
-        elif diff.seconds >= 60:
-            minutes = diff.seconds // 60
-            return f"{minutes}分钟前"
+        # 如果是今天，显示相对时间
+        if diff.days == 0:
+            if diff.seconds >= 3600:
+                hours = diff.seconds // 3600
+                return f"{hours}小时前"
+            elif diff.seconds >= 60:
+                minutes = diff.seconds // 60
+                return f"{minutes}分钟前"
+            else:
+                return "刚刚"
+        # 如果是昨天，显示"昨天"
+        elif diff.days == 1:
+            return "昨天"
+        # 如果是前天，显示"前天"
+        elif diff.days == 2:
+            return "前天"
+        # 其他情况显示具体日期
         else:
-            return "刚刚" 
+            return post_time.strftime("%Y-%m-%d") 

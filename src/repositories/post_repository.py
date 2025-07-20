@@ -58,11 +58,17 @@ class PostRepository:
         return result.first() or 0
     
     async def get_recent_messages(self, limit: int = 5) -> List[dict]:
-        """获取最近的留言本记录"""
+        """获取最近的留言本主贴记录"""
+        # 获取主贴和最后回复用户信息
         query = (
-            select(Post, User.name.label("author_name"))
+            select(
+                Post,
+                User.name.label("author_name"),
+                User.name.label("last_reply_author_name")
+            )
             .join(User, Post.userid == User.id)
             .where(Post.projectitemid == 0)  # 只获取留言本
+            .where(Post.rootid == 0)  # 只获取主贴
             .where(Post.status == 1)  # 只获取正常状态的留言
             .order_by(Post.posttime.desc())
             .limit(limit)
@@ -71,13 +77,25 @@ class PostRepository:
         result = await self.session.exec(query)
         messages = []
         
-        for post, author_name in result:
+        for post, author_name, last_reply_author_name in result:
+            # 如果有最后回复用户，获取回复用户名
+            last_reply_author = None
+            if post.lastreplyid and post.lastreplyid != 0:
+                try:
+                    reply_user_query = select(User.name).where(User.id == post.lastreplyid)
+                    reply_result = await self.session.exec(reply_user_query)
+                    last_reply_author = reply_result.first()
+                except:
+                    last_reply_author = None
+            
             messages.append({
                 "id": post.id,
-                "content": post.content,
+                "subject": post.subject,
                 "author_name": author_name,
                 "post_time": post.posttime,
-                "userid": post.userid
+                "userid": post.userid,
+                "last_reply_author": last_reply_author,
+                "reply_count": post.replycount or 0
             })
         
         return messages 
