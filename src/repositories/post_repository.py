@@ -16,9 +16,8 @@ class PostRepository:
     async def get_recent_comments(self, limit: int = 5) -> List[dict]:
         """获取最近的评论列表（不包括留言本）"""
         query = (
-            select(Post, User.name.label("author_name"), ProjectItem.name.label("post_name"))
+            select(Post, User.name.label("author_name"))
             .join(User, Post.userid == User.id)
-            .join(ProjectItem, Post.projectitemid == ProjectItem.id)
             .where(Post.projectitemid > 0)  # 只获取博文评论，不包括留言本
             .where(Post.status == 1)  # 只获取正常状态的评论
             .order_by(Post.posttime.desc())
@@ -28,12 +27,11 @@ class PostRepository:
         result = await self.session.exec(query)
         comments = []
         
-        for post, author_name, post_name in result:
+        for post, author_name in result:
             comments.append({
                 "id": post.id,
                 "content": post.content,
                 "author_name": author_name,
-                "post_name": post_name,
                 "post_time": post.posttime,
                 "projectitemid": post.projectitemid
             })

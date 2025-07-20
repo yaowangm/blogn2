@@ -25,26 +25,22 @@ class RecentCommentsCard extends HTMLElement {
                 { 
                     author: '张三', 
                     content: '这篇文章写得很好，对我很有帮助！', 
-                    time: '2小时前',
-                    post: '如何提高编程效率'
+                    time: '2小时前'
                 },
                 { 
                     author: '李四', 
                     content: '感谢分享，学到了很多新知识。', 
-                    time: '4小时前',
-                    post: 'Python异步编程实践'
+                    time: '4小时前'
                 },
                 { 
                     author: '王五', 
                     content: '这个观点很独特，值得深入思考。', 
-                    time: '6小时前',
-                    post: '现代Web开发趋势'
+                    time: '6小时前'
                 },
                 { 
                     author: '赵六', 
                     content: '期待更多相关内容！', 
-                    time: '1天前',
-                    post: 'React性能优化技巧'
+                    time: '1天前'
                 }
             ];
         } finally {
@@ -203,7 +199,7 @@ class RecentCommentsCard extends HTMLElement {
                                         <span class="comment-author">${comment.author}</span>
                                         <span class="comment-time">${comment.time}</span>
                                     </div>
-                                    <div class="comment-post">评论于：${comment.post}</div>
+
                                     <div class="comment-content">${comment.content.replace(/\\r\\n/g, ' ').replace(/\\n/g, ' ').trim().length > 20 ? comment.content.replace(/\\r\\n/g, ' ').replace(/\\n/g, ' ').trim().substring(0, 20) + '...' : comment.content.replace(/\\r\\n/g, ' ').replace(/\\n/g, ' ').trim()}</div>
                                 </div>
                             `).join('')}

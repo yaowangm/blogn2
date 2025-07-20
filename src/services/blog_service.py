@@ -82,7 +82,6 @@ class BlogService:
                     "author": comment["author_name"],
                     "content": comment["content"],
                     "time": time_str,
-                    "post": comment["post_name"],
                     "projectitemid": comment["projectitemid"]
                 })
             
