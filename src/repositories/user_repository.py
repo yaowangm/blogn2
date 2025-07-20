@@ -1,7 +1,7 @@
 from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional
-from src.database import User
+from src.models.user import User
 
 class UserRepository:
     """用户数据访问层
@@ -48,4 +48,15 @@ class UserRepository:
         """获取最近注册的用户"""
         statement = select(User).order_by(User.regtime.desc()).limit(limit)
         result = await self.session.exec(statement)
-        return result.all() 
+        return result.all()
+    
+    async def get_popular_users(self, limit: int = 10) -> List[dict]:
+        """获取热门用户（按积分排序）"""
+        statement = (
+            select(User.id, User.name, User.point, User.regtime)
+            .where(User.state == 1)
+            .order_by(User.point.desc())
+            .limit(limit)
+        )
+        result = await self.session.exec(statement)
+        return [{"id": user.id, "name": user.name, "point": user.point or 0, "regtime": user.regtime} for user in result.all()] 

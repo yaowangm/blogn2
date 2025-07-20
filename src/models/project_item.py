@@ -1,9 +1,12 @@
 from sqlmodel import SQLModel, Field
 from typing import Optional
 from datetime import datetime
+from pydantic import ConfigDict
 
 class ProjectItem(SQLModel, table=True):
     __tablename__ = "projectitem"
+    
+    model_config = ConfigDict(validate_by_name=True)
     
     id: Optional[int] = Field(default=None, primary_key=True)
     projectid: Optional[int] = Field(default=None)
@@ -21,7 +24,4 @@ class ProjectItem(SQLModel, table=True):
     FOLDERID: Optional[int] = Field(default=None)
     lastmodifytime: Optional[datetime] = Field(default=None)
     status: Optional[int] = Field(default=None)
-    allowpost: Optional[int] = Field(default=None)
-    
-    class Config:
-        allow_population_by_field_name = True 
+    allowpost: Optional[int] = Field(default=None) 

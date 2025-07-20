@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 import uvicorn
 
 # 导入API控制器模块
-from src.controllers import metadata, user
+from src.controllers import metadata, user, blog
 
 # 创建FastAPI应用实例
 app = FastAPI(
@@ -37,6 +37,7 @@ app.mount("/static", StaticFiles(directory="src/static"), name="static")
 # 注册API路由，统一使用/api前缀
 app.include_router(metadata.router, prefix="/api")
 app.include_router(user.router, prefix="/api")
+app.include_router(blog.router, prefix="/api")
 
 # 根路径和首页路由 - 都返回首页
 @app.get("/")
@@ -51,6 +52,32 @@ async def root():
         FileResponse: 首页HTML文件
     """
     return FileResponse("src/static/index.html")
+
+# 测试页面路由
+@app.get("/test")
+async def test_page():
+    """
+    测试页面路由
+    
+    用于测试动态组件的功能。
+    
+    Returns:
+        FileResponse: 测试页面HTML文件
+    """
+    return FileResponse("src/static/test.html")
+
+# 评论截断测试页面路由
+@app.get("/test-truncate")
+async def test_truncate_page():
+    """
+    评论截断测试页面路由
+    
+    用于测试评论截断功能。
+    
+    Returns:
+        FileResponse: 评论截断测试页面HTML文件
+    """
+    return FileResponse("src/static/test-comment-truncate.html")
 
 # 健康检查端点
 @app.get("/health")

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>评论截断测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-title {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .test-item {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .test-label {
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .test-result {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1 class="test-title">评论截断功能测试</h1>
+        
+        <div class="test-item">
+            <div class="test-label">测试1: 短评论（少于20字）</div>
+            <div class="test-result" id="test1"></div>
+        </div>
+        
+        <div class="test-item">
+            <div class="test-label">测试2: 长评论（超过20字）</div>
+            <div class="test-result" id="test2"></div>
+        </div>
+        
+        <div class="test-item">
+            <div class="test-label">测试3: 包含换行符的评论</div>
+            <div class="test-result" id="test3"></div>
+        </div>
+        
+        <div class="test-item">
+            <div class="test-label">测试4: 实际API数据</div>
+            <div class="test-result" id="test4"></div>
+        </div>
+    </div>
+
+    <script>
+        // 测试函数
+        function truncateComment(content) {
+            return content.replace(/\\r\\n/g, ' ').replace(/\\n/g, ' ').trim().length > 20 
+                ? content.replace(/\\r\\n/g, ' ').replace(/\\n/g, ' ').trim().substring(0, 20) + '...' 
+                : content.replace(/\\r\\n/g, ' ').replace(/\\n/g, ' ').trim();
+        }
+
+        // 测试1: 短评论
+        const shortComment = "这是一条短评论";
+        document.getElementById('test1').textContent = `原文: "${shortComment}" -> 截断: "${truncateComment(shortComment)}"`;
+
+        // 测试2: 长评论
+        const longComment = "这是一条非常长的评论内容，超过了二十个字符的限制，应该被截断并显示省略号";
+        document.getElementById('test2').textContent = `原文: "${longComment}" -> 截断: "${truncateComment(longComment)}"`;
+
+        // 测试3: 包含换行符的评论
+        const commentWithNewlines = "第一行内容\\r\\n第二行内容\\n第三行内容";
+        document.getElementById('test3').textContent = `原文: "${commentWithNewlines}" -> 截断: "${truncateComment(commentWithNewlines)}"`;
+
+        // 测试4: 实际API数据
+        fetch('/api/comments/recent?limit=1')
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    const realComment = data[0].content;
+                    document.getElementById('test4').textContent = `API数据: "${realComment}" -> 截断: "${truncateComment(realComment)}"`;
+                } else {
+                    document.getElementById('test4').textContent = '没有找到评论数据';
+                }
+            })
+            .catch(error => {
+                document.getElementById('test4').textContent = `API请求失败: ${error.message}`;
+            });
+    </script>
+</body>
+</html> 

@@ -2,40 +2,58 @@ class RecentCommentsCard extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
+        this.comments = [];
+        this.loading = true;
     }
 
     connectedCallback() {
         this.render();
+        this.loadData();
+    }
+
+    async loadData() {
+        try {
+            const response = await fetch('/api/comments/recent?limit=5');
+            if (!response.ok) {
+                throw new Error('Failed to fetch recent comments');
+            }
+            this.comments = await response.json();
+        } catch (error) {
+            console.error('Error loading recent comments:', error);
+            // 使用默认数据作为后备
+            this.comments = [
+                { 
+                    author: '张三', 
+                    content: '这篇文章写得很好，对我很有帮助！', 
+                    time: '2小时前',
+                    post: '如何提高编程效率'
+                },
+                { 
+                    author: '李四', 
+                    content: '感谢分享，学到了很多新知识。', 
+                    time: '4小时前',
+                    post: 'Python异步编程实践'
+                },
+                { 
+                    author: '王五', 
+                    content: '这个观点很独特，值得深入思考。', 
+                    time: '6小时前',
+                    post: '现代Web开发趋势'
+                },
+                { 
+                    author: '赵六', 
+                    content: '期待更多相关内容！', 
+                    time: '1天前',
+                    post: 'React性能优化技巧'
+                }
+            ];
+        } finally {
+            this.loading = false;
+            this.render();
+        }
     }
 
     render() {
-        const recentComments = [
-            { 
-                author: '张三', 
-                content: '这篇文章写得很好，对我很有帮助！', 
-                time: '2小时前',
-                post: '如何提高编程效率'
-            },
-            { 
-                author: '李四', 
-                content: '感谢分享，学到了很多新知识。', 
-                time: '4小时前',
-                post: 'Python异步编程实践'
-            },
-            { 
-                author: '王五', 
-                content: '这个观点很独特，值得深入思考。', 
-                time: '6小时前',
-                post: '现代Web开发趋势'
-            },
-            { 
-                author: '赵六', 
-                content: '期待更多相关内容！', 
-                time: '1天前',
-                post: 'React性能优化技巧'
-            }
-        ];
-
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
@@ -60,6 +78,9 @@ class RecentCommentsCard extends HTMLElement {
                     padding: var(--spacing-4) var(--spacing-5);
                     border-bottom: 1px solid var(--gray-200);
                     background: var(--gray-50);
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-3);
                 }
 
                 .card-title {
@@ -67,6 +88,24 @@ class RecentCommentsCard extends HTMLElement {
                     font-weight: 600;
                     color: var(--gray-900);
                     margin: 0;
+                }
+
+                .icon {
+                    width: 24px;
+                    height: 24px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .icon svg {
+                    width: 20px;
+                    height: 20px;
+                    stroke: var(--primary-color);
+                    stroke-width: 2;
+                    fill: none;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
                 }
 
                 .card-body {
@@ -114,25 +153,62 @@ class RecentCommentsCard extends HTMLElement {
                     color: var(--gray-700);
                     line-height: 1.5;
                 }
+
+                .loading {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: var(--spacing-8);
+                    color: var(--gray-500);
+                }
+
+                .loading-spinner {
+                    width: 20px;
+                    height: 20px;
+                    border: 2px solid var(--gray-200);
+                    border-top: 2px solid var(--primary-color);
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                    margin-right: var(--spacing-2);
+                }
+
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
             </style>
 
             <div class="card">
                 <div class="card-header">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            <path d="M8 9h8"/>
+                            <path d="M8 13h6"/>
+                        </svg>
+                    </div>
                     <h3 class="card-title">最近评论</h3>
                 </div>
                 <div class="card-body">
-                    <div class="comment-list">
-                        ${recentComments.map(comment => `
-                            <div class="comment-item">
-                                <div class="comment-header">
-                                    <span class="comment-author">${comment.author}</span>
-                                    <span class="comment-time">${comment.time}</span>
+                    ${this.loading ? `
+                        <div class="loading">
+                            <div class="loading-spinner"></div>
+                            <span>加载中...</span>
+                        </div>
+                    ` : `
+                        <div class="comment-list">
+                            ${this.comments.map(comment => `
+                                <div class="comment-item" onclick="window.location.href='/post/${comment.projectitemid}'" style="cursor: pointer;">
+                                    <div class="comment-header">
+                                        <span class="comment-author">${comment.author}</span>
+                                        <span class="comment-time">${comment.time}</span>
+                                    </div>
+                                    <div class="comment-post">评论于：${comment.post}</div>
+                                    <div class="comment-content">${comment.content.replace(/\\r\\n/g, ' ').replace(/\\n/g, ' ').trim().length > 20 ? comment.content.replace(/\\r\\n/g, ' ').replace(/\\n/g, ' ').trim().substring(0, 20) + '...' : comment.content.replace(/\\r\\n/g, ' ').replace(/\\n/g, ' ').trim()}</div>
                                 </div>
-                                <div class="comment-post">评论于：${comment.post}</div>
-                                <div class="comment-content">${comment.content}</div>
-                            </div>
-                        `).join('')}
-                    </div>
+                            `).join('')}
+                        </div>
+                    `}
                 </div>
             </div>
         `;

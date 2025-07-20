@@ -1,7 +1,7 @@
 from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional
-from src.database import ProjectItem
+from src.models.project_item import ProjectItem
 
 class ProjectItemRepository:
     """项目项数据访问层
