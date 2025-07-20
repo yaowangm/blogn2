@@ -6,47 +6,85 @@ class LatestPostsCard extends HTMLElement {
 
     connectedCallback() {
         this.render();
+        this.loadContent();
+    }
+
+    async loadContent() {
+        try {
+            const response = await fetch('/api/blogs/posts/latest');
+            if (!response.ok) {
+                throw new Error('Failed to fetch latest posts');
+            }
+            const data = await response.json();
+            this.updateContent(data);
+        } catch (error) {
+            console.error('Error loading latest posts:', error);
+            this.showError();
+        }
+    }
+
+    updateContent(posts) {
+        const cardBody = this.shadowRoot.querySelector('.card-body');
+        
+        if (cardBody) {
+            if (posts.length === 0) {
+                cardBody.innerHTML = `
+                    <div class="post-list">
+                        <div class="post-item">
+                            <div class="post-content">
+                                <p class="post-excerpt">暂无博文</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            const postsHtml = posts.map(post => `
+                <a href="/projectitem/${post.id}" class="post-item">
+                    <div class="post-avatar">
+                        ${post.avatar ? 
+                            `<img src="${post.avatar}" alt="${post.author}" onerror="this.style.display='none'">` :
+                            `<span>${post.author ? post.author.charAt(0) : '用'}</span>`
+                        }
+                    </div>
+                    <div class="post-content">
+                        <h4 class="post-title">${post.title}</h4>
+                        <div class="post-meta">
+                            <span class="post-author">${post.author}</span>
+                            <span class="post-date">${post.time}</span>
+                        </div>
+                        <p class="post-excerpt">${post.excerpt}</p>
+                        ${post.image ? `<div class="post-attachment-image"><img src="${post.image}" alt="${post.title}" onerror="this.style.display='none'"></div>` : ''}
+                    </div>
+                </a>
+            `).join('');
+            
+            cardBody.innerHTML = `
+                <div class="post-list">
+                    ${postsHtml}
+                </div>
+            `;
+        }
+    }
+
+    showError() {
+        const cardBody = this.shadowRoot.querySelector('.card-body');
+        
+        if (cardBody) {
+            cardBody.innerHTML = `
+                <div class="post-list">
+                    <div class="post-item">
+                        <div class="post-content">
+                            <p class="post-excerpt">加载失败，请稍后重试</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
     }
 
     render() {
-        const latestPosts = [
-            {
-                title: '如何提高编程效率：10个实用技巧',
-                author: '技术探索者',
-                date: '2024-01-15',
-                excerpt: '在快节奏的软件开发环境中，提高编程效率是每个开发者都追求的目标。本文将分享10个经过实践验证的技巧...',
-                image: '💻'
-            },
-            {
-                title: 'Python异步编程实践指南',
-                author: '编程之道',
-                date: '2024-01-14',
-                excerpt: '异步编程是现代Python开发中不可或缺的技能。本文将从基础概念开始，逐步深入异步编程的实践应用...',
-                image: '🐍'
-            },
-            {
-                title: '现代Web开发趋势分析',
-                author: '前端达人',
-                date: '2024-01-13',
-                excerpt: 'Web开发技术日新月异，本文将分析当前最热门的技术趋势，包括框架选择、性能优化、用户体验等方面...',
-                image: '🌐'
-            },
-            {
-                title: 'React性能优化技巧详解',
-                author: 'React专家',
-                date: '2024-01-12',
-                excerpt: 'React应用性能优化是一个复杂的话题。本文将详细介绍各种优化技巧，从组件设计到状态管理...',
-                image: '⚛️'
-            },
-            {
-                title: '摄影构图的艺术与科学',
-                author: '摄影艺术',
-                date: '2024-01-11',
-                excerpt: '好的构图是优秀摄影作品的基础。本文将探讨构图的基本原则和高级技巧，帮助你拍出更好的照片...',
-                image: '📷'
-            }
-        ];
-
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
@@ -108,18 +146,33 @@ class LatestPostsCard extends HTMLElement {
                     transform: translateY(-2px);
                 }
 
-                .post-image {
-                    width: 80px;
-                    height: 80px;
-                    border-radius: var(--radius-md);
-                    background: var(--primary-color);
+                .post-avatar {
+                    width: 60px;
+                    height: 60px;
+                    border-radius: 50%;
+                    background: var(--accent-color);
                     flex-shrink: 0;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     color: var(--white);
-                    font-size: var(--font-size-2xl);
-                    font-weight: 700;
+                    font-weight: 600;
+                    font-size: var(--font-size-lg);
+                    overflow: hidden;
+                    border: 2px solid var(--gray-200);
+                    position: relative;
+                }
+
+                .post-avatar img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    border-radius: 50%;
+                }
+
+                .post-avatar span {
+                    font-weight: 600;
+                    font-size: var(--font-size-lg);
                 }
 
                 .post-content {
@@ -161,6 +214,26 @@ class LatestPostsCard extends HTMLElement {
                     -webkit-line-clamp: 2;
                     -webkit-box-orient: vertical;
                     overflow: hidden;
+                    margin-bottom: var(--spacing-3);
+                }
+
+                .post-attachment-image {
+                    margin-top: var(--spacing-3);
+                    border-radius: var(--radius-md);
+                    overflow: hidden;
+                    max-width: 100%;
+                }
+
+                .post-attachment-image img {
+                    width: 100%;
+                    height: 120px;
+                    object-fit: cover;
+                    border-radius: var(--radius-md);
+                    transition: var(--transition-fast);
+                }
+
+                .post-attachment-image img:hover {
+                    transform: scale(1.02);
                 }
 
                 @media (max-width: 768px) {
@@ -169,9 +242,14 @@ class LatestPostsCard extends HTMLElement {
                         gap: var(--spacing-3);
                     }
                     
-                    .post-image {
-                        width: 100%;
-                        height: 120px;
+                    .post-avatar {
+                        width: 80px;
+                        height: 80px;
+                        align-self: center;
+                    }
+
+                    .post-attachment-image img {
+                        height: 150px;
                     }
                 }
             </style>
@@ -182,19 +260,12 @@ class LatestPostsCard extends HTMLElement {
                 </div>
                 <div class="card-body">
                     <div class="post-list">
-                        ${latestPosts.map(post => `
-                            <a href="/post/${post.title}" class="post-item">
-                                <div class="post-image">${post.image}</div>
-                                <div class="post-content">
-                                    <h4 class="post-title">${post.title}</h4>
-                                    <div class="post-meta">
-                                        <span class="post-author">${post.author}</span>
-                                        <span class="post-date">${post.date}</span>
-                                    </div>
-                                    <p class="post-excerpt">${post.excerpt}</p>
-                                </div>
-                            </a>
-                        `).join('')}
+                        <div class="post-item">
+                            <div class="post-avatar"><span>加</span></div>
+                            <div class="post-content">
+                                <p class="post-excerpt">正在加载博文...</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -221,6 +221,56 @@ class BlogService:
             print(f"Warning: Could not fetch messages: {e}")
             return []
     
+    async def get_latest_posts(self, limit: int = 5) -> List[Dict[str, Any]]:
+        """获取最新的博文记录"""
+        try:
+            posts = await self.project_item_repo.get_latest_posts(limit)
+            
+            formatted_posts = []
+            for post in posts:
+                # 格式化创建时间
+                createtime = post["createtime"]
+                if createtime:
+                    time_str = self._format_relative_time(createtime)
+                else:
+                    time_str = "未知时间"
+                
+                # 检查用户头像是否存在
+                userid = post["userid"]
+                avatar_path = self._check_avatar_exists(userid)
+                
+                # 处理博文标题
+                title = post["name"] or "无标题"
+                if len(title) > 50:
+                    title = title[:50] + "..."
+                
+                # 处理博文摘要
+                excerpt = post["comment"] or ""
+                if len(excerpt) > 100:
+                    excerpt = excerpt[:100] + "..."
+                
+                # 处理附件图片路径
+                image_path = None
+                if post["attachment"]:
+                    image_path = f"/static/upload/{post['attachment']}"
+                
+                formatted_posts.append({
+                    "id": post["id"],
+                    "title": title,
+                    "excerpt": excerpt,
+                    "author": post["author_name"],
+                    "time": time_str,
+                    "avatar": avatar_path,
+                    "userid": userid,
+                    "image": image_path
+                })
+            
+            return formatted_posts
+        except Exception as e:
+            # 如果查询失败，返回空列表
+            print(f"Warning: Could not fetch latest posts: {e}")
+            return []
+    
     def _format_relative_time(self, post_time: datetime) -> str:
         """格式化时间显示"""
         now = datetime.now()

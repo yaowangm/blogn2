@@ -2,6 +2,7 @@ from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional
 from src.models.project_item import ProjectItem
+from src.models.user import User
 
 class ProjectItemRepository:
     """项目项数据访问层
@@ -50,4 +51,30 @@ class ProjectItemRepository:
         """获取最受欢迎的项目项（按访问次数）"""
         statement = select(ProjectItem).order_by(ProjectItem.accesscount.desc()).limit(limit)
         result = await self.session.exec(statement)
-        return result.all() 
+        return result.all()
+    
+    async def get_latest_posts(self, limit: int = 5) -> List[dict]:
+        """获取最新的博文记录"""
+        query = (
+            select(ProjectItem, User.name.label("author_name"))
+            .join(User, ProjectItem.userid == User.id)
+            .where(ProjectItem.status == 1)  # 只获取正常状态的博文
+            .order_by(ProjectItem.createtime.desc())
+            .limit(limit)
+        )
+        
+        result = await self.session.exec(query)
+        posts = []
+        
+        for project_item, author_name in result:
+            posts.append({
+                "id": project_item.id,
+                "name": project_item.name,
+                "comment": project_item.comment,
+                "attachment": project_item.attachment,
+                "author_name": author_name,
+                "createtime": project_item.createtime,
+                "userid": project_item.userid
+            })
+        
+        return posts 
