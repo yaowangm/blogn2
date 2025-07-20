@@ -4,7 +4,10 @@ from typing import List, Optional
 from src.database import User
 
 class UserRepository:
-    """用户数据访问层"""
+    """用户数据访问层
+    
+    提供用户数据的CRUD操作，包括查询、统计等功能。
+    """
     
     def __init__(self, session: AsyncSession):
         self.session = session

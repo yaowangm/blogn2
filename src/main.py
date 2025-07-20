@@ -2,7 +2,7 @@ import sys
 import os
 from pathlib import Path
 
-# 添加项目根目录到Python路径
+# 添加项目根目录到Python路径，确保模块导入正确
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import uvicorn
 
-# 导入控制器模块
+# 导入API控制器模块
 from src.controllers import metadata, user
 
 # 创建FastAPI应用实例
@@ -22,35 +22,47 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# 配置CORS中间件
+# 配置CORS中间件，允许跨域请求
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 在生产环境中应该限制具体域名
+    allow_origins=["*"],  # 在生产环境中应该限制具体域名以提高安全性
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 挂载静态文件
+# 挂载静态文件目录，提供前端资源访问
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
-# 注册路由
+# 注册API路由，统一使用/api前缀
 app.include_router(metadata.router, prefix="/api")
 app.include_router(user.router, prefix="/api")
 
-# 根路径 - 返回首页
+# 根路径和首页路由 - 都返回首页
 @app.get("/")
-async def root():
-    return FileResponse("src/static/index.html")
-
-# 首页路由
 @app.get("/index.html")
-async def index():
+async def root():
+    """
+    根路径和首页路由
+    
+    返回网站的首页HTML文件。
+    
+    Returns:
+        FileResponse: 首页HTML文件
+    """
     return FileResponse("src/static/index.html")
 
 # 健康检查端点
 @app.get("/health")
 async def health_check():
+    """
+    健康检查端点
+    
+    用于监控系统状态和负载均衡器健康检查。
+    
+    Returns:
+        Dict[str, str]: 包含服务状态的字典
+    """
     return {"status": "healthy", "service": "BlogN2 API"}
 
 if __name__ == "__main__":

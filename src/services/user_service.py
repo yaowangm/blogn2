@@ -3,7 +3,10 @@ from src.repositories.user_repository import UserRepository
 from src.database import User
 
 class UserService:
-    """用户业务逻辑服务"""
+    """用户业务逻辑服务类
+    
+    提供用户相关的业务逻辑处理，包括用户查询、统计等功能。
+    """
     
     def __init__(self, user_repo: UserRepository):
         self.user_repo = user_repo

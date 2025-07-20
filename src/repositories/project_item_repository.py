@@ -4,7 +4,10 @@ from typing import List, Optional
 from src.database import ProjectItem
 
 class ProjectItemRepository:
-    """项目项数据访问层"""
+    """项目项数据访问层
+    
+    提供项目项数据的CRUD操作，包括查询、统计等功能。
+    """
     
     def __init__(self, session: AsyncSession):
         self.session = session
