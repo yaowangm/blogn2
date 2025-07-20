@@ -81,4 +81,20 @@ async def get_recent_comments(
     Returns:
         List[Dict[str, Any]]: 最近的评论列表
     """
-    return await blog_service.get_recent_comments(limit) 
+    return await blog_service.get_recent_comments(limit)
+
+@router.get("/blogs/about", response_model=Dict[str, Any])
+@handle_api_errors("获取关于页面内容失败")
+async def get_about_content(
+    blog_service: BlogService = Depends(get_blog_service)
+):
+    """
+    获取关于页面的内容（来自ID为486的projectitem记录）
+    
+    Args:
+        blog_service: 博客服务实例
+        
+    Returns:
+        Dict[str, Any]: 关于页面的内容
+    """
+    return await blog_service.get_about_content() 

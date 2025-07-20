@@ -6,6 +6,71 @@ class AboutCard extends HTMLElement {
 
     connectedCallback() {
         this.render();
+        this.loadContent();
+    }
+
+    async loadContent() {
+        try {
+            const response = await fetch('/api/blogs/about');
+            if (!response.ok) {
+                throw new Error('Failed to fetch about content');
+            }
+            const data = await response.json();
+            this.updateContent(data);
+        } catch (error) {
+            console.error('Error loading about content:', error);
+            this.showError();
+        }
+    }
+
+    updateContent(data) {
+        const cardTitle = this.shadowRoot.querySelector('.card-title');
+        const cardBody = this.shadowRoot.querySelector('.card-body');
+        
+        if (cardTitle) {
+            cardTitle.textContent = data.title || 'Why Blogn';
+        }
+        
+        if (cardBody) {
+            let content = data.content || '内容暂不可用';
+            
+            // 将<br>标签分割成多个段落
+            const paragraphs = content.split('<br>');
+            const paragraphElements = paragraphs.map(p => p.trim()).filter(p => p.length > 0);
+            
+            // 如果有链接，在最后一个段落后添加链接
+            let contentHtml = '';
+            for (let i = 0; i < paragraphElements.length; i++) {
+                let paragraph = paragraphElements[i];
+                if (i === paragraphElements.length - 1 && data.link) {
+                    paragraph += ` <a href="${data.link}" class="read-more">查看详情</a>`;
+                }
+                contentHtml += `<p>${paragraph}</p>`;
+            }
+            
+            cardBody.innerHTML = `
+                <div class="about-content">
+                    ${contentHtml}
+                </div>
+            `;
+        }
+    }
+
+    showError() {
+        const cardTitle = this.shadowRoot.querySelector('.card-title');
+        const cardBody = this.shadowRoot.querySelector('.card-body');
+        
+        if (cardTitle) {
+            cardTitle.textContent = 'Why Blogn';
+        }
+        
+        if (cardBody) {
+            cardBody.innerHTML = `
+                <div class="about-content">
+                    <p>内容加载失败，请稍后重试。</p>
+                </div>
+            `;
+        }
     }
 
     render() {
@@ -63,26 +128,26 @@ class AboutCard extends HTMLElement {
                     color: var(--primary-color);
                     font-weight: 500;
                 }
+
+                .read-more {
+                    color: var(--primary-color);
+                    text-decoration: none;
+                    font-weight: 500;
+                    margin-left: var(--spacing-2);
+                }
+
+                .read-more:hover {
+                    text-decoration: underline;
+                }
             </style>
 
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">关于BlogN2</h3>
+                    <h3 class="card-title">Why Blogn</h3>
                 </div>
                 <div class="card-body">
                     <div class="about-content">
-                        <p>
-                            <span class="highlight">BlogN2</span> 是一个现代化的博客平台，致力于为创作者提供最佳的写作和分享体验。
-                        </p>
-                        <p>
-                            我们相信每个人都有独特的故事和见解值得分享。无论你是技术专家、生活达人，还是文学爱好者，这里都是你展示才华的理想平台。
-                        </p>
-                        <p>
-                            平台采用最新的Web技术构建，提供流畅的用户体验、强大的内容管理功能，以及丰富的社交互动特性。
-                        </p>
-                        <p>
-                            加入我们，开始你的创作之旅，与志同道合的朋友们一起成长！
-                        </p>
+                        <p>正在加载内容...</p>
                     </div>
                 </div>
             </div>

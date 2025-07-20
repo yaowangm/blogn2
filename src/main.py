@@ -32,7 +32,7 @@ app.add_middleware(
 )
 
 # 挂载静态文件目录，提供前端资源访问
-app.mount("/static", StaticFiles(directory="src/static"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # 挂载用户头像目录，直接指向实际路径
 # app.mount("/static/userlogo", StaticFiles(directory="/home/wy/pic/blogn_img/userlogo"), name="userlogo")
@@ -75,7 +75,7 @@ async def root():
     Returns:
         FileResponse: 首页HTML文件
     """
-    return FileResponse("src/static/index.html")
+    return FileResponse("static/index.html")
 
 # 测试页面路由
 @app.get("/test")
@@ -88,7 +88,7 @@ async def test_page():
     Returns:
         FileResponse: 测试页面HTML文件
     """
-    return FileResponse("src/static/test.html")
+    return FileResponse("static/test.html")
 
 # 评论截断测试页面路由
 @app.get("/test-truncate")
@@ -101,7 +101,7 @@ async def test_truncate_page():
     Returns:
         FileResponse: 评论截断测试页面HTML文件
     """
-    return FileResponse("src/static/test-comment-truncate.html")
+    return FileResponse("static/test-comment-truncate.html")
 
 # 健康检查端点
 @app.get("/health")

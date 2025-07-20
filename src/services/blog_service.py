@@ -128,4 +128,48 @@ class BlogService:
         except Exception as e:
             # 如果查询失败，返回空列表
             print(f"Warning: Could not fetch comments: {e}")
-            return [] 
+            return []
+    
+    async def get_about_content(self) -> Dict[str, Any]:
+        """获取关于页面的内容（来自ID为486的projectitem记录）"""
+        try:
+            project_item = await self.project_item_repo.get_by_id(486)
+            
+            if not project_item:
+                return {
+                    "title": "Why Blogn",
+                    "content": "内容暂不可用",
+                    "link": None
+                }
+            
+            # 处理内容：转换换行符并截断到300字符
+            content = project_item.comment or ""
+            
+            # 转换换行符为HTML的<br>标签
+            content = content.replace('\r\n', '<br>').replace('\n', '<br>').replace('\r', '<br>')
+            
+            # 截断内容到300字符（在HTML标签之前）
+            if len(content) > 300:
+                # 找到300字符位置，但不要截断在HTML标签中间
+                truncate_pos = 300
+                while truncate_pos > 0 and content[truncate_pos-1:truncate_pos+3] != '<br>':
+                    truncate_pos -= 1
+                    if truncate_pos <= 0:
+                        truncate_pos = 300
+                        break
+                
+                content = content[:truncate_pos] + "..."
+            
+            return {
+                "title": "Why Blogn",
+                "content": content,
+                "link": f"/projectitem/{project_item.id}"
+            }
+        except Exception as e:
+            # 如果查询失败，返回默认内容
+            print(f"Warning: Could not fetch about content: {e}")
+            return {
+                "title": "Why Blogn",
+                "content": "内容暂不可用",
+                "link": None
+            } 
