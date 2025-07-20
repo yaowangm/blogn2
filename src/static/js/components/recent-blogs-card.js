@@ -200,8 +200,10 @@ class RecentBlogsCard extends HTMLElement {
                             ${this.blogs.map(blog => `
                                 <a href="/blog/${blog.name}" class="blog-item">
                                     <div class="blog-avatar">
-                                        ${blog.avatar ? `<img src="${blog.avatar}" alt="${blog.name}" onerror="this.style.display='none'; this.parentElement.textContent='${blog.name ? blog.name[0] : '博'}'; this.parentElement.style.background='var(--primary-color)'; this.parentElement.style.color='var(--white)'; this.parentElement.style.display='flex'; this.parentElement.style.alignItems='center'; this.parentElement.style.justifyContent='center'; this.parentElement.style.fontWeight='600'; this.parentElement.style.fontSize='var(--font-size-sm)';">
-                                        ` : `${blog.name ? blog.name[0] : '博'}`}
+                                        ${blog.avatar ? 
+                                            `<img src="${blog.avatar}" alt="${blog.name}">` :
+                                            `<span>${blog.name ? blog.name.charAt(0) : '博'}</span>`
+                                        }
                                     </div>
                                     <div class="blog-info">
                                         <div class="blog-name">${blog.name}</div>

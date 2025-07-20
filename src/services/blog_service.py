@@ -1,5 +1,6 @@
 from typing import List, Dict, Any
 from datetime import datetime, timedelta
+import os
 from src.repositories.user_repository import UserRepository
 from src.repositories.project_item_repository import ProjectItemRepository
 from src.repositories.project_repository import ProjectRepository
@@ -17,6 +18,28 @@ class BlogService:
         self.project_repo = project_repo
         self.post_repo = post_repo
     
+    def _check_avatar_exists(self, userid: int) -> str | None:
+        """检查用户头像文件是否存在
+        
+        Args:
+            userid: 用户ID
+            
+        Returns:
+            str | None: 如果头像存在返回路径，否则返回None
+        """
+        if not userid:
+            return None
+            
+        prefix = (userid // 10000) + 1
+        avatar_path = f"/avatars/{prefix}/s_{userid}.jpg"
+        real_path = f"/home/wy/pic/blogn_img/userlogo/{prefix}/s_{userid}.jpg"
+        
+        # 检查文件是否存在
+        if os.path.exists(real_path):
+            return avatar_path
+        else:
+            return None
+    
     async def get_recent_blogs(self, limit: int = 10) -> List[Dict[str, Any]]:
         """获取最新加入的博客（按创建时间倒序）"""
         recent_projects = await self.project_repo.get_recent_projects(limit)
@@ -30,13 +53,9 @@ class BlogService:
             else:
                 join_date = "未知日期"
             
-            # 计算用户头像路径
+            # 检查用户头像是否存在
             userid = project["userid"]
-            if userid:
-                prefix = (userid // 10000) + 1
-                avatar_path = f"/avatars/{prefix}/s_{userid}.jpg"
-            else:
-                avatar_path = None
+            avatar_path = self._check_avatar_exists(userid)
             
             blogs.append({
                 "id": project["id"],
@@ -61,13 +80,9 @@ class BlogService:
             else:
                 access_str = str(access_count)
             
-            # 计算用户头像路径
+            # 检查用户头像是否存在
             userid = project["userid"]
-            if userid:
-                prefix = (userid // 10000) + 1
-                avatar_path = f"/avatars/{prefix}/s_{userid}.jpg"
-            else:
-                avatar_path = None
+            avatar_path = self._check_avatar_exists(userid)
             
             blogs.append({
                 "id": project["id"],
@@ -95,23 +110,19 @@ class BlogService:
                 else:
                     time_str = "未知日期"
                 
-                            # 计算用户头像路径
-            userid = comment["userid"]
-            if userid:
-                prefix = (userid // 10000) + 1
-                avatar_path = f"/avatars/{prefix}/s_{userid}.jpg"
-            else:
-                avatar_path = None
+                # 检查用户头像是否存在
+                userid = comment["userid"]
+                avatar_path = self._check_avatar_exists(userid)
             
-            formatted_comments.append({
-                "id": comment["id"],
-                "author": comment["author_name"],
-                "content": comment["content"],
-                "time": time_str,
-                "projectitemid": comment["projectitemid"],
-                "avatar": avatar_path,
-                "userid": userid
-            })
+                formatted_comments.append({
+                    "id": comment["id"],
+                    "author": comment["author_name"],
+                    "content": comment["content"],
+                    "time": time_str,
+                    "projectitemid": comment["projectitemid"],
+                    "avatar": avatar_path,
+                    "userid": userid
+                })
             
             return formatted_comments
         except Exception as e:

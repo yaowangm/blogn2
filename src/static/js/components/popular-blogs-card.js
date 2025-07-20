@@ -206,8 +206,7 @@ class PopularBlogsCard extends HTMLElement {
                                 <a href="/blog/${blog.name}" class="blog-item">
                                     <div class="blog-avatar">
                                         ${blog.avatar ? 
-                                            `<img src="${blog.avatar}" alt="${blog.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" onload="this.nextElementSibling.style.display='none';">
-                                             <span style="display: none;">${blog.name ? blog.name.charAt(0) : '博'}</span>` :
+                                            `<img src="${blog.avatar}" alt="${blog.name}">` :
                                             `<span>${blog.name ? blog.name.charAt(0) : '博'}</span>`
                                         }
                                     </div>

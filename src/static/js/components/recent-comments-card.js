@@ -212,8 +212,7 @@ class RecentCommentsCard extends HTMLElement {
                                     <div class="comment-header">
                                         <div class="comment-avatar">
                                             ${comment.avatar ? 
-                                                `<img src="${comment.avatar}" alt="${comment.author}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" onload="this.nextElementSibling.style.display='none';">
-                                                 <span style="display: none;">${comment.author ? comment.author.charAt(0) : '用'}</span>` :
+                                                `<img src="${comment.avatar}" alt="${comment.author}">` :
                                                 `<span>${comment.author ? comment.author.charAt(0) : '用'}</span>`
                                             }
                                         </div>
