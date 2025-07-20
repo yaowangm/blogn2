@@ -124,44 +124,28 @@ class RecentCommentsCard extends HTMLElement {
                 .comment-header {
                     display: flex;
                     align-items: center;
-                    gap: var(--spacing-2);
+                    justify-content: space-between;
                     margin-bottom: var(--spacing-2);
                 }
 
-                .comment-avatar {
-                    width: 24px;
-                    height: 24px;
-                    border-radius: 50%;
-                    background: var(--primary-color);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: var(--font-size-xs);
-                    font-weight: 600;
-                    color: var(--white);
-                    flex-shrink: 0;
-                }
-
-                .comment-author {
+                .author {
                     font-weight: 500;
                     color: var(--gray-900);
+                    font-size: var(--font-size-sm);
                 }
 
-                .comment-time {
-                    font-size: var(--font-size-sm);
+                .time {
+                    font-size: var(--font-size-xs);
                     color: var(--gray-500);
                 }
 
-                .comment-post {
-                    font-size: var(--font-size-sm);
-                    color: var(--primary-color);
-                    margin-bottom: var(--spacing-2);
-                }
-
-                .comment-content {
+                .comment-text {
                     font-size: var(--font-size-sm);
                     color: var(--gray-700);
                     line-height: 1.5;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
                 }
 
                 .loading {
@@ -209,18 +193,13 @@ class RecentCommentsCard extends HTMLElement {
                         <div class="comment-list">
                             ${this.comments.map(comment => `
                                 <div class="comment-item" onclick="window.location.href='/post/${comment.projectitemid}'" style="cursor: pointer;">
-                                    <div class="comment-header">
-                                        <div class="comment-avatar">
-                                            ${comment.avatar ? 
-                                                `<img src="${comment.avatar}" alt="${comment.author}">` :
-                                                `<span>${comment.author ? comment.author.charAt(0) : '用'}</span>`
-                                            }
+                                    <div class="comment-content">
+                                        <div class="comment-header">
+                                            <span class="author">${comment.author}</span>
+                                            <span class="time">${comment.time}</span>
                                         </div>
-                                        <span class="comment-author">${comment.author}</span>
-                                        <span class="comment-time">${comment.time}</span>
+                                        <div class="comment-text">${comment.content.replace(/\r\n/g, ' ').replace(/\n/g, ' ').trim().length > 20 ? comment.content.replace(/\r\n/g, ' ').replace(/\n/g, ' ').trim().substring(0, 20) + '...' : comment.content.replace(/\r\n/g, ' ').replace(/\n/g, ' ').trim()}</div>
                                     </div>
-
-                                    <div class="comment-content">${comment.content.replace(/\\r\\n/g, ' ').replace(/\\n/g, ' ').trim().length > 20 ? comment.content.replace(/\\r\\n/g, ' ').replace(/\\n/g, ' ').trim().substring(0, 20) + '...' : comment.content.replace(/\\r\\n/g, ' ').replace(/\\n/g, ' ').trim()}</div>
                                 </div>
                             `).join('')}
                         </div>
