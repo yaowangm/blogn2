@@ -33,7 +33,8 @@ class PostRepository:
                 "content": post.content,
                 "author_name": author_name,
                 "post_time": post.posttime,
-                "projectitemid": post.projectitemid
+                "projectitemid": post.projectitemid,
+                "userid": post.userid
             })
         
         return comments

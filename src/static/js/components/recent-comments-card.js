@@ -128,6 +128,20 @@ class RecentCommentsCard extends HTMLElement {
                     margin-bottom: var(--spacing-2);
                 }
 
+                .comment-avatar {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    background: var(--primary-color);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: var(--font-size-xs);
+                    font-weight: 600;
+                    color: var(--white);
+                    flex-shrink: 0;
+                }
+
                 .comment-author {
                     font-weight: 500;
                     color: var(--gray-900);
@@ -196,6 +210,13 @@ class RecentCommentsCard extends HTMLElement {
                             ${this.comments.map(comment => `
                                 <div class="comment-item" onclick="window.location.href='/post/${comment.projectitemid}'" style="cursor: pointer;">
                                     <div class="comment-header">
+                                        <div class="comment-avatar">
+                                            ${comment.avatar ? 
+                                                `<img src="${comment.avatar}" alt="${comment.author}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" onload="this.nextElementSibling.style.display='none';">
+                                                 <span style="display: none;">${comment.author ? comment.author.charAt(0) : '用'}</span>` :
+                                                `<span>${comment.author ? comment.author.charAt(0) : '用'}</span>`
+                                            }
+                                        </div>
                                         <span class="comment-author">${comment.author}</span>
                                         <span class="comment-time">${comment.time}</span>
                                     </div>

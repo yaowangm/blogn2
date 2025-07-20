@@ -17,7 +17,7 @@ class BlogService:
         self.project_repo = project_repo
         self.post_repo = post_repo
     
-    async def get_recent_blogs(self, limit: int = 5) -> List[Dict[str, Any]]:
+    async def get_recent_blogs(self, limit: int = 10) -> List[Dict[str, Any]]:
         """获取最新加入的博客（按创建时间倒序）"""
         recent_projects = await self.project_repo.get_recent_projects(limit)
         
@@ -30,11 +30,20 @@ class BlogService:
             else:
                 join_date = "未知日期"
             
+            # 计算用户头像路径
+            userid = project["userid"]
+            if userid:
+                prefix = (userid // 10000) + 1
+                avatar_path = f"/avatars/{prefix}/s_{userid}.jpg"
+            else:
+                avatar_path = None
+            
             blogs.append({
                 "id": project["id"],
                 "name": project["name"],
                 "join_date": join_date,
-                "avatar": project["name"][0] if project["name"] else "博"
+                "avatar": avatar_path,
+                "userid": userid
             })
         
         return blogs
@@ -52,13 +61,22 @@ class BlogService:
             else:
                 access_str = str(access_count)
             
+            # 计算用户头像路径
+            userid = project["userid"]
+            if userid:
+                prefix = (userid // 10000) + 1
+                avatar_path = f"/avatars/{prefix}/s_{userid}.jpg"
+            else:
+                avatar_path = None
+            
             blogs.append({
                 "id": project["id"],
                 "name": project["name"],
                 "followers": access_str,  # 这里显示的是访问量，但保持字段名兼容
-                "avatar": project["name"][0] if project["name"] else "博",
+                "avatar": avatar_path,
                 "rank": i + 1,
-                "author": project["author_name"]
+                "author": project["author_name"],
+                "userid": userid
             })
         
         return blogs
@@ -77,13 +95,23 @@ class BlogService:
                 else:
                     time_str = "未知日期"
                 
-                formatted_comments.append({
-                    "id": comment["id"],
-                    "author": comment["author_name"],
-                    "content": comment["content"],
-                    "time": time_str,
-                    "projectitemid": comment["projectitemid"]
-                })
+                            # 计算用户头像路径
+            userid = comment["userid"]
+            if userid:
+                prefix = (userid // 10000) + 1
+                avatar_path = f"/avatars/{prefix}/s_{userid}.jpg"
+            else:
+                avatar_path = None
+            
+            formatted_comments.append({
+                "id": comment["id"],
+                "author": comment["author_name"],
+                "content": comment["content"],
+                "time": time_str,
+                "projectitemid": comment["projectitemid"],
+                "avatar": avatar_path,
+                "userid": userid
+            })
             
             return formatted_comments
         except Exception as e:

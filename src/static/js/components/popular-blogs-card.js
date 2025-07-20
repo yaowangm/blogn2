@@ -127,6 +127,14 @@ class PopularBlogsCard extends HTMLElement {
                     font-weight: 600;
                     font-size: var(--font-size-sm);
                     flex-shrink: 0;
+                    position: relative;
+                }
+
+                .blog-avatar img {
+                    width: 100%;
+                    height: 100%;
+                    border-radius: 50%;
+                    object-fit: cover;
                 }
 
                 .blog-info {
@@ -196,7 +204,13 @@ class PopularBlogsCard extends HTMLElement {
                         <div class="blog-list">
                             ${this.blogs.map(blog => `
                                 <a href="/blog/${blog.name}" class="blog-item">
-                                    <div class="blog-avatar">${blog.avatar}</div>
+                                    <div class="blog-avatar">
+                                        ${blog.avatar ? 
+                                            `<img src="${blog.avatar}" alt="${blog.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" onload="this.nextElementSibling.style.display='none';">
+                                             <span style="display: none;">${blog.name ? blog.name.charAt(0) : '博'}</span>` :
+                                            `<span>${blog.name ? blog.name.charAt(0) : '博'}</span>`
+                                        }
+                                    </div>
                                     <div class="blog-info">
                                         <div class="blog-name">${blog.name}</div>
                                         <div class="blog-meta">${blog.followers} 关注者</div>

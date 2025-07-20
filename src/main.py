@@ -34,6 +34,30 @@ app.add_middleware(
 # 挂载静态文件目录，提供前端资源访问
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
+# 挂载用户头像目录，直接指向实际路径
+# app.mount("/static/userlogo", StaticFiles(directory="/home/wy/pic/blogn_img/userlogo"), name="userlogo")
+
+# 自定义头像文件路由
+@app.get("/avatars/{prefix}/{filename}")
+async def serve_avatar(prefix: str, filename: str):
+    """
+    提供用户头像文件访问
+    
+    Args:
+        prefix: 用户ID前缀
+        filename: 头像文件名
+        
+    Returns:
+        FileResponse: 头像文件
+    """
+    import os
+    avatar_path = f"/home/wy/pic/blogn_img/userlogo/{prefix}/{filename}"
+    if os.path.exists(avatar_path):
+        return FileResponse(avatar_path, media_type="image/jpeg")
+    else:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Avatar not found")
+
 # 注册API路由，统一使用/api前缀
 app.include_router(metadata.router, prefix="/api")
 app.include_router(user.router, prefix="/api")

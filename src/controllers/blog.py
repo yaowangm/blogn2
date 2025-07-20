@@ -32,7 +32,7 @@ def get_blog_service(session: AsyncSession = Depends(get_async_session)) -> Blog
 @router.get("/blogs/recent", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最新加入博客失败")
 async def get_recent_blogs(
-    limit: int = 5,
+    limit: int = 10,
     blog_service: BlogService = Depends(get_blog_service)
 ):
     """
