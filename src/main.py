@@ -31,8 +31,48 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 自定义upload文件路由 - 必须在静态文件挂载之前
+@app.get("/static/upload/{path:path}")
+async def serve_upload_file(path: str):
+    """
+    提供upload文件访问
+    
+    Args:
+        path: 文件路径
+        
+    Returns:
+        FileResponse: 文件
+    """
+    import os
+    upload_path = f"/home/wy/pic/blogn_img/upload/{path}"
+    if os.path.exists(upload_path):
+        return FileResponse(upload_path)
+    else:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="File not found")
+
+# 添加HEAD方法支持
+@app.head("/static/upload/{path:path}")
+async def serve_upload_file_head(path: str):
+    """
+    提供upload文件HEAD请求支持
+    
+    Args:
+        path: 文件路径
+        
+    Returns:
+        FileResponse: 文件头信息
+    """
+    import os
+    upload_path = f"/home/wy/pic/blogn_img/upload/{path}"
+    if os.path.exists(upload_path):
+        return FileResponse(upload_path)
+    else:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="File not found")
+
 # 挂载静态文件目录，提供前端资源访问
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 # 挂载用户头像目录，直接指向实际路径
 # app.mount("/static/userlogo", StaticFiles(directory="/home/wy/pic/blogn_img/userlogo"), name="userlogo")
@@ -75,7 +115,7 @@ async def root():
     Returns:
         FileResponse: 首页HTML文件
     """
-    return FileResponse("static/index.html")
+    return FileResponse("src/static/index.html")
 
 # 测试页面路由
 @app.get("/test")
@@ -88,7 +128,7 @@ async def test_page():
     Returns:
         FileResponse: 测试页面HTML文件
     """
-    return FileResponse("static/test.html")
+    return FileResponse("src/static/test.html")
 
 # 评论截断测试页面路由
 @app.get("/test-truncate")
@@ -101,7 +141,7 @@ async def test_truncate_page():
     Returns:
         FileResponse: 评论截断测试页面HTML文件
     """
-    return FileResponse("static/test-comment-truncate.html")
+    return FileResponse("src/static/test-comment-truncate.html")
 
 # 健康检查端点
 @app.get("/health")
