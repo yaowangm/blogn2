@@ -50,14 +50,14 @@ async def get_recent_blogs(
 @router.get("/blogs/popular", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最热门博客失败")
 async def get_popular_blogs(
-    limit: int = 5,
+    limit: int = 10,
     blog_service: BlogService = Depends(get_blog_service)
 ):
     """
     获取最热门的博客列表
     
     Args:
-        limit: 返回数量限制，默认5个
+        limit: 返回数量限制，默认10个
         blog_service: 博客服务实例
         
     Returns:

@@ -13,7 +13,7 @@ class PopularBlogsCard extends HTMLElement {
 
     async loadData() {
         try {
-            const response = await fetch('/api/blogs/popular?limit=5');
+            const response = await fetch('/api/blogs/popular?limit=10');
             if (!response.ok) {
                 throw new Error('Failed to fetch popular blogs');
             }
