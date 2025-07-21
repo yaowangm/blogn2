@@ -144,7 +144,7 @@ class LatestPostsCard extends BaseComponent {
                     background: var(--accent-color);
                     flex-shrink: 0;
                     display: flex;
-                    align-items: flex-start;
+                    align-items: center;
                     justify-content: center;
                     color: var(--white);
                     font-weight: 600;
@@ -164,7 +164,8 @@ class LatestPostsCard extends BaseComponent {
 
                 .post-avatar span {
                     font-weight: 600;
-                    font-size: var(--font-size-lg);
+                    font-size: var(--font-size-xl);
+                    line-height: 1;
                 }
 
                 .post-content {
@@ -237,7 +238,7 @@ class LatestPostsCard extends BaseComponent {
                     .post-avatar {
                         width: 80px;
                         height: 80px;
-                        align-self: flex-start;
+                        align-self: center;
                         margin-top: 25px;
                     }
 
