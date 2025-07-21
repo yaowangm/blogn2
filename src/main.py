@@ -91,7 +91,7 @@ async def serve_avatar(prefix: str, filename: str):
         FileResponse: 头像文件
     """
     import os
-    avatar_path = f"/home/wy/pic/blogn_img/userlogo/{prefix}/{filename}"
+    avatar_path = f"../pic/blogn_img/userlogo/{prefix}/{filename}"
     if os.path.exists(avatar_path):
         return FileResponse(avatar_path, media_type="image/jpeg")
     else:
