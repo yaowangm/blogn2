@@ -226,8 +226,8 @@ class LatestPostsCard extends HTMLElement {
 
                 .post-attachment-image img {
                     width: 100%;
-                    height: 120px;
-                    object-fit: cover;
+                    max-width: 400px;
+                    height: auto;
                     border-radius: var(--radius-md);
                     transition: var(--transition-fast);
                 }
@@ -249,7 +249,8 @@ class LatestPostsCard extends HTMLElement {
                     }
 
                     .post-attachment-image img {
-                        height: 150px;
+                        max-width: 100%;
+                        height: auto;
                     }
                 }
             </style>
