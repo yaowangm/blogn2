@@ -153,7 +153,7 @@ class LatestPostsCard extends HTMLElement {
                     background: var(--accent-color);
                     flex-shrink: 0;
                     display: flex;
-                    align-items: center;
+                    align-items: flex-start;
                     justify-content: center;
                     color: var(--white);
                     font-weight: 600;
@@ -161,6 +161,7 @@ class LatestPostsCard extends HTMLElement {
                     overflow: hidden;
                     border: 2px solid var(--gray-200);
                     position: relative;
+                    margin-top: 20px;
                 }
 
                 .post-avatar img {
@@ -245,7 +246,8 @@ class LatestPostsCard extends HTMLElement {
                     .post-avatar {
                         width: 80px;
                         height: 80px;
-                        align-self: center;
+                        align-self: flex-start;
+                        margin-top: 25px;
                     }
 
                     .post-attachment-image img {
