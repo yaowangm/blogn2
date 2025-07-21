@@ -1,7 +1,6 @@
-class LatestPostsCard extends HTMLElement {
+class LatestPostsCard extends BaseComponent {
     constructor() {
         super();
-        this.attachShadow({ mode: 'open' });
     }
 
     connectedCallback() {
@@ -18,7 +17,7 @@ class LatestPostsCard extends HTMLElement {
             const data = await response.json();
             this.updateContent(data);
         } catch (error) {
-            console.error('Error loading latest posts:', error);
+            this.logError('Error loading latest posts', error);
             this.showError();
         }
     }
@@ -72,15 +71,7 @@ class LatestPostsCard extends HTMLElement {
         const cardBody = this.shadowRoot.querySelector('.card-body');
         
         if (cardBody) {
-            cardBody.innerHTML = `
-                <div class="post-list">
-                    <div class="post-item">
-                        <div class="post-content">
-                            <p class="post-excerpt">加载失败，请稍后重试</p>
-                        </div>
-                    </div>
-                </div>
-            `;
+            cardBody.innerHTML = this.createErrorHTML('加载失败，请稍后重试');
         }
     }
 

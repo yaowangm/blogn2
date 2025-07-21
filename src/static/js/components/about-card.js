@@ -1,7 +1,6 @@
-class AboutCard extends HTMLElement {
+class AboutCard extends BaseComponent {
     constructor() {
         super();
-        this.attachShadow({ mode: 'open' });
     }
 
     connectedCallback() {
@@ -18,7 +17,7 @@ class AboutCard extends HTMLElement {
             const data = await response.json();
             this.updateContent(data);
         } catch (error) {
-            console.error('Error loading about content:', error);
+            this.logError('Error loading about content', error);
             this.showError();
         }
     }
@@ -65,11 +64,7 @@ class AboutCard extends HTMLElement {
         }
         
         if (cardBody) {
-            cardBody.innerHTML = `
-                <div class="about-content">
-                    <p>内容加载失败，请稍后重试。</p>
-                </div>
-            `;
+            cardBody.innerHTML = this.createErrorHTML('内容加载失败，请稍后重试。');
         }
     }
 

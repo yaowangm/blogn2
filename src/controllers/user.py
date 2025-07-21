@@ -1,28 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Dict, Any
 
-from src.database import get_async_session
-from src.repositories.user_repository import UserRepository
 from src.services.user_service import UserService
 from src.database import User
 from src.utils.error_handlers import handle_api_errors
+from src.utils.dependencies import get_user_service
 
 # 创建用户API路由器
 router = APIRouter()
-
-def get_user_service(session: AsyncSession = Depends(get_async_session)) -> UserService:
-    """
-    依赖注入：创建用户服务实例
-    
-    Args:
-        session: 数据库会话
-        
-    Returns:
-        UserService: 用户服务实例
-    """
-    user_repo = UserRepository(session)
-    return UserService(user_repo)
 
 @router.get("/users/summary", response_model=Dict[str, Any])
 @handle_api_errors("获取用户摘要失败")

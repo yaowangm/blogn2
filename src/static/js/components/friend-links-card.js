@@ -1,7 +1,6 @@
-class FriendLinksCard extends HTMLElement {
+class FriendLinksCard extends BaseComponent {
     constructor() {
         super();
-        this.attachShadow({ mode: 'open' });
     }
 
     connectedCallback() {

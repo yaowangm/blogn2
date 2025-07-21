@@ -1,7 +1,6 @@
-class RecentBlogsCard extends HTMLElement {
+class RecentBlogsCard extends BaseComponent {
     constructor() {
         super();
-        this.attachShadow({ mode: 'open' });
         this.blogs = [];
         this.loading = true;
     }
@@ -19,7 +18,7 @@ class RecentBlogsCard extends HTMLElement {
             }
             this.blogs = await response.json();
         } catch (error) {
-            console.error('Error loading recent blogs:', error);
+            this.logError('Error loading recent blogs', error);
             // 使用默认数据作为后备
             this.blogs = [
                 { name: '技术探索者', join_date: '2天前', avatar: '技' },
@@ -190,12 +189,7 @@ class RecentBlogsCard extends HTMLElement {
                     <h3 class="card-title">最新加入</h3>
                 </div>
                 <div class="card-body">
-                    ${this.loading ? `
-                        <div class="loading">
-                            <div class="loading-spinner"></div>
-                            <span>加载中...</span>
-                        </div>
-                    ` : `
+                    ${this.loading ? this.createLoadingHTML() : `
                         <div class="blog-list">
                             ${this.blogs.map(blog => `
                                 <a href="/blog/${blog.name}" class="blog-item">

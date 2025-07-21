@@ -1,46 +1,11 @@
-class HeaderComponent extends HTMLElement {
+class HeaderComponent extends BaseComponent {
     constructor() {
         super();
-        this.attachShadow({ mode: 'open' });
-        this.metadata = null;
     }
 
     async connectedCallback() {
         await this.loadMetadata();
         this.render();
-    }
-
-    async loadMetadata() {
-        try {
-            const response = await fetch('/api/metadata');
-            if (response.ok) {
-                this.metadata = await response.json();
-            } else {
-                console.error('Failed to load metadata:', response.status);
-                this.metadata = {
-                    site_name: 'BlogN',
-                    logo_url: '/static/images/logo.svg'
-                };
-            }
-        } catch (error) {
-            console.error('Error loading metadata:', error);
-            this.metadata = {
-                site_name: 'BlogN',
-                logo_url: '/static/images/logo.svg'
-            };
-        }
-    }
-
-    getLogoUrl() {
-        // 检测当前主题
-        const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const baseUrl = this.metadata?.logo_url || '/static/images/logo.svg';
-        
-        if (isDarkMode) {
-            return baseUrl.replace('logo.svg', 'logo-dark.svg');
-        } else {
-            return baseUrl.replace('logo.svg', 'logo-light.svg');
-        }
     }
 
     render() {

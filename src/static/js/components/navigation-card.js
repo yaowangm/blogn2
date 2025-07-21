@@ -1,7 +1,6 @@
-class NavigationCard extends HTMLElement {
+class NavigationCard extends BaseComponent {
     constructor() {
         super();
-        this.attachShadow({ mode: 'open' });
     }
 
     connectedCallback() {

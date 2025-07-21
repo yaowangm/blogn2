@@ -1,34 +1,11 @@
-class StatsCard extends HTMLElement {
+class StatsCard extends BaseComponent {
     constructor() {
         super();
-        this.attachShadow({ mode: 'open' });
-        this.metadata = null;
     }
 
     async connectedCallback() {
         await this.loadMetadata();
         this.render();
-    }
-
-    async loadMetadata() {
-        try {
-            const response = await fetch('/api/metadata');
-            if (response.ok) {
-                this.metadata = await response.json();
-            } else {
-                console.error('Failed to load metadata:', response.status);
-                this.metadata = {
-                    user_count: 0,
-                    post_count: 0
-                };
-            }
-        } catch (error) {
-            console.error('Error loading metadata:', error);
-            this.metadata = {
-                user_count: 0,
-                post_count: 0
-            };
-        }
     }
 
     render() {

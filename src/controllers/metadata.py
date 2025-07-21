@@ -1,29 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel.ext.asyncio.session import AsyncSession
+from fastapi import APIRouter, Depends
 from typing import Dict, Any
 
-from src.database import get_async_session
-from src.repositories.user_repository import UserRepository
-from src.repositories.project_item_repository import ProjectItemRepository
 from src.services.metadata_service import MetadataService
 from src.utils.error_handlers import handle_api_errors
+from src.utils.dependencies import get_metadata_service
 
 # 创建元数据API路由器
 router = APIRouter()
-
-def get_metadata_service(session: AsyncSession = Depends(get_async_session)) -> MetadataService:
-    """
-    依赖注入：创建元数据服务实例
-    
-    Args:
-        session: 数据库会话
-        
-    Returns:
-        MetadataService: 元数据服务实例
-    """
-    user_repo = UserRepository(session)
-    project_repo = ProjectItemRepository(session)
-    return MetadataService(user_repo, project_repo)
 
 @router.get("/metadata/", response_model=Dict[str, Any])
 @handle_api_errors("获取网站元数据失败")

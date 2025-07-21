@@ -31,6 +31,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 文件服务配置
+UPLOAD_BASE_PATH = "/home/wy/pic/blogn_img/upload"
+AVATAR_BASE_PATH = "../pic/blogn_img/userlogo"
+
+def serve_file(file_path: str, media_type: str = None):
+    """
+    通用文件服务函数
+    
+    Args:
+        file_path: 文件路径
+        media_type: 媒体类型
+        
+    Returns:
+        FileResponse: 文件响应
+    """
+    import os
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type=media_type)
+    else:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="File not found")
+
 # 自定义upload文件路由 - 必须在静态文件挂载之前
 @app.get("/static/upload/{path:path}")
 async def serve_upload_file(path: str):
@@ -43,13 +65,7 @@ async def serve_upload_file(path: str):
     Returns:
         FileResponse: 文件
     """
-    import os
-    upload_path = f"/home/wy/pic/blogn_img/upload/{path}"
-    if os.path.exists(upload_path):
-        return FileResponse(upload_path)
-    else:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="File not found")
+    return serve_file(f"{UPLOAD_BASE_PATH}/{path}")
 
 # 添加HEAD方法支持
 @app.head("/static/upload/{path:path}")
@@ -63,13 +79,7 @@ async def serve_upload_file_head(path: str):
     Returns:
         FileResponse: 文件头信息
     """
-    import os
-    upload_path = f"/home/wy/pic/blogn_img/upload/{path}"
-    if os.path.exists(upload_path):
-        return FileResponse(upload_path)
-    else:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="File not found")
+    return serve_file(f"{UPLOAD_BASE_PATH}/{path}")
 
 # 挂载静态文件目录，提供前端资源访问
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
@@ -90,13 +100,7 @@ async def serve_avatar(prefix: str, filename: str):
     Returns:
         FileResponse: 头像文件
     """
-    import os
-    avatar_path = f"../pic/blogn_img/userlogo/{prefix}/{filename}"
-    if os.path.exists(avatar_path):
-        return FileResponse(avatar_path, media_type="image/jpeg")
-    else:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="Avatar not found")
+    return serve_file(f"{AVATAR_BASE_PATH}/{prefix}/{filename}", media_type="image/jpeg")
 
 # 注册API路由，统一使用/api前缀
 app.include_router(metadata.router, prefix="/api")
@@ -117,31 +121,7 @@ async def root():
     """
     return FileResponse("src/static/index.html")
 
-# 测试页面路由
-@app.get("/test")
-async def test_page():
-    """
-    测试页面路由
-    
-    用于测试动态组件的功能。
-    
-    Returns:
-        FileResponse: 测试页面HTML文件
-    """
-    return FileResponse("src/static/test.html")
 
-# 评论截断测试页面路由
-@app.get("/test-truncate")
-async def test_truncate_page():
-    """
-    评论截断测试页面路由
-    
-    用于测试评论截断功能。
-    
-    Returns:
-        FileResponse: 评论截断测试页面HTML文件
-    """
-    return FileResponse("src/static/test-comment-truncate.html")
 
 # 健康检查端点
 @app.get("/health")

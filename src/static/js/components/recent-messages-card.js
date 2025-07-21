@@ -1,7 +1,6 @@
-class RecentMessagesCard extends HTMLElement {
+class RecentMessagesCard extends BaseComponent {
     constructor() {
         super();
-        this.attachShadow({ mode: 'open' });
     }
 
     connectedCallback() {
@@ -18,7 +17,7 @@ class RecentMessagesCard extends HTMLElement {
             const data = await response.json();
             this.updateContent(data);
         } catch (error) {
-            console.error('Error loading recent messages:', error);
+            this.logError('Error loading recent messages', error);
             this.showError();
         }
     }
@@ -64,13 +63,7 @@ class RecentMessagesCard extends HTMLElement {
         const cardBody = this.shadowRoot.querySelector('.card-body');
         
         if (cardBody) {
-            cardBody.innerHTML = `
-                <div class="message-list">
-                    <div class="message-item">
-                        <div class="message-subject">加载失败，请稍后重试</div>
-                    </div>
-                </div>
-            `;
+            cardBody.innerHTML = this.createErrorHTML('加载失败，请稍后重试');
         }
     }
 

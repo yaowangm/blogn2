@@ -1,7 +1,6 @@
-class RecentCommentsCard extends HTMLElement {
+class RecentCommentsCard extends BaseComponent {
     constructor() {
         super();
-        this.attachShadow({ mode: 'open' });
         this.comments = [];
         this.loading = true;
     }
@@ -19,7 +18,7 @@ class RecentCommentsCard extends HTMLElement {
             }
             this.comments = await response.json();
         } catch (error) {
-            console.error('Error loading recent comments:', error);
+            this.logError('Error loading recent comments', error);
             // 使用默认数据作为后备
             this.comments = [
                 { 
@@ -184,12 +183,7 @@ class RecentCommentsCard extends HTMLElement {
                     <h3 class="card-title">最近评论</h3>
                 </div>
                 <div class="card-body">
-                    ${this.loading ? `
-                        <div class="loading">
-                            <div class="loading-spinner"></div>
-                            <span>加载中...</span>
-                        </div>
-                    ` : `
+                    ${this.loading ? this.createLoadingHTML() : `
                         <div class="comment-list">
                             ${this.comments.map(comment => `
                                 <div class="comment-item" onclick="window.location.href='/post/${comment.projectitemid}'" style="cursor: pointer;">
@@ -198,7 +192,7 @@ class RecentCommentsCard extends HTMLElement {
                                             <span class="author">${comment.author}</span>
                                             <span class="time">${comment.time}</span>
                                         </div>
-                                        <div class="comment-text">${comment.content.replace(/\r\n/g, ' ').replace(/\n/g, ' ').trim().length > 20 ? comment.content.replace(/\r\n/g, ' ').replace(/\n/g, ' ').trim().substring(0, 20) + '...' : comment.content.replace(/\r\n/g, ' ').replace(/\n/g, ' ').trim()}</div>
+                                        <div class="comment-text">${this.truncateText(comment.content, 20)}</div>
                                     </div>
                                 </div>
                             `).join('')}

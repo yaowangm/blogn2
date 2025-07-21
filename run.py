@@ -19,6 +19,8 @@ if __name__ == "__main__":
     print("   - 网站元数据: http://localhost:8000/api/metadata/")
     print("   - 用户统计: http://localhost:8000/api/users/summary")
     print("   - 最新用户: http://localhost:8000/api/users/listnew")
+    print("   - 最新博客: http://localhost:8000/api/blogs/recent")
+    print("   - 热门博客: http://localhost:8000/api/blogs/popular")
     print()
     
     uvicorn.run(
