@@ -15,7 +15,7 @@ class BaseComponent extends HTMLElement {
      */
     async loadMetadata() {
         try {
-            const response = await fetch('/api/metadata');
+            const response = await fetch('/api/metadata/');
             if (response.ok) {
                 this.metadata = await response.json();
             } else {
