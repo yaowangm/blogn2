@@ -39,70 +39,66 @@ class TestIntegration:
     @pytest.mark.asyncio
     async def test_metadata_endpoint_integration(self, client: TestClient, test_session):
         """测试元数据端点的完整集成"""
-        # 正确使用async generator fixture并创建数据库表
-        async for session in test_session:
-            # 使用SQLAlchemy 2.0的正确方式创建表
-            async with session.begin():
-                await session.run_sync(lambda sync_session: SQLModel.metadata.create_all(bind=sync_session.bind))
-            
-            # 测试API端点
-            response = client.get("/api/metadata/")
-            
-            # 检查响应状态码和基本结构
-            assert response.status_code in [200, 500]  # 可能因为数据库连接问题返回500
-            
-            if response.status_code == 200:
-                data = response.json()
-                # 验证返回的数据结构
-                assert isinstance(data, dict)
-                # 验证包含预期的字段
-                assert "site_name" in data
-                assert "user_count" in data
-                assert "post_count" in data
+        # 使用session fixture直接创建数据库表
+        async with test_session.begin():
+            await test_session.run_sync(lambda sync_session: SQLModel.metadata.create_all(bind=sync_session.bind))
+        
+        # 测试API端点
+        response = client.get("/api/metadata/")
+        
+        # 检查响应状态码和基本结构
+        assert response.status_code in [200, 500]  # 可能因为数据库连接问题返回500
+        
+        if response.status_code == 200:
+            data = response.json()
+            # 验证返回的数据结构
+            assert isinstance(data, dict)
+            # 验证包含预期的字段
+            assert "site_name" in data
+            assert "user_count" in data
+            assert "post_count" in data
     
     @pytest.mark.asyncio
     async def test_user_endpoints_integration(self, client: TestClient, test_session):
         """测试用户端点的完整集成"""
-        # 正确使用async generator fixture并创建数据库表
-        async for session in test_session:
-            # 使用SQLAlchemy 2.0的正确方式创建表
-            async with session.begin():
-                await session.run_sync(lambda sync_session: SQLModel.metadata.create_all(bind=sync_session.bind))
-            
-            # 创建测试数据
-            from src.database import User
-            from datetime import datetime
-            
-            test_user = User(
-                name="testuser",
-                email="test@example.com",
-                password="hashed_password",
-                state=1,
-                regtime=datetime.now()  # 提供必需的regtime字段
-            )
-            session.add(test_user)
-            await session.commit()
-            
-            # 测试用户统计端点
-            response = client.get("/api/users/summary")
-            assert response.status_code in [200, 500]
-            
-            if response.status_code == 200:
-                data = response.json()
-                assert "total_users" in data
-                assert "recent_users" in data
-            
-            # 测试用户总数端点
-            response = client.get("/api/users/count")
-            assert response.status_code in [200, 500]
-            
-            if response.status_code == 200:
-                data = response.json()
-                assert "count" in data
-            
-            # 测试最新用户端点
-            response = client.get("/api/users/listnew")
-            assert response.status_code in [200, 500]
+        # 使用session fixture直接创建数据库表
+        async with test_session.begin():
+            await test_session.run_sync(lambda sync_session: SQLModel.metadata.create_all(bind=sync_session.bind))
+        
+        # 创建测试数据
+        from src.database import User
+        from datetime import datetime
+        
+        test_user = User(
+            name="testuser",
+            email="test@example.com",
+            password="hashed_password",
+            state=1,
+            regtime=datetime.now()  # 提供必需的regtime字段
+        )
+        test_session.add(test_user)
+        await test_session.commit()
+        
+        # 测试用户统计端点
+        response = client.get("/api/users/summary")
+        assert response.status_code in [200, 500]
+        
+        if response.status_code == 200:
+            data = response.json()
+            assert "total_users" in data
+            assert "recent_users" in data
+        
+        # 测试用户总数端点
+        response = client.get("/api/users/count")
+        assert response.status_code in [200, 500]
+        
+        if response.status_code == 200:
+            data = response.json()
+            assert "count" in data
+        
+        # 测试最新用户端点
+        response = client.get("/api/users/listnew")
+        assert response.status_code in [200, 500]
     
     def test_invalid_endpoint(self, client: TestClient):
         """测试无效端点"""
