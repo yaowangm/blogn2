@@ -32,7 +32,7 @@ app.add_middleware(
 )
 
 # 文件服务配置
-UPLOAD_BASE_PATH = "/home/wy/pic/blogn_img/upload"
+UPLOAD_BASE_PATH = "../pic/blogn_img/upload"
 AVATAR_BASE_PATH = "../pic/blogn_img/userlogo"
 
 def serve_file(file_path: str, media_type: str = None):
@@ -85,7 +85,7 @@ async def serve_upload_file_head(path: str):
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 # 挂载用户头像目录，直接指向实际路径
-# app.mount("/static/userlogo", StaticFiles(directory="/home/wy/pic/blogn_img/userlogo"), name="userlogo")
+# app.mount("/static/userlogo", StaticFiles(directory="../pic/blogn_img/userlogo"), name="userlogo")
 
 # 自定义头像文件路由
 @app.get("/avatars/{prefix}/{filename}")
