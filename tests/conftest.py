@@ -1,85 +1,120 @@
+"""
+Pytest 配置文件
+包含测试夹具和全局设置
+"""
+
 import pytest
 import asyncio
-from typing import AsyncGenerator
+import os
+import sys
+from pathlib import Path
+from typing import AsyncGenerator, Generator
+from unittest.mock import AsyncMock, MagicMock
+
+# 添加项目根目录到Python路径
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 from fastapi.testclient import TestClient
-from sqlmodel import SQLModel
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.pool import StaticPool
 
-from src.main import app
-from src.database import get_async_session
-from src.database import User, ProjectItem
-
-# 测试数据库URL
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-
-# 创建测试数据库引擎
-test_engine = create_async_engine(
-    TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
+# 测试数据库配置
+TEST_DATABASE_URL = "sqlite:///./test.db"
 
 @pytest.fixture(scope="session")
-def event_loop():
-    """创建事件循环"""
+def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
+    """创建事件循环夹具"""
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
 
 @pytest.fixture(scope="session")
-async def test_db_setup():
-    """设置测试数据库"""
-    async with test_engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
-    yield
-    async with test_engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.drop_all)
+def test_engine():
+    """创建测试数据库引擎"""
+    engine = create_engine(
+        TEST_DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    yield engine
+    # 清理测试数据库
+    if os.path.exists("./test.db"):
+        os.remove("./test.db")
 
 @pytest.fixture
-async def test_session(test_db_setup):
-    """创建测试数据库会话，直接返回AsyncSession对象"""
-    session = AsyncSession(test_engine)
-    try:
+def test_session(test_engine):
+    """创建测试数据库会话"""
+    SQLModel.metadata.create_all(test_engine)
+    with Session(test_engine) as session:
         yield session
-    finally:
-        await session.close()
+    SQLModel.metadata.drop_all(test_engine)
 
 @pytest.fixture
-def client(test_session) -> TestClient:
+def mock_db_session():
+    """模拟数据库会话"""
+    session = AsyncMock()
+    session.commit = AsyncMock()
+    session.rollback = AsyncMock()
+    session.close = AsyncMock()
+    return session
+
+@pytest.fixture
+def mock_async_session():
+    """模拟异步数据库会话"""
+    session = AsyncMock()
+    session.commit = AsyncMock()
+    session.rollback = AsyncMock()
+    session.close = AsyncMock()
+    return session
+
+@pytest.fixture
+def test_client():
     """创建测试客户端"""
-    def override_get_session():
-        return test_session
-    
-    app.dependency_overrides[get_async_session] = override_get_session
-    with TestClient(app) as test_client:
-        yield test_client
-    app.dependency_overrides.clear()
+    from src.main import app
+    with TestClient(app) as client:
+        yield client
 
 @pytest.fixture
-async def sample_user(test_session) -> User:
-    """创建示例用户"""
-    user = User(
-        name="testuser",
-        email="test@example.com",
-        password="hashed_password",
-        state=1
-    )
-    test_session.add(user)
-    await test_session.commit()
-    await test_session.refresh(user)
-    return user
+def sample_user_data():
+    """示例用户数据"""
+    return {
+        "username": "testuser",
+        "email": "test@example.com",
+        "full_name": "Test User",
+        "bio": "Test bio"
+    }
 
 @pytest.fixture
-async def sample_project_item(test_session) -> ProjectItem:
-    """创建示例项目条目"""
-    item = ProjectItem(
-        title="测试项目",
-        description="这是一个测试项目",
-        url="https://example.com",
-        state=1
-    )
-    test_session.add(item)
-    await test_session.commit()
-    await test_session.refresh(item)
-    return item 
+def sample_blog_data():
+    """示例博客数据"""
+    return {
+        "title": "Test Blog Post",
+        "content": "This is a test blog post content.",
+        "author_id": 1,
+        "tags": ["test", "blog"],
+        "status": "published"
+    }
+
+@pytest.fixture
+def sample_metadata():
+    """示例元数据"""
+    return {
+        "site_name": "Test Blog",
+        "description": "A test blog site",
+        "version": "1.0.0",
+        "author": "Test Author"
+    }
+
+# 环境变量设置
+@pytest.fixture(autouse=True)
+def setup_test_env():
+    """设置测试环境变量"""
+    os.environ["ENVIRONMENT"] = "test"
+    os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+    yield
+    # 清理环境变量
+    if "ENVIRONMENT" in os.environ:
+        del os.environ["ENVIRONMENT"]
+    if "DATABASE_URL" in os.environ:
+        del os.environ["DATABASE_URL"] 

@@ -1,78 +1,90 @@
 # BlogN2 测试文档
 
+## 概述
+
+本项目包含完整的单元测试和集成测试套件，确保代码质量和功能正确性。
+
 ## 测试结构
 
 ```
 tests/
 ├── __init__.py              # 测试包初始化
-├── conftest.py              # pytest配置和fixtures
-├── test_controllers.py      # 控制器层测试
-├── test_services.py         # 服务层测试
-├── test_repositories.py     # 仓库层测试
-├── test_integration.py      # 集成测试
+├── conftest.py              # Pytest配置和夹具
 ├── run_tests.py             # 测试运行脚本
-└── README.md               # 测试说明文档
+├── README.md                # 本文件
+├── unit/                    # 单元测试
+│   ├── test_user_controller.py
+│   ├── test_blog_controller.py
+│   ├── test_metadata_controller.py
+│   └── test_user_service.py
+├── integration/             # 集成测试
+│   └── test_api_endpoints.py
+└── fixtures/                # 测试数据夹具
 ```
 
 ## 测试类型
 
 ### 1. 单元测试 (Unit Tests)
-- **控制器测试**: 测试API端点的请求处理和响应
-- **服务测试**: 测试业务逻辑层
-- **仓库测试**: 测试数据访问层
+- **位置**: `tests/unit/`
+- **目的**: 测试独立的函数、类和方法
+- **特点**: 
+  - 使用模拟对象隔离依赖
+  - 快速执行
+  - 高覆盖率
 
 ### 2. 集成测试 (Integration Tests)
-- **API集成测试**: 测试完整的API流程
-- **数据库集成测试**: 测试与数据库的交互
-- **错误处理测试**: 测试各种错误情况
+- **位置**: `tests/integration/`
+- **目的**: 测试组件间的交互
+- **特点**:
+  - 测试API端点
+  - 验证端到端功能
+  - 使用测试数据库
 
 ## 运行测试
 
-### 安装测试依赖
-```bash
-pip install -r requirements.txt
-```
+### 使用测试脚本（推荐）
 
-### 运行所有测试
-```bash
-pytest tests/ -v
-```
-
-### 运行特定类型的测试
-```bash
-# 运行单元测试
-pytest tests/ -m unit -v
-
-# 运行集成测试
-pytest tests/ -m integration -v
-
-# 运行控制器测试
-pytest tests/test_controllers.py -v
-
-# 运行服务测试
-pytest tests/test_services.py -v
-
-# 运行仓库测试
-pytest tests/test_repositories.py -v
-```
-
-### 运行覆盖率测试
-```bash
-pytest tests/ --cov=src --cov-report=html --cov-report=term-missing
-```
-
-### 使用测试脚本
 ```bash
 # 运行所有测试
-python tests/run_tests.py
+python tests/run_tests.py all
 
-# 运行特定测试
+# 运行单元测试
 python tests/run_tests.py unit
-python tests/run_tests.py integration
-python tests/run_tests.py controllers
 
-# 运行覆盖率测试
+# 运行集成测试
+python tests/run_tests.py integration
+
+# 运行测试并生成覆盖率报告
 python tests/run_tests.py coverage
+
+# 运行代码检查
+python tests/run_tests.py lint
+
+# 清理测试文件
+python tests/run_tests.py clean
+```
+
+### 使用pytest直接运行
+
+```bash
+# 运行所有测试
+pytest
+
+# 运行特定测试文件
+pytest tests/unit/test_user_controller.py
+
+# 运行特定测试类
+pytest tests/unit/test_user_controller.py::TestUserController
+
+# 运行特定测试方法
+pytest tests/unit/test_user_controller.py::TestUserController::test_get_user_summary_success
+
+# 运行带标记的测试
+pytest -m unit
+pytest -m integration
+
+# 生成覆盖率报告
+pytest --cov=src --cov-report=html
 ```
 
 ## 测试配置
@@ -80,59 +92,128 @@ python tests/run_tests.py coverage
 ### pytest.ini
 - 配置测试发现规则
 - 设置异步测试模式
+- 配置覆盖率报告
 - 定义测试标记
 
 ### conftest.py
-- 提供测试fixtures
+- 提供全局测试夹具
 - 配置测试数据库
-- 设置测试客户端
+- 设置模拟对象
+- 管理测试环境
 
-## 测试数据库
+## 测试夹具 (Fixtures)
 
-测试使用SQLite内存数据库，确保：
-- 测试之间数据隔离
-- 测试运行快速
-- 不需要外部数据库依赖
+### 数据库相关
+- `test_engine`: 测试数据库引擎
+- `test_session`: 测试数据库会话
+- `mock_db_session`: 模拟数据库会话
+
+### 服务相关
+- `mock_async_session`: 模拟异步会话
+- `test_client`: FastAPI测试客户端
+
+### 数据相关
+- `sample_user_data`: 示例用户数据
+- `sample_blog_data`: 示例博客数据
+- `sample_metadata`: 示例元数据
 
 ## 测试标记
 
-- `@pytest.mark.asyncio`: 标记异步测试
-- `@pytest.mark.integration`: 标记集成测试
-- `@pytest.mark.unit`: 标记单元测试
-- `@pytest.mark.slow`: 标记慢速测试
+- `@pytest.mark.unit`: 单元测试
+- `@pytest.mark.integration`: 集成测试
+- `@pytest.mark.slow`: 慢速测试
+- `@pytest.mark.api`: API测试
+
+## 覆盖率报告
+
+运行覆盖率测试后，会生成以下报告：
+
+- **控制台报告**: 显示未覆盖的代码行
+- **HTML报告**: `htmlcov/index.html` - 详细的覆盖率报告
+- **XML报告**: `coverage.xml` - 用于CI/CD集成
 
 ## 最佳实践
 
-1. **测试命名**: 使用描述性的测试名称
-2. **测试隔离**: 每个测试应该独立运行
-3. **Mock使用**: 适当使用mock来隔离依赖
-4. **断言清晰**: 使用明确的断言语句
-5. **错误测试**: 测试正常情况和错误情况
-6. **覆盖率**: 保持高测试覆盖率
+### 1. 测试命名
+- 测试文件: `test_*.py`
+- 测试类: `Test*`
+- 测试方法: `test_*`
+
+### 2. 测试结构
+```python
+def test_function_name_scenario():
+    """测试描述"""
+    # Arrange - 准备测试数据
+    # Act - 执行被测试的代码
+    # Assert - 验证结果
+```
+
+### 3. 模拟对象
+- 使用 `AsyncMock` 模拟异步方法
+- 使用 `MagicMock` 模拟同步方法
+- 验证方法调用和参数
+
+### 4. 异常测试
+```python
+with pytest.raises(ExpectedException) as exc_info:
+    # 执行可能抛出异常的代码
+assert "expected message" in str(exc_info.value)
+```
 
 ## 持续集成
 
 测试可以集成到CI/CD流程中：
+
 ```yaml
-# GitHub Actions示例
+# GitHub Actions 示例
 - name: Run tests
   run: |
-    pip install -r requirements.txt
-    pytest tests/ --cov=src --cov-report=xml
+    python tests/run_tests.py all
+    
+- name: Generate coverage report
+  run: |
+    python tests/run_tests.py coverage
 ```
 
 ## 故障排除
 
 ### 常见问题
 
-1. **导入错误**: 确保项目根目录在Python路径中
-2. **数据库连接**: 检查测试数据库配置
-3. **异步测试**: 确保正确使用async/await
-4. **依赖问题**: 确保所有测试依赖已安装
+1. **导入错误**
+   - 确保在项目根目录运行测试
+   - 检查 `PYTHONPATH` 设置
+
+2. **数据库连接错误**
+   - 测试使用SQLite内存数据库
+   - 确保测试环境变量正确设置
+
+3. **异步测试失败**
+   - 使用 `@pytest.mark.asyncio` 装饰器
+   - 确保正确使用 `await`
 
 ### 调试技巧
 
-1. 使用 `-s` 参数查看print输出
-2. 使用 `--pdb` 在失败时进入调试器
-3. 使用 `-x` 在第一个失败时停止
-4. 使用 `--lf` 只运行上次失败的测试 
+```bash
+# 详细输出
+pytest -v
+
+# 显示本地变量
+pytest -l
+
+# 在第一个失败处停止
+pytest -x
+
+# 显示最慢的测试
+pytest --durations=10
+```
+
+## 贡献指南
+
+1. 为新功能编写测试
+2. 确保测试覆盖率不低于80%
+3. 运行所有测试确保通过
+4. 更新测试文档
+
+## 联系方式
+
+如有测试相关问题，请查看项目文档或提交Issue。 
