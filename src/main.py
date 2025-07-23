@@ -53,6 +53,44 @@ def serve_file(file_path: str, media_type: str = None):
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="File not found")
 
+def validate_and_sanitize_path(base_path: str, user_path: str) -> str:
+    """
+    验证和清理路径，防止路径遍历攻击
+    
+    Args:
+        base_path: 基础路径
+        user_path: 用户提供的路径
+        
+    Returns:
+        str: 清理后的安全路径
+        
+    Raises:
+        HTTPException: 当路径不安全时抛出400错误
+    """
+    import os
+    from fastapi import HTTPException
+    
+    # 规范化路径
+    normalized_path = os.path.normpath(user_path)
+    
+    # 检查是否包含路径遍历序列
+    if '..' in normalized_path or normalized_path.startswith('/'):
+        raise HTTPException(status_code=400, detail="Invalid path")
+    
+    # 构建完整路径
+    full_path = os.path.join(base_path, normalized_path)
+    
+    # 确保最终路径在基础路径内
+    try:
+        full_path = os.path.abspath(full_path)
+        base_path_abs = os.path.abspath(base_path)
+        if not full_path.startswith(base_path_abs):
+            raise HTTPException(status_code=400, detail="Path traversal detected")
+    except (OSError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid path")
+    
+    return full_path
+
 # 自定义upload文件路由 - 必须在静态文件挂载之前
 @app.get("/static/upload/{path:path}")
 async def serve_upload_file(path: str):
@@ -65,7 +103,8 @@ async def serve_upload_file(path: str):
     Returns:
         FileResponse: 文件
     """
-    return serve_file(f"{UPLOAD_BASE_PATH}/{path}")
+    safe_path = validate_and_sanitize_path(UPLOAD_BASE_PATH, path)
+    return serve_file(safe_path)
 
 # 添加HEAD方法支持
 @app.head("/static/upload/{path:path}")
@@ -79,7 +118,8 @@ async def serve_upload_file_head(path: str):
     Returns:
         FileResponse: 文件头信息
     """
-    return serve_file(f"{UPLOAD_BASE_PATH}/{path}")
+    safe_path = validate_and_sanitize_path(UPLOAD_BASE_PATH, path)
+    return serve_file(safe_path)
 
 # 挂载静态文件目录，提供前端资源访问
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
@@ -100,7 +140,15 @@ async def serve_avatar(prefix: str, filename: str):
     Returns:
         FileResponse: 头像文件
     """
-    return serve_file(f"{AVATAR_BASE_PATH}/{prefix}/{filename}", media_type="image/jpeg")
+    # 验证prefix和filename参数
+    if not prefix.isdigit() or not filename:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Invalid avatar parameters")
+    
+    # 构建头像路径并验证
+    avatar_path = f"{prefix}/{filename}"
+    safe_path = validate_and_sanitize_path(AVATAR_BASE_PATH, avatar_path)
+    return serve_file(safe_path, media_type="image/jpeg")
 
 # 注册API路由，统一使用/api前缀
 app.include_router(metadata.router, prefix="/api")
