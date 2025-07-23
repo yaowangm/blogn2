@@ -26,7 +26,7 @@ def create_service_dependency(service_class: Type, *repository_classes: Type):
     Returns:
         Callable: 依赖注入函数
     """
-    def get_service(session: AsyncSession = Depends(get_async_session)):
+    async def get_service(session: AsyncSession = Depends(get_async_session)):
         """
         依赖注入：创建服务实例
         
