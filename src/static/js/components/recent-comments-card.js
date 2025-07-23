@@ -8,6 +8,7 @@ class RecentCommentsCard extends BaseComponent {
     connectedCallback() {
         this.render();
         this.loadData();
+        this.setupEventListeners();
     }
 
     async loadData() {
@@ -67,6 +68,39 @@ class RecentCommentsCard extends BaseComponent {
         
         // 使用一致的URL模式：/projectitem/{id}
         return `/projectitem/${projectitemid}`;
+    }
+
+    /**
+     * 设置事件监听器
+     */
+    setupEventListeners() {
+        // 使用事件委托来处理评论点击
+        this.shadowRoot.addEventListener('click', (event) => {
+            const commentItem = event.target.closest('.comment-item.clickable');
+            if (commentItem) {
+                const commentIndex = commentItem.getAttribute('data-comment-index');
+                if (commentIndex !== null) {
+                    const index = parseInt(commentIndex);
+                    if (!isNaN(index) && index >= 0 && index < this.comments.length) {
+                        this.handleCommentClick(this.comments[index]);
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * HTML转义方法
+     * @param {string} text - 需要转义的文本
+     * @returns {string} 转义后的文本
+     */
+    escapeHtml(text) {
+        if (typeof text !== 'string') {
+            return '';
+        }
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     /**
@@ -236,19 +270,19 @@ class RecentCommentsCard extends BaseComponent {
                 <div class="card-body">
                     ${this.loading ? this.createLoadingHTML() : `
                         <div class="comment-list">
-                            ${this.comments.map(comment => {
+                            ${this.comments.map((comment, index) => {
                                 const isClickable = this.getNavigationUrl(comment) !== null;
                                 const cssClass = isClickable ? 'comment-item clickable' : 'comment-item disabled';
-                                const clickHandler = isClickable ? `onclick="this.getRootNode().host.handleCommentClick(${JSON.stringify(comment)})"` : '';
+                                const dataAttributes = isClickable ? `data-comment-index="${index}"` : '';
                                 
                                 return `
-                                    <div class="${cssClass}" ${clickHandler}>
+                                    <div class="${cssClass}" ${dataAttributes}>
                                         <div class="comment-content">
                                             <div class="comment-header">
-                                                <span class="author">${comment.author}</span>
-                                                <span class="time">${comment.time}</span>
+                                                <span class="author">${this.escapeHtml(comment.author)}</span>
+                                                <span class="time">${this.escapeHtml(comment.time)}</span>
                                             </div>
-                                            <div class="comment-text">${this.truncateText(comment.content, 20)}</div>
+                                            <div class="comment-text">${this.escapeHtml(this.truncateText(comment.content, 20))}</div>
                                         </div>
                                     </div>
                                 `;
