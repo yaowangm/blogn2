@@ -5,7 +5,7 @@
 # 服务配置
 SERVICE_NAME="blogn2"
 SERVICE_USER="wy"
-SERVICE_HOME="/home/wy/blogn2"
+SERVICE_HOME="$(dirname "$(dirname "$(readlink -f "$0")")")"
 SERVICE_SCRIPT="run.py"
 PID_FILE="/var/run/blogn2.pid"
 LOG_FILE="/var/log/blogn2.log"

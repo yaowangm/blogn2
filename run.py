@@ -14,9 +14,13 @@ if __name__ == "__main__":
     print("🚀 启动 BlogN2 FastAPI 应用...")
     print("📍 访问地址:")
     print("   - 首页: http://localhost:8000")
-    print("   - 测试页面: http://localhost:8000/api/test")
     print("   - API文档: http://localhost:8000/docs")
     print("   - 健康检查: http://localhost:8000/health")
+    print("   - 网站元数据: http://localhost:8000/api/metadata/")
+    print("   - 用户统计: http://localhost:8000/api/users/summary")
+    print("   - 最新用户: http://localhost:8000/api/users/listnew")
+    print("   - 最新博客: http://localhost:8000/api/blogs/recent")
+    print("   - 热门博客: http://localhost:8000/api/blogs/popular")
     print()
     
     uvicorn.run(

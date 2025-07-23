@@ -46,7 +46,7 @@ async def test_database_connection():
                 if users:
                     print("\n📋 用户列表预览:")
                     for i, user in enumerate(users[:3], 1):
-                        print(f"  {i}. ID: {user.ID}, 用户名: {user.name}, 邮箱: {user.Email}")
+                        print(f"  {i}. ID: {user.id}, 用户名: {user.name}, 邮箱: {user.email}")
                     if len(users) > 3:
                         print(f"  ... 还有 {len(users) - 3} 个用户")
                 else:

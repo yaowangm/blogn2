@@ -5,3 +5,10 @@ sqlmodel==0.0.14
 asyncpg==0.29.0
 python-dotenv==1.0.0
 psycopg2-binary==2.9.9
+
+# Testing dependencies
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+httpx==0.25.2
+aiosqlite==0.19.0

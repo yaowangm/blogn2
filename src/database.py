@@ -1,11 +1,14 @@
-from sqlmodel import SQLModel, Field, create_engine, Session
+from sqlmodel import SQLModel, create_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import sessionmaker
-from typing import Optional
-from datetime import datetime
 import os
 from dotenv import load_dotenv
+
+# 导入模型
+from src.models.user import User
+from src.models.project_item import ProjectItem
+from src.models.post import Post
 
 # 加载环境变量
 load_dotenv()
@@ -37,25 +40,6 @@ async_session = sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False
 )
-
-# User模型 - 匹配现有数据库表结构
-class User(SQLModel, table=True):
-    __tablename__ = "users"
-    
-    ID: Optional[int] = Field(default=None, primary_key=True, alias="id")
-    name: str = Field(max_length=50, alias="username")
-    password: str = Field(max_length=50)
-    state: int = Field(default=1, alias="is_active")
-    Email: str = Field(max_length=50, alias="email")
-    regtime: datetime = Field(alias="created_at")
-    iplog: Optional[str] = Field(max_length=15, default=None)
-    projectid: Optional[int] = Field(default=None)
-    point: Optional[int] = Field(default=0)
-    lastupdate: Optional[datetime] = Field(default=None, alias="updated_at")
-    intropiid: Optional[int] = Field(default=None)
-    
-    class Config:
-        allow_population_by_field_name = True
 
 # 依赖注入函数
 async def get_async_session() -> AsyncSession:

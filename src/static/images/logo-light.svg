@@ -1,0 +1,19 @@
+<svg width="220" height="220" viewBox="0 0 220 220"
+     xmlns="http://www.w3.org/2000/svg" fill="none"
+     stroke="black" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+
+  <!-- 地球轮廓 -->
+  <circle cx="110" cy="110" r="60"/>
+
+  <!-- 纬线 -->
+  <ellipse cx="110" cy="110" rx="60" ry="18"/>
+
+  <!-- 经线 -->
+  <ellipse cx="110" cy="110" rx="15" ry="60"/>
+
+  <!-- 笔杆 -->
+  <rect x="105" y="35" width="10" height="150" transform="rotate(-135 110 110)" />
+
+  <!-- 等边三角形笔尖 -->
+  <path d="M 159.5 53.4 L 166.6 60.5 L 169.2 50.8 Z" fill="none" />
+</svg>
