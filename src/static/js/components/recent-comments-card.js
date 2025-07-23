@@ -48,6 +48,42 @@ class RecentCommentsCard extends BaseComponent {
         }
     }
 
+    /**
+     * 验证并生成导航URL
+     * @param {Object} comment - 评论对象
+     * @returns {string|null} 有效的URL或null
+     */
+    getNavigationUrl(comment) {
+        // 验证projectitemid是否存在且有效
+        if (!comment.projectitemid || comment.projectitemid === undefined || comment.projectitemid === null) {
+            return null;
+        }
+        
+        // 确保projectitemid是数字
+        const projectitemid = parseInt(comment.projectitemid);
+        if (isNaN(projectitemid) || projectitemid <= 0) {
+            return null;
+        }
+        
+        // 使用一致的URL模式：/projectitem/{id}
+        return `/projectitem/${projectitemid}`;
+    }
+
+    /**
+     * 处理评论点击事件
+     * @param {Object} comment - 评论对象
+     */
+    handleCommentClick(comment) {
+        const url = this.getNavigationUrl(comment);
+        if (url) {
+            window.location.href = url;
+        } else {
+            // 如果URL无效，可以显示错误信息或记录日志
+            console.warn('Invalid projectitemid for comment:', comment);
+            // 可以选择显示一个提示或禁用点击
+        }
+    }
+
     render() {
         this.shadowRoot.innerHTML = `
             <style>
@@ -118,6 +154,21 @@ class RecentCommentsCard extends BaseComponent {
                     border-radius: var(--radius-md);
                     background: var(--gray-50);
                     border: 1px solid var(--gray-200);
+                    transition: var(--transition-normal);
+                }
+
+                .comment-item:hover {
+                    background: var(--gray-100);
+                    border-color: var(--gray-300);
+                }
+
+                .comment-item.clickable {
+                    cursor: pointer;
+                }
+
+                .comment-item.disabled {
+                    cursor: default;
+                    opacity: 0.7;
                 }
 
                 .comment-header {
@@ -185,17 +236,23 @@ class RecentCommentsCard extends BaseComponent {
                 <div class="card-body">
                     ${this.loading ? this.createLoadingHTML() : `
                         <div class="comment-list">
-                            ${this.comments.map(comment => `
-                                <div class="comment-item" onclick="window.location.href='/post/${comment.projectitemid}'" style="cursor: pointer;">
-                                    <div class="comment-content">
-                                        <div class="comment-header">
-                                            <span class="author">${comment.author}</span>
-                                            <span class="time">${comment.time}</span>
+                            ${this.comments.map(comment => {
+                                const isClickable = this.getNavigationUrl(comment) !== null;
+                                const cssClass = isClickable ? 'comment-item clickable' : 'comment-item disabled';
+                                const clickHandler = isClickable ? `onclick="this.getRootNode().host.handleCommentClick(${JSON.stringify(comment)})"` : '';
+                                
+                                return `
+                                    <div class="${cssClass}" ${clickHandler}>
+                                        <div class="comment-content">
+                                            <div class="comment-header">
+                                                <span class="author">${comment.author}</span>
+                                                <span class="time">${comment.time}</span>
+                                            </div>
+                                            <div class="comment-text">${this.truncateText(comment.content, 20)}</div>
                                         </div>
-                                        <div class="comment-text">${this.truncateText(comment.content, 20)}</div>
                                     </div>
-                                </div>
-                            `).join('')}
+                                `;
+                            }).join('')}
                         </div>
                     `}
                 </div>
