@@ -440,4 +440,40 @@ class TestBlogService:
         """测试格式化时间：其他日期"""
         past_time = datetime(2023, 1, 15)
         result = blog_service._format_relative_time(past_time)
-        assert result == "2023-01-15" 
+        assert result == "2023-01-15"
+    
+    @pytest.mark.unit
+    async def test_get_recent_messages_with_null_post_time(self, blog_service, mock_post_repo):
+        """测试获取最新留言时发布时间为空"""
+        message_data = {
+            "id": 1,
+            "author_name": "留言者",
+            "subject": "测试标题",
+            "post_time": None,
+            "userid": 101,
+            "last_reply_author": None,
+            "reply_count": 0
+        }
+        mock_post_repo.get_recent_messages.return_value = [message_data]
+        
+        result = await blog_service.get_recent_messages(5)
+        
+        assert result[0]["time"] == "未知时间"
+    
+    @pytest.mark.unit
+    async def test_get_latest_posts_with_null_createtime(self, blog_service, mock_project_item_repo):
+        """测试获取最新博文时创建时间为空"""
+        post_data = {
+            "id": 1,
+            "name": "测试博文标题",
+            "comment": "测试内容",
+            "createtime": None,
+            "userid": 202,
+            "author_name": "博文作者",
+            "attachment": None
+        }
+        mock_project_item_repo.get_latest_posts.return_value = [post_data]
+        
+        result = await blog_service.get_latest_posts(5)
+        
+        assert result[0]["time"] == "未知时间" 

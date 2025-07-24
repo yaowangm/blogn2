@@ -82,4 +82,55 @@ class TestProjectRepository:
         result = await project_repository.count()
         
         assert result == 100
+        mock_session.exec.assert_called_once()
+    
+    @pytest.mark.unit
+    async def test_get_by_id_success(self, project_repository, mock_session, sample_project):
+        """测试根据ID获取项目成功"""
+        mock_result = MagicMock()
+        mock_result.first.return_value = sample_project
+        mock_session.exec.return_value = mock_result
+        
+        result = await project_repository.get_by_id(1)
+        
+        assert result == sample_project
+        assert result.id == 1
+        assert result.name == "测试项目"
+        mock_session.exec.assert_called_once()
+    
+    @pytest.mark.unit
+    async def test_get_by_id_not_found(self, project_repository, mock_session):
+        """测试根据ID获取项目不存在"""
+        mock_result = MagicMock()
+        mock_result.first.return_value = None
+        mock_session.exec.return_value = mock_result
+        
+        result = await project_repository.get_by_id(999)
+        
+        assert result is None
+    
+    @pytest.mark.unit
+    async def test_get_by_user_id_with_limit(self, project_repository, mock_session, sample_project):
+        """测试根据用户ID获取项目（带限制）"""
+        mock_result = MagicMock()
+        mock_result.all.return_value = [sample_project]
+        mock_session.exec.return_value = mock_result
+        
+        result = await project_repository.get_by_user_id(123, limit=5)
+        
+        assert len(result) == 1
+        assert result[0] == sample_project
+        mock_session.exec.assert_called_once()
+    
+    @pytest.mark.unit
+    async def test_get_by_user_id_no_limit(self, project_repository, mock_session, sample_project):
+        """测试根据用户ID获取项目（无限制）"""
+        mock_result = MagicMock()
+        mock_result.all.return_value = [sample_project]
+        mock_session.exec.return_value = mock_result
+        
+        result = await project_repository.get_by_user_id(123)
+        
+        assert len(result) == 1
+        assert result[0] == sample_project
         mock_session.exec.assert_called_once() 

@@ -89,4 +89,82 @@ class TestProjectItemRepository:
         result = await project_item_repository.count()
         
         assert result == 200
+        mock_session.exec.assert_called_once()
+    
+    @pytest.mark.unit
+    async def test_get_by_user_id_with_limit(self, project_item_repository, mock_session, sample_project_item):
+        """测试根据用户ID获取项目项（带限制）"""
+        mock_result = MagicMock()
+        mock_result.all.return_value = [sample_project_item]
+        mock_session.exec.return_value = mock_result
+        
+        result = await project_item_repository.get_by_user_id(123, limit=5)
+        
+        assert len(result) == 1
+        assert result[0] == sample_project_item
+        mock_session.exec.assert_called_once()
+    
+    @pytest.mark.unit
+    async def test_get_by_user_id_no_limit(self, project_item_repository, mock_session, sample_project_item):
+        """测试根据用户ID获取项目项（无限制）"""
+        mock_result = MagicMock()
+        mock_result.all.return_value = [sample_project_item]
+        mock_session.exec.return_value = mock_result
+        
+        result = await project_item_repository.get_by_user_id(123)
+        
+        assert len(result) == 1
+        assert result[0] == sample_project_item
+        mock_session.exec.assert_called_once()
+    
+    @pytest.mark.unit
+    async def test_get_by_project_id_with_limit(self, project_item_repository, mock_session, sample_project_item):
+        """测试根据项目ID获取项目项（带限制）"""
+        mock_result = MagicMock()
+        mock_result.all.return_value = [sample_project_item]
+        mock_session.exec.return_value = mock_result
+        
+        result = await project_item_repository.get_by_project_id(456, limit=5)
+        
+        assert len(result) == 1
+        assert result[0] == sample_project_item
+        mock_session.exec.assert_called_once()
+    
+    @pytest.mark.unit
+    async def test_get_by_project_id_no_limit(self, project_item_repository, mock_session, sample_project_item):
+        """测试根据项目ID获取项目项（无限制）"""
+        mock_result = MagicMock()
+        mock_result.all.return_value = [sample_project_item]
+        mock_session.exec.return_value = mock_result
+        
+        result = await project_item_repository.get_by_project_id(456)
+        
+        assert len(result) == 1
+        assert result[0] == sample_project_item
+        mock_session.exec.assert_called_once()
+    
+    @pytest.mark.unit
+    async def test_get_recent_items_success(self, project_item_repository, mock_session, sample_project_item):
+        """测试获取最近创建的项目项成功"""
+        mock_result = MagicMock()
+        mock_result.all.return_value = [sample_project_item]
+        mock_session.exec.return_value = mock_result
+        
+        result = await project_item_repository.get_recent_items(5)
+        
+        assert len(result) == 1
+        assert result[0] == sample_project_item
+        mock_session.exec.assert_called_once()
+    
+    @pytest.mark.unit
+    async def test_get_popular_items_success(self, project_item_repository, mock_session, sample_project_item):
+        """测试获取最受欢迎的项目项成功"""
+        mock_result = MagicMock()
+        mock_result.all.return_value = [sample_project_item]
+        mock_session.exec.return_value = mock_result
+        
+        result = await project_item_repository.get_popular_items(5)
+        
+        assert len(result) == 1
+        assert result[0] == sample_project_item
         mock_session.exec.assert_called_once() 
