@@ -115,12 +115,13 @@ def test_client(real_async_engine):
         expire_on_commit=False
     )
     
-    with TestClient(app) as client:
-        yield client
-    
-    # 恢复原始引擎和会话工厂
-    src.database.async_engine = original_engine
-    src.database.async_session = original_session
+    try:
+        with TestClient(app) as client:
+            yield client
+    finally:
+        # 确保恢复原始引擎和会话工厂
+        src.database.async_engine = original_engine
+        src.database.async_session = original_session
 
 @pytest.fixture
 def sample_user_data():
@@ -152,8 +153,19 @@ def sample_metadata():
         "version": "1.0.0"
     }
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def setup_test_env():
-    """设置测试环境"""
-    # 确保使用真实数据库URL
-    os.environ["DATABASE_URL"] = REAL_DATABASE_URL 
+    """设置测试环境 - 仅在需要时手动调用"""
+    # 保存原始环境变量
+    original_database_url = os.environ.get("DATABASE_URL")
+    
+    # 设置测试数据库URL
+    os.environ["DATABASE_URL"] = REAL_DATABASE_URL
+    
+    yield
+    
+    # 恢复原始环境变量
+    if original_database_url:
+        os.environ["DATABASE_URL"] = original_database_url
+    else:
+        os.environ.pop("DATABASE_URL", None) 

@@ -61,7 +61,7 @@ class TestAPIEndpointsWithRealDB:
         
         real_sync_session.add(user1)
         real_sync_session.add(user2)
-        real_sync_session.commit()
+        # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/users/summary")
         assert response.status_code == 200
@@ -82,7 +82,7 @@ class TestAPIEndpointsWithRealDB:
             regtime="2024-01-03 10:00:00"
         )
         real_sync_session.add(user)
-        real_sync_session.commit()
+        # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/users/count")
         assert response.status_code == 200
@@ -103,7 +103,7 @@ class TestAPIEndpointsWithRealDB:
             regtime="2024-01-04 10:00:00"
         )
         real_sync_session.add(user)
-        real_sync_session.commit()
+        # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/users/4")
         assert response.status_code == 200
@@ -131,7 +131,7 @@ class TestAPIEndpointsWithRealDB:
             accesscount=10
         )
         real_sync_session.add(project)
-        real_sync_session.commit()
+        # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/blogs/recent")
         assert response.status_code == 200
@@ -152,7 +152,7 @@ class TestAPIEndpointsWithRealDB:
             accesscount=100
         )
         real_sync_session.add(project)
-        real_sync_session.commit()
+        # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/blogs/popular")
         assert response.status_code == 200
@@ -175,7 +175,7 @@ class TestAPIEndpointsWithRealDB:
             status=1
         )
         real_sync_session.add(project_item)
-        real_sync_session.commit()
+        # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/blogs/about")
         assert response.status_code == 200
@@ -198,7 +198,7 @@ class TestAPIEndpointsWithRealDB:
             regtime="2024-01-05 10:00:00"
         )
         real_sync_session.add(user)
-        real_sync_session.commit()
+        # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/metadata/")
         assert response.status_code == 200
