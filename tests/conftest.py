@@ -18,62 +18,102 @@ sys.path.insert(0, str(project_root))
 from fastapi.testclient import TestClient
 from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.pool import StaticPool
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
 
-# 测试数据库配置
-TEST_DATABASE_URL = "sqlite:///./test.db"
+# 使用真实的PostgreSQL数据库进行集成测试
+REAL_DATABASE_URL = "postgresql+asyncpg://wy:passw0rd@localhost:5432/blogn"
+REAL_SYNC_DATABASE_URL = "postgresql+psycopg2://wy:passw0rd@localhost:5432/blogn"
 
 @pytest.fixture(scope="session")
 def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
-    """创建事件循环夹具"""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    """创建共享的事件循环"""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
     loop.close()
 
-@pytest.fixture(scope="session")
-def test_engine():
-    """创建测试数据库引擎"""
-    engine = create_engine(
-        TEST_DATABASE_URL,
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+@pytest.fixture
+def real_async_engine():
+    """创建真实PostgreSQL异步引擎 - 每个测试独立"""
+    engine = create_async_engine(
+        REAL_DATABASE_URL,
+        echo=False,  # 测试时不显示SQL
+        future=True,
+        pool_pre_ping=True,  # 连接前检查
+        pool_recycle=300,    # 5分钟后回收连接
+        pool_size=1,         # 每个测试使用单个连接
+        max_overflow=0,      # 不允许溢出连接
+        pool_timeout=30,     # 连接超时时间
     )
     yield engine
-    # 清理测试数据库
-    if os.path.exists("./test.db"):
-        os.remove("./test.db")
+    # 清理：关闭引擎
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+    loop.run_until_complete(engine.dispose())
 
 @pytest.fixture
-def test_session(test_engine):
-    """创建测试数据库会话"""
-    SQLModel.metadata.create_all(test_engine)
-    with Session(test_engine) as session:
+def real_sync_engine():
+    """创建真实PostgreSQL同步引擎 - 每个测试独立"""
+    engine = create_engine(
+        REAL_SYNC_DATABASE_URL,
+        echo=False,  # 测试时不显示SQL
+        future=True,
+        pool_pre_ping=True,  # 连接前检查
+        pool_recycle=300,    # 5分钟后回收连接
+        pool_size=1,         # 每个测试使用单个连接
+        max_overflow=0,      # 不允许溢出连接
+    )
+    yield engine
+    # 清理：关闭引擎
+    engine.dispose()
+
+@pytest.fixture
+def real_sync_session(real_sync_engine):
+    """创建真实PostgreSQL同步会话"""
+    with Session(real_sync_engine) as session:
+        # 开始事务
+        session.begin()
         yield session
-    SQLModel.metadata.drop_all(test_engine)
+        # 回滚事务，不提交更改
+        session.rollback()
+
+
 
 @pytest.fixture
-def mock_db_session():
-    """模拟数据库会话"""
-    session = AsyncMock()
-    session.commit = AsyncMock()
-    session.rollback = AsyncMock()
-    session.close = AsyncMock()
-    return session
-
-@pytest.fixture
-def mock_async_session():
-    """模拟异步数据库会话"""
-    session = AsyncMock()
-    session.commit = AsyncMock()
-    session.rollback = AsyncMock()
-    session.close = AsyncMock()
-    return session
-
-@pytest.fixture
-def test_client():
-    """创建测试客户端"""
+def test_client(real_async_engine):
+    """创建测试客户端 - 使用相同的数据库引擎"""
+    # 临时替换应用的数据库引擎和会话工厂
+    from src.database import async_engine, async_session
     from src.main import app
+    from sqlalchemy.orm import sessionmaker
+    from sqlmodel.ext.asyncio.session import AsyncSession
+    
+    # 保存原始引擎和会话工厂
+    original_engine = async_engine
+    original_session = async_session
+    
+    # 替换为测试引擎和会话工厂
+    import src.database
+    src.database.async_engine = real_async_engine
+    src.database.async_session = sessionmaker(
+        real_async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False
+    )
+    
     with TestClient(app) as client:
         yield client
+    
+    # 恢复原始引擎和会话工厂
+    src.database.async_engine = original_engine
+    src.database.async_session = original_session
 
 @pytest.fixture
 def sample_user_data():
@@ -102,19 +142,11 @@ def sample_metadata():
     return {
         "site_name": "Test Blog",
         "description": "A test blog site",
-        "version": "1.0.0",
-        "author": "Test Author"
+        "version": "1.0.0"
     }
 
-# 环境变量设置
 @pytest.fixture(autouse=True)
 def setup_test_env():
-    """设置测试环境变量"""
-    os.environ["ENVIRONMENT"] = "test"
-    os.environ["DATABASE_URL"] = TEST_DATABASE_URL
-    yield
-    # 清理环境变量
-    if "ENVIRONMENT" in os.environ:
-        del os.environ["ENVIRONMENT"]
-    if "DATABASE_URL" in os.environ:
-        del os.environ["DATABASE_URL"] 
+    """设置测试环境"""
+    # 确保使用真实数据库URL
+    os.environ["DATABASE_URL"] = REAL_DATABASE_URL 

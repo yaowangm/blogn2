@@ -1,0 +1,220 @@
+"""
+API端点测试 - 使用独立的PostgreSQL数据库连接
+解决异步连接冲突问题
+"""
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlmodel import Session
+from src.models.user import User
+from src.models.project import Project
+from src.models.project_item import ProjectItem
+
+
+class TestAPIEndpointsWithIsolatedDB:
+    """使用独立数据库连接的API端点测试类"""
+
+    @pytest.mark.integration
+    def test_health_check(self, test_client):
+        """测试健康检查端点"""
+        response = test_client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert "status" in data
+        assert data["status"] == "healthy"
+
+    @pytest.mark.integration
+    def test_root_endpoint(self, test_client):
+        """测试根端点"""
+        response = test_client.get("/")
+        assert response.status_code == 200
+
+    @pytest.mark.integration
+    def test_index_html_endpoint(self, test_client):
+        """测试index.html端点"""
+        response = test_client.get("/index.html")
+        assert response.status_code == 200
+
+    @pytest.mark.integration
+    def test_get_user_summary_isolated(self, test_client, real_sync_session):
+        """测试获取用户摘要 - 使用独立数据库连接"""
+        # 创建测试用户数据
+        user1 = User(
+            id=2001,
+            name="isolated_user1",
+            email="isolated1@example.com",
+            password="hashed_password",
+            regtime="2024-01-01 10:00:00"
+        )
+        user2 = User(
+            id=2002,
+            name="isolated_user2", 
+            email="isolated2@example.com",
+            password="hashed_password",
+            regtime="2024-01-02 10:00:00"
+        )
+        
+        real_sync_session.add(user1)
+        real_sync_session.add(user2)
+        real_sync_session.commit()
+        
+        response = test_client.get("/api/users/summary")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "total_users" in data
+        assert data["total_users"] >= 2
+
+    @pytest.mark.integration
+    def test_get_user_count_isolated(self, test_client, real_sync_session):
+        """测试获取用户总数 - 使用独立数据库连接"""
+        # 确保有测试数据
+        user = User(
+            id=2003,
+            name="isolated_user3",
+            email="isolated3@example.com",
+            password="hashed_password",
+            regtime="2024-01-03 10:00:00"
+        )
+        real_sync_session.add(user)
+        real_sync_session.commit()
+        
+        response = test_client.get("/api/users/count")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "count" in data
+        assert data["count"] >= 1
+
+    @pytest.mark.integration
+    def test_get_user_by_id_isolated(self, test_client, real_sync_session):
+        """测试根据ID获取用户 - 使用独立数据库连接"""
+        # 创建测试用户
+        user = User(
+            id=2004,
+            name="isolated_user4",
+            email="isolated4@example.com",
+            password="hashed_password",
+            regtime="2024-01-04 10:00:00"
+        )
+        real_sync_session.add(user)
+        real_sync_session.commit()
+        
+        response = test_client.get("/api/users/2004")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["id"] == 2004
+        # 处理数据库中的尾随空格
+        assert data["name"].strip() == "isolated_user4"
+
+    @pytest.mark.integration
+    def test_get_user_by_id_not_found_isolated(self, test_client):
+        """测试根据ID获取用户不存在 - 使用独立数据库连接"""
+        response = test_client.get("/api/users/99999")
+        assert response.status_code == 404
+
+    @pytest.mark.integration
+    def test_get_recent_blogs_isolated(self, test_client, real_sync_session):
+        """测试获取最新博客 - 使用独立数据库连接"""
+        # 创建测试项目
+        project = Project(
+            id=3001,
+            name="Isolated Test Project",
+            userid=2001,
+            createtime="2024-01-01 10:00:00",
+            state=0,
+            accesscount=10
+        )
+        real_sync_session.add(project)
+        real_sync_session.commit()
+        
+        response = test_client.get("/api/blogs/recent")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert isinstance(data, list)
+
+    @pytest.mark.integration
+    def test_get_popular_blogs_isolated(self, test_client, real_sync_session):
+        """测试获取热门博客 - 使用独立数据库连接"""
+        # 创建测试项目
+        project = Project(
+            id=3002,
+            name="Isolated Popular Project",
+            userid=2001,
+            createtime="2024-01-01 10:00:00",
+            state=0,
+            accesscount=100
+        )
+        real_sync_session.add(project)
+        real_sync_session.commit()
+        
+        response = test_client.get("/api/blogs/popular")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert isinstance(data, list)
+
+    @pytest.mark.integration
+    def test_get_about_content_isolated(self, test_client, real_sync_session):
+        """测试获取关于内容 - 使用独立数据库连接"""
+        # 创建测试项目项
+        project_item = ProjectItem(
+            id=3486,
+            projectid=3001,
+            name="Isolated About Page",
+            comment="This is the isolated about page content",
+            itemtype=1,
+            userid=2001,
+            createtime="2024-01-01 10:00:00",
+            status=1
+        )
+        real_sync_session.add(project_item)
+        real_sync_session.commit()
+        
+        response = test_client.get("/api/blogs/about")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "id" in data
+        assert data["id"] == 3486
+
+    @pytest.mark.integration
+    def test_get_site_metadata_isolated(self, test_client, real_sync_session):
+        """测试获取站点元数据 - 使用独立数据库连接"""
+        # 确保有用户数据
+        user = User(
+            id=2005,
+            name="isolated_user5",
+            email="isolated5@example.com",
+            password="hashed_password",
+            regtime="2024-01-05 10:00:00"
+        )
+        real_sync_session.add(user)
+        real_sync_session.commit()
+        
+        response = test_client.get("/api/metadata/site")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "user_count" in data
+        assert data["user_count"] >= 1
+
+    @pytest.mark.integration
+    def test_static_upload_file_not_found(self, test_client):
+        """测试静态上传文件不存在"""
+        response = test_client.get("/static/upload/nonexistent.jpg")
+        assert response.status_code == 404
+
+    @pytest.mark.integration
+    def test_avatar_file_not_found(self, test_client):
+        """测试头像文件不存在"""
+        response = test_client.get("/avatars/123/nonexistent.jpg")
+        assert response.status_code == 404
+
+    @pytest.mark.integration
+    def test_invalid_endpoint(self, test_client):
+        """测试无效端点"""
+        response = test_client.get("/api/invalid/endpoint")
+        assert response.status_code == 404 
