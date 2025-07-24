@@ -84,6 +84,13 @@ def real_sync_session(real_sync_engine):
         # 回滚事务，不提交更改
         session.rollback()
 
+@pytest.fixture
+def mock_async_session():
+    """创建模拟异步会话 - 用于单元测试"""
+    from unittest.mock import AsyncMock
+    mock_session = AsyncMock()
+    return mock_session
+
 
 
 @pytest.fixture

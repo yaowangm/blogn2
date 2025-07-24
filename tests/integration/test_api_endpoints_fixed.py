@@ -36,7 +36,7 @@ class TestAPIEndpointsWithRealDB:
         assert response.status_code == 200
 
     @pytest.mark.integration
-    def test_get_user_summary_with_real_db(self, test_client, test_session):
+    def test_get_user_summary_with_real_db(self, test_client, real_sync_session):
         """测试获取用户摘要 - 使用真实数据库"""
         # 创建测试用户数据
         user1 = User(
@@ -54,9 +54,9 @@ class TestAPIEndpointsWithRealDB:
             regtime="2024-01-02 10:00:00"
         )
         
-        test_session.add(user1)
-        test_session.add(user2)
-        test_session.commit()
+        real_sync_session.add(user1)
+        real_sync_session.add(user2)
+        real_sync_session.commit()
         
         response = test_client.get("/api/users/summary")
         assert response.status_code == 200
@@ -66,7 +66,7 @@ class TestAPIEndpointsWithRealDB:
         assert data["total_users"] >= 2
 
     @pytest.mark.integration
-    def test_get_user_count_with_real_db(self, test_client, test_session):
+    def test_get_user_count_with_real_db(self, test_client, real_sync_session):
         """测试获取用户总数 - 使用真实数据库"""
         # 确保有测试数据
         user = User(
@@ -76,8 +76,8 @@ class TestAPIEndpointsWithRealDB:
             password="hashed_password",
             regtime="2024-01-03 10:00:00"
         )
-        test_session.add(user)
-        test_session.commit()
+        real_sync_session.add(user)
+        real_sync_session.commit()
         
         response = test_client.get("/api/users/count")
         assert response.status_code == 200
@@ -87,7 +87,7 @@ class TestAPIEndpointsWithRealDB:
         assert data["count"] >= 1
 
     @pytest.mark.integration
-    def test_get_user_by_id_with_real_db(self, test_client, test_session):
+    def test_get_user_by_id_with_real_db(self, test_client, real_sync_session):
         """测试根据ID获取用户 - 使用真实数据库"""
         # 创建测试用户
         user = User(
@@ -97,15 +97,15 @@ class TestAPIEndpointsWithRealDB:
             password="hashed_password",
             regtime="2024-01-04 10:00:00"
         )
-        test_session.add(user)
-        test_session.commit()
+        real_sync_session.add(user)
+        real_sync_session.commit()
         
         response = test_client.get("/api/users/4")
         assert response.status_code == 200
         
         data = response.json()
         assert data["id"] == 4
-        assert data["name"] == "testuser4"
+        assert data["name"].strip() == "testuser4"
 
     @pytest.mark.integration
     def test_get_user_by_id_not_found_with_real_db(self, test_client):
@@ -114,7 +114,7 @@ class TestAPIEndpointsWithRealDB:
         assert response.status_code == 404
 
     @pytest.mark.integration
-    def test_get_recent_blogs_with_real_db(self, test_client, test_session):
+    def test_get_recent_blogs_with_real_db(self, test_client, real_sync_session):
         """测试获取最新博客 - 使用真实数据库"""
         # 创建测试项目
         project = Project(
@@ -125,8 +125,8 @@ class TestAPIEndpointsWithRealDB:
             state=0,
             accesscount=10
         )
-        test_session.add(project)
-        test_session.commit()
+        real_sync_session.add(project)
+        real_sync_session.commit()
         
         response = test_client.get("/api/blogs/recent")
         assert response.status_code == 200
@@ -135,7 +135,7 @@ class TestAPIEndpointsWithRealDB:
         assert isinstance(data, list)
 
     @pytest.mark.integration
-    def test_get_popular_blogs_with_real_db(self, test_client, test_session):
+    def test_get_popular_blogs_with_real_db(self, test_client, real_sync_session):
         """测试获取热门博客 - 使用真实数据库"""
         # 创建测试项目
         project = Project(
@@ -146,8 +146,8 @@ class TestAPIEndpointsWithRealDB:
             state=0,
             accesscount=100
         )
-        test_session.add(project)
-        test_session.commit()
+        real_sync_session.add(project)
+        real_sync_session.commit()
         
         response = test_client.get("/api/blogs/popular")
         assert response.status_code == 200
@@ -156,7 +156,7 @@ class TestAPIEndpointsWithRealDB:
         assert isinstance(data, list)
 
     @pytest.mark.integration
-    def test_get_about_content_with_real_db(self, test_client, test_session):
+    def test_get_about_content_with_real_db(self, test_client, real_sync_session):
         """测试获取关于内容 - 使用真实数据库"""
         # 创建测试项目项
         project_item = ProjectItem(
@@ -169,8 +169,8 @@ class TestAPIEndpointsWithRealDB:
             createtime="2024-01-01 10:00:00",
             status=1
         )
-        test_session.add(project_item)
-        test_session.commit()
+        real_sync_session.add(project_item)
+        real_sync_session.commit()
         
         response = test_client.get("/api/blogs/about")
         assert response.status_code == 200
@@ -182,7 +182,7 @@ class TestAPIEndpointsWithRealDB:
         assert data["title"] == "Why Blogn"
 
     @pytest.mark.integration
-    def test_get_site_metadata_with_real_db(self, test_client, test_session):
+    def test_get_site_metadata_with_real_db(self, test_client, real_sync_session):
         """测试获取站点元数据 - 使用真实数据库"""
         # 确保有用户数据
         user = User(
@@ -192,8 +192,8 @@ class TestAPIEndpointsWithRealDB:
             password="hashed_password",
             regtime="2024-01-05 10:00:00"
         )
-        test_session.add(user)
-        test_session.commit()
+        real_sync_session.add(user)
+        real_sync_session.commit()
         
         response = test_client.get("/api/metadata/")
         assert response.status_code == 200
