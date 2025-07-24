@@ -44,6 +44,7 @@ def main():
         print("  all          - 运行所有测试")
         print("  unit         - 运行单元测试")
         print("  integration  - 运行集成测试")
+        print("  basic        - 运行基础端点测试（快速验证）")
         print("  coverage     - 运行测试并生成覆盖率报告")
         print("  lint         - 运行代码检查")
         print("  clean        - 清理测试文件")
@@ -63,6 +64,9 @@ def main():
         
     elif command == "integration":
         success = run_command("pytest tests/integration/ -m integration", "运行集成测试")
+        
+    elif command == "basic":
+        success = run_command("pytest tests/integration/test_basic_endpoints.py -v", "运行基础端点测试")
         
     elif command == "coverage":
         success = run_command("pytest --cov=src --cov-report=html --cov-report=term-missing", "运行测试并生成覆盖率报告")

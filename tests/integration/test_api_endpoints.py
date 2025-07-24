@@ -1,5 +1,7 @@
 """
-API端点集成测试
+API端点集成测试 - Mock版本
+使用Mock服务进行测试，快速验证API逻辑和错误处理
+不依赖真实数据库，适合快速开发和调试
 """
 
 import pytest
@@ -8,7 +10,7 @@ from unittest.mock import patch, AsyncMock
 
 
 class TestAPIEndpoints:
-    """API端点测试类"""
+    """API端点测试类 - Mock版本，快速验证API逻辑"""
 
     @pytest.mark.integration
     def test_health_check(self, test_client):

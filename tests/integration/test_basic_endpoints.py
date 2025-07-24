@@ -1,13 +1,14 @@
 """
-基本API端点测试 - 使用真实PostgreSQL数据库
+基础API端点测试 - 快速验证基本功能
+不创建测试数据，仅验证API响应格式和状态码
 """
 
 import pytest
 from fastapi.testclient import TestClient
 
 
-class TestBasicAPIEndpointsWithRealPostgreSQL:
-    """使用真实PostgreSQL数据库的基本API端点测试类"""
+class TestBasicEndpoints:
+    """基础API端点测试类 - 快速验证基本功能"""
 
     @pytest.mark.integration
     def test_health_check(self, test_client):
