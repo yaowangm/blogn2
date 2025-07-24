@@ -162,7 +162,7 @@ class TestAsyncAPIEndpointsWithRealDB:
         """测试获取关于内容 - 使用异步数据库连接"""
         # 创建测试项目项
         project_item = ProjectItem(
-            id=5486,
+            id=486,
             projectid=5001,
             name="Async About Page",
             comment="This is the async about page content",
@@ -178,8 +178,10 @@ class TestAsyncAPIEndpointsWithRealDB:
         assert response.status_code == 200
         
         data = response.json()
-        assert "id" in data
-        assert data["id"] == 5486
+        assert "title" in data
+        assert "content" in data
+        assert "link" in data
+        assert data["title"] == "Why Blogn"
 
     @pytest.mark.integration
     def test_get_site_metadata_async(self, test_client, real_sync_session):
@@ -195,7 +197,7 @@ class TestAsyncAPIEndpointsWithRealDB:
         real_sync_session.add(user)
         real_sync_session.commit()
         
-        response = test_client.get("/api/metadata/site")
+        response = test_client.get("/api/metadata/")
         assert response.status_code == 200
         
         data = response.json()

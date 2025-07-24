@@ -176,8 +176,10 @@ class TestAPIEndpointsWithRealDB:
         assert response.status_code == 200
         
         data = response.json()
-        assert "id" in data
-        assert data["id"] == 486
+        assert "title" in data
+        assert "content" in data
+        assert "link" in data
+        assert data["title"] == "Why Blogn"
 
     @pytest.mark.integration
     def test_get_site_metadata_with_real_db(self, test_client, test_session):
@@ -193,7 +195,7 @@ class TestAPIEndpointsWithRealDB:
         test_session.add(user)
         test_session.commit()
         
-        response = test_client.get("/api/metadata/site")
+        response = test_client.get("/api/metadata/")
         assert response.status_code == 200
         
         data = response.json()

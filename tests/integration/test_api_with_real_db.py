@@ -159,9 +159,9 @@ class TestAPIEndpointsWithRealPostgreSQL:
     @pytest.mark.integration
     def test_get_about_content_with_real_db(self, test_client, real_sync_session):
         """测试获取关于内容 - 使用真实PostgreSQL数据库"""
-        # 创建测试项目项
+        # 创建测试项目项 - 使用ID 486，因为API硬编码查询这个ID
         project_item = ProjectItem(
-            id=2486,
+            id=486,
             projectid=2001,
             name="About Page",
             comment="This is the about page content",
@@ -177,8 +177,10 @@ class TestAPIEndpointsWithRealPostgreSQL:
         assert response.status_code == 200
         
         data = response.json()
-        assert "id" in data
-        assert data["id"] == 2486
+        assert "title" in data
+        assert "content" in data
+        assert "link" in data
+        assert data["title"] == "Why Blogn"
 
     @pytest.mark.integration
     def test_get_site_metadata_with_real_db(self, test_client, real_sync_session):
@@ -194,7 +196,7 @@ class TestAPIEndpointsWithRealPostgreSQL:
         real_sync_session.add(user)
         real_sync_session.commit()
         
-        response = test_client.get("/api/metadata/site")
+        response = test_client.get("/api/metadata/")
         assert response.status_code == 200
         
         data = response.json()

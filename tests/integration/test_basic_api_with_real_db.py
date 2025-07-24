@@ -71,7 +71,7 @@ class TestBasicAPIEndpointsWithRealPostgreSQL:
     @pytest.mark.integration
     def test_get_site_metadata(self, test_client):
         """测试获取站点元数据"""
-        response = test_client.get("/api/metadata/site")
+        response = test_client.get("/api/metadata/")
         assert response.status_code == 200
         
         data = response.json()
