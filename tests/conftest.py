@@ -10,6 +10,10 @@ import sys
 from pathlib import Path
 from typing import AsyncGenerator, Generator
 from unittest.mock import AsyncMock, MagicMock
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv()
 
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent
@@ -22,8 +26,12 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 # 使用真实的PostgreSQL数据库进行集成测试
-REAL_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://wy:passw0rd@localhost:5432/blogn")
-REAL_SYNC_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://wy:passw0rd@localhost:5432/blogn")
+# 必须从环境变量获取数据库URL，不允许硬编码密码
+REAL_DATABASE_URL = os.getenv("DATABASE_URL")
+if not REAL_DATABASE_URL:
+    raise ValueError("DATABASE_URL 环境变量未设置，请在 .env 文件中配置数据库连接信息")
+
+REAL_SYNC_DATABASE_URL = REAL_DATABASE_URL.replace("+asyncpg", "+psycopg2")
 
 @pytest.fixture(scope="session")
 def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
