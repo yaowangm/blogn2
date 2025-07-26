@@ -15,7 +15,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 # 设置数据库URL
-os.environ["DATABASE_URL"] = "postgresql+asyncpg://wy:passw0rd@localhost:5432/blogn"
+# 使用环境变量中的DATABASE_URL
 
 from src.database import async_engine, async_session
 from src.models.user import User

@@ -13,12 +13,10 @@ from src.models.post import Post
 # 加载环境变量
 load_dotenv()
 
-# 数据库URL - 优先使用环境变量，否则使用默认配置
+# 数据库URL - 必须从环境变量获取
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    # 默认数据库配置
-    DATABASE_URL = "postgresql+asyncpg://wy:passw0rd@localhost:5432/blogn"
-    print(f"⚠️  DATABASE_URL 环境变量未设置，使用默认配置: {DATABASE_URL}")
+    raise ValueError("DATABASE_URL 环境变量未设置，请在 .env 文件中配置数据库连接信息")
 
 # 创建异步引擎
 async_engine = create_async_engine(

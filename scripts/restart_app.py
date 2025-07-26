@@ -33,7 +33,7 @@ def start_app():
     print("🚀 启动应用...")
     
     # 设置环境变量
-    os.environ["DATABASE_URL"] = "postgresql+asyncpg://wy:passw0rd@localhost:5432/blogn"
+    # 使用环境变量中的DATABASE_URL
     
     try:
         # 启动应用

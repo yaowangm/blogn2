@@ -7,7 +7,7 @@
 ## ✅ 成功实现的部分
 
 ### 1. 数据库连接配置
-- ✅ 使用真实PostgreSQL数据库: `postgresql+asyncpg://wy:passw0rd@localhost:5432/blogn`
+- ✅ 使用真实PostgreSQL数据库: `postgresql+asyncpg://username:password@localhost:5432/database_name`
 - ✅ 配置了异步和同步引擎
 - ✅ 设置了连接池参数
 
@@ -54,8 +54,8 @@
 ### 1. 测试配置 (conftest.py)
 ```python
 # 使用真实的PostgreSQL数据库
-REAL_DATABASE_URL = "postgresql+asyncpg://wy:passw0rd@localhost:5432/blogn"
-REAL_SYNC_DATABASE_URL = "postgresql+psycopg2://wy:passw0rd@localhost:5432/blogn"
+REAL_DATABASE_URL = "postgresql+asyncpg://username:password@localhost:5432/database_name"
+REAL_SYNC_DATABASE_URL = "postgresql+psycopg2://username:password@localhost:5432/database_name"
 
 @pytest.fixture(scope="session")
 def real_async_engine():
