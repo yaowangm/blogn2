@@ -48,8 +48,8 @@ class TestUserController:
         """测试获取最新用户成功"""
         # 准备测试数据
         expected_users = [
-            User(id=1, username="user1", email="user1@example.com"),
-            User(id=2, username="user2", email="user2@example.com")
+            User(id=1, name="user1", email="user1@example.com"),
+            User(id=2, name="user2", email="user2@example.com")
         ]
         
         # 模拟服务方法
@@ -88,9 +88,8 @@ class TestUserController:
         # 准备测试数据
         expected_user = User(
             id=1,
-            username="testuser",
-            email="test@example.com",
-            full_name="Test User"
+            name="testuser",
+            email="test@example.com"
         )
         
         # 模拟服务方法
