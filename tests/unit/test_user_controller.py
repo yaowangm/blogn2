@@ -26,8 +26,8 @@ class TestUserController:
         expected_summary = {
             "total_users": 10,
             "recent_users": [
-                {"id": 1, "username": "user1"},
-                {"id": 2, "username": "user2"}
+                {"id": 1, "name": "user1"},
+                {"id": 2, "name": "user2"}
             ]
         }
         
