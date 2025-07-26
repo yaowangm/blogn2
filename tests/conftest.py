@@ -22,8 +22,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 # 使用真实的PostgreSQL数据库进行集成测试
-REAL_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
-REAL_SYNC_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://test:test@localhost:5432/test").replace("+asyncpg", "+psycopg2")
+REAL_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://wy:passw0rd@localhost:5432/blogn")
+REAL_SYNC_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://wy:passw0rd@localhost:5432/blogn")
 
 @pytest.fixture(scope="session")
 def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
