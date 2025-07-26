@@ -135,10 +135,10 @@ def test_client(real_async_engine):
 def sample_user_data():
     """示例用户数据"""
     return {
-        "username": "testuser",
+        "name": "testuser",
         "email": "test@example.com",
-        "full_name": "Test User",
-        "bio": "Test bio"
+        "password": "testpassword",
+        "state": 1
     }
 
 @pytest.fixture
