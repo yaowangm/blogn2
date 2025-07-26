@@ -194,7 +194,7 @@ class TestAPIEndpointsWithRealDB:
             name="testuser5",
             email="user5@example.com",
             password="hashed_password",
-            regtime="2024-01-05 10:00:00"
+            regtime=datetime(2024, 1, 5, 10, 0, 0)
         )
         real_sync_session.add(user)
         # 注意：不要调用commit()，让fixture处理事务回滚

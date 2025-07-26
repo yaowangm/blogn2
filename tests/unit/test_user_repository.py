@@ -21,13 +21,14 @@ class TestUserRepository:
     @pytest.fixture
     def sample_user(self):
         """示例用户数据"""
+        from datetime import datetime
         user = User(
             id=1,
             name="testuser",
             email="test@example.com",
             state=1,
             point=100,
-            regtime="2023-01-01 10:00:00"
+            regtime=datetime(2023, 1, 1, 10, 0, 0)
         )
         return user
     
@@ -182,10 +183,11 @@ class TestUserRepository:
     @pytest.mark.unit
     async def test_get_recent_users_success(self, user_repository, mock_session):
         """测试获取最近注册用户成功"""
+        from datetime import datetime
         users = [
-            User(id=1, name="user1", regtime="2023-01-03 10:00:00"),
-            User(id=2, name="user2", regtime="2023-01-02 10:00:00"),
-            User(id=3, name="user3", regtime="2023-01-01 10:00:00")
+            User(id=1, name="user1", regtime=datetime(2023, 1, 3, 10, 0, 0)),
+            User(id=2, name="user2", regtime=datetime(2023, 1, 2, 10, 0, 0)),
+            User(id=3, name="user3", regtime=datetime(2023, 1, 1, 10, 0, 0))
         ]
         mock_result = MagicMock()
         mock_result.all.return_value = users
@@ -201,7 +203,8 @@ class TestUserRepository:
     @pytest.mark.unit
     async def test_get_recent_users_default_limit(self, user_repository, mock_session):
         """测试获取最近注册用户使用默认限制"""
-        users = [User(id=1, name="user1", regtime="2023-01-01 10:00:00")]
+        from datetime import datetime
+        users = [User(id=1, name="user1", regtime=datetime(2023, 1, 1, 10, 0, 0))]
         mock_result = MagicMock()
         mock_result.all.return_value = users
         mock_session.exec.return_value = mock_result
@@ -214,10 +217,11 @@ class TestUserRepository:
     @pytest.mark.unit
     async def test_get_popular_users_success(self, user_repository, mock_session):
         """测试获取热门用户成功"""
+        from datetime import datetime
         mock_users = [
-            MagicMock(id=1, name="user1", point=1000, regtime="2023-01-01 10:00:00"),
-            MagicMock(id=2, name="user2", point=500, regtime="2023-01-02 10:00:00"),
-            MagicMock(id=3, name="user3", point=None, regtime="2023-01-03 10:00:00")
+            MagicMock(id=1, name="user1", point=1000, regtime=datetime(2023, 1, 1, 10, 0, 0)),
+            MagicMock(id=2, name="user2", point=500, regtime=datetime(2023, 1, 2, 10, 0, 0)),
+            MagicMock(id=3, name="user3", point=None, regtime=datetime(2023, 1, 3, 10, 0, 0))
         ]
         # 设置name属性的返回值
         mock_users[0].name = "user1"
