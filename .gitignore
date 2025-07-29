@@ -50,6 +50,7 @@ logs/
 
 # Database
 *.db
+*.sql
 *.sqlite
 *.sqlite3
 

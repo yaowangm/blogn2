@@ -22,7 +22,7 @@ class ProjectItem(SQLModel, table=True):
     updatetime: Optional[datetime] = Field(default=None)
     commentcount: Optional[int] = Field(default=None)
     createtime: Optional[datetime] = Field(default=None)
-    folderid: Optional[int] = Field(default=None, sa_column=Column("FOLDERID", Integer))
+    folderid: Optional[int] = Field(default=None)
     lastmodifytime: Optional[datetime] = Field(default=None)
     status: Optional[int] = Field(default=None)
     allowpost: Optional[int] = Field(default=None) 

@@ -1,85 +1,179 @@
+"""
+Pytest 配置文件
+包含测试夹具和全局设置
+"""
+
 import pytest
 import asyncio
-from typing import AsyncGenerator
+import os
+import sys
+from pathlib import Path
+from typing import AsyncGenerator, Generator
+from unittest.mock import AsyncMock, MagicMock
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv()
+
+# 添加项目根目录到Python路径
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 from fastapi.testclient import TestClient
-from sqlmodel import SQLModel
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.pool import StaticPool
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
 
-from src.main import app
-from src.database import get_async_session
-from src.database import User, ProjectItem
+# 使用真实的PostgreSQL数据库进行集成测试
+# 必须从环境变量获取数据库URL，不允许硬编码密码
+REAL_DATABASE_URL = os.getenv("DATABASE_URL")
+if not REAL_DATABASE_URL:
+    raise ValueError("DATABASE_URL 环境变量未设置，请在 .env 文件中配置数据库连接信息")
 
-# 测试数据库URL
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-
-# 创建测试数据库引擎
-test_engine = create_async_engine(
-    TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
+REAL_SYNC_DATABASE_URL = REAL_DATABASE_URL.replace("+asyncpg", "+psycopg2")
 
 @pytest.fixture(scope="session")
-def event_loop():
-    """创建事件循环"""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
+    """创建共享的事件循环"""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
     loop.close()
 
-@pytest.fixture(scope="session")
-async def test_db_setup():
-    """设置测试数据库"""
-    async with test_engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
-    yield
-    async with test_engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.drop_all)
-
 @pytest.fixture
-async def test_session(test_db_setup):
-    """创建测试数据库会话，直接返回AsyncSession对象"""
-    session = AsyncSession(test_engine)
+def real_async_engine():
+    """创建真实PostgreSQL异步引擎 - 每个测试独立"""
+    engine = create_async_engine(
+        REAL_DATABASE_URL,
+        echo=False,  # 测试时不显示SQL
+        future=True,
+        pool_pre_ping=True,  # 连接前检查
+        pool_recycle=300,    # 5分钟后回收连接
+        pool_size=1,         # 每个测试使用单个连接
+        max_overflow=0,      # 不允许溢出连接
+        pool_timeout=30,     # 连接超时时间
+    )
+    yield engine
+    # 清理：关闭引擎
+    import asyncio
     try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+    loop.run_until_complete(engine.dispose())
+
+@pytest.fixture
+def real_sync_engine():
+    """创建真实PostgreSQL同步引擎 - 每个测试独立"""
+    engine = create_engine(
+        REAL_SYNC_DATABASE_URL,
+        echo=False,  # 测试时不显示SQL
+        future=True,
+        pool_pre_ping=True,  # 连接前检查
+        pool_recycle=300,    # 5分钟后回收连接
+        pool_size=1,         # 每个测试使用单个连接
+        max_overflow=0,      # 不允许溢出连接
+    )
+    yield engine
+    # 清理：关闭引擎
+    engine.dispose()
+
+@pytest.fixture
+def real_sync_session(real_sync_engine):
+    """创建真实PostgreSQL同步会话"""
+    with Session(real_sync_engine) as session:
+        # 开始事务
+        session.begin()
         yield session
-    finally:
-        await session.close()
+        # 回滚事务，不提交更改
+        session.rollback()
 
 @pytest.fixture
-def client(test_session) -> TestClient:
-    """创建测试客户端"""
-    def override_get_session():
-        return test_session
+def mock_async_session():
+    """创建模拟异步会话 - 用于单元测试"""
+    from unittest.mock import AsyncMock
+    mock_session = AsyncMock()
+    return mock_session
+
+
+
+@pytest.fixture
+def test_client(real_async_engine):
+    """创建测试客户端 - 使用相同的数据库引擎"""
+    # 临时替换应用的数据库引擎和会话工厂
+    from src.database import async_engine, async_session
+    from src.main import app
+    from sqlalchemy.orm import sessionmaker
+    from sqlmodel.ext.asyncio.session import AsyncSession
     
-    app.dependency_overrides[get_async_session] = override_get_session
-    with TestClient(app) as test_client:
-        yield test_client
-    app.dependency_overrides.clear()
+    # 保存原始引擎和会话工厂
+    original_engine = async_engine
+    original_session = async_session
+    
+    # 替换为测试引擎和会话工厂
+    import src.database
+    src.database.async_engine = real_async_engine
+    src.database.async_session = sessionmaker(
+        real_async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False
+    )
+    
+    try:
+        with TestClient(app) as client:
+            yield client
+    finally:
+        # 确保恢复原始引擎和会话工厂
+        src.database.async_engine = original_engine
+        src.database.async_session = original_session
 
 @pytest.fixture
-async def sample_user(test_session) -> User:
-    """创建示例用户"""
-    user = User(
-        name="testuser",
-        email="test@example.com",
-        password="hashed_password",
-        state=1
-    )
-    test_session.add(user)
-    await test_session.commit()
-    await test_session.refresh(user)
-    return user
+def sample_user_data():
+    """示例用户数据"""
+    return {
+        "name": "testuser",
+        "email": "test@example.com",
+        "password": "testpassword",
+        "state": 1
+    }
 
 @pytest.fixture
-async def sample_project_item(test_session) -> ProjectItem:
-    """创建示例项目条目"""
-    item = ProjectItem(
-        title="测试项目",
-        description="这是一个测试项目",
-        url="https://example.com",
-        state=1
-    )
-    test_session.add(item)
-    await test_session.commit()
-    await test_session.refresh(item)
-    return item 
+def sample_blog_data():
+    """示例博客数据"""
+    return {
+        "title": "Test Blog Post",
+        "content": "This is a test blog post content.",
+        "author_id": 1,
+        "tags": ["test", "blog"],
+        "status": "published"
+    }
+
+@pytest.fixture
+def sample_metadata():
+    """示例元数据"""
+    return {
+        "site_name": "Test Blog",
+        "description": "A test blog site",
+        "version": "1.0.0"
+    }
+
+@pytest.fixture
+def setup_test_env():
+    """设置测试环境 - 仅在需要时手动调用"""
+    # 保存原始环境变量
+    original_database_url = os.environ.get("DATABASE_URL")
+    
+    # 设置测试数据库URL
+    os.environ["DATABASE_URL"] = REAL_DATABASE_URL
+    
+    yield
+    
+    # 恢复原始环境变量
+    if original_database_url:
+        os.environ["DATABASE_URL"] = original_database_url
+    else:
+        os.environ.pop("DATABASE_URL", None) 
