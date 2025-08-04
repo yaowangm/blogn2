@@ -4,12 +4,14 @@ from typing import Dict, Any
 from src.services.metadata_service import MetadataService
 from src.utils.error_handlers import handle_api_errors
 from src.utils.dependencies import get_metadata_service
+from src.utils.cache import cache_metadata
 
 # 创建元数据API路由器
 router = APIRouter()
 
 @router.get("/metadata/", response_model=Dict[str, Any])
 @handle_api_errors("获取网站元数据失败")
+@cache_metadata(ttl=7200)  # 缓存2小时
 async def get_site_metadata(
     metadata_service: MetadataService = Depends(get_metadata_service)
 ):

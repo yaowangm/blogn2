@@ -176,4 +176,18 @@ def setup_test_env():
     if original_database_url:
         os.environ["DATABASE_URL"] = original_database_url
     else:
-        os.environ.pop("DATABASE_URL", None) 
+        os.environ.pop("DATABASE_URL", None)
+
+
+@pytest.fixture(scope="session", autouse=True)
+async def clear_cache_before_tests():
+    """在所有测试开始前清理所有缓存"""
+    try:
+        from src.utils.cache import cache_manager
+        await cache_manager.initialize()
+        if cache_manager.is_available():
+            # 清理所有缓存
+            await cache_manager.clear_pattern("*")
+    except Exception as e:
+        # 如果缓存清理失败，继续测试
+        pass 

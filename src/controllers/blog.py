@@ -4,12 +4,14 @@ from typing import List, Dict, Any
 from src.services.blog_service import BlogService
 from src.utils.error_handlers import handle_api_errors
 from src.utils.dependencies import get_blog_service
+from src.utils.cache import cache_blog_recent_list, cache_blog_popular_list, cache_blog_detail, cache_blog_comments, cache_blog_messages
 
 # 创建博客API路由器
 router = APIRouter()
 
 @router.get("/blogs/recent", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最新加入博客失败")
+@cache_blog_recent_list(ttl=900)  # 缓存15分钟
 async def get_recent_blogs(
     limit: int = 10,
     blog_service: BlogService = Depends(get_blog_service)
@@ -28,6 +30,7 @@ async def get_recent_blogs(
 
 @router.get("/blogs/popular", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最热门博客失败")
+@cache_blog_popular_list(ttl=1800)  # 缓存30分钟
 async def get_popular_blogs(
     limit: int = 10,
     blog_service: BlogService = Depends(get_blog_service)
@@ -46,6 +49,7 @@ async def get_popular_blogs(
 
 @router.get("/comments/recent", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最近评论失败")
+@cache_blog_comments(ttl=600)  # 缓存10分钟
 async def get_recent_comments(
     limit: int = 5,
     blog_service: BlogService = Depends(get_blog_service)
@@ -64,6 +68,7 @@ async def get_recent_comments(
 
 @router.get("/blogs/about", response_model=Dict[str, Any])
 @handle_api_errors("获取关于页面内容失败")
+@cache_blog_detail(ttl=7200)  # 缓存2小时
 async def get_about_content(
     blog_service: BlogService = Depends(get_blog_service)
 ):
@@ -80,6 +85,7 @@ async def get_about_content(
 
 @router.get("/blogs/messages/recent", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最近留言失败")
+@cache_blog_messages(ttl=600)  # 缓存10分钟
 async def get_recent_messages(
     limit: int = 5,
     blog_service: BlogService = Depends(get_blog_service)
@@ -98,6 +104,7 @@ async def get_recent_messages(
 
 @router.get("/blogs/posts/latest", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最新博文失败")
+@cache_blog_recent_list(ttl=900)  # 缓存15分钟
 async def get_latest_posts(
     limit: int = 10,
     blog_service: BlogService = Depends(get_blog_service)

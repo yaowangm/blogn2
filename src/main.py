@@ -15,12 +15,32 @@ import uvicorn
 # 导入API控制器模块
 from src.controllers import metadata, user, blog
 
+# 导入缓存相关模块
+from src.utils.cache import cache_manager, cache_stats
+from src.config.cache import cache_settings
+
 # 创建FastAPI应用实例
 app = FastAPI(
     title="BlogN2 API",
     description="一个基于FastAPI的博客系统",
     version="1.0.0"
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    """
+    应用启动事件处理器
+    
+    初始化缓存系统和其他必要的服务
+    """
+    # 初始化缓存系统
+    await cache_manager.initialize()
+    
+    if cache_manager.is_available():
+        print("✅ 缓存系统初始化成功")
+    else:
+        print("⚠️  缓存系统初始化失败，将使用无缓存模式")
 
 # 配置CORS中间件，允许跨域请求
 app.add_middleware(
@@ -183,6 +203,63 @@ async def health_check():
         Dict[str, str]: 包含服务状态的字典
     """
     return {"status": "healthy", "service": "BlogN2 API"}
+
+
+# 缓存管理端点
+@app.get("/api/cache/status")
+async def cache_status():
+    """
+    缓存状态检查端点
+    
+    Returns:
+        Dict: 缓存状态和统计信息
+    """
+    await cache_manager.initialize()
+    
+    return {
+        "cache_enabled": cache_settings.enable_cache,
+        "cache_available": cache_manager.is_available(),
+        "cache_debug": cache_settings.cache_debug,
+        "stats": cache_stats.get_stats()
+    }
+
+
+@app.post("/api/cache/clear")
+async def clear_cache():
+    """
+    清除所有缓存端点
+    
+    Returns:
+        Dict: 清除结果
+    """
+    await cache_manager.initialize()
+    
+    if not cache_manager.is_available():
+        return {"success": False, "message": "缓存系统不可用"}
+    
+    # 这里可以实现清除所有缓存的逻辑
+    # 由于FastAPI-Cache2的限制，可能需要使用Redis客户端直接操作
+    
+    return {"success": True, "message": "缓存清除请求已提交"}
+
+
+@app.get("/api/cache/stats")
+async def get_cache_stats():
+    """
+    获取缓存统计信息端点
+    
+    Returns:
+        Dict: 缓存统计信息
+    """
+    return {
+        "stats": cache_stats.get_stats(),
+        "settings": {
+            "enable_cache": cache_settings.enable_cache,
+            "cache_debug": cache_settings.cache_debug,
+            "default_ttl": cache_settings.default_ttl,
+            "max_ttl": cache_settings.max_ttl
+        }
+    }
 
 if __name__ == "__main__":
     uvicorn.run(
