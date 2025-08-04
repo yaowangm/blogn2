@@ -167,6 +167,10 @@ def cache_decorator(
                     kwargs_str = "_".join(f"{k}_{v}" for k, v in sorted(kwargs.items()))
                     cache_key = f"{func_name}:{args_str}:{kwargs_str}"
                 
+                # 添加缓存前缀
+                if not cache_key.startswith(f"{cache_settings.cache_prefix}:"):
+                    cache_key = f"{cache_settings.cache_prefix}:{cache_key}"
+                
                 # 调试信息
                 if cache_settings.cache_debug:
                     logger.debug(f"缓存键: {cache_key}, 参数: args={args}, kwargs={kwargs}")

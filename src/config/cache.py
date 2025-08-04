@@ -112,4 +112,4 @@ class CacheKeyGenerator:
     @staticmethod
     def metadata() -> str:
         """元数据缓存键"""
-        return "metadata:site" 
+        return f"{cache_settings.cache_prefix}:metadata:site" 
