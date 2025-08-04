@@ -12,16 +12,16 @@ class CacheSettings(BaseSettings):
     """缓存配置类"""
     
     # Redis配置
-    redis_host: str = "localhost"
-    redis_port: int = 6379
-    redis_db: int = 0
+    redis_host: str
+    redis_port: int
+    redis_db: int
     redis_password: Optional[str] = None
     redis_ssl: bool = False
     
     # 缓存配置
-    cache_prefix: str = "blogn2"
-    default_ttl: int = 3600  # 默认缓存时间1小时
-    max_ttl: int = 86400     # 最大缓存时间24小时
+    cache_prefix: str
+    default_ttl: int
+    max_ttl: int
     
     # 缓存策略
     enable_cache: bool = True
