@@ -64,6 +64,7 @@ logs/
 .pytest_cache/
 .coverage
 htmlcov/
+coverage.xml
 
 # Jupyter Notebook
 .ipynb_checkpoints
