@@ -30,12 +30,36 @@ class CacheSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="CACHE_",
         env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,  # 允许大小写不敏感的环境变量
         extra="ignore"  # 忽略额外的环境变量
     )
 
 
 # 创建全局缓存配置实例
 cache_settings = CacheSettings()
+
+
+def validate_cache_config() -> dict:
+    """验证缓存配置并返回配置信息"""
+    config_info = {
+        "redis_host": cache_settings.redis_host,
+        "redis_port": cache_settings.redis_port,
+        "redis_db": cache_settings.redis_db,
+        "redis_ssl": cache_settings.redis_ssl,
+        "cache_prefix": cache_settings.cache_prefix,
+        "default_ttl": cache_settings.default_ttl,
+        "max_ttl": cache_settings.max_ttl,
+        "enable_cache": cache_settings.enable_cache,
+        "cache_debug": cache_settings.cache_debug,
+        "config_source": "environment" if cache_settings.model_config.get("env_file") else "defaults"
+    }
+    
+    # 打印配置信息（仅在调试模式下）
+    if cache_settings.cache_debug:
+        print(f"Cache configuration loaded: {config_info}")
+    
+    return config_info
 
 
 def get_redis_url() -> str:

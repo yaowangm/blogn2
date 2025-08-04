@@ -18,7 +18,7 @@ from src.controllers import metadata, user, blog
 
 # 导入缓存相关模块
 from src.utils.cache import cache_manager, cache_stats
-from src.config.cache import cache_settings
+from src.config.cache import cache_settings, validate_cache_config
 
 
 @asynccontextmanager
@@ -29,6 +29,10 @@ async def lifespan(app: FastAPI):
     处理应用启动和关闭事件
     """
     # 启动事件
+    # 验证缓存配置
+    config_info = validate_cache_config()
+    print(f"📋 缓存配置已加载: Redis={config_info['redis_host']}:{config_info['redis_port']}, 缓存前缀={config_info['cache_prefix']}")
+    
     await cache_manager.initialize()
     
     if cache_manager.is_available():
