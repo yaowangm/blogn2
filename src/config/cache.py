@@ -5,7 +5,7 @@
 
 import os
 from typing import Optional
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class CacheSettings(BaseSettings):
@@ -27,10 +27,11 @@ class CacheSettings(BaseSettings):
     enable_cache: bool = True
     cache_debug: bool = False
     
-    class Config:
-        env_prefix = "CACHE_"
-        env_file = ".env"
-        extra = "ignore"  # 忽略额外的环境变量
+    model_config = SettingsConfigDict(
+        env_prefix="CACHE_",
+        env_file=".env",
+        extra="ignore"  # 忽略额外的环境变量
+    )
 
 
 # 创建全局缓存配置实例

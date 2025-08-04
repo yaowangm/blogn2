@@ -1,6 +1,7 @@
 import sys
 import os
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 # 添加项目根目录到Python路径，确保模块导入正确
 project_root = Path(__file__).parent.parent
@@ -19,28 +20,34 @@ from src.controllers import metadata, user, blog
 from src.utils.cache import cache_manager, cache_stats
 from src.config.cache import cache_settings
 
-# 创建FastAPI应用实例
-app = FastAPI(
-    title="BlogN2 API",
-    description="一个基于FastAPI的博客系统",
-    version="1.0.0"
-)
 
-
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     """
-    应用启动事件处理器
+    应用生命周期管理器
     
-    初始化缓存系统和其他必要的服务
+    处理应用启动和关闭事件
     """
-    # 初始化缓存系统
+    # 启动事件
     await cache_manager.initialize()
     
     if cache_manager.is_available():
         print("✅ 缓存系统初始化成功")
     else:
         print("⚠️  缓存系统初始化失败，将使用无缓存模式")
+    
+    yield
+    
+    # 关闭事件（如果需要清理资源）
+
+
+# 创建FastAPI应用实例
+app = FastAPI(
+    title="BlogN2 API",
+    description="一个基于FastAPI的博客系统",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 # 配置CORS中间件，允许跨域请求
 app.add_middleware(
