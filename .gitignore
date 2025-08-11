@@ -77,4 +77,8 @@ yarn-error.log*
 
 # Temporary files
 *.tmp
-*.temp 
+*.temp
+
+# Test reports
+*_performance_report.json
+*_test_report.json 
