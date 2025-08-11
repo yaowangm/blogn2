@@ -250,17 +250,17 @@ async def test_cache_performance():
         print("❌ 服务未就绪，无法继续测试")
         return
     
-    # 清理日志文件
-    if os.path.exists(log_file):
-        try:
-            subprocess.run(['sudo', 'truncate', '-s', '0', log_file], check=True)
-            print("✅ 已清理日志文件")
-        except subprocess.CalledProcessError:
-            pass
-    
     # 测试缓存关闭时的性能
     cache_off_results = []
     for endpoint in endpoints:
+        # 在测试每个端点前清理日志，确保SQL查询计数准确
+        if os.path.exists(log_file):
+            try:
+                subprocess.run(['sudo', 'truncate', '-s', '0', log_file], check=True)
+                print(f"✅ 已清理日志文件，准备测试 {endpoint}")
+            except subprocess.CalledProcessError:
+                pass
+        
         result = await test_endpoint_cache(endpoint, log_file, False)
         cache_off_results.append(result)
         all_results.append(result)
@@ -268,6 +268,18 @@ async def test_cache_performance():
     # 测试缓存开启的情况
     print("\n🟢 测试缓存开启的情况")
     print("=" * 40)
+    
+    # 再次清理Redis缓存，确保测试环境干净
+    print("🧹 再次清理Redis缓存...")
+    try:
+        subprocess.run(['redis-cli', 'FLUSHALL'], check=True)
+        print("✅ Redis缓存已清理")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ 清理Redis缓存失败: {e}")
+        print("⚠️  继续测试，但结果可能不准确")
+    except FileNotFoundError:
+        print("❌ redis-cli 未找到，请确保Redis已安装")
+        print("⚠️  继续测试，但结果可能不准确")
     
     # 启用缓存
     if not modify_env_cache_setting(True):
@@ -284,17 +296,17 @@ async def test_cache_performance():
         print("❌ 服务未就绪，无法继续测试")
         return
     
-    # 清理日志文件
-    if os.path.exists(log_file):
-        try:
-            subprocess.run(['sudo', 'truncate', '-s', '0', log_file], check=True)
-            print("✅ 已清理日志文件")
-        except subprocess.CalledProcessError:
-            pass
-    
     # 测试缓存开启时的性能
     cache_on_results = []
     for endpoint in endpoints:
+        # 在测试每个端点前清理日志，确保SQL查询计数准确
+        if os.path.exists(log_file):
+            try:
+                subprocess.run(['sudo', 'truncate', '-s', '0', log_file], check=True)
+                print(f"✅ 已清理日志文件，准备测试 {endpoint}")
+            except subprocess.CalledProcessError:
+                pass
+        
         result = await test_endpoint_cache(endpoint, log_file, True)
         cache_on_results.append(result)
         all_results.append(result)
