@@ -121,13 +121,23 @@ async def test_endpoint_cache(endpoint: str, log_file: str, cache_enabled: bool)
                 sql_count = content.count('INFO sqlalchemy.engine.Engine SELECT')
                 print(f"   日志中的SQL查询次数: {sql_count}")
         
-        # 第二次请求（缓存命中）
-        print("\n🔍 第二次请求（缓存命中）:")
-        start = time.time()
-        async with session.get(f"http://localhost:8000{endpoint}") as response:
-            data2 = await response.text()
-        second_time = (time.time() - start) * 1000
-        print(f"   响应时间: {second_time:.2f}ms")
+        # 第二次请求（缓存命中）- 重复多次以放大性能差距
+        print("\n🔍 第二次请求（缓存命中）- 重复5次:")
+        repeat_times = 5
+        second_times = []
+        
+        for i in range(repeat_times):
+            start = time.time()
+            async with session.get(f"http://localhost:8000{endpoint}") as response:
+                data2 = await response.text()
+            request_time = (time.time() - start) * 1000
+            second_times.append(request_time)
+            print(f"   第{i+1}次请求响应时间: {request_time:.2f}ms")
+        
+        # 计算第二次请求的平均时间
+        second_time = statistics.mean(second_times)
+        second_time_std = statistics.stdev(second_times) if len(second_times) > 1 else 0
+        print(f"   平均响应时间: {second_time:.2f}ms ± {second_time_std:.2f}ms")
         
         # 检查日志中的SQL查询
         await asyncio.sleep(1)
@@ -180,6 +190,8 @@ async def test_endpoint_cache(endpoint: str, log_file: str, cache_enabled: bool)
             "cache_enabled": cache_enabled,
             "first_time": first_time,
             "second_time": second_time,
+            "second_times": second_times,
+            "second_time_std": second_time_std,
             "first_sql_count": sql_count,
             "second_sql_count": sql_count2,
             "improvement": improvement,
@@ -305,6 +317,14 @@ async def test_cache_performance():
         print(f"\n🔍 端点: {endpoint}")
         print(f"   缓存关闭 - SQL查询: {off_result['first_sql_count']} -> {off_result['second_sql_count']}")
         print(f"   缓存开启 - SQL查询: {on_result['first_sql_count']} -> {on_result['second_sql_count']}")
+        
+        # 显示详细的性能对比
+        print(f"   缓存关闭 - 响应时间: {off_result['first_time']:.2f}ms -> {off_result['second_time']:.2f}ms")
+        print(f"   缓存开启 - 响应时间: {on_result['first_time']:.2f}ms -> {on_result['second_time']:.2f}ms")
+        
+        if 'second_times' in on_result:
+            print(f"   缓存开启 - 重复请求详情: {[f'{t:.2f}ms' for t in on_result['second_times']]}")
+            print(f"   缓存开启 - 标准差: {on_result['second_time_std']:.2f}ms")
         
         if off_result['second_sql_count'] > off_result['first_sql_count'] and on_result['second_sql_count'] == on_result['first_sql_count']:
             print("   ✅ 缓存正常工作：关闭时每次都查询，开启时第二次不查询")
