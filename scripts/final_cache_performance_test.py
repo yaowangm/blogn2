@@ -104,8 +104,8 @@ async def test_endpoint_cache(endpoint: str, log_file: str, cache_enabled: bool)
     print("-" * 50)
     
     async with aiohttp.ClientSession() as session:
-        # 第一次请求（缓存未命中）
-        print("🔍 第一次请求（缓存未命中）:")
+        # 第一次请求（预热，与缓存无关）
+        print("🔍 第一次请求（预热）:")
         start = time.time()
         async with session.get(f"http://localhost:8000{endpoint}") as response:
             data1 = await response.text()
@@ -121,8 +121,8 @@ async def test_endpoint_cache(endpoint: str, log_file: str, cache_enabled: bool)
                 sql_count = content.count('INFO sqlalchemy.engine.Engine SELECT')
                 print(f"   日志中的SQL查询次数: {sql_count}")
         
-        # 第二次请求（缓存命中）- 重复多次以放大性能差距
-        print("\n🔍 第二次请求（缓存命中）- 重复5次:")
+        # 第二次请求（测试缓存效果）- 重复多次以放大性能差距
+        print("\n🔍 第二次请求（测试缓存效果）- 重复5次:")
         repeat_times = 5
         second_times = []
         
@@ -170,31 +170,24 @@ async def test_endpoint_cache(endpoint: str, log_file: str, cache_enabled: bool)
         else:
             print("   ⚠️  无法确定缓存行为：SQL查询次数异常")
         
-        # 计算性能提升
-        improvement = 0
-        if first_time > 0:
-            improvement = ((first_time - second_time) / first_time) * 100
+        # 专注于第二次请求的性能（与缓存直接相关）
+        print(f"\n📈 缓存性能分析:")
+        print(f"   第二次请求平均响应时间: {second_time:.2f}ms")
+        print(f"   响应时间标准差: {second_time_std:.2f}ms")
         
-        print(f"\n📈 性能分析:")
-        print(f"   响应时间提升: {improvement:.2f}%")
-        
-        if cache_effective and improvement > 0:
-            print("   ✅ 缓存有效且性能提升")
-        elif cache_effective:
-            print("   📊 缓存有效但性能提升不明显")
+        if cache_effective:
+            print("   ✅ 缓存生效：第二次请求未查询数据库")
         else:
-            print("   ❌ 缓存未生效")
+            print("   ❌ 缓存未生效：第二次请求仍查询数据库")
         
         return {
             "endpoint": endpoint,
             "cache_enabled": cache_enabled,
-            "first_time": first_time,
             "second_time": second_time,
             "second_times": second_times,
             "second_time_std": second_time_std,
             "first_sql_count": sql_count,
             "second_sql_count": sql_count2,
-            "improvement": improvement,
             "cache_effective": cache_effective,
             "data_same": data_same
         }
@@ -318,9 +311,15 @@ async def test_cache_performance():
         print(f"   缓存关闭 - SQL查询: {off_result['first_sql_count']} -> {off_result['second_sql_count']}")
         print(f"   缓存开启 - SQL查询: {on_result['first_sql_count']} -> {on_result['second_sql_count']}")
         
-        # 显示详细的性能对比
-        print(f"   缓存关闭 - 响应时间: {off_result['first_time']:.2f}ms -> {off_result['second_time']:.2f}ms")
-        print(f"   缓存开启 - 响应时间: {on_result['first_time']:.2f}ms -> {on_result['second_time']:.2f}ms")
+        # 专注于比较第二次请求的性能（缓存效果）
+        print(f"   缓存关闭 - 第二次请求平均响应时间: {off_result['second_time']:.2f}ms")
+        print(f"   缓存开启 - 第二次请求平均响应时间: {on_result['second_time']:.2f}ms")
+        
+        # 计算性能差异
+        if off_result['second_time'] > 0 and on_result['second_time'] > 0:
+            performance_diff = off_result['second_time'] - on_result['second_time']
+            performance_ratio = (off_result['second_time'] / on_result['second_time']) if on_result['second_time'] > 0 else 0
+            print(f"   性能差异: {performance_diff:.2f}ms (缓存开启快{performance_ratio:.2f}倍)")
         
         if 'second_times' in on_result:
             print(f"   缓存开启 - 重复请求详情: {[f'{t:.2f}ms' for t in on_result['second_times']]}")
@@ -339,8 +338,9 @@ async def test_cache_performance():
     effective_caches_off = [r for r in cache_off_results if r["cache_effective"]]
     effective_caches_on = [r for r in cache_on_results if r["cache_effective"]]
     
-    avg_improvement_off = statistics.mean([r["improvement"] for r in cache_off_results]) if cache_off_results else 0
-    avg_improvement_on = statistics.mean([r["improvement"] for r in cache_on_results]) if cache_on_results else 0
+    # 计算第二次请求的平均响应时间
+    avg_second_time_off = statistics.mean([r["second_time"] for r in cache_off_results]) if cache_off_results else 0
+    avg_second_time_on = statistics.mean([r["second_time"] for r in cache_on_results]) if cache_on_results else 0
     
     report = {
         "test_timestamp": datetime.now().isoformat(),
@@ -348,18 +348,18 @@ async def test_cache_performance():
             "total_endpoints": len(endpoints),
             "cache_off": {
                 "effective_caches": len(effective_caches_off),
-                "avg_improvement": avg_improvement_off
+                "avg_second_time": avg_second_time_off
             },
             "cache_on": {
                 "effective_caches": len(effective_caches_on),
-                "avg_improvement": avg_improvement_on
+                "avg_second_time": avg_second_time_on
             }
         },
         "cache_off_results": cache_off_results,
         "cache_on_results": cache_on_results,
         "comparison": {
             "cache_working": len(effective_caches_on) > len(effective_caches_off),
-            "performance_improvement": avg_improvement_on > avg_improvement_off
+            "performance_better": avg_second_time_on < avg_second_time_off
         }
     }
     
@@ -373,8 +373,12 @@ async def test_cache_performance():
     print(f"   测试端点数: {len(endpoints)}")
     print(f"   缓存关闭时生效端点数: {len(effective_caches_off)}")
     print(f"   缓存开启时生效端点数: {len(effective_caches_on)}")
-    print(f"   缓存关闭时平均性能提升: {avg_improvement_off:.2f}%")
-    print(f"   缓存开启时平均性能提升: {avg_improvement_on:.2f}%")
+    print(f"   缓存关闭时第二次请求平均响应时间: {avg_second_time_off:.2f}ms")
+    print(f"   缓存开启时第二次请求平均响应时间: {avg_second_time_on:.2f}ms")
+    
+    if avg_second_time_off > 0 and avg_second_time_on > 0:
+        performance_ratio = avg_second_time_off / avg_second_time_on
+        print(f"   缓存开启时性能提升: {performance_ratio:.2f}倍")
     
     if len(effective_caches_on) > len(effective_caches_off):
         print("   ✅ 缓存系统正常工作")
