@@ -3,6 +3,7 @@
 最终缓存性能测试脚本
 验证缓存系统的性能提升
 通过检查日志文件中的SQL查询次数来确认缓存是否生效
+自动开启/关闭缓存并比较结果
 """
 
 import asyncio
@@ -13,6 +14,7 @@ import json
 import subprocess
 import sys
 import os
+import re
 from pathlib import Path
 from datetime import datetime
 
@@ -20,9 +22,85 @@ from datetime import datetime
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-async def test_endpoint_cache(endpoint: str, log_file: str):
+def modify_env_cache_setting(enable_cache: bool):
+    """修改.env文件中的缓存设置"""
+    env_file = project_root / ".env"
+    if not env_file.exists():
+        print(f"❌ .env文件不存在: {env_file}")
+        return False
+    
+    try:
+        # 读取当前.env文件内容
+        with open(env_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # 查找并替换CACHE_ENABLE_CACHE设置
+        pattern = r'^CACHE_ENABLE_CACHE\s*=\s*.*$'
+        replacement = f'CACHE_ENABLE_CACHE = {"true" if enable_cache else "false"}'
+        
+        if re.search(pattern, content, re.MULTILINE):
+            # 如果设置已存在，替换它
+            new_content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
+        else:
+            # 如果设置不存在，添加到文件末尾
+            new_content = content.rstrip() + f'\n{replacement}\n'
+        
+        # 写回文件
+        with open(env_file, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        
+        print(f"✅ 已{'启用' if enable_cache else '禁用'}缓存设置")
+        return True
+        
+    except Exception as e:
+        print(f"❌ 修改.env文件失败: {e}")
+        return False
+
+def restart_service():
+    """重启blogn2服务"""
+    try:
+        print("🔄 重启blogn2服务...")
+        result = subprocess.run(['sudo', 'blogn2-service', 'restart'], 
+                              capture_output=True, text=True, check=True)
+        print("✅ 服务重启成功")
+        
+        # 等待服务启动
+        print("⏳ 等待服务启动...")
+        time.sleep(5)
+        return True
+        
+    except subprocess.CalledProcessError as e:
+        print(f"❌ 重启服务失败: {e}")
+        print(f"错误输出: {e.stderr}")
+        return False
+    except Exception as e:
+        print(f"❌ 重启服务时发生错误: {e}")
+        return False
+
+async def wait_for_service_ready():
+    """等待服务就绪"""
+    max_attempts = 30
+    for attempt in range(max_attempts):
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get("http://localhost:8000/health", timeout=5) as response:
+                    if response.status == 200:
+                        print("✅ 服务已就绪")
+                        return True
+        except:
+            pass
+        
+        if attempt < max_attempts - 1:
+            print(f"⏳ 等待服务就绪... ({attempt + 1}/{max_attempts})")
+            time.sleep(2)
+    
+    print("❌ 服务启动超时")
+    return False
+
+async def test_endpoint_cache(endpoint: str, log_file: str, cache_enabled: bool):
     """测试单个端点的缓存行为"""
-    print(f"\n📊 测试端点: {endpoint}")
+    cache_status = "启用" if cache_enabled else "禁用"
+    print(f"\n📊 测试端点: {endpoint} (缓存{cache_status})")
     print("-" * 50)
     
     async with aiohttp.ClientSession() as session:
@@ -42,11 +120,6 @@ async def test_endpoint_cache(endpoint: str, log_file: str):
                 content = f.read()
                 sql_count = content.count('INFO sqlalchemy.engine.Engine SELECT')
                 print(f"   日志中的SQL查询次数: {sql_count}")
-                # 调试：显示最近的SQL查询
-                lines = content.split('\n')
-                sql_lines = [line for line in lines if 'INFO sqlalchemy.engine.Engine SELECT' in line]
-                if sql_lines:
-                    print(f"   最近的SQL查询: {sql_lines[-1][:100]}...")
         
         # 第二次请求（缓存命中）
         print("\n🔍 第二次请求（缓存命中）:")
@@ -64,11 +137,6 @@ async def test_endpoint_cache(endpoint: str, log_file: str):
                 content = f.read()
                 sql_count2 = content.count('INFO sqlalchemy.engine.Engine SELECT')
                 print(f"   日志中的SQL查询次数: {sql_count2}")
-                # 调试：显示最近的SQL查询
-                lines = content.split('\n')
-                sql_lines = [line for line in lines if 'INFO sqlalchemy.engine.Engine SELECT' in line]
-                if sql_lines:
-                    print(f"   最近的SQL查询: {sql_lines[-1][:100]}...")
         
         # 解析响应数据
         try:
@@ -109,6 +177,7 @@ async def test_endpoint_cache(endpoint: str, log_file: str):
         
         return {
             "endpoint": endpoint,
+            "cache_enabled": cache_enabled,
             "first_time": first_time,
             "second_time": second_time,
             "first_sql_count": sql_count,
@@ -155,26 +224,123 @@ async def test_cache_performance():
         "/api/blogs/recent",
     ]
     
-    results = []
+    all_results = []
     
+    # 测试缓存关闭的情况
+    print("\n🔴 测试缓存关闭的情况")
+    print("=" * 40)
+    
+    # 禁用缓存
+    if not modify_env_cache_setting(False):
+        print("❌ 无法禁用缓存，跳过测试")
+        return
+    
+    # 重启服务
+    if not restart_service():
+        print("❌ 服务重启失败，无法继续测试")
+        return
+    
+    # 等待服务就绪
+    if not await wait_for_service_ready():
+        print("❌ 服务未就绪，无法继续测试")
+        return
+    
+    # 清理日志文件
+    if os.path.exists(log_file):
+        try:
+            subprocess.run(['sudo', 'truncate', '-s', '0', log_file], check=True)
+            print("✅ 已清理日志文件")
+        except subprocess.CalledProcessError:
+            pass
+    
+    # 测试缓存关闭时的性能
+    cache_off_results = []
     for endpoint in endpoints:
-        result = await test_endpoint_cache(endpoint, log_file)
-        results.append(result)
+        result = await test_endpoint_cache(endpoint, log_file, False)
+        cache_off_results.append(result)
+        all_results.append(result)
+    
+    # 测试缓存开启的情况
+    print("\n🟢 测试缓存开启的情况")
+    print("=" * 40)
+    
+    # 启用缓存
+    if not modify_env_cache_setting(True):
+        print("❌ 无法启用缓存，跳过测试")
+        return
+    
+    # 重启服务
+    if not restart_service():
+        print("❌ 服务重启失败，无法继续测试")
+        return
+    
+    # 等待服务就绪
+    if not await wait_for_service_ready():
+        print("❌ 服务未就绪，无法继续测试")
+        return
+    
+    # 清理日志文件
+    if os.path.exists(log_file):
+        try:
+            subprocess.run(['sudo', 'truncate', '-s', '0', log_file], check=True)
+            print("✅ 已清理日志文件")
+        except subprocess.CalledProcessError:
+            pass
+    
+    # 测试缓存开启时的性能
+    cache_on_results = []
+    for endpoint in endpoints:
+        result = await test_endpoint_cache(endpoint, log_file, True)
+        cache_on_results.append(result)
+        all_results.append(result)
+    
+    # 比较结果
+    print("\n📊 缓存开启/关闭对比分析")
+    print("=" * 50)
+    
+    for i, endpoint in enumerate(endpoints):
+        off_result = cache_off_results[i]
+        on_result = cache_on_results[i]
+        
+        print(f"\n🔍 端点: {endpoint}")
+        print(f"   缓存关闭 - SQL查询: {off_result['first_sql_count']} -> {off_result['second_sql_count']}")
+        print(f"   缓存开启 - SQL查询: {on_result['first_sql_count']} -> {on_result['second_sql_count']}")
+        
+        if off_result['second_sql_count'] > off_result['first_sql_count'] and on_result['second_sql_count'] == on_result['first_sql_count']:
+            print("   ✅ 缓存正常工作：关闭时每次都查询，开启时第二次不查询")
+        elif off_result['second_sql_count'] > off_result['first_sql_count'] and on_result['second_sql_count'] > on_result['first_sql_count']:
+            print("   ❌ 缓存未生效：开启和关闭时都每次都查询")
+        elif off_result['second_sql_count'] == off_result['first_sql_count'] and on_result['second_sql_count'] == on_result['first_sql_count']:
+            print("   ⚠️  无法确定：两种情况都没有检测到SQL查询变化")
+        else:
+            print("   ⚠️  结果异常：需要进一步分析")
     
     # 生成报告
-    effective_caches = [r for r in results if r["cache_effective"]]
-    avg_improvement = statistics.mean([r["improvement"] for r in results]) if results else 0
+    effective_caches_off = [r for r in cache_off_results if r["cache_effective"]]
+    effective_caches_on = [r for r in cache_on_results if r["cache_effective"]]
+    
+    avg_improvement_off = statistics.mean([r["improvement"] for r in cache_off_results]) if cache_off_results else 0
+    avg_improvement_on = statistics.mean([r["improvement"] for r in cache_on_results]) if cache_on_results else 0
     
     report = {
         "test_timestamp": datetime.now().isoformat(),
         "summary": {
-            "total_endpoints": len(results),
-            "effective_caches": len(effective_caches),
-            "avg_improvement": avg_improvement,
-            "max_improvement": max([r["improvement"] for r in results]) if results else 0,
-            "min_improvement": min([r["improvement"] for r in results]) if results else 0
+            "total_endpoints": len(endpoints),
+            "cache_off": {
+                "effective_caches": len(effective_caches_off),
+                "avg_improvement": avg_improvement_off
+            },
+            "cache_on": {
+                "effective_caches": len(effective_caches_on),
+                "avg_improvement": avg_improvement_on
+            }
         },
-        "results": results
+        "cache_off_results": cache_off_results,
+        "cache_on_results": cache_on_results,
+        "comparison": {
+            "cache_working": len(effective_caches_on) > len(effective_caches_off),
+            "performance_improvement": avg_improvement_on > avg_improvement_off
+        }
     }
     
     with open("final_cache_performance_report.json", "w", encoding="utf-8") as f:
@@ -184,20 +350,22 @@ async def test_cache_performance():
     
     # 总结
     print("\n🎉 测试总结:")
-    print(f"   测试端点数: {len(results)}")
-    print(f"   缓存生效端点数: {len(effective_caches)}")
-    print(f"   平均性能提升: {avg_improvement:.2f}%")
+    print(f"   测试端点数: {len(endpoints)}")
+    print(f"   缓存关闭时生效端点数: {len(effective_caches_off)}")
+    print(f"   缓存开启时生效端点数: {len(effective_caches_on)}")
+    print(f"   缓存关闭时平均性能提升: {avg_improvement_off:.2f}%")
+    print(f"   缓存开启时平均性能提升: {avg_improvement_on:.2f}%")
     
-    if len(effective_caches) == len(results):
-        print("   ✅ 所有端点的缓存都正常工作")
-    elif len(effective_caches) > 0:
-        print("   📊 部分端点的缓存正常工作")
+    if len(effective_caches_on) > len(effective_caches_off):
+        print("   ✅ 缓存系统正常工作")
+    elif len(effective_caches_on) == len(effective_caches_off):
+        print("   ⚠️  缓存系统可能存在问题")
     else:
-        print("   ❌ 所有端点的缓存都未生效")
+        print("   ❌ 缓存系统异常")
 
 async def main():
     """主函数"""
-    print("🔧 最终缓存性能测试")
+    print("🔧 自动缓存性能测试")
     print("=" * 60)
     
     # 检查API服务器
