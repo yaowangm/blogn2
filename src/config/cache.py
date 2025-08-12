@@ -31,8 +31,8 @@ class CacheSettings(BaseSettings):
         env_prefix="CACHE_",
         env_file=".env",
         env_file_encoding="utf-8",
-        case_sensitive=False,  # 允许大小写不敏感的环境变量
-        extra="ignore"  # 忽略额外的环境变量
+        case_sensitive=False,
+        extra="ignore"
     )
 
 
@@ -55,7 +55,6 @@ def validate_cache_config() -> dict:
         "config_source": "environment" if cache_settings.model_config.get("env_file") else "defaults"
     }
     
-    # 打印配置信息（仅在调试模式下）
     if cache_settings.cache_debug:
         print(f"Cache configuration loaded: {config_info}")
     
@@ -66,8 +65,7 @@ def get_redis_url() -> str:
     """获取Redis连接URL"""
     if cache_settings.redis_password:
         return f"redis://:{cache_settings.redis_password}@{cache_settings.redis_host}:{cache_settings.redis_port}/{cache_settings.redis_db}"
-    else:
-        return f"redis://{cache_settings.redis_host}:{cache_settings.redis_port}/{cache_settings.redis_db}"
+    return f"redis://{cache_settings.redis_host}:{cache_settings.redis_port}/{cache_settings.redis_db}"
 
 
 def get_cache_key_prefix() -> str:
@@ -80,36 +78,41 @@ class CacheKeyGenerator:
     """缓存键生成器"""
     
     @staticmethod
+    def _build_key(*parts) -> str:
+        """构建缓存键的通用方法"""
+        return ":".join(str(part) for part in parts if part is not None)
+    
+    @staticmethod
     def user_profile(user_id: int) -> str:
         """用户资料缓存键"""
-        return f"user:profile:{user_id}"
+        return CacheKeyGenerator._build_key("user", "profile", user_id)
     
     @staticmethod
     def blog_list(page: int = 1, limit: int = 10) -> str:
         """博客列表缓存键"""
-        return f"blog:list:{page}:{limit}"
+        return CacheKeyGenerator._build_key("blog", "list", page, limit)
     
     @staticmethod
     def blog_detail(blog_id: int) -> str:
         """博客详情缓存键"""
-        return f"blog:detail:{blog_id}"
+        return CacheKeyGenerator._build_key("blog", "detail", blog_id)
     
     @staticmethod
     def blog_comments(blog_id: int) -> str:
         """博客评论缓存键"""
-        return f"blog:comments:{blog_id}"
+        return CacheKeyGenerator._build_key("blog", "comments", blog_id)
     
     @staticmethod
     def user_blogs(user_id: int, page: int = 1) -> str:
         """用户博客列表缓存键"""
-        return f"user:blogs:{user_id}:{page}"
+        return CacheKeyGenerator._build_key("user", "blogs", user_id, page)
     
     @staticmethod
     def search_results(query: str, page: int = 1) -> str:
         """搜索结果缓存键"""
-        return f"search:{query}:{page}"
+        return CacheKeyGenerator._build_key("search", query, page)
     
     @staticmethod
     def metadata() -> str:
         """元数据缓存键"""
-        return f"metadata:site" 
+        return CacheKeyGenerator._build_key("metadata", "site") 

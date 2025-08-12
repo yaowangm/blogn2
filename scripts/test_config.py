@@ -44,5 +44,16 @@ def test_cache_config():
     return config_info
 
 
+def main():
+    """主函数"""
+    try:
+        config_info = test_cache_config()
+        print("\n🎉 配置测试完成！")
+        return config_info
+    except Exception as e:
+        print(f"\n❌ 配置测试失败: {e}")
+        return None
+
+
 if __name__ == "__main__":
-    test_cache_config() 
+    main() 

@@ -22,6 +22,23 @@ from datetime import datetime
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+# ==================== 配置常量 ====================
+LOG_FILE = "/var/log/blogn2.log"
+MAX_SERVICE_WAIT_ATTEMPTS = 30
+SERVICE_WAIT_INTERVAL = 2
+SERVICE_START_WAIT = 5
+REPEAT_TEST_TIMES = 5
+
+# ==================== 配置常量 ====================
+LOG_FILE = "/var/log/blogn2.log"
+MAX_SERVICE_WAIT_ATTEMPTS = 30
+SERVICE_WAIT_INTERVAL = 2
+SERVICE_START_WAIT = 5
+REPEAT_TEST_TIMES = 5
+
+
+# ==================== 工具函数 ====================
+
 def modify_env_cache_setting(enable_cache: bool):
     """修改.env文件中的缓存设置"""
     env_file = project_root / ".env"
@@ -30,22 +47,17 @@ def modify_env_cache_setting(enable_cache: bool):
         return False
     
     try:
-        # 读取当前.env文件内容
         with open(env_file, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        # 查找并替换CACHE_ENABLE_CACHE设置
         pattern = r'^CACHE_ENABLE_CACHE\s*=\s*.*$'
         replacement = f'CACHE_ENABLE_CACHE = {"true" if enable_cache else "false"}'
         
         if re.search(pattern, content, re.MULTILINE):
-            # 如果设置已存在，替换它
             new_content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
         else:
-            # 如果设置不存在，添加到文件末尾
             new_content = content.rstrip() + f'\n{replacement}\n'
         
-        # 写回文件
         with open(env_file, 'w', encoding='utf-8') as f:
             f.write(new_content)
         
@@ -56,6 +68,7 @@ def modify_env_cache_setting(enable_cache: bool):
         print(f"❌ 修改.env文件失败: {e}")
         return False
 
+
 def restart_service():
     """重启blogn2服务"""
     try:
@@ -64,9 +77,8 @@ def restart_service():
                               capture_output=True, text=True, check=True)
         print("✅ 服务重启成功")
         
-        # 等待服务启动
         print("⏳ 等待服务启动...")
-        time.sleep(5)
+        time.sleep(SERVICE_START_WAIT)
         return True
         
     except subprocess.CalledProcessError as e:
@@ -77,10 +89,10 @@ def restart_service():
         print(f"❌ 重启服务时发生错误: {e}")
         return False
 
+
 async def wait_for_service_ready():
     """等待服务就绪"""
-    max_attempts = 30
-    for attempt in range(max_attempts):
+    for attempt in range(MAX_SERVICE_WAIT_ATTEMPTS):
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get("http://localhost:8000/health", timeout=5) as response:
@@ -90,12 +102,71 @@ async def wait_for_service_ready():
         except:
             pass
         
-        if attempt < max_attempts - 1:
-            print(f"⏳ 等待服务就绪... ({attempt + 1}/{max_attempts})")
-            time.sleep(2)
+        if attempt < MAX_SERVICE_WAIT_ATTEMPTS - 1:
+            print(f"⏳ 等待服务就绪... ({attempt + 1}/{MAX_SERVICE_WAIT_ATTEMPTS})")
+            time.sleep(SERVICE_WAIT_INTERVAL)
     
     print("❌ 服务启动超时")
     return False
+
+
+def clean_redis_cache():
+    """清理Redis缓存"""
+    print("🧹 清理Redis缓存...")
+    try:
+        subprocess.run(['redis-cli', 'FLUSHALL'], check=True)
+        print("✅ Redis缓存已清理")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"❌ 清理Redis缓存失败: {e}")
+        print("⚠️  继续测试，但结果可能不准确")
+        return False
+    except FileNotFoundError:
+        print("❌ redis-cli 未找到，请确保Redis已安装")
+        print("⚠️  继续测试，但结果可能不准确")
+        return False
+
+
+def clean_log_file():
+    """清理日志文件"""
+    if os.path.exists(LOG_FILE):
+        try:
+            subprocess.run(['sudo', 'truncate', '-s', '0', LOG_FILE], check=True)
+            print("✅ 已清理日志文件")
+            return True
+        except subprocess.CalledProcessError as e:
+            print(f"❌ 清理日志文件失败: {e}")
+            print("⚠️  可能无法准确统计SQL查询")
+            return False
+    else:
+        print("❌ 日志文件不存在: /var/log/blogn2.log")
+        print("⚠️  无法统计SQL查询次数，将仅基于响应时间判断")
+        return False
+
+
+def count_sql_queries(log_file: str) -> int:
+    """统计日志中的SQL查询次数"""
+    if not os.path.exists(log_file):
+        return 0
+    
+    try:
+        with open(log_file, 'r') as f:
+            content = f.read()
+            return content.count('INFO sqlalchemy.engine.Engine SELECT')
+    except Exception:
+        return 0
+
+
+async def make_http_request(session: aiohttp.ClientSession, endpoint: str) -> tuple:
+    """发送HTTP请求并返回响应时间和数据"""
+    start = time.time()
+    async with session.get(f"http://localhost:8000{endpoint}") as response:
+        data = await response.text()
+    request_time = (time.time() - start) * 1000
+    return request_time, data
+
+
+# ==================== 核心测试函数 ====================
 
 async def test_endpoint_cache(endpoint: str, log_file: str, cache_enabled: bool):
     """测试单个端点的缓存行为"""
@@ -104,33 +175,22 @@ async def test_endpoint_cache(endpoint: str, log_file: str, cache_enabled: bool)
     print("-" * 50)
     
     async with aiohttp.ClientSession() as session:
-        # 第一次请求（预热，与缓存无关）
+        # 第一次请求（预热）
         print("🔍 第一次请求（预热）:")
-        start = time.time()
-        async with session.get(f"http://localhost:8000{endpoint}") as response:
-            data1 = await response.text()
-        first_time = (time.time() - start) * 1000
+        first_time, data1 = await make_http_request(session, endpoint)
         print(f"   响应时间: {first_time:.2f}ms")
         
         # 检查日志中的SQL查询
         await asyncio.sleep(1)
-        sql_count = 0
-        if os.path.exists(log_file):
-            with open(log_file, 'r') as f:
-                content = f.read()
-                sql_count = content.count('INFO sqlalchemy.engine.Engine SELECT')
-                print(f"   日志中的SQL查询次数: {sql_count}")
+        sql_count = count_sql_queries(log_file)
+        print(f"   日志中的SQL查询次数: {sql_count}")
         
         # 第二次请求（测试缓存效果）- 重复多次以放大性能差距
-        print("\n🔍 第二次请求（测试缓存效果）- 重复5次:")
-        repeat_times = 5
+        print(f"\n🔍 第二次请求（测试缓存效果）- 重复{REPEAT_TEST_TIMES}次:")
         second_times = []
         
-        for i in range(repeat_times):
-            start = time.time()
-            async with session.get(f"http://localhost:8000{endpoint}") as response:
-                data2 = await response.text()
-            request_time = (time.time() - start) * 1000
+        for i in range(REPEAT_TEST_TIMES):
+            request_time, data2 = await make_http_request(session, endpoint)
             second_times.append(request_time)
             print(f"   第{i+1}次请求响应时间: {request_time:.2f}ms")
         
@@ -141,12 +201,8 @@ async def test_endpoint_cache(endpoint: str, log_file: str, cache_enabled: bool)
         
         # 检查日志中的SQL查询
         await asyncio.sleep(1)
-        sql_count2 = 0
-        if os.path.exists(log_file):
-            with open(log_file, 'r') as f:
-                content = f.read()
-                sql_count2 = content.count('INFO sqlalchemy.engine.Engine SELECT')
-                print(f"   日志中的SQL查询次数: {sql_count2}")
+        sql_count2 = count_sql_queries(log_file)
+        print(f"   日志中的SQL查询次数: {sql_count2}")
         
         # 解析响应数据
         try:
@@ -192,35 +248,15 @@ async def test_endpoint_cache(endpoint: str, log_file: str, cache_enabled: bool)
             "data_same": data_same
         }
 
+
 async def test_cache_performance():
     """测试缓存性能"""
     print("🚀 缓存性能测试")
     print("=" * 60)
     
-    # 清理Redis缓存
-    print("🧹 清理Redis缓存...")
-    try:
-        subprocess.run(['redis-cli', 'FLUSHALL'], check=True)
-        print("✅ Redis缓存已清理")
-    except subprocess.CalledProcessError as e:
-        print(f"❌ 清理Redis缓存失败: {e}")
-        print("⚠️  继续测试，但结果可能不准确")
-    except FileNotFoundError:
-        print("❌ redis-cli 未找到，请确保Redis已安装")
-        print("⚠️  继续测试，但结果可能不准确")
-    
-    # 清理日志文件
-    log_file = "/var/log/blogn2.log"
-    if os.path.exists(log_file):
-        try:
-            subprocess.run(['sudo', 'truncate', '-s', '0', log_file], check=True)
-            print("✅ 已清理日志文件")
-        except subprocess.CalledProcessError as e:
-            print(f"❌ 清理日志文件失败: {e}")
-            print("⚠️  继续测试，但可能无法准确统计SQL查询")
-    else:
-        print("❌ 日志文件不存在: /var/log/blogn2.log")
-        print("⚠️  无法统计SQL查询次数，将仅基于响应时间判断")
+    # 清理环境
+    clean_redis_cache()
+    clean_log_file()
     
     # 测试端点
     endpoints = [
@@ -235,17 +271,14 @@ async def test_cache_performance():
     print("\n🔴 测试缓存关闭的情况")
     print("=" * 40)
     
-    # 禁用缓存
     if not modify_env_cache_setting(False):
         print("❌ 无法禁用缓存，跳过测试")
         return
     
-    # 重启服务
     if not restart_service():
         print("❌ 服务重启失败，无法继续测试")
         return
     
-    # 等待服务就绪
     if not await wait_for_service_ready():
         print("❌ 服务未就绪，无法继续测试")
         return
@@ -253,15 +286,8 @@ async def test_cache_performance():
     # 测试缓存关闭时的性能
     cache_off_results = []
     for endpoint in endpoints:
-        # 在测试每个端点前清理日志，确保SQL查询计数准确
-        if os.path.exists(log_file):
-            try:
-                subprocess.run(['sudo', 'truncate', '-s', '0', log_file], check=True)
-                print(f"✅ 已清理日志文件，准备测试 {endpoint}")
-            except subprocess.CalledProcessError:
-                pass
-        
-        result = await test_endpoint_cache(endpoint, log_file, False)
+        clean_log_file()
+        result = await test_endpoint_cache(endpoint, LOG_FILE, False)
         cache_off_results.append(result)
         all_results.append(result)
     
@@ -270,28 +296,16 @@ async def test_cache_performance():
     print("=" * 40)
     
     # 再次清理Redis缓存，确保测试环境干净
-    print("🧹 再次清理Redis缓存...")
-    try:
-        subprocess.run(['redis-cli', 'FLUSHALL'], check=True)
-        print("✅ Redis缓存已清理")
-    except subprocess.CalledProcessError as e:
-        print(f"❌ 清理Redis缓存失败: {e}")
-        print("⚠️  继续测试，但结果可能不准确")
-    except FileNotFoundError:
-        print("❌ redis-cli 未找到，请确保Redis已安装")
-        print("⚠️  继续测试，但结果可能不准确")
+    clean_redis_cache()
     
-    # 启用缓存
     if not modify_env_cache_setting(True):
         print("❌ 无法启用缓存，跳过测试")
         return
     
-    # 重启服务
     if not restart_service():
         print("❌ 服务重启失败，无法继续测试")
         return
     
-    # 等待服务就绪
     if not await wait_for_service_ready():
         print("❌ 服务未就绪，无法继续测试")
         return
@@ -299,15 +313,8 @@ async def test_cache_performance():
     # 测试缓存开启时的性能
     cache_on_results = []
     for endpoint in endpoints:
-        # 在测试每个端点前清理日志，确保SQL查询计数准确
-        if os.path.exists(log_file):
-            try:
-                subprocess.run(['sudo', 'truncate', '-s', '0', log_file], check=True)
-                print(f"✅ 已清理日志文件，准备测试 {endpoint}")
-            except subprocess.CalledProcessError:
-                pass
-        
-        result = await test_endpoint_cache(endpoint, log_file, True)
+        clean_log_file()
+        result = await test_endpoint_cache(endpoint, LOG_FILE, True)
         cache_on_results.append(result)
         all_results.append(result)
     
@@ -399,6 +406,7 @@ async def test_cache_performance():
     else:
         print("   ❌ 缓存系统异常")
 
+
 async def main():
     """主函数"""
     print("🔧 自动缓存性能测试")
@@ -419,6 +427,7 @@ async def main():
     
     await test_cache_performance()
     print("\n🎉 测试完成！")
+
 
 if __name__ == "__main__":
     asyncio.run(main()) 

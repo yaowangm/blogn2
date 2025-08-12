@@ -217,15 +217,15 @@ async def health_check():
 
 
 # 缓存管理端点
+async def _ensure_cache_initialized():
+    """确保缓存系统已初始化"""
+    await cache_manager.initialize()
+
+
 @app.get("/api/cache/status")
 async def cache_status():
-    """
-    缓存状态检查端点
-    
-    Returns:
-        Dict: 缓存状态和统计信息
-    """
-    await cache_manager.initialize()
+    """缓存状态检查端点"""
+    await _ensure_cache_initialized()
     
     return {
         "cache_enabled": cache_settings.enable_cache,
@@ -237,31 +237,23 @@ async def cache_status():
 
 @app.post("/api/cache/clear")
 async def clear_cache():
-    """
-    清除所有缓存端点
-    
-    Returns:
-        Dict: 清除结果
-    """
-    await cache_manager.initialize()
+    """清除所有缓存端点"""
+    await _ensure_cache_initialized()
     
     if not cache_manager.is_available():
         return {"success": False, "message": "缓存系统不可用"}
     
-    # 这里可以实现清除所有缓存的逻辑
-    # 由于FastAPI-Cache2的限制，可能需要使用Redis客户端直接操作
-    
-    return {"success": True, "message": "缓存清除请求已提交"}
+    # 清除所有缓存
+    try:
+        await cache_manager.clear_pattern("*")
+        return {"success": True, "message": "缓存清除成功"}
+    except Exception as e:
+        return {"success": False, "message": f"缓存清除失败: {str(e)}"}
 
 
 @app.get("/api/cache/stats")
 async def get_cache_stats():
-    """
-    获取缓存统计信息端点
-    
-    Returns:
-        Dict: 缓存统计信息
-    """
+    """获取缓存统计信息端点"""
     return {
         "stats": cache_stats.get_stats(),
         "settings": {
