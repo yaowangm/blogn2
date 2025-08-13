@@ -1,6 +1,7 @@
 import sys
 import os
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 # 添加项目根目录到Python路径，确保模块导入正确
 project_root = Path(__file__).parent.parent
@@ -15,11 +16,41 @@ import uvicorn
 # 导入API控制器模块
 from src.controllers import metadata, user, blog
 
+# 导入缓存相关模块
+from src.utils.cache import cache_manager, cache_stats
+from src.config.cache import cache_settings, validate_cache_config
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    应用生命周期管理器
+    
+    处理应用启动和关闭事件
+    """
+    # 启动事件
+    # 验证缓存配置
+    config_info = validate_cache_config()
+    print(f"📋 缓存配置已加载: Redis={config_info['redis_host']}:{config_info['redis_port']}, 缓存前缀={config_info['cache_prefix']}")
+    
+    await cache_manager.initialize()
+    
+    if cache_manager.is_available():
+        print("✅ 缓存系统初始化成功")
+    else:
+        print("⚠️  缓存系统初始化失败，将使用无缓存模式")
+    
+    yield
+    
+    # 关闭事件（如果需要清理资源）
+
+
 # 创建FastAPI应用实例
 app = FastAPI(
     title="BlogN2 API",
     description="一个基于FastAPI的博客系统",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # 配置CORS中间件，允许跨域请求
@@ -183,6 +214,55 @@ async def health_check():
         Dict[str, str]: 包含服务状态的字典
     """
     return {"status": "healthy", "service": "BlogN2 API"}
+
+
+# 缓存管理端点
+async def _ensure_cache_initialized():
+    """确保缓存系统已初始化"""
+    await cache_manager.initialize()
+
+
+@app.get("/api/cache/status")
+async def cache_status():
+    """缓存状态检查端点"""
+    await _ensure_cache_initialized()
+    
+    return {
+        "cache_enabled": cache_settings.enable_cache,
+        "cache_available": cache_manager.is_available(),
+        "cache_debug": cache_settings.cache_debug,
+        "stats": cache_stats.get_stats()
+    }
+
+
+@app.post("/api/cache/clear")
+async def clear_cache():
+    """清除所有缓存端点"""
+    await _ensure_cache_initialized()
+    
+    if not cache_manager.is_available():
+        return {"success": False, "message": "缓存系统不可用"}
+    
+    # 清除所有缓存
+    try:
+        await cache_manager.clear_pattern("*")
+        return {"success": True, "message": "缓存清除成功"}
+    except Exception as e:
+        return {"success": False, "message": f"缓存清除失败: {str(e)}"}
+
+
+@app.get("/api/cache/stats")
+async def get_cache_stats():
+    """获取缓存统计信息端点"""
+    return {
+        "stats": cache_stats.get_stats(),
+        "settings": {
+            "enable_cache": cache_settings.enable_cache,
+            "cache_debug": cache_settings.cache_debug,
+            "default_ttl": cache_settings.default_ttl,
+            "max_ttl": cache_settings.max_ttl
+        }
+    }
 
 if __name__ == "__main__":
     uvicorn.run(

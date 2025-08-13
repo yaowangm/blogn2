@@ -5,12 +5,14 @@ from src.services.user_service import UserService
 from src.database import User
 from src.utils.error_handlers import handle_api_errors
 from src.utils.dependencies import get_user_service
+from src.utils.cache import cache_user_profile, cache_user_blogs, cache_user_summary, cache_user_count, cache_new_users
 
 # 创建用户API路由器
 router = APIRouter()
 
 @router.get("/users/summary", response_model=Dict[str, Any])
 @handle_api_errors("获取用户摘要失败")
+@cache_user_summary()  # 使用默认缓存时间
 async def get_user_summary(
     user_service: UserService = Depends(get_user_service)
 ):
@@ -29,6 +31,7 @@ async def get_user_summary(
 
 @router.get("/users/listnew", response_model=List[User])
 @handle_api_errors("获取最新用户失败")
+@cache_new_users()  # 使用默认缓存时间
 async def get_new_users(
     user_service: UserService = Depends(get_user_service)
 ):
@@ -47,6 +50,7 @@ async def get_new_users(
 
 @router.get("/users/count")
 @handle_api_errors("获取用户总数失败")
+@cache_user_count()  # 使用默认缓存时间
 async def get_user_count(
     user_service: UserService = Depends(get_user_service)
 ):
@@ -64,6 +68,7 @@ async def get_user_count(
 
 @router.get("/users/{user_id}", response_model=User)
 @handle_api_errors("获取用户信息失败")
+@cache_user_profile()  # 使用默认缓存时间
 async def get_user_by_id(
     user_id: int,
     user_service: UserService = Depends(get_user_service)
