@@ -1,0 +1,1 @@
+[33m7fe6a3b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfastapi_cache[m[33m)[m fix: 修复pytest警告 - 修复Pydantic警告：将class-based Config替换为SettingsConfigDict - 修复FastAPI警告：将on_event替换为lifespan事件处理器 - 使用现代的Pydantic V2配置方式 - 使用FastAPI推荐的lifespan事件处理方式 解决了3个pytest警告： 1. Pydantic class-based config弃用警告 2. FastAPI on_event弃用警告 3. 相关的deprecation警告
