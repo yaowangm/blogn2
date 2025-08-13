@@ -11,8 +11,9 @@
 
 ```
 scripts/
-├── test_cache_final.py                    # 基础缓存测试
 ├── final_cache_performance_test.py        # 完整性能测试（推荐使用）
+├── test_config.py                         # 缓存配置验证测试
+├── test_redis.py                          # Redis连接和功能测试
 └── ... (其他现有脚本)
 ```
 
@@ -86,11 +87,14 @@ scripts/
 
 ### 快速测试
 ```bash
-# 基础缓存测试
-python scripts/test_cache_final.py
-
 # 完整性能测试（推荐）
 python scripts/final_cache_performance_test.py
+
+# 配置验证测试
+python scripts/test_config.py
+
+# Redis连接测试
+python scripts/test_redis.py
 ```
 
 ### 服务器启动
@@ -112,7 +116,6 @@ uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ## 📄 生成的文件
 
 - `final_cache_performance_report.json` - 详细性能测试报告
-- `cache_test_report.json` - 基础测试报告
 
 ## 💡 关键发现
 
