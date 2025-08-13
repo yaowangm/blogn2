@@ -11,7 +11,7 @@ router = APIRouter()
 
 @router.get("/metadata/", response_model=Dict[str, Any])
 @handle_api_errors("获取网站元数据失败")
-@cache_metadata(ttl=7200)  # 缓存2小时
+@cache_metadata()  # 使用默认缓存时间
 async def get_site_metadata(
     metadata_service: MetadataService = Depends(get_metadata_service)
 ):

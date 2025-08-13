@@ -11,7 +11,7 @@ router = APIRouter()
 
 @router.get("/blogs/recent", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最新加入博客失败")
-@cache_blog_recent_list(ttl=900)  # 缓存15分钟
+@cache_blog_recent_list()  # 使用默认缓存时间
 async def get_recent_blogs(
     limit: int = 10,
     blog_service: BlogService = Depends(get_blog_service)
@@ -20,7 +20,7 @@ async def get_recent_blogs(
     获取最新加入的博客列表
     
     Args:
-        limit: 返回数量限制，默认5个
+        limit: 返回数量限制，默认10个
         blog_service: 博客服务实例
         
     Returns:
@@ -30,7 +30,7 @@ async def get_recent_blogs(
 
 @router.get("/blogs/popular", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最热门博客失败")
-@cache_blog_popular_list(ttl=1800)  # 缓存30分钟
+@cache_blog_popular_list()  # 使用默认缓存时间
 async def get_popular_blogs(
     limit: int = 10,
     blog_service: BlogService = Depends(get_blog_service)
@@ -49,7 +49,7 @@ async def get_popular_blogs(
 
 @router.get("/comments/recent", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最近评论失败")
-@cache_blog_comments(ttl=600)  # 缓存10分钟
+@cache_blog_comments()  # 使用默认缓存时间
 async def get_recent_comments(
     limit: int = 5,
     blog_service: BlogService = Depends(get_blog_service)
@@ -68,7 +68,7 @@ async def get_recent_comments(
 
 @router.get("/blogs/about", response_model=Dict[str, Any])
 @handle_api_errors("获取关于页面内容失败")
-@cache_blog_detail(ttl=7200)  # 缓存2小时
+@cache_blog_detail()  # 使用默认缓存时间
 async def get_about_content(
     blog_service: BlogService = Depends(get_blog_service)
 ):
@@ -85,7 +85,7 @@ async def get_about_content(
 
 @router.get("/blogs/messages/recent", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最近留言失败")
-@cache_blog_messages(ttl=600)  # 缓存10分钟
+@cache_blog_messages()  # 使用默认缓存时间
 async def get_recent_messages(
     limit: int = 5,
     blog_service: BlogService = Depends(get_blog_service)
@@ -104,7 +104,7 @@ async def get_recent_messages(
 
 @router.get("/blogs/posts/latest", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最新博文失败")
-@cache_blog_recent_list(ttl=900)  # 缓存15分钟
+@cache_blog_recent_list()  # 使用默认缓存时间
 async def get_latest_posts(
     limit: int = 10,
     blog_service: BlogService = Depends(get_blog_service)

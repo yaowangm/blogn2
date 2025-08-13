@@ -12,7 +12,7 @@ router = APIRouter()
 
 @router.get("/users/summary", response_model=Dict[str, Any])
 @handle_api_errors("获取用户摘要失败")
-@cache_user_summary(ttl=1800)  # 缓存30分钟
+@cache_user_summary()  # 使用默认缓存时间
 async def get_user_summary(
     user_service: UserService = Depends(get_user_service)
 ):
@@ -31,7 +31,7 @@ async def get_user_summary(
 
 @router.get("/users/listnew", response_model=List[User])
 @handle_api_errors("获取最新用户失败")
-@cache_new_users(ttl=900)  # 缓存15分钟
+@cache_new_users()  # 使用默认缓存时间
 async def get_new_users(
     user_service: UserService = Depends(get_user_service)
 ):
@@ -50,7 +50,7 @@ async def get_new_users(
 
 @router.get("/users/count")
 @handle_api_errors("获取用户总数失败")
-@cache_user_count(ttl=3600)  # 缓存1小时
+@cache_user_count()  # 使用默认缓存时间
 async def get_user_count(
     user_service: UserService = Depends(get_user_service)
 ):
@@ -68,7 +68,7 @@ async def get_user_count(
 
 @router.get("/users/{user_id}", response_model=User)
 @handle_api_errors("获取用户信息失败")
-@cache_user_profile(ttl=3600)  # 缓存1小时
+@cache_user_profile()  # 使用默认缓存时间
 async def get_user_by_id(
     user_id: int,
     user_service: UserService = Depends(get_user_service)

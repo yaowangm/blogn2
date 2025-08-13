@@ -254,79 +254,79 @@ def _create_key_builder(key_template: str, param_names: list):
 
 
 # 用户相关缓存装饰器
-def cache_user_profile(ttl: int = 1800):
+def cache_user_profile(ttl: int = None):
     """用户资料缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
                           CacheKeyGenerator.user_profile(kwargs.get('user_id', 0)))
 
 
-def cache_user_summary(ttl: int = 1800):
+def cache_user_summary(ttl: int = None):
     """用户摘要缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: "user:summary")
 
 
-def cache_user_count(ttl: int = 3600):
+def cache_user_count(ttl: int = None):
     """用户数量缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: "user:count")
 
 
-def cache_new_users(ttl: int = 900):
+def cache_new_users(ttl: int = None):
     """最新用户缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
                           f"user:new:{kwargs.get('limit', 3)}")
 
 
-def cache_user_blogs(ttl: int = 900):
+def cache_user_blogs(ttl: int = None):
     """用户博客列表缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
                           CacheKeyGenerator.user_blogs(kwargs.get('user_id', 0), kwargs.get('page', 1)))
 
 
 # 博客相关缓存装饰器
-def cache_blog_list(ttl: int = 900):
+def cache_blog_list(ttl: int = None):
     """博客列表缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
                           CacheKeyGenerator.blog_list(kwargs.get('page', 1), kwargs.get('limit', 10)))
 
 
-def cache_blog_recent_list(ttl: int = 900):
+def cache_blog_recent_list(ttl: int = None):
     """最新博客列表缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
                           f"blog:recent:list:{kwargs.get('limit', 10)}")
 
 
-def cache_blog_popular_list(ttl: int = 1800):
+def cache_blog_popular_list(ttl: int = None):
     """热门博客列表缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
                           f"blog:popular:list:{kwargs.get('limit', 10)}")
 
 
-def cache_blog_detail(ttl: int = 3600):
+def cache_blog_detail(ttl: int = None):
     """博客详情缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
                           CacheKeyGenerator.blog_detail(kwargs.get('blog_id', 0)))
 
 
-def cache_blog_comments(ttl: int = 1800):
+def cache_blog_comments(ttl: int = None):
     """博客评论缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
                           CacheKeyGenerator.blog_comments(kwargs.get('blog_id', 0)))
 
 
-def cache_blog_messages(ttl: int = 1800):
+def cache_blog_messages(ttl: int = None):
     """博客留言缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
                           f"blog:messages:recent:{kwargs.get('limit', 5)}")
 
 
 # 其他缓存装饰器
-def cache_search_results(ttl: int = 1800):
+def cache_search_results(ttl: int = None):
     """搜索结果缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
                           CacheKeyGenerator.search_results(kwargs.get('query', ''), kwargs.get('page', 1)))
 
 
-def cache_metadata(ttl: int = 7200):
+def cache_metadata(ttl: int = None):
     """元数据缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: CacheKeyGenerator.metadata())
 

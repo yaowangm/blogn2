@@ -39,9 +39,9 @@ CACHE_REDIS_SSL=false          # 是否使用SSL连接Redis
 # 缓存设置
 CACHE_ENABLE_CACHE=true        # 是否启用缓存功能
 CACHE_CACHE_DEBUG=false        # 是否启用缓存调试模式
-CACHE_DEFAULT_TTL=3600        # 默认缓存时间（秒）
-CACHE_MAX_TTL=86400           # 最大缓存时间（秒）
-CACHE_CACHE_PREFIX=blogn2     # 缓存键前缀
+CACHE_DEFAULT_TTL=600          # 默认缓存时间（秒，10分钟）
+CACHE_MAX_TTL=86400            # 最大缓存时间（秒，24小时）
+CACHE_CACHE_PREFIX=blogn2      # 缓存键前缀
 ```
 
 ### 配置验证
@@ -74,8 +74,8 @@ CACHE_CACHE_PREFIX=blogn2     # 缓存键前缀
 | `CACHE_REDIS_SSL` | false | 是否使用SSL连接 |
 | `CACHE_ENABLE_CACHE` | true | 是否启用缓存 |
 | `CACHE_CACHE_DEBUG` | false | 是否启用调试模式 |
-| `CACHE_DEFAULT_TTL` | 3600 | 默认缓存时间（秒） |
-| `CACHE_MAX_TTL` | 86400 | 最大缓存时间（秒） |
+| `CACHE_DEFAULT_TTL` | 600 | 默认缓存时间（秒，10分钟） |
+| `CACHE_MAX_TTL` | 86400 | 最大缓存时间（秒，24小时） |
 | `CACHE_CACHE_PREFIX` | blogn2 | 缓存键前缀 |
 
 ## 🔧 使用方法
@@ -85,9 +85,14 @@ CACHE_CACHE_PREFIX=blogn2     # 缓存键前缀
 ```python
 from src.utils.cache import cache_decorator
 
-@cache_decorator(ttl=1800)  # 缓存30分钟
+@cache_decorator()  # 使用默认缓存时间（10分钟）
 async def get_user_data(user_id: int):
     # 你的业务逻辑
+    return user_data
+
+# 或者指定自定义缓存时间
+@cache_decorator(ttl=1800)  # 缓存30分钟
+async def get_user_data_custom_ttl(user_id: int):
     return user_data
 ```
 
@@ -96,15 +101,20 @@ async def get_user_data(user_id: int):
 ```python
 from src.utils.cache import cache_user_profile, cache_blog_list
 
-# 用户资料缓存（30分钟）
-@cache_user_profile(ttl=1800)
+# 用户资料缓存（使用默认缓存时间10分钟）
+@cache_user_profile()
 async def get_user_profile(user_id: int):
     return user_profile
 
-# 博客列表缓存（15分钟）
-@cache_blog_list(ttl=900)
+# 博客列表缓存（使用默认缓存时间10分钟）
+@cache_blog_list()
 async def get_blog_list(page: int = 1, limit: int = 10):
     return blog_list
+
+# 或者指定自定义缓存时间
+@cache_user_profile(ttl=1800)  # 缓存30分钟
+async def get_user_profile_custom_ttl(user_id: int):
+    return user_profile
 ```
 
 ### 3. 缓存失效装饰器
