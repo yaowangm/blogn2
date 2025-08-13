@@ -14,7 +14,7 @@
 ## 📦 依赖安装
 
 ```bash
-pip install fastapi-cache2==0.2.1 redis==5.0.1 aioredis==2.0.1
+pip install fastapi-cache2==0.2.1 redis==5.0.1
 ```
 
 ## ⚙️ 配置说明
