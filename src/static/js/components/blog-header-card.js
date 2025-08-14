@@ -66,7 +66,7 @@ class BlogHeaderCard extends BaseComponent {
                 .card { background: var(--white); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); border: 1px solid var(--gray-200); overflow: hidden; margin-bottom: var(--spacing-6); }
                 .card-header { padding: var(--spacing-8) var(--spacing-6); background: var(--gray-50); color: var(--gray-800); text-align: center; border-bottom: 1px solid var(--gray-200); }
                 .blog-title { margin: 0 0 var(--spacing-4) 0; font-size: var(--font-size-3xl); font-weight: 700; color: var(--gray-800); }
-                .blog-description { margin: 0; font-size: var(--font-size-lg); color: var(--gray-600); opacity: 0.9; line-height: 1.6; max-width: 600px; margin-left: auto; margin-right: auto; }
+                .blog-description { margin: 0; font-size: var(--font-size-lg); color: var(--gray-600); opacity: 0.9; line-height: 1.6; max-width: 650px; margin-left: auto; margin-right: auto; }
                 .card-body { padding: var(--spacing-6); }
                 .blog-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--spacing-4); margin-bottom: var(--spacing-6); }
                 .stat-item { text-align: center; padding: var(--spacing-4); background: var(--gray-50); border-radius: var(--radius-lg); border: 1px solid var(--gray-200); }

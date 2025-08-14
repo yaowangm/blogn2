@@ -6,17 +6,49 @@ class BlogNavigationCard extends BaseComponent {
     constructor() {
         super();
         this.projectId = null;
+        this.userData = null;
+        this.loading = true;
     }
 
     connectedCallback() {
         this.projectId = this.getProjectIdFromUrl();
         this.render();
+        this.loadUserData();
     }
 
     getProjectIdFromUrl() {
         const path = window.location.pathname;
         const match = path.match(/\/blog\/(\d+)/);
         return match ? parseInt(match[1]) : null;
+    }
+
+    async loadUserData() {
+        if (!this.projectId) {
+            this.loading = false;
+            this.render();
+            return;
+        }
+
+        try {
+            // 先获取项目信息，从中获取用户ID
+            const projectResponse = await fetch(`/api/projects/${this.projectId}`);
+            if (projectResponse.ok) {
+                const projectData = await projectResponse.json();
+                
+                // 获取用户信息，包括intropiid
+                if (projectData.userid) {
+                    const userResponse = await fetch(`/api/users/${projectData.userid}`);
+                    if (userResponse.ok) {
+                        this.userData = await userResponse.json();
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error loading user data:', error);
+        } finally {
+            this.loading = false;
+            this.render();
+        }
     }
 
     render() {
@@ -123,6 +155,12 @@ class BlogNavigationCard extends BaseComponent {
                     background: var(--gray-200);
                     color: var(--gray-800);
                 }
+
+                .loading {
+                    text-align: center;
+                    padding: var(--spacing-8);
+                    color: var(--gray-500);
+                }
             </style>
 
             <div class="card">
@@ -134,49 +172,69 @@ class BlogNavigationCard extends BaseComponent {
                         博客导航
                     </h3>
                 </div>
-                <nav>
-                    <ul class="nav-list">
-                        <li class="nav-item">
-                            <a href="/" class="nav-link">
-                                <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                                    <polyline points="9,22 9,12 15,12 15,22"/>
-                                </svg>
-                                <span class="link-text">日志首页</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="/blog/${this.projectId}/about" class="nav-link">
-                                <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                    <circle cx="12" cy="7" r="4"/>
-                                </svg>
-                                <span class="link-text">个人介绍</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="/blog/${this.projectId}/subscriptions" class="nav-link">
-                                <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-                                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
-                                </svg>
-                                <span class="link-text">订阅的博客</span>
-                                <span class="link-badge">新</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="/api/projects/${this.projectId}/rss" class="nav-link rss-link" target="_blank">
-                                <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M4 11a9 9 0 0 1 9 9"/>
-                                    <path d="M4 4a16 16 0 0 1 16 16"/>
-                                    <circle cx="5" cy="19" r="1"/>
-                                </svg>
-                                <span class="link-text">RSS订阅</span>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
+                ${this.loading ? this.renderLoading() : this.renderNavigation()}
             </div>
+        `;
+    }
+
+    renderLoading() {
+        return `
+            <div class="loading">
+                <div>加载中...</div>
+            </div>
+        `;
+    }
+
+    renderNavigation() {
+        // 构建个人介绍链接
+        let aboutLink = `/blog/${this.projectId}/about`; // 默认链接
+        if (this.userData && this.userData.intropiid) {
+            aboutLink = `/blog/${this.userData.intropiid}`;
+        }
+
+        return `
+            <nav>
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="/" class="nav-link">
+                            <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                                <polyline points="9,22 9,12 15,12 15,22"/>
+                            </svg>
+                            <span class="link-text">日志首页</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="${aboutLink}" class="nav-link">
+                            <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                            <span class="link-text">个人介绍</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/blog/${this.projectId}/subscriptions" class="nav-link">
+                            <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                            </svg>
+                            <span class="link-text">订阅的博客</span>
+                            <span class="link-badge">新</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/api/projects/${this.projectId}/rss" class="nav-link rss-link" target="_blank">
+                            <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 11a9 9 0 0 1 9 9"/>
+                                <path d="M4 4a16 16 0 0 1 16 16"/>
+                                <circle cx="5" cy="19" r="1"/>
+                            </svg>
+                            <span class="link-text">RSS订阅</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
         `;
     }
 }
