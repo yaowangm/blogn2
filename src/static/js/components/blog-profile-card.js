@@ -91,6 +91,13 @@ class BlogProfileCard extends BaseComponent {
                     color: var(--gray-600);
                     border: 3px solid var(--gray-200);
                     box-shadow: var(--shadow-lg);
+                    overflow: hidden;
+                }
+
+                .user-avatar img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
                 }
 
                 .blog-name {
@@ -189,10 +196,23 @@ class BlogProfileCard extends BaseComponent {
         const blogName = this.projectData.name || '未命名博客';
         const userName = this.userData.name || '未知用户';
         const userEmail = this.userData.email || '';
+        
+        // 构建头像路径
+        let avatarPath = null;
+        if (this.userData.id) {
+            const prefix = Math.floor(this.userData.id / 10000) + 1;
+            avatarPath = `/avatars/${prefix}/s_${this.userData.id}.jpg`;
+        }
 
         return `
             <div class="card-header">
-                <div class="user-avatar">${avatarText}</div>
+                <div class="user-avatar">
+                    ${avatarPath ? 
+                        `<img src="${avatarPath}" alt="${userName}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
+                        ''
+                    }
+                    <span style="display: ${avatarPath ? 'none' : 'flex'}">${avatarText}</span>
+                </div>
                 <h2 class="blog-name">${blogName}</h2>
             </div>
             <div class="card-body">
