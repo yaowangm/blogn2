@@ -1,0 +1,218 @@
+from fastapi import APIRouter, Depends, HTTPException
+from typing import List, Dict, Any, Optional
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from src.database import get_async_session
+from src.repositories.project_repository import ProjectRepository
+from src.repositories.project_item_repository import ProjectItemRepository
+from src.repositories.post_repository import PostRepository
+from src.models.project import Project
+from src.models.project_item import ProjectItem
+from src.models.post import Post
+
+# 创建项目API路由器
+router = APIRouter()
+
+@router.get("/projects/{project_id}", response_model=Dict[str, Any])
+async def get_project(
+    project_id: int,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    获取指定项目信息
+    
+    Args:
+        project_id: 项目ID
+        session: 数据库会话
+        
+    Returns:
+        Dict[str, Any]: 项目信息
+    """
+    project_repo = ProjectRepository(session)
+    project = await project_repo.get_by_id(project_id)
+    
+    if not project:
+        raise HTTPException(status_code=404, detail="项目不存在")
+    
+    return {
+        "id": project.id,
+        "name": project.name,
+        "comment": project.comment,
+        "recordcount": project.recordcount,
+        "accesscount": project.accesscount,
+        "userid": project.userid,
+        "createtime": project.createtime,
+        "updatetime": project.updatetime,
+        "commentcount": project.commentcount
+    }
+
+@router.get("/projects/{project_id}/posts", response_model=Dict[str, Any])
+async def get_project_posts(
+    project_id: int,
+    page: int = 1,
+    limit: int = 10,
+    type: str = "original",
+    category: Optional[str] = None,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    获取指定项目的文章列表
+    
+    Args:
+        project_id: 项目ID
+        page: 页码
+        limit: 每页数量
+        type: 文章类型 (original/subscription)
+        category: 分类筛选
+        session: 数据库会话
+        
+    Returns:
+        Dict[str, Any]: 文章列表和总数
+    """
+    project_item_repo = ProjectItemRepository(session)
+    
+    # 计算偏移量
+    offset = (page - 1) * limit
+    
+    # 获取文章列表
+    posts = await project_item_repo.get_by_project_id(project_id, limit=limit)
+    
+    # 获取总数
+    total = await project_item_repo.count_by_project_id(project_id)
+    
+    # 转换为字典格式
+    posts_data = []
+    for post in posts:
+        posts_data.append({
+            "id": post.id,
+            "name": post.name,
+            "comment": post.comment,
+            "createtime": post.createtime,
+            "accesscount": post.accesscount,
+            "commentcount": post.commentcount,
+            "category": "未分类"  # 这里可以根据实际需求添加分类逻辑
+        })
+    
+    return {
+        "posts": posts_data,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": (total + limit - 1) // limit
+    }
+
+@router.get("/projects/{project_id}/comments/recent", response_model=List[Dict[str, Any]])
+async def get_project_recent_comments(
+    project_id: int,
+    limit: int = 5,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    获取指定项目的最近评论
+    
+    Args:
+        project_id: 项目ID
+        limit: 返回数量限制
+        session: 数据库会话
+        
+    Returns:
+        List[Dict[str, Any]]: 最近评论列表
+    """
+    post_repo = PostRepository(session)
+    
+    # 获取项目相关的评论
+    comments = await post_repo.get_recent_comments_by_project(project_id, limit)
+    
+    comments_data = []
+    for comment in comments:
+        comments_data.append({
+            "id": comment.id,
+            "user_name": "用户",  # 这里需要关联用户表获取用户名
+            "content": comment.content,
+            "post_time": comment.posttime,
+            "project_item_name": "文章"  # 这里需要关联项目项表获取文章名
+        })
+    
+    return comments_data
+
+@router.get("/projects/{project_id}/categories", response_model=List[Dict[str, Any]])
+async def get_project_categories(
+    project_id: int,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    获取指定项目的分类列表
+    
+    Args:
+        project_id: 项目ID
+        session: 数据库会话
+        
+    Returns:
+        List[Dict[str, Any]]: 分类列表
+    """
+    # 这里可以根据实际需求实现分类逻辑
+    # 目前返回模拟数据
+    return [
+        {"id": 1, "name": "技术分享", "count": 15, "color": "#3b82f6"},
+        {"id": 2, "name": "生活随笔", "count": 8, "color": "#10b981"},
+        {"id": 3, "name": "读书笔记", "count": 12, "color": "#f59e0b"}
+    ]
+
+@router.get("/projects/{project_id}/external-links", response_model=List[Dict[str, Any]])
+async def get_project_external_links(
+    project_id: int,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    获取指定项目的外站链接
+    
+    Args:
+        project_id: 项目ID
+        session: 数据库会话
+        
+    Returns:
+        List[Dict[str, Any]]: 外站链接列表
+    """
+    # 这里可以根据实际需求实现外站链接逻辑
+    # 目前返回模拟数据
+    return [
+        {"id": 1, "name": "GitHub", "url": "https://github.com", "description": "代码托管平台"},
+        {"id": 2, "name": "Stack Overflow", "url": "https://stackoverflow.com", "description": "程序员问答社区"},
+        {"id": 3, "name": "掘金", "url": "https://juejin.cn", "description": "开发者社区"}
+    ]
+
+@router.get("/projects/{project_id}/rss")
+async def get_project_rss(
+    project_id: int,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    获取指定项目的RSS订阅
+    
+    Args:
+        project_id: 项目ID
+        session: 数据库会话
+        
+    Returns:
+        RSS格式的响应
+    """
+    from fastapi.responses import Response
+    
+    project_repo = ProjectRepository(session)
+    project = await project_repo.get_by_id(project_id)
+    
+    if not project:
+        raise HTTPException(status_code=404, detail="项目不存在")
+    
+    # 生成RSS内容
+    rss_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+<channel>
+    <title>{project.name}</title>
+    <description>{project.comment or '博客RSS订阅'}</description>
+    <link>http://blogn2.local/blog/{project_id}</link>
+    <language>zh-CN</language>
+</channel>
+</rss>"""
+    
+    return Response(content=rss_content, media_type="application/xml")

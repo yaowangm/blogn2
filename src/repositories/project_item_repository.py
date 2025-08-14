@@ -41,6 +41,12 @@ class ProjectItemRepository:
         result = await self.session.exec(statement)
         return result.all()
     
+    async def count_by_project_id(self, project_id: int) -> int:
+        """根据项目ID获取项目项总数"""
+        statement = select(func.count(ProjectItem.id)).where(ProjectItem.projectid == project_id)
+        result = await self.session.exec(statement)
+        return result.first() or 0
+    
     async def get_recent_items(self, limit: int = 10) -> List[ProjectItem]:
         """获取最近创建的项目项"""
         statement = select(ProjectItem).order_by(ProjectItem.createtime.desc()).limit(limit)

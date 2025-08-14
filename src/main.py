@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse
 import uvicorn
 
 # 导入API控制器模块
-from src.controllers import metadata, user, blog
+from src.controllers import metadata, user, blog, project
 
 # 导入缓存相关模块
 from src.utils.cache import cache_manager, cache_stats
@@ -185,6 +185,7 @@ async def serve_avatar(prefix: str, filename: str):
 app.include_router(metadata.router, prefix="/api")
 app.include_router(user.router, prefix="/api")
 app.include_router(blog.router, prefix="/api")
+app.include_router(project.router, prefix="/api")
 
 # 根路径和首页路由 - 都返回首页
 @app.get("/")
@@ -199,6 +200,23 @@ async def root():
         FileResponse: 首页HTML文件
     """
     return FileResponse("src/static/index.html")
+
+
+# 博客页面路由
+@app.get("/blog/{project_id}")
+async def blog_page(project_id: int):
+    """
+    博客页面路由
+    
+    返回指定项目的博客页面HTML文件。
+    
+    Args:
+        project_id: 项目ID
+        
+    Returns:
+        FileResponse: 博客页面HTML文件
+    """
+    return FileResponse("src/static/blog.html")
 
 
 
