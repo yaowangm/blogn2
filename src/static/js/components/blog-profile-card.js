@@ -100,12 +100,7 @@ class BlogProfileCard extends BaseComponent {
                     color: var(--gray-800);
                 }
 
-                .blog-description {
-                    margin: var(--spacing-2) 0 0 0;
-                    font-size: var(--font-size-sm);
-                    color: var(--gray-600);
-                    opacity: 0.9;
-                }
+
 
                 .card-body {
                     padding: var(--spacing-6);
@@ -192,7 +187,6 @@ class BlogProfileCard extends BaseComponent {
     renderContent() {
         const avatarText = this.userData.name ? this.userData.name.charAt(0).toUpperCase() : '?';
         const blogName = this.projectData.name || '未命名博客';
-        const blogDesc = this.projectData.comment || '这个博客还没有描述';
         const userName = this.userData.name || '未知用户';
         const userEmail = this.userData.email || '';
 
@@ -200,7 +194,6 @@ class BlogProfileCard extends BaseComponent {
             <div class="card-header">
                 <div class="user-avatar">${avatarText}</div>
                 <h2 class="blog-name">${blogName}</h2>
-                <p class="blog-description">${this.truncateText(blogDesc, 50)}</p>
             </div>
             <div class="card-body">
                 <div class="user-info">
