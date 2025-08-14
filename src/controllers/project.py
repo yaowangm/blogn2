@@ -6,9 +6,11 @@ from src.database import get_async_session
 from src.repositories.project_repository import ProjectRepository
 from src.repositories.project_item_repository import ProjectItemRepository
 from src.repositories.post_repository import PostRepository
+from src.repositories.folder_repository import FolderRepository
 from src.models.project import Project
 from src.models.project_item import ProjectItem
 from src.models.post import Post
+from src.models.folder import Folder
 
 # 创建项目API路由器
 router = APIRouter()
@@ -150,13 +152,27 @@ async def get_project_categories(
     Returns:
         List[Dict[str, Any]]: 分类列表
     """
-    # 这里可以根据实际需求实现分类逻辑
-    # 目前返回模拟数据
-    return [
-        {"id": 1, "name": "技术分享", "count": 15, "color": "#3b82f6"},
-        {"id": 2, "name": "生活随笔", "count": 8, "color": "#10b981"},
-        {"id": 3, "name": "读书笔记", "count": 12, "color": "#f59e0b"}
-    ]
+    folder_repo = FolderRepository(session)
+    
+    try:
+        # 从数据库获取项目的文件夹列表
+        folders = await folder_repo.get_by_project_id(project_id)
+        
+        # 转换为API响应格式
+        categories = []
+        for folder in folders:
+            categories.append({
+                "id": folder.id,
+                "name": folder.name,
+                "count": folder.recordcount or 0,  # 使用folders表中的recordcount字段
+                "color": "#3b82f6"  # 默认颜色
+            })
+        
+        return categories
+        
+    except Exception as e:
+        # 如果获取失败，返回空列表
+        return []
 
 @router.get("/projects/{project_id}/external-links", response_model=List[Dict[str, Any]])
 async def get_project_external_links(
