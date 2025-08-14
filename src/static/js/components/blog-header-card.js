@@ -43,6 +43,8 @@ class BlogHeaderCard extends BaseComponent {
         } finally {
             this.loading = false;
             this.render();
+            // 动态更新页面title
+            this.updatePageTitle();
         }
     }
 
@@ -155,6 +157,13 @@ class BlogHeaderCard extends BaseComponent {
         console.error(message);
         this.loading = false;
         this.render();
+    }
+
+    updatePageTitle() {
+        if (this.blogData && this.blogData.name) {
+            const blogName = this.blogData.name;
+            document.title = `${blogName} - BlogN`;
+        }
     }
 }
 
