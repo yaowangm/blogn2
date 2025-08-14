@@ -71,9 +71,10 @@ class BlogProfileCard extends BaseComponent {
 
                 .card-header {
                     padding: var(--spacing-6);
-                    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
-                    color: var(--white);
+                    background: var(--gray-50);
+                    color: var(--gray-800);
                     text-align: center;
+                    border-bottom: 1px solid var(--gray-200);
                 }
 
                 .user-avatar {
@@ -88,7 +89,7 @@ class BlogProfileCard extends BaseComponent {
                     font-size: var(--font-size-3xl);
                     font-weight: 600;
                     color: var(--gray-600);
-                    border: 3px solid var(--white);
+                    border: 3px solid var(--gray-200);
                     box-shadow: var(--shadow-lg);
                 }
 
@@ -96,13 +97,13 @@ class BlogProfileCard extends BaseComponent {
                     margin: 0;
                     font-size: var(--font-size-xl);
                     font-weight: 600;
-                    color: var(--white);
+                    color: var(--gray-800);
                 }
 
                 .blog-description {
                     margin: var(--spacing-2) 0 0 0;
                     font-size: var(--font-size-sm);
-                    color: var(--gray-100);
+                    color: var(--gray-600);
                     opacity: 0.9;
                 }
 

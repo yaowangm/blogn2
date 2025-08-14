@@ -114,13 +114,14 @@ class BlogNavigationCard extends BaseComponent {
                 }
 
                 .rss-link {
-                    background: linear-gradient(135deg, #ff6b35, #f7931e);
-                    color: var(--white);
+                    background: var(--gray-100);
+                    color: var(--gray-700);
                     font-weight: 500;
                 }
 
                 .rss-link:hover {
-                    background: linear-gradient(135deg, #e55a2b, #e0851a);
+                    background: var(--gray-200);
+                    color: var(--gray-800);
                 }
             </style>
 
