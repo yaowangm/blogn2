@@ -1,4 +1,4 @@
-class LatestPostsCard extends BaseComponent {
+class BlogListCard extends BaseComponent {
     constructor() {
         super();
     }
@@ -268,4 +268,4 @@ class LatestPostsCard extends BaseComponent {
     }
 }
 
-customElements.define('latest-posts-card', LatestPostsCard); 
+customElements.define('blog-list-card', BlogListCard); 
