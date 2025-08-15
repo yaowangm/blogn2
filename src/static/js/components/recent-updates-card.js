@@ -20,21 +20,22 @@ class RecentUpdatesCard extends BaseComponent {
         let apiUrl;
         
         if (isBlogPage) {
-            // 在博客页面：获取最近更新的博客（排除当前博客）
+            // 在博客页面：获取最近更新的博客文章（排除当前博客）
             const projectId = this.getProjectIdFromUrl();
             if (projectId) {
-                apiUrl = `/api/projects/recent?limit=5&exclude=${projectId}`;
+                // 使用最新博文API，在服务端过滤当前博客
+                apiUrl = `/api/blogs/posts/latest?limit=5&exclude=${projectId}`;
             } else {
                 this.showError('无法获取博客ID');
                 return;
             }
         } else {
-            // 在首页：获取最近更新的博客
-            apiUrl = '/api/projects/recent?limit=5';
+            // 在首页：获取最近更新的博客文章
+            apiUrl = '/api/blogs/posts/latest?limit=5';
         }
 
         try {
-            // 获取最近更新的数据
+            // 获取最近更新的博客文章数据
             const response = await fetch(apiUrl);
             if (response.ok) {
                 this.recentUpdates = await response.json();
@@ -70,21 +71,27 @@ class RecentUpdatesCard extends BaseComponent {
         return [
             {
                 id: 123,
-                name: '技术探索者',
-                update_time: '2024-01-15T14:30:00Z',
-                latest_post: '深入理解Docker容器技术'
+                title: '深入理解Docker容器技术',
+                blog_name: '技术探索者',
+                blog_id: 123,
+                author: '张三',
+                time: '2小时前'
             },
             {
                 id: 456,
-                name: '生活记录者',
-                update_time: '2024-01-15T12:15:00Z',
-                latest_post: '周末城市漫步记'
+                title: '周末城市漫步记',
+                blog_name: '生活记录者',
+                blog_id: 456,
+                author: '李四',
+                time: '4小时前'
             },
             {
                 id: 789,
-                name: '读书分享家',
-                update_time: '2024-01-15T10:45:00Z',
-                latest_post: '《人类简史》读后感'
+                title: '《人类简史》读后感',
+                blog_name: '读书分享家',
+                blog_id: 789,
+                author: '王五',
+                time: '6小时前'
             }
         ];
     }
@@ -227,10 +234,10 @@ class RecentUpdatesCard extends BaseComponent {
                 ${this.recentUpdates.map(update => `
                     <li class="update-item">
                         <div class="update-header">
-                            <a href="/blog/${update.id}" class="blog-name">${update.name}</a>
-                            <span class="update-time">${this.formatDate(update.update_time)}</span>
+                            <a href="/blog/${update.blog_id}" class="blog-name">${update.blog_name}</a>
+                            <span class="update-time">${update.time}</span>
                         </div>
-                        <div class="latest-post">${this.truncateText(update.latest_post, 40)}</div>
+                        <div class="latest-post">${this.truncateText(update.title, 40)}</div>
                     </li>
                 `).join('')}
             </ul>
@@ -257,6 +264,22 @@ class RecentUpdatesCard extends BaseComponent {
         console.error(message);
         this.loading = false;
         this.render();
+    }
+
+    /**
+     * 截断文本
+     * @param {string} text - 原始文本
+     * @param {number} maxLength - 最大长度
+     * @returns {string} 截断后的文本
+     */
+    truncateText(text, maxLength) {
+        if (!text || typeof text !== 'string') {
+            return '';
+        }
+        if (text.length <= maxLength) {
+            return text;
+        }
+        return text.substring(0, maxLength) + '...';
     }
 }
 

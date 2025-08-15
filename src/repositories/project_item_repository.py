@@ -59,26 +59,35 @@ class ProjectItemRepository:
         result = await self.session.exec(statement)
         return result.all()
     
-    async def get_latest_posts(self, limit: int = 5) -> List[dict]:
-        """获取最新的博文记录"""
+    async def get_latest_posts(self, limit: int = 5, exclude: Optional[int] = None) -> List[dict]:
+        """获取最新的博文记录，包含博客名称"""
+        from src.models.project import Project
+        
         query = (
-            select(ProjectItem, User.name.label("author_name"))
+            select(ProjectItem, User.name.label("author_name"), Project.name.label("blog_name"))
             .join(User, ProjectItem.userid == User.id)
+            .join(Project, ProjectItem.projectid == Project.id)
             .where(ProjectItem.status == 1)  # 只获取正常状态的博文
-            .order_by(ProjectItem.createtime.desc())
-            .limit(limit)
         )
+        
+        # 如果指定了要排除的博客ID，添加过滤条件
+        if exclude is not None:
+            query = query.where(ProjectItem.projectid != exclude)
+        
+        query = query.order_by(ProjectItem.createtime.desc()).limit(limit)
         
         result = await self.session.exec(query)
         posts = []
         
-        for project_item, author_name in result:
+        for project_item, author_name, blog_name in result:
             posts.append({
                 "id": project_item.id,
                 "name": project_item.name,
                 "comment": project_item.comment,
                 "attachment": project_item.attachment,
                 "author_name": author_name,
+                "blog_name": blog_name,
+                "blog_id": project_item.projectid,
                 "createtime": project_item.createtime,
                 "userid": project_item.userid
             })

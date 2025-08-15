@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from src.services.blog_service import BlogService
 from src.utils.error_handlers import handle_api_errors
@@ -107,6 +107,7 @@ async def get_recent_messages(
 @cache_blog_recent_list()  # 使用默认缓存时间
 async def get_latest_posts(
     limit: int = 10,
+    exclude: Optional[int] = None,
     blog_service: BlogService = Depends(get_blog_service)
 ):
     """
@@ -114,9 +115,10 @@ async def get_latest_posts(
     
     Args:
         limit: 返回数量限制，默认10个
+        exclude: 要排除的博客ID
         blog_service: 博客服务实例
         
     Returns:
         List[Dict[str, Any]]: 最新的博文列表
     """
-    return await blog_service.get_latest_posts(limit) 
+    return await blog_service.get_latest_posts(limit, exclude) 

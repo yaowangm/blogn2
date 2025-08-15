@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 import os
 from src.repositories.user_repository import UserRepository
@@ -221,10 +221,10 @@ class BlogService:
             print(f"Warning: Could not fetch messages: {e}")
             return []
     
-    async def get_latest_posts(self, limit: int = 5) -> List[Dict[str, Any]]:
+    async def get_latest_posts(self, limit: int = 5, exclude: Optional[int] = None) -> List[Dict[str, Any]]:
         """获取最新的博文记录"""
         try:
-            posts = await self.project_item_repo.get_latest_posts(limit)
+            posts = await self.project_item_repo.get_latest_posts(limit, exclude)
             
             formatted_posts = []
             for post in posts:
@@ -259,9 +259,11 @@ class BlogService:
                     "title": title,
                     "excerpt": excerpt,
                     "author": post["author_name"],
+                    "blog_name": post["blog_name"],
+                    "blog_id": post["blog_id"],
                     "time": time_str,
                     "avatar": avatar_path,
-                    "userid": userid,
+                    "userid": post["userid"],
                     "image": image_path
                 })
             
