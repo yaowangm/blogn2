@@ -113,7 +113,7 @@ class BlogPostsListCard extends BaseComponent {
                 
                 /* 博文列表容器样式 */
                 .blog-list-container {
-                    padding: var(--spacing-6);
+                    padding: 0;
                 }
             </style>
 
