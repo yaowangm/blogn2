@@ -102,25 +102,34 @@ async def get_recent_messages(
     """
     return await blog_service.get_recent_messages(limit)
 
-@router.get("/blogs/posts/latest", response_model=List[Dict[str, Any]])
+@router.get("/blogs/posts/latest", response_model=Dict[str, Any])
 @handle_api_errors("获取最新博文失败")
 @cache_blog_recent_list()  # 使用默认缓存时间
 async def get_latest_posts(
-    limit: int = 10,
+    page: int = 1,
+    page_size: int = 10,
     exclude: Optional[int] = None,
     blogid: Optional[int] = None,
     blog_service: BlogService = Depends(get_blog_service)
 ):
     """
-    获取最新的博文记录
+    获取最新的博文记录（支持分页）
     
     Args:
-        limit: 返回数量限制，默认10个
+        page: 页码，默认1
+        page_size: 每页数量，默认10
         exclude: 要排除的博客ID
         blogid: 指定要获取的博客ID（如果提供，只返回该博客的文章）
         blog_service: 博客服务实例
         
     Returns:
-        List[Dict[str, Any]]: 最新的博文列表
+        Dict[str, Any]: 包含分页信息的博文列表
+            {
+                "posts": List[Dict[str, Any]],  # 博文列表
+                "total": int,                    # 总数量
+                "page": int,                     # 当前页码
+                "page_size": int,                # 每页数量
+                "total_pages": int               # 总页数
+            }
     """
-    return await blog_service.get_latest_posts(limit, exclude, blogid) 
+    return await blog_service.get_latest_posts(page, page_size, exclude, blogid) 

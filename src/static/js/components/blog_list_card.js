@@ -1,6 +1,11 @@
 class BlogListCard extends BaseComponent {
     constructor() {
         super();
+        this.currentPage = 1;
+        this.pageSize = 10;
+        this.totalPosts = 0;
+        this.totalPages = 0;
+        this.posts = [];
     }
 
     /**
@@ -27,8 +32,12 @@ class BlogListCard extends BaseComponent {
         this.loadContent();
     }
 
-    async loadContent() {
+    async loadContent(page = 1) {
         try {
+            this.currentPage = page;
+            this.loading = true;
+            this.render();
+            
             // 检测是否在博客页面
             const isBlogPage = this.isBlogPage();
             let apiUrl;
@@ -37,14 +46,14 @@ class BlogListCard extends BaseComponent {
                 // 在博客页面：获取当前博客的文章
                 const projectId = this.getProjectIdFromUrl();
                 if (projectId) {
-                    apiUrl = `/api/blogs/posts/latest?blogid=${projectId}`;
+                    apiUrl = `/api/blogs/posts/latest?blogid=${projectId}&page=${page}&page_size=${this.pageSize}`;
                 } else {
                     this.showError('无法获取博客ID');
                     return;
                 }
             } else {
                 // 在首页：获取所有博客的最新文章
-                apiUrl = '/api/blogs/posts/latest';
+                apiUrl = `/api/blogs/posts/latest?page=${page}&page_size=${this.pageSize}`;
             }
             
             const response = await fetch(apiUrl);
@@ -59,11 +68,19 @@ class BlogListCard extends BaseComponent {
         }
     }
 
-    updateContent(posts) {
+    updateContent(data) {
+        this.posts = data.posts || data;
+        this.totalPosts = data.total || this.posts.length;
+        this.totalPages = Math.ceil(this.totalPosts / this.pageSize);
+        this.loading = false;
+        
+        // 更新导航栏
+        this.updatePagination();
+        
         const cardBody = this.shadowRoot.querySelector('.card-body');
         
         if (cardBody) {
-            if (posts.length === 0) {
+            if (this.posts.length === 0) {
                 cardBody.innerHTML = `
                     <div class="post-list">
                         <div class="post-item">
@@ -76,7 +93,7 @@ class BlogListCard extends BaseComponent {
                 return;
             }
             
-            const postsHtml = posts.map(post => `
+            const postsHtml = this.posts.map(post => `
                 <a href="/projectitem/${post.id}" class="post-item">
                     <div class="post-avatar">
                         ${post.avatar ? 
@@ -88,7 +105,7 @@ class BlogListCard extends BaseComponent {
                         <h4 class="post-title">${post.title}</h4>
                         <div class="post-meta">
                             <span class="post-author">${post.author}</span>
-                            <span class="post-date">${post.time}</span>
+                            <span class="post-date">${(post.time || '未知时间').replace('T', ' ')}</span>
                         </div>
                         <p class="post-excerpt">${post.excerpt}</p>
                         ${post.image ? `<div class="post-attachment-image"><img src="${post.image}" alt="${post.title}" onerror="this.style.display='none'"></div>` : ''}
@@ -102,6 +119,44 @@ class BlogListCard extends BaseComponent {
                 </div>
             `;
         }
+    }
+
+    renderPagination() {
+        // 只有在有分页数据时才显示导航栏
+        if (this.totalPages <= 1) return '';
+        
+        return `
+            <div class="pagination">
+                <button class="nav-btn" onclick="this.getRootNode().host.goToPage(1)" ${this.currentPage === 1 ? 'disabled' : ''}>
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">首页</span>
+                </button>
+                <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.currentPage - 1})" ${this.currentPage === 1 ? 'disabled' : ''}>
+                    <span class="nav-icon">⬅️</span>
+                    <span class="nav-text">上一页</span>
+                </button>
+                <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.currentPage + 1})" ${this.currentPage === this.totalPages ? 'disabled' : ''}>
+                    <span class="nav-icon">➡️</span>
+                    <span class="nav-text">下一页</span>
+                </button>
+                <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.totalPages})" ${this.currentPage === this.totalPages ? 'disabled' : ''}>
+                    <span class="nav-icon">🏁</span>
+                    <span class="nav-text">尾页</span>
+                </button>
+            </div>
+        `;
+    }
+
+    updatePagination() {
+        const placeholder = this.shadowRoot.querySelector('#pagination-placeholder');
+        if (placeholder) {
+            placeholder.innerHTML = this.renderPagination();
+        }
+    }
+
+    goToPage(page) {
+        if (page < 1 || page > this.totalPages || page === this.currentPage) return;
+        this.loadContent(page);
     }
 
     showError() {
@@ -266,6 +321,45 @@ class BlogListCard extends BaseComponent {
                     transform: scale(1.02);
                 }
 
+                .pagination {
+                    display: flex;
+                    justify-content: center;
+                    gap: var(--spacing-3);
+                    margin-top: var(--spacing-5);
+                    padding-top: var(--spacing-5);
+                    border-top: 1px solid var(--gray-200);
+                }
+
+                .nav-btn {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                    padding: var(--spacing-2) var(--spacing-3);
+                    border: 1px solid var(--gray-300);
+                    border-radius: var(--radius-md);
+                    background: var(--white);
+                    color: var(--gray-700);
+                    font-size: var(--font-size-sm);
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: var(--transition-fast);
+                }
+
+                .nav-btn:hover:not(:disabled) {
+                    background: var(--gray-100);
+                    border-color: var(--gray-400);
+                }
+
+                .nav-btn:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                    color: var(--gray-400);
+                }
+
+                .nav-icon {
+                    font-size: var(--font-size-md);
+                }
+
                 @media (max-width: 768px) {
                     .post-item {
                         flex-direction: column;
@@ -290,12 +384,13 @@ class BlogListCard extends BaseComponent {
                 <div class="card-header">
                     <h3 class="card-title">${this.isBlogPage() ? '博客文章' : '最新博文'}</h3>
                 </div>
+                <div id="pagination-placeholder"></div>
                 <div class="card-body">
                     <div class="post-list">
                         <div class="post-item">
                             <div class="post-avatar"><span>加</span></div>
                             <div class="post-content">
-                                <p class="post-excerpt">正在加载博文...</p>
+                                <p class="post-excerpt">${this.loading ? '正在加载博文...' : '暂无博文'}</p>
                             </div>
                         </div>
                     </div>

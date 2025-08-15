@@ -221,10 +221,17 @@ class BlogService:
             print(f"Warning: Could not fetch messages: {e}")
             return []
     
-    async def get_latest_posts(self, limit: int = 5, exclude: Optional[int] = None, blogid: Optional[int] = None) -> List[Dict[str, Any]]:
-        """获取最新的博文记录"""
+    async def get_latest_posts(self, page: int = 1, page_size: int = 10, exclude: Optional[int] = None, blogid: Optional[int] = None) -> Dict[str, Any]:
+        """获取最新的博文记录（支持分页）"""
         try:
-            posts = await self.project_item_repo.get_latest_posts(limit, exclude, blogid)
+            # 计算偏移量
+            offset = (page - 1) * page_size
+            
+            # 获取总数
+            total = await self.project_item_repo.get_posts_count(exclude, blogid)
+            
+            # 获取分页数据
+            posts = await self.project_item_repo.get_latest_posts(page_size, exclude, blogid, offset)
             
             formatted_posts = []
             for post in posts:
@@ -267,11 +274,23 @@ class BlogService:
                     "image": image_path
                 })
             
-            return formatted_posts
+            return {
+                "posts": formatted_posts,
+                "total": total,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": (total + page_size - 1) // page_size
+            }
         except Exception as e:
             # 如果查询失败，返回空列表
             print(f"Warning: Could not fetch latest posts: {e}")
-            return []
+            return {
+                "posts": [],
+                "total": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0
+            }
     
     def _format_relative_time(self, post_time: datetime) -> str:
         """格式化时间显示"""

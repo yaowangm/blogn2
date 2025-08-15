@@ -59,8 +59,29 @@ class ProjectItemRepository:
         result = await self.session.exec(statement)
         return result.all()
     
-    async def get_latest_posts(self, limit: int = 5, exclude: Optional[int] = None, blogid: Optional[int] = None) -> List[dict]:
-        """获取最新的博文记录，包含博客名称"""
+    async def get_posts_count(self, exclude: Optional[int] = None, blogid: Optional[int] = None) -> int:
+        """获取博文总数"""
+        from src.models.project import Project
+        
+        query = (
+            select(func.count(ProjectItem.id))
+            .join(User, ProjectItem.userid == User.id)
+            .join(Project, ProjectItem.projectid == Project.id)
+            .where(ProjectItem.status == 1)  # 只获取正常状态的博文
+        )
+        
+        # 如果指定了要获取的博客ID，添加过滤条件
+        if blogid is not None:
+            query = query.where(ProjectItem.projectid == blogid)
+        # 如果指定了要排除的博客ID，添加过滤条件
+        elif exclude is not None:
+            query = query.where(ProjectItem.projectid != exclude)
+        
+        result = await self.session.exec(query)
+        return result.first() or 0
+
+    async def get_latest_posts(self, limit: int = 5, exclude: Optional[int] = None, blogid: Optional[int] = None, offset: int = 0) -> List[dict]:
+        """获取最新的博文记录，包含博客名称（支持分页）"""
         from src.models.project import Project
         
         query = (
@@ -77,7 +98,7 @@ class ProjectItemRepository:
         elif exclude is not None:
             query = query.where(ProjectItem.projectid != exclude)
         
-        query = query.order_by(ProjectItem.createtime.desc()).limit(limit)
+        query = query.order_by(ProjectItem.createtime.desc()).offset(offset).limit(limit)
         
         result = await self.session.exec(query)
         posts = []
