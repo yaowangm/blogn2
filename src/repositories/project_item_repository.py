@@ -59,7 +59,7 @@ class ProjectItemRepository:
         result = await self.session.exec(statement)
         return result.all()
     
-    async def get_latest_posts(self, limit: int = 5, exclude: Optional[int] = None) -> List[dict]:
+    async def get_latest_posts(self, limit: int = 5, exclude: Optional[int] = None, blogid: Optional[int] = None) -> List[dict]:
         """获取最新的博文记录，包含博客名称"""
         from src.models.project import Project
         
@@ -70,8 +70,11 @@ class ProjectItemRepository:
             .where(ProjectItem.status == 1)  # 只获取正常状态的博文
         )
         
+        # 如果指定了要获取的博客ID，添加过滤条件
+        if blogid is not None:
+            query = query.where(ProjectItem.projectid == blogid)
         # 如果指定了要排除的博客ID，添加过滤条件
-        if exclude is not None:
+        elif exclude is not None:
             query = query.where(ProjectItem.projectid != exclude)
         
         query = query.order_by(ProjectItem.createtime.desc()).limit(limit)

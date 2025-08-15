@@ -221,10 +221,10 @@ class BlogService:
             print(f"Warning: Could not fetch messages: {e}")
             return []
     
-    async def get_latest_posts(self, limit: int = 5, exclude: Optional[int] = None) -> List[Dict[str, Any]]:
+    async def get_latest_posts(self, limit: int = 5, exclude: Optional[int] = None, blogid: Optional[int] = None) -> List[Dict[str, Any]]:
         """获取最新的博文记录"""
         try:
-            posts = await self.project_item_repo.get_latest_posts(limit, exclude)
+            posts = await self.project_item_repo.get_latest_posts(limit, exclude, blogid)
             
             formatted_posts = []
             for post in posts:

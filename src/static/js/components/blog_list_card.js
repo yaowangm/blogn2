@@ -3,6 +3,25 @@ class BlogListCard extends BaseComponent {
         super();
     }
 
+    /**
+     * 检测是否在博客页面
+     * @returns {boolean} 是否在博客页面
+     */
+    isBlogPage() {
+        const path = window.location.pathname;
+        return path.match(/\/blog\/(\d+)/) !== null;
+    }
+
+    /**
+     * 从URL中获取项目ID
+     * @returns {number|null} 项目ID
+     */
+    getProjectIdFromUrl() {
+        const path = window.location.pathname;
+        const match = path.match(/\/blog\/(\d+)/);
+        return match ? parseInt(match[1]) : null;
+    }
+
     connectedCallback() {
         this.render();
         this.loadContent();
@@ -10,14 +29,32 @@ class BlogListCard extends BaseComponent {
 
     async loadContent() {
         try {
-            const response = await fetch('/api/blogs/posts/latest');
+            // 检测是否在博客页面
+            const isBlogPage = this.isBlogPage();
+            let apiUrl;
+            
+            if (isBlogPage) {
+                // 在博客页面：获取当前博客的文章
+                const projectId = this.getProjectIdFromUrl();
+                if (projectId) {
+                    apiUrl = `/api/blogs/posts/latest?blogid=${projectId}`;
+                } else {
+                    this.showError('无法获取博客ID');
+                    return;
+                }
+            } else {
+                // 在首页：获取所有博客的最新文章
+                apiUrl = '/api/blogs/posts/latest';
+            }
+            
+            const response = await fetch(apiUrl);
             if (!response.ok) {
-                throw new Error('Failed to fetch latest posts');
+                throw new Error('Failed to fetch posts');
             }
             const data = await response.json();
             this.updateContent(data);
         } catch (error) {
-            this.logError('Error loading latest posts', error);
+            this.logError('Error loading posts', error);
             this.showError();
         }
     }
@@ -251,7 +288,7 @@ class BlogListCard extends BaseComponent {
 
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">最新博文</h3>
+                    <h3 class="card-title">${this.isBlogPage() ? '博客文章' : '最新博文'}</h3>
                 </div>
                 <div class="card-body">
                     <div class="post-list">

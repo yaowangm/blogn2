@@ -108,6 +108,7 @@ async def get_recent_messages(
 async def get_latest_posts(
     limit: int = 10,
     exclude: Optional[int] = None,
+    blogid: Optional[int] = None,
     blog_service: BlogService = Depends(get_blog_service)
 ):
     """
@@ -116,9 +117,10 @@ async def get_latest_posts(
     Args:
         limit: 返回数量限制，默认10个
         exclude: 要排除的博客ID
+        blogid: 指定要获取的博客ID（如果提供，只返回该博客的文章）
         blog_service: 博客服务实例
         
     Returns:
         List[Dict[str, Any]]: 最新的博文列表
     """
-    return await blog_service.get_latest_posts(limit, exclude) 
+    return await blog_service.get_latest_posts(limit, exclude, blogid) 
