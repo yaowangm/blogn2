@@ -197,7 +197,7 @@ class PopularBlogsCard extends BaseComponent {
                     ${this.loading ? this.createLoadingHTML() : `
                         <div class="blog-list">
                             ${this.blogs.map(blog => `
-                                <a href="/blog/${blog.name}" class="blog-item">
+                                <a href="/blog/${blog.id}" class="blog-item">
                                     <div class="blog-avatar">
                                         ${blog.avatar ? 
                                             `<img src="${blog.avatar}" alt="${blog.name}">` :
