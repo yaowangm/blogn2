@@ -169,19 +169,24 @@ class RecentCommentsCard extends BaseComponent {
      * @returns {string|null} 有效的URL或null
      */
     getNavigationUrl(comment) {
-        // 验证projectitemid是否存在且有效
+        // 验证projectitemid和comment id是否存在且有效
         if (!comment.projectitemid || comment.projectitemid === undefined || comment.projectitemid === null) {
             return null;
         }
         
-        // 确保projectitemid是数字
-        const projectitemid = parseInt(comment.projectitemid);
-        if (isNaN(projectitemid) || projectitemid <= 0) {
+        if (!comment.id || comment.id === undefined || comment.id === null) {
             return null;
         }
         
-        // 使用一致的URL模式：/projectitem/{id}
-        return `/projectitem/${projectitemid}`;
+        // 确保projectitemid和comment id是数字
+        const projectitemid = parseInt(comment.projectitemid);
+        const commentId = parseInt(comment.id);
+        if (isNaN(projectitemid) || projectitemid <= 0 || isNaN(commentId) || commentId <= 0) {
+            return null;
+        }
+        
+        // 使用新的URL模式：blogn/{projectid}#post{postid}
+        return `/blogn/${projectitemid}#post${commentId}`;
     }
 
     /**
