@@ -12,6 +12,39 @@ class RecentUpdatesCard extends BaseComponent {
     connectedCallback() {
         this.render();
         this.loadData();
+        this.setupEventListeners();
+    }
+
+    /**
+     * 设置事件监听器
+     */
+    setupEventListeners() {
+        // 使用事件委托来处理条目点击
+        this.shadowRoot.addEventListener('click', (event) => {
+            const updateItem = event.target.closest('.update-item');
+            if (updateItem) {
+                const updateIndex = updateItem.getAttribute('data-update-index');
+                if (updateIndex !== null) {
+                    const index = parseInt(updateIndex);
+                    if (!isNaN(index) && index >= 0 && index < this.recentUpdates.length) {
+                        this.handleItemClick(this.recentUpdates[index]);
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * 处理条目点击事件
+     * @param {Object} update - 更新条目数据
+     */
+    handleItemClick(update) {
+        if (update.id) {
+            // 跳转到文章页面
+            window.location.href = `/article/${update.id}`;
+        } else {
+            console.warn('Invalid article ID for update:', update);
+        }
     }
 
     async loadData() {
@@ -75,7 +108,8 @@ class RecentUpdatesCard extends BaseComponent {
                 blog_name: '技术探索者',
                 blog_id: 123,
                 author: '张三',
-                time: '2小时前'
+                time: '2小时前',
+                avatar: null
             },
             {
                 id: 456,
@@ -83,7 +117,8 @@ class RecentUpdatesCard extends BaseComponent {
                 blog_name: '生活记录者',
                 blog_id: 456,
                 author: '李四',
-                time: '4小时前'
+                time: '4小时前',
+                avatar: null
             },
             {
                 id: 789,
@@ -91,7 +126,8 @@ class RecentUpdatesCard extends BaseComponent {
                 blog_name: '读书分享家',
                 blog_id: 789,
                 author: '王五',
-                time: '6小时前'
+                time: '6小时前',
+                avatar: null
             }
         ];
     }
@@ -144,10 +180,46 @@ class RecentUpdatesCard extends BaseComponent {
                 .update-item {
                     border-bottom: 1px solid var(--gray-100);
                     padding: var(--spacing-4) var(--spacing-6);
+                    cursor: pointer;
+                    transition: var(--transition-normal);
+                    display: flex;
+                    align-items: flex-start;
+                    gap: var(--spacing-3);
+                }
+
+                .update-item:hover {
+                    background: var(--gray-50);
                 }
 
                 .update-item:last-child {
                     border-bottom: none;
+                }
+
+                .user-avatar {
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    flex-shrink: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: var(--gray-100);
+                    font-size: var(--font-size-lg);
+                    font-weight: 600;
+                    color: var(--gray-600);
+                    border: 2px solid var(--gray-200);
+                    overflow: hidden;
+                }
+
+                .user-avatar img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
+
+                .update-content {
+                    flex: 1;
+                    min-width: 0;
                 }
 
                 .update-header {
@@ -158,14 +230,9 @@ class RecentUpdatesCard extends BaseComponent {
                 }
 
                 .blog-name {
-                    font-weight: 500;
-                    color: var(--primary-color);
+                    font-weight: 700;
+                    color: var(--gray-900);
                     font-size: var(--font-size-sm);
-                    text-decoration: none;
-                }
-
-                .blog-name:hover {
-                    text-decoration: underline;
                 }
 
                 .update-time {
@@ -178,9 +245,9 @@ class RecentUpdatesCard extends BaseComponent {
                     font-size: var(--font-size-sm);
                     line-height: 1.4;
                     background: var(--gray-50);
-                    padding: var(--spacing-2) var(--spacing-3);
+                    padding: 0;
                     border-radius: var(--radius-md);
-                    border-left: 3px solid var(--success-color);
+                    margin: 0;
                 }
 
                 .loading {
@@ -231,13 +298,21 @@ class RecentUpdatesCard extends BaseComponent {
     renderUpdates() {
         return `
             <ul class="updates-list">
-                ${this.recentUpdates.map(update => `
-                    <li class="update-item">
-                        <div class="update-header">
-                            <a href="/blog/${update.blog_id}" class="blog-name">${update.blog_name}</a>
-                            <span class="update-time">${update.time}</span>
+                ${this.recentUpdates.map((update, index) => `
+                    <li class="update-item" data-update-index="${index}">
+                        <div class="user-avatar">
+                            ${update.avatar ? 
+                                `<img src="${update.avatar}" alt="${update.blog_name}" />` : 
+                                `<span>${update.blog_name.charAt(0)}</span>`
+                            }
                         </div>
-                        <div class="latest-post">${this.truncateText(update.title, 40)}</div>
+                        <div class="update-content">
+                            <div class="update-header">
+                                <span class="blog-name">${update.blog_name}</span>
+                                <span class="update-time">${update.time}</span>
+                            </div>
+                            <div class="latest-post">${this.truncateText(update.title, 40)}</div>
+                        </div>
                     </li>
                 `).join('')}
             </ul>

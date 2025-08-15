@@ -128,13 +128,21 @@ async def get_project_recent_comments(
     # 格式化评论数据
     comments_data = []
     for comment in comments:
+        # 检查用户头像是否存在
+        userid = comment["userid"]
+        avatar_path = None
+        if userid:
+            prefix = (userid // 10000) + 1
+            avatar_path = f"/avatars/{prefix}/s_{userid}.jpg"
+        
         comments_data.append({
             "id": comment["id"],
             "author": comment["user_name"],  # 改为author以匹配现有组件
             "content": comment["content"],
             "time": comment["post_time"],    # 改为time以匹配现有组件
             "projectitemid": comment["projectitemid"],
-            "userid": comment["userid"]
+            "userid": comment["userid"],
+            "avatar": avatar_path
         })
     
     return comments_data

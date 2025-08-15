@@ -303,6 +303,9 @@ class RecentCommentsCard extends BaseComponent {
                     background: var(--gray-50);
                     border: 1px solid var(--gray-200);
                     transition: var(--transition-normal);
+                    display: flex;
+                    align-items: flex-start;
+                    gap: var(--spacing-3);
                 }
 
                 .comment-item:hover {
@@ -319,6 +322,33 @@ class RecentCommentsCard extends BaseComponent {
                     opacity: 0.7;
                 }
 
+                .user-avatar {
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    flex-shrink: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: var(--gray-100);
+                    font-size: var(--font-size-lg);
+                    font-weight: 600;
+                    color: var(--gray-600);
+                    border: 2px solid var(--gray-200);
+                    overflow: hidden;
+                }
+
+                .user-avatar img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
+
+                .comment-content {
+                    flex: 1;
+                    min-width: 0;
+                }
+
                 .comment-header {
                     display: flex;
                     align-items: center;
@@ -327,7 +357,7 @@ class RecentCommentsCard extends BaseComponent {
                 }
 
                 .author {
-                    font-weight: 500;
+                    font-weight: 700;
                     color: var(--gray-900);
                     font-size: var(--font-size-sm);
                 }
@@ -391,6 +421,12 @@ class RecentCommentsCard extends BaseComponent {
                                 
                                 return `
                                     <div class="${cssClass}" ${dataAttributes}>
+                                        <div class="user-avatar">
+                                            ${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null ? 
+                                                `<img src="${comment.avatar}" alt="${this.escapeHtml(comment.author)}" />` : 
+                                                `<span>${this.escapeHtml(comment.author.charAt(0))}</span>`
+                                            }
+                                        </div>
                                         <div class="comment-content">
                                             <div class="comment-header">
                                                 <span class="author">${this.escapeHtml(comment.author)}</span>
