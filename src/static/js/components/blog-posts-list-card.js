@@ -110,6 +110,11 @@ class BlogPostsListCard extends BaseComponent {
                 .loading { text-align: center; padding: var(--spacing-8); color: var(--gray-500); }
                 .error { text-align: center; padding: var(--spacing-6); color: var(--error-color); background: var(--gray-50); border-radius: var(--radius-lg); }
                 .empty-state { text-align: center; padding: var(--spacing-6); color: var(--gray-500); }
+                
+                /* 博文列表容器样式 */
+                .blog-list-container {
+                    padding: var(--spacing-6);
+                }
             </style>
 
             <div class="card">
@@ -121,8 +126,8 @@ class BlogPostsListCard extends BaseComponent {
                     <button class="tab ${this.activeTab === 'subscription' ? 'active' : ''}" onclick="this.getRootNode().host.switchTab('subscription')">订阅文章</button>
                 </div>
                 ${this.loading ? this.renderLoading() : 
-                  this.posts.length > 0 ? this.renderPosts() : 
-                  this.renderEmptyState()}
+                  this.activeTab === 'original' ? this.renderOriginalPosts() :
+                  this.renderSubscriptionPosts()}
             </div>
         `;
     }
@@ -131,7 +136,21 @@ class BlogPostsListCard extends BaseComponent {
         return `<div class="loading"><div>加载中...</div></div>`;
     }
 
-    renderPosts() {
+    renderOriginalPosts() {
+        // 复用 blog-list-card 组件显示原创文章
+        return `
+            <div class="blog-list-container">
+                <blog-list-card></blog-list-card>
+            </div>
+        `;
+    }
+
+    renderSubscriptionPosts() {
+        // 显示订阅文章
+        if (this.posts.length === 0) {
+            return `<div class="empty-state"><div>暂无订阅文章</div></div>`;
+        }
+        
         return `
             <ul class="posts-list">
                 ${this.posts.map(post => `
@@ -152,10 +171,6 @@ class BlogPostsListCard extends BaseComponent {
                 `).join('')}
             </ul>
         `;
-    }
-
-    renderEmptyState() {
-        return `<div class="empty-state"><div>暂无文章</div></div>`;
     }
 
     showError(message) {
