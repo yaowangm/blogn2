@@ -1,35 +1,44 @@
 /**
- * 博客外站链接卡片组件
+ * 外站链接卡片组件
  * 显示外部链接
  */
-class BlogExternalLinksCard extends BaseComponent {
+class ExternalLinksCard extends BaseComponent {
     constructor() {
         super();
-        this.projectId = null;
         this.externalLinks = [];
         this.loading = true;
     }
 
     connectedCallback() {
-        this.projectId = this.getProjectIdFromUrl();
         this.render();
         this.loadData();
     }
 
-    getProjectIdFromUrl() {
-        const path = window.location.pathname;
-        const match = path.match(/\/blog\/(\d+)/);
-        return match ? parseInt(match[1]) : null;
-    }
-
     async loadData() {
-        if (!this.projectId) {
-            this.showError('无法获取博客ID');
+        // 检测是否在博客页面
+        const isBlogPage = this.isBlogPage();
+        let apiUrl;
+        
+        if (isBlogPage) {
+            // 在博客页面：获取当前博客的外部链接
+            const projectId = this.getProjectIdFromUrl();
+            if (projectId) {
+                apiUrl = `/api/projects/${projectId}/external-links`;
+            } else {
+                this.showError('无法获取博客ID');
+                return;
+            }
+        } else {
+            // 在首页：获取全站外部链接（如果有的话）
+            // 目前使用模拟数据，后续可以添加全站外部链接API
+            this.externalLinks = this.getMockExternalLinks();
+            this.loading = false;
+            this.render();
             return;
         }
 
         try {
-            const response = await fetch(`/api/projects/${this.projectId}/external-links`);
+            const response = await fetch(apiUrl);
             if (response.ok) {
                 this.externalLinks = await response.json();
             } else {
@@ -42,6 +51,21 @@ class BlogExternalLinksCard extends BaseComponent {
             this.loading = false;
             this.render();
         }
+    }
+
+    /**
+     * 检测是否在博客页面
+     * @returns {boolean} 是否在博客页面
+     */
+    isBlogPage() {
+        const path = window.location.pathname;
+        return path.startsWith('/blog/');
+    }
+
+    getProjectIdFromUrl() {
+        const path = window.location.pathname;
+        const match = path.match(/\/blog\/(\d+)/);
+        return match ? parseInt(match[1]) : null;
     }
 
     getMockExternalLinks() {
@@ -129,4 +153,4 @@ class BlogExternalLinksCard extends BaseComponent {
     }
 }
 
-customElements.define('blog-external-links-card', BlogExternalLinksCard);
+customElements.define('external-links-card', ExternalLinksCard);

@@ -1,36 +1,45 @@
 /**
- * 博客分类列表卡片组件
- * 显示博客文章的分类列表
+ * 分类列表卡片组件
+ * 显示文章的分类列表
  */
-class BlogCategoriesCard extends BaseComponent {
+class CategoriesCard extends BaseComponent {
     constructor() {
         super();
-        this.projectId = null;
         this.categories = [];
         this.loading = true;
     }
 
     connectedCallback() {
-        this.projectId = this.getProjectIdFromUrl();
         this.render();
         this.loadData();
     }
 
-    getProjectIdFromUrl() {
-        const path = window.location.pathname;
-        const match = path.match(/\/blog\/(\d+)/);
-        return match ? parseInt(match[1]) : null;
-    }
-
     async loadData() {
-        if (!this.projectId) {
-            this.showError('无法获取博客ID');
+        // 检测是否在博客页面
+        const isBlogPage = this.isBlogPage();
+        let apiUrl;
+        
+        if (isBlogPage) {
+            // 在博客页面：获取当前博客的分类
+            const projectId = this.getProjectIdFromUrl();
+            if (projectId) {
+                apiUrl = `/api/projects/${projectId}/categories`;
+            } else {
+                this.showError('无法获取博客ID');
+                return;
+            }
+        } else {
+            // 在首页：获取全站分类（如果有的话）
+            // 目前使用模拟数据，后续可以添加全站分类API
+            this.categories = this.getMockCategories();
+            this.loading = false;
+            this.render();
             return;
         }
 
         try {
-            // 获取博客分类数据
-            const response = await fetch(`/api/projects/${this.projectId}/categories`);
+            // 获取分类数据
+            const response = await fetch(apiUrl);
             if (response.ok) {
                 this.categories = await response.json();
             } else {
@@ -38,12 +47,27 @@ class BlogCategoriesCard extends BaseComponent {
                 this.categories = this.getMockCategories();
             }
         } catch (error) {
-            console.error('Error loading blog categories:', error);
+            console.error('Error loading categories:', error);
             this.categories = this.getMockCategories();
         } finally {
             this.loading = false;
             this.render();
         }
+    }
+
+    /**
+     * 检测是否在博客页面
+     * @returns {boolean} 是否在博客页面
+     */
+    isBlogPage() {
+        const path = window.location.pathname;
+        return path.startsWith('/blog/');
+    }
+
+    getProjectIdFromUrl() {
+        const path = window.location.pathname;
+        const match = path.match(/\/blog\/(\d+)/);
+        return match ? parseInt(match[1]) : null;
     }
 
     getMockCategories() {
@@ -203,7 +227,7 @@ class BlogCategoriesCard extends BaseComponent {
             <ul class="categories-list">
                 ${this.categories.map(category => `
                     <li class="category-item">
-                        <a href="/blog/${this.projectId}/category/${category.id}" class="category-link">
+                        <a href="/blog/${this.getProjectIdFromUrl()}/category/${category.id}" class="category-link">
                             <div class="category-info">
                                 <div class="category-color" style="background-color: ${category.color}"></div>
                                 <span class="category-name">${category.name}</span>
@@ -239,4 +263,4 @@ class BlogCategoriesCard extends BaseComponent {
     }
 }
 
-customElements.define('blog-categories-card', BlogCategoriesCard);
+customElements.define('categories-card', CategoriesCard);

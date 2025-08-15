@@ -1,36 +1,41 @@
 /**
- * 博客最近更新卡片组件
- * 显示最近更新的博客列表
+ * 最近更新卡片组件
+ * 显示最近更新的内容列表
  */
-class BlogRecentUpdatesCard extends BaseComponent {
+class RecentUpdatesCard extends BaseComponent {
     constructor() {
         super();
-        this.projectId = null;
         this.recentUpdates = [];
         this.loading = true;
     }
 
     connectedCallback() {
-        this.projectId = this.getProjectIdFromUrl();
         this.render();
         this.loadData();
     }
 
-    getProjectIdFromUrl() {
-        const path = window.location.pathname;
-        const match = path.match(/\/blog\/(\d+)/);
-        return match ? parseInt(match[1]) : null;
-    }
-
     async loadData() {
-        if (!this.projectId) {
-            this.showError('无法获取博客ID');
-            return;
+        // 检测是否在博客页面
+        const isBlogPage = this.isBlogPage();
+        let apiUrl;
+        
+        if (isBlogPage) {
+            // 在博客页面：获取最近更新的博客（排除当前博客）
+            const projectId = this.getProjectIdFromUrl();
+            if (projectId) {
+                apiUrl = `/api/projects/recent?limit=5&exclude=${projectId}`;
+            } else {
+                this.showError('无法获取博客ID');
+                return;
+            }
+        } else {
+            // 在首页：获取最近更新的博客
+            apiUrl = '/api/projects/recent?limit=5';
         }
 
         try {
-            // 获取最近更新的博客数据
-            const response = await fetch(`/api/projects/recent?limit=5&exclude=${this.projectId}`);
+            // 获取最近更新的数据
+            const response = await fetch(apiUrl);
             if (response.ok) {
                 this.recentUpdates = await response.json();
             } else {
@@ -44,6 +49,21 @@ class BlogRecentUpdatesCard extends BaseComponent {
             this.loading = false;
             this.render();
         }
+    }
+
+    /**
+     * 检测是否在博客页面
+     * @returns {boolean} 是否在博客页面
+     */
+    isBlogPage() {
+        const path = window.location.pathname;
+        return path.startsWith('/blog/');
+    }
+
+    getProjectIdFromUrl() {
+        const path = window.location.pathname;
+        const match = path.match(/\/blog\/(\d+)/);
+        return match ? parseInt(match[1]) : null;
     }
 
     getMockRecentUpdates() {
@@ -240,4 +260,4 @@ class BlogRecentUpdatesCard extends BaseComponent {
     }
 }
 
-customElements.define('blog-recent-updates-card', BlogRecentUpdatesCard);
+customElements.define('recent-updates-card', RecentUpdatesCard);
