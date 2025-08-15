@@ -91,8 +91,6 @@ class BlogPostsListCard extends BaseComponent {
             <style>
                 :host { display: block; font-family: var(--font-family); }
                 .card { background: var(--white); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); border: 1px solid var(--gray-200); overflow: hidden; margin-bottom: var(--spacing-6); }
-                .card-header { padding: var(--spacing-4) var(--spacing-6); background: var(--gray-50); border-bottom: 1px solid var(--gray-200); }
-                .card-title { margin: 0; font-size: var(--font-size-lg); font-weight: 600; color: var(--gray-800); }
                 .tabs { display: flex; border-bottom: 1px solid var(--gray-200); }
                 .tab { flex: 1; padding: var(--spacing-4) var(--spacing-6); text-align: center; background: var(--gray-100); border: none; cursor: pointer; transition: var(--transition-fast); font-size: var(--font-size-sm); color: var(--gray-600); }
                 .tab.active { background: var(--white); color: var(--primary-color); border-bottom: 2px solid var(--primary-color); }
@@ -118,9 +116,6 @@ class BlogPostsListCard extends BaseComponent {
             </style>
 
             <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">博客文章</h3>
-                </div>
                 <div class="tabs">
                     <button class="tab ${this.activeTab === 'original' ? 'active' : ''}" onclick="this.getRootNode().host.switchTab('original')">原创文章</button>
                     <button class="tab ${this.activeTab === 'subscription' ? 'active' : ''}" onclick="this.getRootNode().host.switchTab('subscription')">订阅文章</button>
