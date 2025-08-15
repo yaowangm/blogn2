@@ -34,26 +34,34 @@ class PostRepository:
         result = await self.session.exec(statement)
         return result.all()
     
-    async def get_recent_comments_by_project(self, project_id: int, limit: int = 5) -> List[Post]:
-        """获取指定项目的最近评论"""
-        # 先获取项目下的所有项目项ID
-        project_items_query = select(ProjectItem.id).where(ProjectItem.projectid == project_id)
-        project_items_result = await self.session.exec(project_items_query)
-        project_item_ids = [item.id for item in project_items_result.all()]
-        
-        if not project_item_ids:
-            return []
-        
-        # 获取这些项目项的评论
+    async def get_recent_comments_by_project(self, project_id: int, limit: int = 5) -> List[dict]:
+        """获取指定项目的最近评论，包含用户名和文章名"""
+        # 使用JOIN查询获取评论、用户名和文章名
         statement = (
-            select(Post)
-            .where(Post.projectitemid.in_(project_item_ids))
+            select(Post, User.name.label("user_name"), ProjectItem.name.label("project_item_name"))
+            .join(User, Post.userid == User.id)
+            .join(ProjectItem, Post.projectitemid == ProjectItem.id)
+            .where(ProjectItem.projectid == project_id)
+            .where(Post.status == 1)  # 只获取正常状态的评论
             .order_by(Post.posttime.desc())
             .limit(limit)
         )
         
         result = await self.session.exec(statement)
-        return result.all()
+        comments = []
+        
+        for post, user_name, project_item_name in result:
+            comments.append({
+                "id": post.id,
+                "user_name": user_name or "用户",
+                "content": post.content,
+                "post_time": post.posttime,
+                "project_item_name": project_item_name or "文章",
+                "projectitemid": post.projectitemid,
+                "userid": post.userid
+            })
+        
+        return comments
     
     async def get_recent_comments(self, limit: int = 5) -> List[dict]:
         """获取最近的评论（排除留言本）"""

@@ -122,17 +122,20 @@ async def get_project_recent_comments(
     """
     post_repo = PostRepository(session)
     
-    # 获取项目相关的评论
+    # 获取项目相关的评论（现在包含用户名和文章名）
     comments = await post_repo.get_recent_comments_by_project(project_id, limit)
     
+    # 格式化评论数据
     comments_data = []
     for comment in comments:
         comments_data.append({
-            "id": comment.id,
-            "user_name": "用户",  # 这里需要关联用户表获取用户名
-            "content": comment.content,
-            "post_time": comment.posttime,
-            "project_item_name": "文章"  # 这里需要关联项目项表获取文章名
+            "id": comment["id"],
+            "user_name": comment["user_name"],
+            "content": comment["content"],
+            "post_time": comment["post_time"],
+            "project_item_name": comment["project_item_name"],
+            "projectitemid": comment["projectitemid"],
+            "userid": comment["userid"]
         })
     
     return comments_data
