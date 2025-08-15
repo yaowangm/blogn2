@@ -130,10 +130,9 @@ async def get_project_recent_comments(
     for comment in comments:
         comments_data.append({
             "id": comment["id"],
-            "user_name": comment["user_name"],
+            "author": comment["user_name"],  # 改为author以匹配现有组件
             "content": comment["content"],
-            "post_time": comment["post_time"],
-            "project_item_name": comment["project_item_name"],
+            "time": comment["post_time"],    # 改为time以匹配现有组件
             "projectitemid": comment["projectitemid"],
             "userid": comment["userid"]
         })

@@ -13,11 +13,35 @@ class RecentCommentsCard extends BaseComponent {
 
     async loadData() {
         try {
-            const response = await fetch('/api/comments/recent?limit=5');
+            // 检测是否在博客页面
+            const isBlogPage = this.isBlogPage();
+            let apiUrl;
+            
+            if (isBlogPage) {
+                // 在博客页面：获取当前博客的评论
+                const projectId = this.getProjectIdFromUrl();
+                if (projectId) {
+                    apiUrl = `/api/projects/${projectId}/comments/recent?limit=5`;
+                } else {
+                    // 如果无法获取projectId，回退到全站评论
+                    apiUrl = '/api/comments/recent?limit=5';
+                }
+            } else {
+                // 在首页：获取全站评论
+                apiUrl = '/api/comments/recent?limit=5';
+            }
+            
+            const response = await fetch(apiUrl);
             if (!response.ok) {
                 throw new Error('Failed to fetch recent comments');
             }
             this.comments = await response.json();
+            
+            // 格式化时间（如果是ISO格式）
+            this.comments = this.comments.map(comment => ({
+                ...comment,
+                time: this.formatTime(comment.time)
+            }));
         } catch (error) {
             this.logError('Error loading recent comments', error);
             // 使用默认数据作为后备
@@ -47,6 +71,96 @@ class RecentCommentsCard extends BaseComponent {
             this.loading = false;
             this.render();
         }
+    }
+
+    /**
+     * 检测是否在博客页面
+     * @returns {boolean} 是否在博客页面
+     */
+    isBlogPage() {
+        const path = window.location.pathname;
+        return path.startsWith('/blog/');
+    }
+
+    /**
+     * 从URL获取项目ID
+     * @returns {number|null} 项目ID
+     */
+    getProjectIdFromUrl() {
+        const path = window.location.pathname;
+        const match = path.match(/\/blog\/(\d+)/);
+        return match ? parseInt(match[1]) : null;
+    }
+
+    /**
+     * 格式化时间
+     * @param {string|Date} time - 时间
+     * @returns {string} 格式化后的时间
+     */
+    formatTime(time) {
+        if (!time) {
+            return '未知时间';
+        }
+        
+        // 如果已经是相对时间格式，直接返回
+        if (typeof time === 'string' && (time.includes('前') || time.includes('小时') || time.includes('分钟'))) {
+            return time;
+        }
+        
+        try {
+            const dateObj = new Date(time);
+            const now = new Date();
+            const diff = now - dateObj;
+            
+            // 转换为秒
+            const seconds = Math.floor(diff / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+            
+            if (seconds < 60) {
+                return '刚刚';
+            } else if (minutes < 60) {
+                return `${minutes}分钟前`;
+            } else if (hours < 24) {
+                return `${hours}小时前`;
+            } else if (days < 7) {
+                return `${days}天前`;
+            } else {
+                return dateObj.toLocaleDateString('zh-CN');
+            }
+        } catch (error) {
+            return '未知时间';
+        }
+    }
+
+    /**
+     * 截断文本
+     * @param {string} text - 原始文本
+     * @param {number} maxLength - 最大长度
+     * @returns {string} 截断后的文本
+     */
+    truncateText(text, maxLength) {
+        if (!text || typeof text !== 'string') {
+            return '';
+        }
+        if (text.length <= maxLength) {
+            return text;
+        }
+        return text.substring(0, maxLength) + '...';
+    }
+
+    /**
+     * 创建加载状态HTML
+     * @returns {string} 加载状态HTML
+     */
+    createLoadingHTML() {
+        return `
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <div>加载中...</div>
+            </div>
+        `;
     }
 
     /**
