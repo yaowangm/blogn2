@@ -78,8 +78,8 @@ class BlogProfileCard extends BaseComponent {
                 }
 
                 .user-avatar {
-                    width: 80px;
-                    height: 80px;
+                    width: 100px;
+                    height: 100px;
                     border-radius: 50%;
                     margin: 0 auto var(--spacing-4);
                     display: flex;
@@ -201,7 +201,7 @@ class BlogProfileCard extends BaseComponent {
         let avatarPath = null;
         if (this.userData.id) {
             const prefix = Math.floor(this.userData.id / 10000) + 1;
-            avatarPath = `/avatars/${prefix}/s_${this.userData.id}.jpg`;
+            avatarPath = `/avatars/${prefix}/${this.userData.id}.jpg`;
         }
 
         return `
