@@ -27,6 +27,17 @@ class BlogListCard extends BaseComponent {
         return match ? parseInt(match[1]) : null;
     }
 
+    /**
+     * 获取卡片标题
+     * @returns {string} 卡片标题
+     */
+    getCardTitle() {
+        if (this.id === 'subscription-posts-card') {
+            return '订阅文章';
+        }
+        return this.isBlogPage() ? '博客文章' : '最新博文';
+    }
+
     connectedCallback() {
         this.render();
         this.loadContent();
@@ -46,7 +57,12 @@ class BlogListCard extends BaseComponent {
                 // 在博客页面：获取当前博客的文章
                 const projectId = this.getProjectIdFromUrl();
                 if (projectId) {
-                    apiUrl = `/api/blogs/posts/latest?blogid=${projectId}&page=${page}&page_size=${this.pageSize}`;
+                    // 检查是否是订阅文章卡片
+                    if (this.id === 'subscription-posts-card') {
+                        apiUrl = `/api/projects/${projectId}/posts?page=${page}&limit=${this.pageSize}&type=subscription`;
+                    } else {
+                        apiUrl = `/api/blogs/posts/latest?blogid=${projectId}&page=${page}&page_size=${this.pageSize}`;
+                    }
                 } else {
                     this.showError('无法获取博客ID');
                     return;
@@ -93,25 +109,39 @@ class BlogListCard extends BaseComponent {
                 return;
             }
             
-            const postsHtml = this.posts.map(post => `
-                <a href="/projectitem/${post.id}" class="post-item">
-                    <div class="post-avatar">
-                        ${post.avatar ? 
-                            `<img src="${post.avatar}" alt="${post.author}" onerror="this.style.display='none'">` :
-                            `<span>${post.author ? post.author.charAt(0) : '用'}</span>`
-                        }
-                    </div>
-                    <div class="post-content">
-                        <h4 class="post-title">${post.title}</h4>
-                        <div class="post-meta">
-                            <span class="post-author">${post.author}</span>
-                            <span class="post-date">${(post.time || '未知时间').replace('T', ' ')}</span>
+            const postsHtml = this.posts.map(post => {
+                // 处理不同的数据格式
+                const title = post.title || post.name;
+                const author = post.author || post.author_name || '未知作者';
+                const time = post.time || post.createtime || '未知时间';
+                const excerpt = post.excerpt || post.comment || '';
+                const image = post.image || post.attachment;
+                const avatar = post.avatar;
+                
+                // 如果是订阅文章，显示博客名称
+                const blogInfo = post.blog_name ? `<span class="post-blog">来自: ${post.blog_name}</span>` : '';
+                
+                return `
+                    <a href="/projectitem/${post.id}" class="post-item">
+                        <div class="post-avatar">
+                            ${avatar ? 
+                                `<img src="${avatar}" alt="${author}" onerror="this.style.display='none'">` :
+                                `<span>${author ? author.charAt(0) : '用'}</span>`
+                            }
                         </div>
-                        <p class="post-excerpt">${post.excerpt}</p>
-                        ${post.image ? `<div class="post-attachment-image"><img src="${post.image}" alt="${post.title}" onerror="this.style.display='none'"></div>` : ''}
-                    </div>
-                </a>
-            `).join('');
+                        <div class="post-content">
+                            <h4 class="post-title">${title}</h4>
+                            <div class="post-meta">
+                                <span class="post-author">${author}</span>
+                                <span class="post-date">${(time || '未知时间').replace('T', ' ')}</span>
+                                ${blogInfo}
+                            </div>
+                            <p class="post-excerpt">${excerpt}</p>
+                            ${image ? `<div class="post-attachment-image"><img src="${image}" alt="${title}" onerror="this.style.display='none'"></div>` : ''}
+                        </div>
+                    </a>
+                `;
+            }).join('');
             
             cardBody.innerHTML = `
                 <div class="post-list">
@@ -297,6 +327,15 @@ class BlogListCard extends BaseComponent {
                     color: var(--gray-500);
                 }
 
+                .post-blog {
+                    color: var(--accent-color);
+                    font-weight: 500;
+                    font-size: var(--font-size-xs);
+                    background: var(--gray-100);
+                    padding: var(--spacing-1) var(--spacing-2);
+                    border-radius: var(--radius-sm);
+                }
+
                 .post-excerpt {
                     font-size: var(--font-size-sm);
                     color: var(--gray-600);
@@ -409,7 +448,7 @@ class BlogListCard extends BaseComponent {
 
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">${this.isBlogPage() ? '博客文章' : '最新博文'}</h3>
+                    <h3 class="card-title">${this.getCardTitle()}</h3>
                 </div>
                 <div id="pagination-placeholder"></div>
                 <div class="card-body">

@@ -71,37 +71,44 @@ async def get_project_posts(
     Returns:
         Dict[str, Any]: 文章列表和总数
     """
-    project_item_repo = ProjectItemRepository(session)
-    
-    # 计算偏移量
-    offset = (page - 1) * limit
-    
-    # 获取文章列表
-    posts = await project_item_repo.get_by_project_id(project_id, limit=limit)
-    
-    # 获取总数
-    total = await project_item_repo.count_by_project_id(project_id)
-    
-    # 转换为字典格式
-    posts_data = []
-    for post in posts:
-        posts_data.append({
-            "id": post.id,
-            "name": post.name,
-            "comment": post.comment,
-            "createtime": post.createtime,
-            "accesscount": post.accesscount,
-            "commentcount": post.commentcount,
-            "category": "未分类"  # 这里可以根据实际需求添加分类逻辑
-        })
-    
-    return {
-        "posts": posts_data,
-        "total": total,
-        "page": page,
-        "limit": limit,
-        "total_pages": (total + limit - 1) // limit
-    }
+    if type == "subscription":
+        # 获取订阅文章
+        from src.repositories.subscription_repository import SubscriptionRepository
+        subscription_repo = SubscriptionRepository(session)
+        return await subscription_repo.get_subscription_posts_by_project(project_id, page, limit)
+    else:
+        # 获取原创文章
+        project_item_repo = ProjectItemRepository(session)
+        
+        # 计算偏移量
+        offset = (page - 1) * limit
+        
+        # 获取文章列表
+        posts = await project_item_repo.get_by_project_id(project_id, limit=limit)
+        
+        # 获取总数
+        total = await project_item_repo.count_by_project_id(project_id)
+        
+        # 转换为字典格式
+        posts_data = []
+        for post in posts:
+            posts_data.append({
+                "id": post.id,
+                "name": post.name,
+                "comment": post.comment,
+                "createtime": post.createtime,
+                "accesscount": post.accesscount,
+                "commentcount": post.commentcount,
+                "category": "未分类"  # 这里可以根据实际需求添加分类逻辑
+            })
+        
+        return {
+            "posts": posts_data,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": (total + limit - 1) // limit
+        }
 
 @router.get("/projects/{project_id}/comments/recent", response_model=List[Dict[str, Any]])
 async def get_project_recent_comments(

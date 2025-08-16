@@ -141,30 +141,11 @@ class BlogPostsListCard extends BaseComponent {
     }
 
     renderSubscriptionPosts() {
-        // 显示订阅文章
-        if (this.posts.length === 0) {
-            return `<div class="empty-state"><div>暂无订阅文章</div></div>`;
-        }
-        
+        // 复用 blog-list-card 组件显示订阅文章
         return `
-            <ul class="posts-list">
-                ${this.posts.map(post => `
-                    <li class="post-item">
-                        <div class="post-header">
-                            <a href="/projectitem/${post.id}" class="post-title">${post.name}</a>
-                            <div class="post-meta">
-                                <span>${this.formatDate(post.createtime)}</span>
-                                <span class="post-category">${post.category || '未分类'}</span>
-                            </div>
-                        </div>
-                        <div class="post-content">${this.truncateText(post.comment, 120)}</div>
-                        <div class="post-stats">
-                            <span>👁️ ${post.accesscount || 0} 次浏览</span>
-                            <span>💬 ${post.commentcount || 0} 条评论</span>
-                        </div>
-                    </li>
-                `).join('')}
-            </ul>
+            <div class="blog-list-container">
+                <blog-list-card id="subscription-posts-card"></blog-list-card>
+            </div>
         `;
     }
 
