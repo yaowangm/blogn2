@@ -3,6 +3,8 @@ class RecentCommentsCard extends BaseComponent {
         super();
         this.comments = [];
         this.loading = true;
+        this.error = false;
+        this.errorMessage = '';
     }
 
     connectedCallback() {
@@ -41,7 +43,6 @@ class RecentCommentsCard extends BaseComponent {
             } else {
                 throw new Error('Failed to fetch recent comments');
             }
-            this.comments = await response.json();
             
             // 格式化时间（如果是ISO格式）
             this.comments = this.comments.map(comment => ({
@@ -50,29 +51,9 @@ class RecentCommentsCard extends BaseComponent {
             }));
         } catch (error) {
             this.logError('Error loading recent comments', error);
-            // 使用默认数据作为后备
-            this.comments = [
-                { 
-                    author: '张三', 
-                    content: '这篇文章写得很好，对我很有帮助！', 
-                    time: '2小时前'
-                },
-                { 
-                    author: '李四', 
-                    content: '感谢分享，学到了很多新知识。', 
-                    time: '4小时前'
-                },
-                { 
-                    author: '王五', 
-                    content: '这个观点很独特，值得深入思考。', 
-                    time: '6小时前'
-                },
-                { 
-                    author: '赵六', 
-                    content: '期待更多相关内容！', 
-                    time: '1天前'
-                }
-            ];
+            // 设置错误状态，不显示假数据
+            this.error = true;
+            this.errorMessage = '加载评论失败，请稍后重试';
         } finally {
             this.loading = false;
             this.render();
@@ -395,6 +376,20 @@ class RecentCommentsCard extends BaseComponent {
                     color: var(--gray-500);
                 }
 
+                .error {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: var(--spacing-8);
+                    color: var(--red-500);
+                    text-align: center;
+                }
+
+                .error-icon {
+                    margin-right: var(--spacing-2);
+                    font-size: 1.2em;
+                }
+
                 .loading-spinner {
                     width: 20px;
                     height: 20px;
@@ -423,7 +418,8 @@ class RecentCommentsCard extends BaseComponent {
                     <h3 class="card-title">最近评论</h3>
                 </div>
                 <div class="card-body">
-                    ${this.loading ? this.createLoadingHTML() : `
+                    ${this.loading ? this.createLoadingHTML() : 
+                      this.error ? this.createErrorHTML() : `
                         <div class="comment-list">
                             ${this.comments.map((comment, index) => {
                                 const isClickable = this.getNavigationUrl(comment) !== null;
@@ -451,6 +447,15 @@ class RecentCommentsCard extends BaseComponent {
                         </div>
                     `}
                 </div>
+            </div>
+        `;
+    }
+
+    createErrorHTML() {
+        return `
+            <div class="error">
+                <span class="error-icon">⚠️</span>
+                <span>${this.errorMessage}</span>
             </div>
         `;
     }
