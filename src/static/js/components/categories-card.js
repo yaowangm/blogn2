@@ -42,6 +42,10 @@ class CategoriesCard extends BaseComponent {
             const response = await fetch(apiUrl);
             if (response.ok) {
                 this.categories = await response.json();
+            } else if (response.status === 404) {
+                // 如果博客不存在，跳转到错误页面
+                window.location.href = '/static/error.html';
+                return;
             } else {
                 // 如果API不存在，使用模拟数据
                 this.categories = this.getMockCategories();

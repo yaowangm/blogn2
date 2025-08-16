@@ -33,8 +33,12 @@ class BlogHeaderCard extends BaseComponent {
             const response = await fetch(`/api/projects/${this.projectId}`);
             if (response.ok) {
                 this.blogData = await response.json();
+            } else if (response.status === 404) {
+                // 如果博客不存在，跳转到错误页面
+                window.location.href = '/static/error.html';
+                return;
             } else {
-                // 如果API不存在，使用模拟数据
+                // 其他错误，使用模拟数据
                 this.blogData = this.getMockBlogData();
             }
         } catch (error) {

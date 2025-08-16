@@ -32,7 +32,13 @@ class RecentCommentsCard extends BaseComponent {
             }
             
             const response = await fetch(apiUrl);
-            if (!response.ok) {
+            if (response.ok) {
+                this.comments = await response.json();
+            } else if (response.status === 404) {
+                // 如果博客不存在，跳转到错误页面
+                window.location.href = '/static/error.html';
+                return;
+            } else {
                 throw new Error('Failed to fetch recent comments');
             }
             this.comments = await response.json();

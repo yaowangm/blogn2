@@ -42,6 +42,10 @@ class BlogNavigationCard extends BaseComponent {
                         this.userData = await userResponse.json();
                     }
                 }
+            } else if (projectResponse.status === 404) {
+                // 如果博客不存在，跳转到错误页面
+                window.location.href = '/static/error.html';
+                return;
             }
         } catch (error) {
             console.error('Error loading user data:', error);

@@ -38,6 +38,10 @@ class BlogPostsListCard extends BaseComponent {
                 const data = await response.json();
                 this.posts = data.posts || [];
                 this.totalPosts = data.total || 0;
+            } else if (response.status === 404) {
+                // 如果博客不存在，跳转到错误页面
+                window.location.href = '/static/error.html';
+                return;
             } else {
                 this.posts = this.getMockPosts();
                 this.totalPosts = this.posts.length;
