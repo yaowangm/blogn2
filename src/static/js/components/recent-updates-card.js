@@ -7,6 +7,8 @@ class RecentUpdatesCard extends BaseComponent {
         super();
         this.recentUpdates = [];
         this.loading = true;
+        this.error = false;
+        this.errorMessage = '';
     }
 
     connectedCallback() {
@@ -71,14 +73,22 @@ class RecentUpdatesCard extends BaseComponent {
             // 获取最近更新的博客文章数据
             const response = await fetch(apiUrl);
             if (response.ok) {
-                this.recentUpdates = await response.json();
+                const data = await response.json();
+                // API返回的是 { posts: [...], total: ... } 格式，我们需要提取 posts 数组
+                this.recentUpdates = data.posts || [];
+            } else if (response.status === 404) {
+                // 如果博客不存在，跳转到错误页面
+                window.location.href = '/static/error.html';
+                return;
             } else {
-                // 如果API不存在，使用模拟数据
-                this.recentUpdates = this.getMockRecentUpdates();
+                // 其他错误，设置错误状态
+                this.error = true;
+                this.errorMessage = '加载失败，请稍后重试';
             }
         } catch (error) {
             console.error('Error loading recent updates:', error);
-            this.recentUpdates = this.getMockRecentUpdates();
+            this.error = true;
+            this.errorMessage = '加载失败，请稍后重试';
         } finally {
             this.loading = false;
             this.render();
@@ -281,6 +291,7 @@ class RecentUpdatesCard extends BaseComponent {
                     </h3>
                 </div>
                 ${this.loading ? this.renderLoading() : 
+                  this.error ? this.renderError() :
                   this.recentUpdates.length > 0 ? this.renderUpdates() : 
                   this.renderEmptyState()}
             </div>
@@ -330,7 +341,7 @@ class RecentUpdatesCard extends BaseComponent {
     renderError() {
         return `
             <div class="error">
-                <div>加载失败</div>
+                <div>⚠️ ${this.errorMessage}</div>
             </div>
         `;
     }
