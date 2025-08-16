@@ -67,16 +67,41 @@ class TestProjectItemRepository:
     async def test_get_latest_posts_success(self, project_item_repository, mock_session, sample_project_item):
         """测试获取最新博文成功"""
         mock_result = MagicMock()
-        mock_result.__iter__.return_value = [(sample_project_item, "测试作者")]
+        mock_result.__iter__.return_value = [(sample_project_item, "测试作者", "测试博客")]
         mock_session.exec.return_value = mock_result
         
-        result = await project_item_repository.get_latest_posts(5)
+        result = await project_item_repository.get_latest_posts(5, None, None, 0)
         
         assert len(result) == 1
         assert result[0]["id"] == 1
         assert result[0]["name"] == "测试项目项"
         assert result[0]["comment"] == "测试内容"
         assert result[0]["author_name"] == "测试作者"
+        assert result[0]["blog_name"] == "测试博客"
+        mock_session.exec.assert_called_once()
+    
+    @pytest.mark.unit
+    async def test_get_posts_count_success(self, project_item_repository, mock_session):
+        """测试获取博文总数成功"""
+        mock_result = MagicMock()
+        mock_result.first.return_value = 100
+        mock_session.exec.return_value = mock_result
+        
+        result = await project_item_repository.get_posts_count()
+        
+        assert result == 100
+        mock_session.exec.assert_called_once()
+    
+    @pytest.mark.unit
+    async def test_get_posts_count_with_blogid(self, project_item_repository, mock_session):
+        """测试获取指定博客的博文总数成功"""
+        mock_result = MagicMock()
+        mock_result.first.return_value = 25
+        mock_session.exec.return_value = mock_result
+        
+        result = await project_item_repository.get_posts_count(blogid=123)
+        
+        assert result == 25
         mock_session.exec.assert_called_once()
     
     @pytest.mark.unit
