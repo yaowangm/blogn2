@@ -114,12 +114,20 @@ class BlogListCard extends BaseComponent {
                 const title = post.title || post.name;
                 const author = post.author || post.author_name || '未知作者';
                 const time = post.time || post.createtime || '未知时间';
-                const excerpt = post.excerpt || post.comment || '';
+                // 订阅文章使用 comment 字段，原创文章使用 excerpt 字段
+                const excerpt = post.comment || post.excerpt || '';
                 const image = post.image || post.attachment;
                 const avatar = post.avatar;
                 
                 // 如果是订阅文章，显示博客名称
                 const blogInfo = post.blog_name ? `<span class="post-blog">来自: ${post.blog_name}</span>` : '';
+                
+                // 安全处理 excerpt 内容，防止HTML注入和结构破坏
+                const safeExcerpt = excerpt
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
                 
                 return `
                     <a href="/projectitem/${post.id}" class="post-item">
@@ -136,7 +144,7 @@ class BlogListCard extends BaseComponent {
                                 <span class="post-date">${(time || '未知时间').replace('T', ' ')}</span>
                                 ${blogInfo}
                             </div>
-                            <p class="post-excerpt">${excerpt}</p>
+                            <p class="post-excerpt">${safeExcerpt}</p>
                             ${image ? `<div class="post-attachment-image"><img src="${image}" alt="${title}" onerror="this.style.display='none'"></div>` : ''}
                         </div>
                     </a>
