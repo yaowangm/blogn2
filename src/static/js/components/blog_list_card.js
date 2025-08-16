@@ -135,6 +135,12 @@ class BlogListCard extends BaseComponent {
                     <span class="nav-icon">⬅️</span>
                     <span class="nav-text">上一页</span>
                 </button>
+                
+                <div class="page-info">
+                    <span class="page-text">第 ${this.currentPage} 页，共 ${this.totalPages} 页</span>
+                    <span class="total-text">（共 ${this.totalPosts} 条记录）</span>
+                </div>
+                
                 <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.currentPage + 1})" ${this.currentPage === this.totalPages ? 'disabled' : ''}>
                     <span class="nav-icon">➡️</span>
                     <span class="nav-text">下一页</span>
@@ -358,6 +364,27 @@ class BlogListCard extends BaseComponent {
 
                 .nav-icon {
                     font-size: var(--font-size-md);
+                }
+
+                .page-info {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: var(--spacing-1);
+                    padding: var(--spacing-2) var(--spacing-4);
+                    color: var(--gray-600);
+                    font-size: var(--font-size-sm);
+                    min-width: 120px;
+                }
+
+                .page-text {
+                    font-weight: 500;
+                    color: var(--gray-700);
+                }
+
+                .total-text {
+                    color: var(--gray-500);
+                    font-size: var(--font-size-xs);
                 }
 
                 @media (max-width: 768px) {
