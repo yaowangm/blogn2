@@ -453,7 +453,7 @@ class BlogListCard extends BaseComponent {
                     align-items: center;
                     gap: var(--spacing-3);
                     margin-top: var(--spacing-5);
-                    padding-top: var(--spacing-5);
+                    padding: var(--spacing-5) 20px;
                     border-top: 1px solid var(--gray-200);
                 }
 
