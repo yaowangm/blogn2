@@ -6,6 +6,8 @@ class BlogListCard extends BaseComponent {
         this.totalPosts = 0;
         this.totalPages = 0;
         this.posts = [];
+        this.currentFolderId = null;
+        this.currentCategoryName = '全部文章';
     }
 
     /**
@@ -28,6 +30,15 @@ class BlogListCard extends BaseComponent {
     }
 
     /**
+     * 从URL中获取当前文件夹ID
+     * @returns {string|null} 文件夹ID
+     */
+    getCurrentFolderId() {
+        const url = new URL(window.location);
+        return url.searchParams.get('folderid');
+    }
+
+    /**
      * 获取卡片标题
      * @returns {string} 卡片标题
      */
@@ -39,8 +50,21 @@ class BlogListCard extends BaseComponent {
     }
 
     connectedCallback() {
+        this.currentFolderId = this.getCurrentFolderId();
         this.render();
         this.loadContent();
+        this.addEventListeners();
+    }
+
+    addEventListeners() {
+        // 监听分类变化事件
+        this.addEventListener('categoryChanged', (event) => {
+            const { folderId, folderName } = event.detail;
+            this.currentFolderId = folderId || null;
+            this.currentCategoryName = folderName || '全部文章';
+            this.currentPage = 1; // 重置页码
+            this.loadContent();
+        });
     }
 
     async loadContent(page = 1) {
@@ -61,7 +85,11 @@ class BlogListCard extends BaseComponent {
                     if (this.id === 'subscription-posts-card') {
                         apiUrl = `/api/projects/${projectId}/posts?page=${page}&limit=${this.pageSize}&type=subscription`;
                     } else {
-                        apiUrl = `/api/blogs/posts/latest?blogid=${projectId}&page=${page}&page_size=${this.pageSize}`;
+                        apiUrl = `/api/projects/${projectId}/posts?page=${page}&limit=${this.pageSize}&type=original`;
+                        // 添加folderid参数
+                        if (this.currentFolderId) {
+                            apiUrl += `&folderid=${this.currentFolderId}`;
+                        }
                     }
                 } else {
                     this.showError('无法获取博客ID');
@@ -89,6 +117,11 @@ class BlogListCard extends BaseComponent {
         this.totalPosts = data.total || this.posts.length;
         this.totalPages = Math.ceil(this.totalPosts / this.pageSize);
         this.loading = false;
+        
+        // 从API响应中获取分类信息
+        if (data.category) {
+            this.currentCategoryName = data.category;
+        }
         
         // 更新导航栏
         this.updatePagination();
@@ -160,35 +193,66 @@ class BlogListCard extends BaseComponent {
     }
 
     renderPagination() {
-        // 只有在有分页数据时才显示导航栏
-        if (this.totalPages <= 1) return '';
+        // 即使没有分页数据，也要显示分类信息
+        let paginationHtml = '';
         
-        return `
-            <div class="pagination">
-                <button class="nav-btn" onclick="this.getRootNode().host.goToPage(1)" ${this.currentPage === 1 ? 'disabled' : ''}>
-                    <span class="nav-icon">🏠</span>
-                    <span class="nav-text">首页</span>
-                </button>
-                <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.currentPage - 1})" ${this.currentPage === 1 ? 'disabled' : ''}>
-                    <span class="nav-icon">⬅️</span>
-                    <span class="nav-text">上一页</span>
-                </button>
-                
-                <div class="page-info">
-                    <span class="page-text">第 ${this.currentPage} 页，共 ${this.totalPages} 页</span>
-                    <span class="total-text">（共 ${this.totalPosts} 条记录）</span>
+        if (this.totalPages > 1) {
+            paginationHtml = `
+                <div class="pagination">
+                    <div class="pagination-left">
+                        <button class="nav-btn" onclick="this.getRootNode().host.goToPage(1)" ${this.currentPage === 1 ? 'disabled' : ''}>
+                            <span class="nav-icon">🏠</span>
+                            <span class="nav-text">首页</span>
+                        </button>
+                        <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.currentPage - 1})" ${this.currentPage === 1 ? 'disabled' : ''}>
+                            <span class="nav-icon">⬅️</span>
+                            <span class="nav-text">上一页</span>
+                        </button>
+                        
+                        <div class="page-info">
+                            <span class="page-text">第 ${this.currentPage} 页，共 ${this.totalPages} 页</span>
+                            <span class="total-text">（共 ${this.totalPosts} 条记录）</span>
+                        </div>
+                        
+                        <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.currentPage + 1})" ${this.currentPage === this.totalPages ? 'disabled' : ''}>
+                            <span class="nav-icon">➡️</span>
+                            <span class="nav-text">下一页</span>
+                        </button>
+                        <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.totalPages})" ${this.currentPage === this.totalPages ? 'disabled' : ''}>
+                            <span class="nav-icon">🏁</span>
+                            <span class="nav-text">尾页</span>
+                        </button>
+                    </div>
+                    
+                    <div class="pagination-right">
+                        <div class="category-info">
+                            <span class="category-label">分类：</span>
+                            <span class="category-name">${this.currentCategoryName}</span>
+                        </div>
+                    </div>
                 </div>
-                
-                <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.currentPage + 1})" ${this.currentPage === this.totalPages ? 'disabled' : ''}>
-                    <span class="nav-icon">➡️</span>
-                    <span class="nav-text">下一页</span>
-                </button>
-                <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.totalPages})" ${this.currentPage === this.totalPages ? 'disabled' : ''}>
-                    <span class="nav-icon">🏁</span>
-                    <span class="nav-text">尾页</span>
-                </button>
-            </div>
-        `;
+            `;
+        } else {
+            // 即使没有分页，也要显示分类信息
+            paginationHtml = `
+                <div class="pagination">
+                    <div class="pagination-left">
+                        <div class="page-info">
+                            <span class="page-text">共 ${this.totalPosts} 条记录</span>
+                        </div>
+                    </div>
+                    
+                    <div class="pagination-right">
+                        <div class="category-info">
+                            <span class="category-label">分类：</span>
+                            <span class="category-name">${this.currentCategoryName}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        return paginationHtml;
     }
 
     updatePagination() {
@@ -200,6 +264,15 @@ class BlogListCard extends BaseComponent {
 
     goToPage(page) {
         if (page < 1 || page > this.totalPages || page === this.currentPage) return;
+        
+        // 更新URL参数
+        const url = new URL(window.location);
+        url.searchParams.set('page', page);
+        if (this.currentFolderId) {
+            url.searchParams.set('folderid', this.currentFolderId);
+        }
+        window.history.pushState({}, '', url);
+        
         this.loadContent(page);
     }
 
@@ -376,11 +449,44 @@ class BlogListCard extends BaseComponent {
 
                 .pagination {
                     display: flex;
-                    justify-content: center;
+                    justify-content: space-between; /* Changed to space-between */
+                    align-items: center;
                     gap: var(--spacing-3);
                     margin-top: var(--spacing-5);
                     padding-top: var(--spacing-5);
                     border-top: 1px solid var(--gray-200);
+                }
+
+                .pagination-left {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-3);
+                }
+
+                .pagination-right {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-3);
+                }
+
+                .category-info {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                    background: var(--gray-100);
+                    padding: var(--spacing-1) var(--spacing-2);
+                    border-radius: var(--radius-md);
+                    font-size: var(--font-size-sm);
+                    color: var(--gray-700);
+                }
+
+                .category-label {
+                    font-weight: 500;
+                }
+
+                .category-name {
+                    font-weight: 600;
+                    color: var(--primary-color);
                 }
 
                 .nav-btn {

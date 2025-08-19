@@ -116,4 +116,32 @@ class ProjectItemRepository:
                 "userid": project_item.userid
             })
         
-        return posts 
+        return posts
+
+    async def get_by_project_id_and_folder(self, project_id: int, folder_id: Optional[int] = None, limit: int = None, offset: int = 0) -> List[ProjectItem]:
+        """根据项目ID和文件夹ID获取项目项"""
+        statement = select(ProjectItem).where(ProjectItem.projectid == project_id)
+        
+        if folder_id is not None:
+            statement = statement.where(ProjectItem.folderid == folder_id)
+        
+        if limit:
+            statement = statement.limit(limit)
+        
+        if offset > 0:
+            statement = statement.offset(offset)
+        
+        statement = statement.order_by(ProjectItem.createtime.desc())
+        
+        result = await self.session.exec(statement)
+        return result.all()
+
+    async def count_by_project_id_and_folder(self, project_id: int, folder_id: Optional[int] = None) -> int:
+        """根据项目ID和文件夹ID统计项目项总数"""
+        statement = select(func.count(ProjectItem.id)).where(ProjectItem.projectid == project_id)
+        
+        if folder_id is not None:
+            statement = statement.where(ProjectItem.folderid == folder_id)
+        
+        result = await self.session.exec(statement)
+        return result.first() or 0 

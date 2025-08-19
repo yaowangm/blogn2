@@ -7,6 +7,12 @@ class FolderRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
     
+    async def get_by_id(self, folder_id: int) -> Optional[Folder]:
+        """根据ID获取文件夹"""
+        statement = select(Folder).where(Folder.id == folder_id)
+        result = await self.session.exec(statement)
+        return result.first()
+    
     async def get_by_project_id(self, project_id: int) -> List[Folder]:
         """根据项目ID获取所有文件夹"""
         statement = select(Folder).where(Folder.projectid == project_id)

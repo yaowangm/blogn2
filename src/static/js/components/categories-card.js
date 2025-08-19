@@ -14,6 +14,64 @@ class CategoriesCard extends BaseComponent {
         this.loadData();
     }
 
+    addEventListeners() {
+        // 延迟添加事件监听器，确保DOM已经渲染
+        setTimeout(() => {
+            const categoryLinks = this.shadowRoot.querySelectorAll('.category-link');
+            categoryLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const folderId = link.getAttribute('data-folder-id');
+                    const folderName = link.getAttribute('data-folder-name');
+                    this.handleCategoryClick(folderId, folderName);
+                });
+            });
+        }, 100);
+    }
+
+    handleCategoryClick(folderId, folderName) {
+        // 更新URL参数
+        const url = new URL(window.location);
+        if (folderId) {
+            url.searchParams.set('folderid', folderId);
+        } else {
+            url.searchParams.delete('folderid');
+        }
+        url.searchParams.delete('page'); // 重置页码
+        window.history.pushState({}, '', url);
+        
+        // 通知博客文章列表卡片更新
+        this.notifyBlogPostsList(folderId, folderName);
+        
+        // 更新分类卡片的激活状态
+        this.updateActiveCategory(folderId);
+    }
+
+    notifyBlogPostsList(folderId, folderName) {
+        // 查找博客文章列表卡片并通知它更新
+        const blogPostsListCard = document.querySelector('blog-posts-list-card');
+        if (blogPostsListCard) {
+            // 触发自定义事件
+            const event = new CustomEvent('categoryChanged', {
+                detail: { folderId, folderName }
+            });
+            blogPostsListCard.dispatchEvent(event);
+        }
+    }
+
+    updateActiveCategory(folderId) {
+        // 更新分类卡片的激活状态
+        const categoryLinks = this.shadowRoot.querySelectorAll('.category-link');
+        categoryLinks.forEach(link => {
+            const currentFolderId = link.getAttribute('data-folder-id');
+            if (currentFolderId === folderId) {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
+        });
+    }
+
     async loadData() {
         // 检测是否在博客页面
         const isBlogPage = this.isBlogPage();
@@ -56,6 +114,10 @@ class CategoriesCard extends BaseComponent {
         } finally {
             this.loading = false;
             this.render();
+            // 延迟添加事件监听器，确保DOM已经渲染
+            setTimeout(() => {
+                this.addEventListeners();
+            }, 100);
         }
     }
 
@@ -153,6 +215,16 @@ class CategoriesCard extends BaseComponent {
                     color: var(--primary-color);
                 }
 
+                .category-link.active {
+                    background: var(--primary-color);
+                    color: var(--white);
+                }
+
+                .category-link.active .category-count {
+                    background: var(--white);
+                    color: var(--primary-color);
+                }
+
                 .category-info {
                     display: flex;
                     align-items: center;
@@ -229,9 +301,18 @@ class CategoriesCard extends BaseComponent {
     renderCategories() {
         return `
             <ul class="categories-list">
+                <li class="category-item">
+                    <a href="#" class="category-link ${!this.getCurrentFolderId() ? 'active' : ''}" data-folder-id="" data-folder-name="全部文章">
+                        <div class="category-info">
+                            <div class="category-color" style="background-color: #6b7280"></div>
+                            <span class="category-name">全部文章</span>
+                        </div>
+                        <span class="category-count">全部</span>
+                    </a>
+                </li>
                 ${this.categories.map(category => `
                     <li class="category-item">
-                        <a href="/blog/${this.getProjectIdFromUrl()}/category/${category.id}" class="category-link">
+                        <a href="#" class="category-link ${this.getCurrentFolderId() == category.id ? 'active' : ''}" data-folder-id="${category.id}" data-folder-name="${category.name}">
                             <div class="category-info">
                                 <div class="category-color" style="background-color: ${category.color}"></div>
                                 <span class="category-name">${category.name}</span>
@@ -264,6 +345,11 @@ class CategoriesCard extends BaseComponent {
         console.error(message);
         this.loading = false;
         this.render();
+    }
+
+    getCurrentFolderId() {
+        const url = new URL(window.location);
+        return url.searchParams.get('folderid');
     }
 }
 

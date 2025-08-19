@@ -55,6 +55,7 @@ async def get_project_posts(
     limit: int = 10,
     type: str = "original",
     category: Optional[str] = None,
+    folderid: Optional[int] = None,
     session: AsyncSession = Depends(get_async_session)
 ):
     """
@@ -66,6 +67,7 @@ async def get_project_posts(
         limit: 每页数量
         type: 文章类型 (original/subscription)
         category: 分类筛选
+        folderid: 文件夹ID筛选
         session: 数据库会话
         
     Returns:
@@ -84,10 +86,21 @@ async def get_project_posts(
         offset = (page - 1) * limit
         
         # 获取文章列表
-        posts = await project_item_repo.get_by_project_id(project_id, limit=limit)
+        posts = await project_item_repo.get_by_project_id_and_folder(project_id, folderid, limit, offset)
         
         # 获取总数
-        total = await project_item_repo.count_by_project_id(project_id)
+        total = await project_item_repo.count_by_project_id_and_folder(project_id, folderid)
+        
+        # 获取分类信息
+        category_name = "全部文章"
+        if folderid:
+            folder_repo = FolderRepository(session)
+            try:
+                folder = await folder_repo.get_by_id(folderid)
+                if folder:
+                    category_name = folder.name
+            except:
+                pass
         
         # 转换为字典格式
         posts_data = []
@@ -99,7 +112,7 @@ async def get_project_posts(
                 "createtime": post.createtime,
                 "accesscount": post.accesscount,
                 "commentcount": post.commentcount,
-                "category": "未分类"  # 这里可以根据实际需求添加分类逻辑
+                "category": category_name
             })
         
         return {
@@ -107,7 +120,9 @@ async def get_project_posts(
             "total": total,
             "page": page,
             "limit": limit,
-            "total_pages": (total + limit - 1) // limit
+            "total_pages": (total + limit - 1) // limit,
+            "category": category_name,
+            "folderid": folderid
         }
 
 @router.get("/projects/{project_id}/comments/recent", response_model=List[Dict[str, Any]])

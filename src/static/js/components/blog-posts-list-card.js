@@ -12,18 +12,38 @@ class BlogPostsListCard extends BaseComponent {
         this.posts = [];
         this.totalPosts = 0;
         this.loading = true;
+        this.currentFolderId = null;
+        this.currentCategoryName = '全部文章';
     }
 
     connectedCallback() {
         this.projectId = this.getProjectIdFromUrl();
+        this.currentFolderId = this.getCurrentFolderId();
         this.render();
         this.loadData();
+        this.addEventListeners();
     }
 
     getProjectIdFromUrl() {
         const path = window.location.pathname;
         const match = path.match(/\/blog\/(\d+)/);
         return match ? parseInt(match[1]) : null;
+    }
+
+    getCurrentFolderId() {
+        const url = new URL(window.location);
+        return url.searchParams.get('folderid');
+    }
+
+    addEventListeners() {
+        // 监听分类变化事件
+        this.addEventListener('categoryChanged', (event) => {
+            const { folderId, folderName } = event.detail;
+            this.currentFolderId = folderId || null;
+            this.currentCategoryName = folderName || '全部文章';
+            this.currentPage = 1; // 重置页码
+            this.loadData();
+        });
     }
 
     async loadData() {
@@ -33,11 +53,19 @@ class BlogPostsListCard extends BaseComponent {
         }
 
         try {
-            const response = await fetch(`/api/projects/${this.projectId}/posts?page=${this.currentPage}&limit=${this.pageSize}&type=${this.activeTab}`);
+            let apiUrl = `/api/projects/${this.projectId}/posts?page=${this.currentPage}&limit=${this.pageSize}&type=${this.activeTab}`;
+            
+            // 添加folderid参数
+            if (this.currentFolderId) {
+                apiUrl += `&folderid=${this.currentFolderId}`;
+            }
+            
+            const response = await fetch(apiUrl);
             if (response.ok) {
                 const data = await response.json();
                 this.posts = data.posts || [];
                 this.totalPosts = data.total || 0;
+                this.currentCategoryName = data.category || '全部文章';
             } else if (response.status === 404) {
                 // 如果博客不存在，跳转到错误页面
                 window.location.href = '/static/error.html';
@@ -87,6 +115,13 @@ class BlogPostsListCard extends BaseComponent {
 
     changePage(page) {
         this.currentPage = page;
+        // 更新URL参数
+        const url = new URL(window.location);
+        url.searchParams.set('page', page);
+        if (this.currentFolderId) {
+            url.searchParams.set('folderid', this.currentFolderId);
+        }
+        window.history.pushState({}, '', url);
         this.loadData();
     }
 
