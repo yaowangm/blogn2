@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse
 import uvicorn
 
 # 导入API控制器模块
-from src.controllers import metadata, user, blog, project
+from src.controllers import metadata, user, blog, project, urllink
 
 # 导入缓存相关模块
 from src.utils.cache import cache_manager, cache_stats
@@ -186,6 +186,7 @@ app.include_router(metadata.router, prefix="/api")
 app.include_router(user.router, prefix="/api")
 app.include_router(blog.router, prefix="/api")
 app.include_router(project.router, prefix="/api")
+app.include_router(urllink.router, prefix="/api")
 
 # 根路径和首页路由 - 都返回首页
 @app.get("/")

@@ -1,22 +1,68 @@
+/**
+ * 友情链接卡片组件
+ * 从数据库urllink表获取友情链接数据
+ * subject字段表示链接名称，linkstr字段表示链接URL
+ * projectid表示所属的project的id，按ordernum排序
+ */
 class FriendLinksCard extends BaseComponent {
     constructor() {
         super();
+        this.projectId = null;
+        this.friendLinks = [];
+        this.loading = true;
     }
 
     connectedCallback() {
+        this.projectId = this.getProjectIdFromUrl();
         this.render();
+        this.loadData();
+    }
+
+    getProjectIdFromUrl() {
+        const path = window.location.pathname;
+        const match = path.match(/\/blog\/(\d+)/);
+        return match ? parseInt(match[1]) : null;
+    }
+
+    async loadData() {
+        try {
+            let apiUrl;
+            if (this.projectId) {
+                // 如果在博客页面，获取指定项目的友情链接
+                apiUrl = `/api/projects/${this.projectId}/friend-links`;
+            } else {
+                // 如果在首页，获取所有友情链接
+                apiUrl = '/api/friend-links';
+            }
+
+            const response = await fetch(apiUrl);
+            if (response.ok) {
+                this.friendLinks = await response.json();
+            } else {
+                console.warn('获取友情链接失败，使用默认数据');
+                this.friendLinks = this.getDefaultFriendLinks();
+            }
+        } catch (error) {
+            console.error('Error loading friend links:', error);
+            this.friendLinks = this.getDefaultFriendLinks();
+        } finally {
+            this.loading = false;
+            this.render();
+        }
+    }
+
+    getDefaultFriendLinks() {
+        return [
+            { subject: 'GitHub', linkstr: 'https://github.com' },
+            { subject: 'Stack Overflow', linkstr: 'https://stackoverflow.com' },
+            { subject: '掘金', linkstr: 'https://juejin.cn' },
+            { subject: 'CSDN', linkstr: 'https://csdn.net' },
+            { subject: '博客园', linkstr: 'https://cnblogs.com' },
+            { subject: '简书', linkstr: 'https://jianshu.com' }
+        ];
     }
 
     render() {
-        const friendLinks = [
-            { name: 'GitHub', url: 'https://github.com' },
-            { name: 'Stack Overflow', url: 'https://stackoverflow.com' },
-            { name: '掘金', url: 'https://juejin.cn' },
-            { name: 'CSDN', url: 'https://csdn.net' },
-            { name: '博客园', url: 'https://cnblogs.com' },
-            { name: '简书', url: 'https://jianshu.com' }
-        ];
-
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
@@ -48,6 +94,15 @@ class FriendLinksCard extends BaseComponent {
                     font-weight: 600;
                     color: var(--gray-900);
                     margin: 0;
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                }
+
+                .card-title-icon {
+                    width: 20px;
+                    height: 20px;
+                    color: var(--primary-color);
                 }
 
                 .card-body {
@@ -55,8 +110,8 @@ class FriendLinksCard extends BaseComponent {
                 }
 
                 .friend-links {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
+                    display: flex;
+                    flex-direction: column;
                     gap: var(--spacing-2);
                 }
 
@@ -70,36 +125,71 @@ class FriendLinksCard extends BaseComponent {
                     font-size: var(--font-size-sm);
                     text-align: center;
                     transition: var(--transition-fast);
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
                 }
 
                 .friend-link:hover {
                     background: var(--primary-color);
                     color: var(--white);
                     border-color: var(--primary-color);
+                    transform: translateY(-1px);
                 }
 
-                @media (max-width: 768px) {
-                    .friend-links {
-                        grid-template-columns: 1fr;
-                    }
+                .loading {
+                    text-align: center;
+                    padding: var(--spacing-4);
+                    color: var(--gray-500);
                 }
+
+                .empty-state {
+                    text-align: center;
+                    padding: var(--spacing-4);
+                    color: var(--gray-500);
+                    font-style: italic;
+                }
+
+
             </style>
 
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">友情链接</h3>
+                    <h3 class="card-title">
+                        <svg class="card-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                        </svg>
+                        友情链接
+                    </h3>
                 </div>
                 <div class="card-body">
-                    <div class="friend-links">
-                        ${friendLinks.map(link => `
-                            <a href="${link.url}" class="friend-link" target="_blank" rel="noopener noreferrer">
-                                ${link.name}
-                            </a>
-                        `).join('')}
-                    </div>
+                    ${this.loading ? this.renderLoading() : 
+                      this.friendLinks.length > 0 ? this.renderFriendLinks() : 
+                      this.renderEmptyState()}
                 </div>
             </div>
         `;
+    }
+
+    renderLoading() {
+        return `<div class="loading">加载中...</div>`;
+    }
+
+    renderFriendLinks() {
+        return `
+            <div class="friend-links">
+                ${this.friendLinks.map(link => `
+                    <a href="${link.linkstr}" class="friend-link" target="_blank" rel="noopener noreferrer" title="${link.subject}">
+                        ${link.subject}
+                    </a>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    renderEmptyState() {
+        return `<div class="empty-state">暂无友情链接</div>`;
     }
 }
 
