@@ -106,13 +106,14 @@ async def get_project_posts(
         posts_data = []
         for post in posts:
             posts_data.append({
-                "id": post.id,
-                "name": post.name,
-                "comment": post.comment,
-                "createtime": post.createtime,
-                "accesscount": post.accesscount,
-                "commentcount": post.commentcount,
-                "category": category_name
+                "id": post["id"],
+                "name": post["name"],
+                "comment": post["comment"],
+                "createtime": post["createtime"],
+                "accesscount": post["accesscount"],
+                "commentcount": post["commentcount"],
+                "category": category_name,
+                "author_name": post["author_name"]
             })
         
         return {

@@ -118,23 +118,44 @@ class ProjectItemRepository:
         
         return posts
 
-    async def get_by_project_id_and_folder(self, project_id: int, folder_id: Optional[int] = None, limit: int = None, offset: int = 0) -> List[ProjectItem]:
-        """根据项目ID和文件夹ID获取项目项"""
-        statement = select(ProjectItem).where(ProjectItem.projectid == project_id)
+    async def get_by_project_id_and_folder(self, project_id: int, folder_id: Optional[int] = None, limit: int = None, offset: int = 0) -> List[dict]:
+        """根据项目ID和文件夹ID获取项目项，包含用户信息"""
+        from src.models.user import User
+        
+        query = (
+            select(ProjectItem, User.name.label("author_name"))
+            .join(User, ProjectItem.userid == User.id)
+            .where(ProjectItem.projectid == project_id)
+        )
         
         if folder_id is not None:
-            statement = statement.where(ProjectItem.folderid == folder_id)
+            query = query.where(ProjectItem.folderid == folder_id)
         
         if limit:
-            statement = statement.limit(limit)
+            query = query.limit(limit)
         
         if offset > 0:
-            statement = statement.offset(offset)
+            query = query.offset(offset)
         
-        statement = statement.order_by(ProjectItem.createtime.desc())
+        query = query.order_by(ProjectItem.createtime.desc())
         
-        result = await self.session.exec(statement)
-        return result.all()
+        result = await self.session.exec(query)
+        
+        # 转换为字典格式
+        posts = []
+        for project_item, author_name in result:
+            posts.append({
+                "id": project_item.id,
+                "name": project_item.name,
+                "comment": project_item.comment,
+                "createtime": project_item.createtime,
+                "accesscount": project_item.accesscount,
+                "commentcount": project_item.commentcount,
+                "userid": project_item.userid,
+                "author_name": author_name
+            })
+        
+        return posts
 
     async def count_by_project_id_and_folder(self, project_id: int, folder_id: Optional[int] = None) -> int:
         """根据项目ID和文件夹ID统计项目项总数"""
