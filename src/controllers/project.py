@@ -105,6 +105,12 @@ async def get_project_posts(
         # 转换为字典格式
         posts_data = []
         for post in posts:
+            # 生成头像路径
+            avatar_path = None
+            if post["userid"]:
+                prefix = (post["userid"] // 10000) + 1
+                avatar_path = f"/avatars/{prefix}/s_{post['userid']}.jpg"
+            
             posts_data.append({
                 "id": post["id"],
                 "name": post["name"],
@@ -113,7 +119,9 @@ async def get_project_posts(
                 "accesscount": post["accesscount"],
                 "commentcount": post["commentcount"],
                 "category": category_name,
-                "author_name": post["author_name"]
+                "author_name": post["author_name"],
+                "userid": post["userid"],
+                "avatar": avatar_path
             })
         
         return {
