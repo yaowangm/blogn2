@@ -13,3 +13,4 @@ class Folder(SQLModel, table=True):
     parent: Optional[int] = Field(default=None, foreign_key="folders.id")
     projectid: Optional[int] = Field(default=None, foreign_key="project.id")
     recordcount: Optional[int] = Field(default=None)
+    postcount: Optional[int] = Field(default=None)
