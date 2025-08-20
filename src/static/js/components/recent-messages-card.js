@@ -123,12 +123,15 @@ class RecentMessagesCard extends BaseComponent {
                     align-items: center;
                     justify-content: space-between;
                     margin-bottom: var(--spacing-2);
+                    flex-wrap: wrap;
+                    gap: var(--spacing-2);
                 }
 
                 .message-author-info {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-2);
+                    flex-shrink: 0;
                 }
 
                 .message-avatar {
@@ -137,6 +140,7 @@ class RecentMessagesCard extends BaseComponent {
                     border-radius: 50%;
                     object-fit: cover;
                     border: 1px solid var(--gray-200);
+                    flex-shrink: 0;
                 }
 
                 .message-avatar-placeholder {
@@ -151,16 +155,23 @@ class RecentMessagesCard extends BaseComponent {
                     font-size: var(--font-size-xs);
                     font-weight: 500;
                     border: 1px solid var(--gray-200);
+                    flex-shrink: 0;
                 }
 
                 .message-author {
                     font-weight: 500;
                     color: var(--gray-900);
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    max-width: 120px;
                 }
 
                 .message-time {
                     font-size: var(--font-size-sm);
                     color: var(--gray-500);
+                    white-space: nowrap;
+                    flex-shrink: 0;
                 }
 
                 .message-subject {
@@ -169,12 +180,33 @@ class RecentMessagesCard extends BaseComponent {
                     line-height: 1.5;
                     font-weight: 500;
                     margin-bottom: var(--spacing-1);
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
                 }
 
                 .message-reply-info {
                     font-size: var(--font-size-xs);
                     color: var(--gray-500);
                     line-height: 1.4;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                }
+
+                /* 确保在小屏幕上不会重叠 */
+                @media (max-width: 480px) {
+                    .message-header {
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: var(--spacing-1);
+                    }
+                    
+                    .message-author-info {
+                        max-width: 100%;
+                    }
+                    
+                    .message-author {
+                        max-width: 100px;
+                    }
                 }
             </style>
 

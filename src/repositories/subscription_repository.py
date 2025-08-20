@@ -46,6 +46,12 @@ class SubscriptionRepository:
         posts = []
         
         for project_item, blog_name, author_name in result:
+            # 生成头像路径
+            avatar_path = None
+            if project_item.userid:
+                prefix = (project_item.userid // 10000) + 1
+                avatar_path = f"/avatar/{prefix}/s_{project_item.userid}.jpg"
+            
             posts.append({
                 "id": project_item.id,
                 "name": project_item.name,
@@ -55,7 +61,9 @@ class SubscriptionRepository:
                 "commentcount": project_item.commentcount,
                 "blog_name": blog_name,
                 "author_name": author_name,
-                "blog_id": project_item.projectid
+                "blog_id": project_item.projectid,
+                "userid": project_item.userid,
+                "avatar": avatar_path
             })
         
         # 获取总数

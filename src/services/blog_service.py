@@ -31,7 +31,7 @@ class BlogService:
             return None
             
         prefix = (userid // 10000) + 1
-        avatar_path = f"/avatars/{prefix}/s_{userid}.jpg"
+        avatar_path = f"/avatar/{prefix}/s_{userid}.jpg"
         real_path = f"../pic/blogn_img/userlogo/{prefix}/s_{userid}.jpg"
         
         # 检查文件是否存在

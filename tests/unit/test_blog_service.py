@@ -103,7 +103,7 @@ class TestBlogService:
         
         result = blog_service._check_avatar_exists(12345)
         
-        expected_path = "/avatars/2/s_12345.jpg"
+        expected_path = "/avatar/2/s_12345.jpg"
         assert result == expected_path
         mock_exists.assert_called_once_with("../pic/blogn_img/userlogo/2/s_12345.jpg")
     
@@ -393,7 +393,7 @@ class TestBlogService:
         
         assert len(result["posts"][0]["title"]) <= 53  # 50 + "..."
         assert len(result["posts"][0]["title"]) <= 53  # 50 + "..."
-        assert result["posts"][0]["title"].endswith("...")
+        assert result[0]["title"].endswith("...")
         assert len(result["posts"][0]["excerpt"]) <= 103  # 100 + "..."
         assert result["posts"][0]["excerpt"].endswith("...")
         assert result["posts"][0]["image"] is None

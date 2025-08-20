@@ -328,12 +328,28 @@ class RecentCommentsCard extends BaseComponent {
                     color: var(--gray-600);
                     border: 2px solid var(--gray-200);
                     overflow: hidden;
+                    position: relative;
                 }
 
                 .user-avatar img {
                     width: 100%;
                     height: 100%;
                     object-fit: cover;
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                }
+
+                .user-avatar span {
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: var(--primary-color);
+                    color: white;
+                    font-weight: 600;
+                    text-transform: uppercase;
                 }
 
                 .comment-content {
@@ -429,10 +445,11 @@ class RecentCommentsCard extends BaseComponent {
                                 return `
                                     <div class="${cssClass}" ${dataAttributes}>
                                         <div class="user-avatar">
-                                            ${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null ? 
-                                                `<img src="${comment.avatar}" alt="${this.escapeHtml(comment.author)}" />` : 
-                                                `<span>${this.escapeHtml(comment.author.charAt(0))}</span>`
+                                            ${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 
+                                                `<img src="${comment.avatar}" alt="${this.escapeHtml(comment.author)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` : 
+                                                ''
                                             }
+                                            <span style="${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 'display: none;' : 'display: flex;'}">${this.escapeHtml(comment.author.charAt(0))}</span>
                                         </div>
                                         <div class="comment-content">
                                             <div class="comment-header">

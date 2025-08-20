@@ -124,7 +124,7 @@ async def get_project_posts(
             avatar_path = None
             if post["userid"]:
                 prefix = (post["userid"] // 10000) + 1
-                avatar_path = f"/avatars/{prefix}/s_{post['userid']}.jpg"
+                avatar_path = f"/avatar/{prefix}/s_{post['userid']}.jpg"
             
             posts_data.append({
                 "id": post["id"],
@@ -179,7 +179,7 @@ async def get_project_recent_comments(
         avatar_path = None
         if userid:
             prefix = (userid // 10000) + 1
-            avatar_path = f"/avatars/{prefix}/s_{userid}.jpg"
+            avatar_path = f"/avatar/{prefix}/s_{userid}.jpg"
         
         comments_data.append({
             "id": comment["id"],
