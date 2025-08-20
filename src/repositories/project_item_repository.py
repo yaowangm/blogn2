@@ -126,10 +126,13 @@ class ProjectItemRepository:
             select(ProjectItem, User.name.label("author_name"))
             .join(User, ProjectItem.userid == User.id)
             .where(ProjectItem.projectid == project_id)
+            .where(ProjectItem.status == 1)  # 只获取正常状态的文章
         )
         
         if folder_id is not None:
+            # 如果指定了文件夹，只获取该文件夹下的文章
             query = query.where(ProjectItem.folderid == folder_id)
+        # 如果没有指定folder_id，则获取所有文章（包括未分配文件夹的文章）
         
         if limit:
             query = query.limit(limit)
@@ -187,12 +190,23 @@ class ProjectItemRepository:
                 Folder.projectid == project_id
             )
             result = await self.session.exec(folder_query)
-            folder = result.first()
-            return folder.recordcount if folder and folder.recordcount is not None else 0
+            folder_recordcount = result.first()
+            return folder_recordcount if folder_recordcount is not None else 0
         else:
             # 如果没有指定文件夹，统计项目下所有文件夹的文章总数
+            # 注意：这里需要包含未分配到任何文件夹的文章
             folders_query = select(Folder.recordcount).where(Folder.projectid == project_id)
             result = await self.session.exec(folders_query)
-            folders = result.all()
-            total_count = sum(folder.recordcount or 0 for folder in folders)
-            return total_count 
+            folder_recordcounts = result.all()
+            folder_count = sum(recordcount or 0 for recordcount in folder_recordcounts)
+            
+            # 还需要统计没有分配到任何文件夹的文章数量
+            unassigned_query = select(func.count(ProjectItem.id)).where(
+                ProjectItem.projectid == project_id,
+                ProjectItem.folderid.is_(None),  # 未分配文件夹的文章
+                ProjectItem.status == 1  # 只统计正常状态的文章
+            )
+            unassigned_result = await self.session.exec(unassigned_query)
+            unassigned_count = unassigned_result.first() or 0
+            
+            return folder_count + unassigned_count 
