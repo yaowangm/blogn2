@@ -8,6 +8,7 @@ class BlogListCard extends BaseComponent {
         this.posts = [];
         this.currentFolderId = null;
         this.currentCategoryName = '全部文章';
+        this.showCategoryInfo = false; // 控制是否显示分类信息
     }
 
     /**
@@ -49,7 +50,20 @@ class BlogListCard extends BaseComponent {
         return this.isBlogPage() ? '博客文章' : '最新博文';
     }
 
+    /**
+     * 检查是否应该显示分类信息
+     * @returns {boolean} 是否显示分类信息
+     */
+    shouldShowCategoryInfo() {
+        // 只有在博客页面的原创文章中才显示分类信息
+        return this.isBlogPage() && 
+               this.id !== 'subscription-posts-card' && 
+               this.hasAttribute('show-category');
+    }
+
     connectedCallback() {
+        // 检查是否应该显示分类信息
+        this.showCategoryInfo = this.shouldShowCategoryInfo();
         this.currentFolderId = this.getCurrentFolderId();
         this.render();
         this.loadContent();
@@ -193,7 +207,7 @@ class BlogListCard extends BaseComponent {
     }
 
     renderPagination() {
-        // 即使没有分页数据，也要显示分类信息
+        // 即使没有分页数据，也要显示分类信息（如果启用的话）
         let paginationHtml = '';
         
         if (this.totalPages > 1) {
@@ -224,16 +238,18 @@ class BlogListCard extends BaseComponent {
                         </button>
                     </div>
                     
-                    <div class="pagination-right">
-                        <div class="category-info">
-                            <span class="category-label">分类：</span>
-                            <span class="category-name">${this.currentCategoryName}</span>
+                    ${this.showCategoryInfo ? `
+                        <div class="pagination-right">
+                            <div class="category-info">
+                                <span class="category-label">分类：</span>
+                                <span class="category-name">${this.currentCategoryName}</span>
+                            </div>
                         </div>
-                    </div>
+                    ` : ''}
                 </div>
             `;
         } else {
-            // 即使没有分页，也要显示分类信息
+            // 即使没有分页，也要显示分类信息（如果启用的话）
             paginationHtml = `
                 <div class="pagination">
                     <div class="pagination-left">
@@ -242,12 +258,14 @@ class BlogListCard extends BaseComponent {
                         </div>
                     </div>
                     
-                    <div class="pagination-right">
-                        <div class="category-info">
-                            <span class="category-label">分类：</span>
-                            <span class="category-name">${this.currentCategoryName}</span>
+                    ${this.showCategoryInfo ? `
+                        <div class="pagination-right">
+                            <div class="category-info">
+                                <span class="category-label">分类：</span>
+                                <span class="category-name">${this.currentCategoryName}</span>
+                            </div>
                         </div>
-                    </div>
+                    ` : ''}
                 </div>
             `;
         }

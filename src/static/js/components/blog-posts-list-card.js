@@ -174,7 +174,7 @@ class BlogPostsListCard extends BaseComponent {
         // 复用 blog-list-card 组件显示原创文章
         return `
             <div class="blog-list-container">
-                <blog-list-card></blog-list-card>
+                <blog-list-card show-category></blog-list-card>
             </div>
         `;
     }
