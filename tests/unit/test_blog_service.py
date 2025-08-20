@@ -367,7 +367,7 @@ class TestBlogService:
         assert result["posts"][0]["excerpt"] == "这是博文内容摘要"
         assert result["posts"][0]["author"] == "博文作者"
         assert result["posts"][0]["userid"] == 202
-        assert result["posts"][0]["image"] == "/static/upload/test.jpg"
+        assert result["posts"][0]["image"] == "/upload/test.jpg"
         assert "小时前" in result["posts"][0]["time"]
         mock_project_item_repo.get_latest_posts.assert_called_once_with(5, None, None, 0)
         mock_project_item_repo.get_posts_count.assert_called_once_with(None, None)

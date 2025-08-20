@@ -259,7 +259,7 @@ class BlogService:
                 # 处理附件图片路径
                 image_path = None
                 if post["attachment"]:
-                    image_path = f"/static/upload/{post['attachment']}"
+                    image_path = f"/upload/{post['attachment']}"
                 
                 formatted_posts.append({
                     "id": post["id"],
