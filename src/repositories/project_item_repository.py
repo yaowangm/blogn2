@@ -155,7 +155,8 @@ class ProjectItemRepository:
                 "accesscount": project_item.accesscount,
                 "commentcount": project_item.commentcount,
                 "userid": project_item.userid,
-                "author_name": author_name
+                "author_name": author_name,
+                "attachment": project_item.attachment
             })
         
         return posts
