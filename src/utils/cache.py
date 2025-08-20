@@ -290,7 +290,7 @@ def cache_blog_list(ttl: int = None):
 def cache_blog_recent_list(ttl: int = None):
     """最新博客列表缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
-                          f"blog:recent:list:{kwargs.get('limit', 10)}")
+                          f"blog:recent:list:{kwargs.get('page', 1)}:{kwargs.get('page_size', 10)}:{kwargs.get('exclude', 'none')}:{kwargs.get('blogid', 'none')}")
 
 
 def cache_blog_popular_list(ttl: int = None):
