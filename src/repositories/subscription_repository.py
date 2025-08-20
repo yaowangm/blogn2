@@ -63,7 +63,8 @@ class SubscriptionRepository:
                 "author_name": author_name,
                 "blog_id": project_item.projectid,
                 "userid": project_item.userid,
-                "avatar": avatar_path
+                "avatar": avatar_path,
+                "image": f"/upload/{project_item.attachment}" if project_item.attachment else None
             })
         
         # 获取总数

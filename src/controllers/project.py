@@ -136,7 +136,8 @@ async def get_project_posts(
                 "category": category_name,
                 "author_name": post["author_name"],
                 "userid": post["userid"],
-                "avatar": avatar_path
+                "avatar": avatar_path,
+                "image": f"/upload/{post['attachment']}" if post.get("attachment") else None
             })
         
         return {
