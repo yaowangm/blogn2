@@ -392,8 +392,7 @@ class TestBlogService:
         result = await blog_service.get_latest_posts(1, 5)
         
         assert len(result["posts"][0]["title"]) <= 53  # 50 + "..."
-        assert len(result["posts"][0]["title"]) <= 53  # 50 + "..."
-        assert result[0]["title"].endswith("...")
+        assert result["posts"][0]["title"].endswith("...")
         assert len(result["posts"][0]["excerpt"]) <= 103  # 100 + "..."
         assert result["posts"][0]["excerpt"].endswith("...")
         assert result["posts"][0]["image"] is None
