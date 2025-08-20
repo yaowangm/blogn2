@@ -1,3 +1,9 @@
+"""
+BlogN2 FastAPI 主应用
+
+提供博客系统的核心API服务，包括用户管理、博客管理、缓存系统等。
+"""
+
 import sys
 import os
 from pathlib import Path
@@ -26,10 +32,9 @@ async def lifespan(app: FastAPI):
     """
     应用生命周期管理器
     
-    处理应用启动和关闭事件
+    处理应用启动和关闭事件，包括缓存系统初始化。
     """
-    # 启动事件
-    # 验证缓存配置
+    # 启动事件：验证缓存配置并初始化缓存系统
     config_info = validate_cache_config()
     print(f"📋 缓存配置已加载: Redis={config_info['redis_host']}:{config_info['redis_port']}, 缓存前缀={config_info['cache_prefix']}")
     
@@ -42,13 +47,13 @@ async def lifespan(app: FastAPI):
     
     yield
     
-    # 关闭事件（如果需要清理资源）
+    # 关闭事件：清理资源（如需要）
 
 
 # 创建FastAPI应用实例
 app = FastAPI(
     title="BlogN2 API",
-    description="一个基于FastAPI的博客系统",
+    description="一个基于FastAPI的博客系统，支持用户管理、博客发布、评论系统等功能",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -62,9 +67,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 文件服务配置
+# 静态文件服务配置
 UPLOAD_BASE_PATH = "../pic/blogn_img/upload"
 AVATAR_BASE_PATH = "../pic/blogn_img/userlogo"
+
+# 挂载静态文件目录
+app.mount("/static", StaticFiles(directory="src/static"), name="static")
+
 
 def serve_file(file_path: str, media_type: str = None):
     """
@@ -76,6 +85,9 @@ def serve_file(file_path: str, media_type: str = None):
         
     Returns:
         FileResponse: 文件响应
+        
+    Raises:
+        HTTPException: 当文件不存在时抛出404错误
     """
     import os
     if os.path.exists(file_path):
@@ -83,6 +95,7 @@ def serve_file(file_path: str, media_type: str = None):
     else:
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="File not found")
+
 
 def validate_and_sanitize_path(base_path: str, user_path: str) -> str:
     """
@@ -104,82 +117,53 @@ def validate_and_sanitize_path(base_path: str, user_path: str) -> str:
     # 规范化路径
     normalized_path = os.path.normpath(user_path)
     
-    # 检查是否包含路径遍历序列
-    if '..' in normalized_path or normalized_path.startswith('/'):
+    # 检查路径是否包含路径遍历攻击
+    if normalized_path.startswith('..') or normalized_path.startswith('/'):
         raise HTTPException(status_code=400, detail="Invalid path")
     
     # 构建完整路径
     full_path = os.path.join(base_path, normalized_path)
     
     # 确保最终路径在基础路径内
-    try:
-        full_path = os.path.abspath(full_path)
-        base_path_abs = os.path.abspath(base_path)
-        if not full_path.startswith(base_path_abs):
-            raise HTTPException(status_code=400, detail="Path traversal detected")
-    except (OSError, ValueError):
-        raise HTTPException(status_code=400, detail="Invalid path")
+    if not os.path.abspath(full_path).startswith(os.path.abspath(base_path)):
+        raise HTTPException(status_code=400, detail="Path traversal detected")
     
     return full_path
 
-# 自定义upload文件路由 - 必须在静态文件挂载之前
-@app.get("/static/upload/{path:path}")
-async def serve_upload_file(path: str):
+
+# ==================== 文件服务路由 ====================
+
+@app.get("/upload/{file_path:path}")
+async def serve_upload_file(file_path: str):
     """
-    提供upload文件访问
+    提供上传文件服务
     
     Args:
-        path: 文件路径
+        file_path: 文件路径
         
     Returns:
-        FileResponse: 文件
+        FileResponse: 文件响应
     """
-    safe_path = validate_and_sanitize_path(UPLOAD_BASE_PATH, path)
+    safe_path = validate_and_sanitize_path(UPLOAD_BASE_PATH, file_path)
     return serve_file(safe_path)
 
-# 添加HEAD方法支持
-@app.head("/static/upload/{path:path}")
-async def serve_upload_file_head(path: str):
+
+@app.get("/avatar/{file_path:path}")
+async def serve_avatar_file(file_path: str):
     """
-    提供upload文件HEAD请求支持
+    提供用户头像文件服务
     
     Args:
-        path: 文件路径
+        file_path: 文件路径
         
     Returns:
-        FileResponse: 文件头信息
+        FileResponse: 文件响应
     """
-    safe_path = validate_and_sanitize_path(UPLOAD_BASE_PATH, path)
+    safe_path = validate_and_sanitize_path(AVATAR_BASE_PATH, file_path)
     return serve_file(safe_path)
 
-# 挂载静态文件目录，提供前端资源访问
-app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
-# 挂载用户头像目录，直接指向实际路径
-# app.mount("/static/userlogo", StaticFiles(directory="../pic/blogn_img/userlogo"), name="userlogo")
-
-# 自定义头像文件路由
-@app.get("/avatars/{prefix}/{filename}")
-async def serve_avatar(prefix: str, filename: str):
-    """
-    提供用户头像文件访问
-    
-    Args:
-        prefix: 用户ID前缀
-        filename: 头像文件名
-        
-    Returns:
-        FileResponse: 头像文件
-    """
-    # 验证prefix和filename参数
-    if not prefix.isdigit() or not filename:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="Invalid avatar parameters")
-    
-    # 构建头像路径并验证
-    avatar_path = f"{prefix}/{filename}"
-    safe_path = validate_and_sanitize_path(AVATAR_BASE_PATH, avatar_path)
-    return serve_file(safe_path, media_type="image/jpeg")
+# ==================== API路由注册 ====================
 
 # 注册API路由，统一使用/api前缀
 app.include_router(metadata.router, prefix="/api")
@@ -188,9 +172,10 @@ app.include_router(blog.router, prefix="/api")
 app.include_router(project.router, prefix="/api")
 app.include_router(urllink.router, prefix="/api")
 
-# 根路径和首页路由 - 都返回首页
+
+# ==================== 页面路由 ====================
+
 @app.get("/")
-@app.get("/index.html")
 async def root():
     """
     根路径和首页路由
@@ -203,7 +188,6 @@ async def root():
     return FileResponse("src/static/index.html")
 
 
-# 博客页面路由
 @app.get("/blog/{project_id}")
 async def blog_page(project_id: int):
     """
@@ -220,8 +204,8 @@ async def blog_page(project_id: int):
     return FileResponse("src/static/blog.html")
 
 
+# ==================== 系统端点 ====================
 
-# 健康检查端点
 @app.get("/health")
 async def health_check():
     """
@@ -235,7 +219,8 @@ async def health_check():
     return {"status": "healthy", "service": "BlogN2 API"}
 
 
-# 缓存管理端点
+# ==================== 缓存管理端点 ====================
+
 async def _ensure_cache_initialized():
     """确保缓存系统已初始化"""
     await cache_manager.initialize()
@@ -243,7 +228,14 @@ async def _ensure_cache_initialized():
 
 @app.get("/api/cache/status")
 async def cache_status():
-    """缓存状态检查端点"""
+    """
+    缓存状态检查端点
+    
+    返回缓存系统的当前状态和统计信息。
+    
+    Returns:
+        Dict: 包含缓存状态和统计信息的字典
+    """
     await _ensure_cache_initialized()
     
     return {
@@ -256,13 +248,19 @@ async def cache_status():
 
 @app.post("/api/cache/clear")
 async def clear_cache():
-    """清除所有缓存端点"""
+    """
+    清除所有缓存端点
+    
+    清除系统中的所有缓存数据。
+    
+    Returns:
+        Dict: 包含操作结果的字典
+    """
     await _ensure_cache_initialized()
     
     if not cache_manager.is_available():
         return {"success": False, "message": "缓存系统不可用"}
     
-    # 清除所有缓存
     try:
         await cache_manager.clear_pattern("*")
         return {"success": True, "message": "缓存清除成功"}
@@ -272,7 +270,14 @@ async def clear_cache():
 
 @app.get("/api/cache/stats")
 async def get_cache_stats():
-    """获取缓存统计信息端点"""
+    """
+    获取缓存统计信息端点
+    
+    返回详细的缓存统计信息和配置。
+    
+    Returns:
+        Dict: 包含缓存统计和设置的字典
+    """
     return {
         "stats": cache_stats.get_stats(),
         "settings": {
@@ -282,6 +287,9 @@ async def get_cache_stats():
             "max_ttl": cache_settings.max_ttl
         }
     }
+
+
+# ==================== 应用启动 ====================
 
 if __name__ == "__main__":
     uvicorn.run(

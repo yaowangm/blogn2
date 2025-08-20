@@ -1,117 +1,107 @@
 #!/usr/bin/env python3
 """
-Redis连接测试脚本
-用于测试Redis连接和缓存功能
+Redis连接和功能测试脚本
+
+测试Redis连接是否正常，验证基本的缓存操作功能。
 """
 
 import sys
 import os
-import asyncio
+import logging
 from pathlib import Path
 
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.config.cache import cache_settings, get_redis_url
-from src.utils.cache import cache_manager
+from src.config.cache import get_redis_url
+import redis.asyncio as redis
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
-# ==================== 测试函数 ====================
-
-async def test_basic_cache_operations():
-    """测试基本缓存操作"""
-    test_key = "test:connection"
-    test_value = {"message": "Hello Redis!", "timestamp": "2024-01-01"}
+async def test_basic_cache_operations(redis_client):
+    """
+    测试基本的缓存操作
     
-    # 设置缓存
-    success = await cache_manager.set(test_key, test_value, ttl=60)
-    if success:
-        print("✅ 缓存设置成功")
-    else:
-        print("❌ 缓存设置失败")
+    Args:
+        redis_client: Redis客户端实例
+        
+    Returns:
+        bool: 测试是否成功
+    """
+    try:
+        # 测试设置缓存
+        await redis_client.set("test_key", "test_value", ex=60)
+        logger.info("✅ 缓存设置成功")
+        
+        # 测试获取缓存
+        cached_value = await redis_client.get("test_key")
+        if cached_value == "test_value":
+            logger.info("✅ 缓存获取成功")
+            logger.info(f"📦 缓存内容: {cached_value}")
+        else:
+            logger.error("❌ 缓存获取失败")
+            return False
+        
+        # 测试删除缓存
+        await redis_client.delete("test_key")
+        logger.info("✅ 缓存删除成功")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ 缓存操作测试失败: {e}")
         return False
-    
-    # 获取缓存
-    cached_value = await cache_manager.get(test_key)
-    if cached_value:
-        print("✅ 缓存获取成功")
-        print(f"📦 缓存内容: {cached_value}")
-    else:
-        print("❌ 缓存获取失败")
-        return False
-    
-    # 删除缓存
-    delete_success = await cache_manager.delete(test_key)
-    if delete_success:
-        print("✅ 缓存删除成功")
-    else:
-        print("❌ 缓存删除失败")
-        return False
-    
-    return True
 
 
 async def test_redis_connection():
-    """测试Redis连接"""
-    print("🔍 测试Redis连接...")
-    
+    """测试Redis连接和基本功能"""
     try:
+        logger.info("🔍 测试Redis连接...")
+        
+        # 获取Redis配置
         redis_url = get_redis_url()
-        print(f"📡 Redis URL: {redis_url}")
+        logger.info(f"📡 Redis URL: {redis_url}")
         
-        await cache_manager.initialize()
+        # 创建Redis客户端
+        redis_client = redis.from_url(redis_url, encoding='utf-8', decode_responses=True)
         
-        if cache_manager.is_available():
-            print("✅ Redis连接成功！")
-            return await test_basic_cache_operations()
-        else:
-            print("❌ Redis连接失败！")
-            print("💡 请检查Redis服务是否运行，以及配置是否正确")
-            return False
-            
+        # 测试连接
+        await redis_client.ping()
+        logger.info("✅ Redis连接成功！")
+        
+        # 测试基本缓存操作
+        cache_test_success = await test_basic_cache_operations(redis_client)
+        
+        # 关闭连接
+        await redis_client.close()
+        
+        return cache_test_success
+        
     except Exception as e:
-        print(f"❌ 连接测试失败: {e}")
-        print("💡 请确保Redis服务正在运行")
+        logger.error(f"❌ Redis连接测试失败: {e}")
         return False
-
-
-def test_cache_settings():
-    """测试缓存配置"""
-    print("\n🔧 缓存配置信息:")
-    config_items = [
-        ("Redis主机", cache_settings.redis_host),
-        ("Redis端口", cache_settings.redis_port),
-        ("Redis数据库", cache_settings.redis_db),
-        ("缓存启用", cache_settings.enable_cache),
-        ("调试模式", cache_settings.cache_debug),
-        ("默认TTL", f"{cache_settings.default_ttl}秒"),
-        ("最大TTL", f"{cache_settings.max_ttl}秒"),
-        ("缓存前缀", cache_settings.cache_prefix)
-    ]
-    
-    for label, value in config_items:
-        print(f"   {label}: {value}")
 
 
 async def main():
     """主函数"""
-    print("🚀 Redis缓存系统测试")
-    print("=" * 50)
+    logger.info("🚀 开始Redis连接测试...")
     
-    # 测试配置
-    test_cache_settings()
+    success = await test_redis_connection()
     
-    # 测试连接
-    connection_success = await test_redis_connection()
-    
-    print("\n" + "=" * 50)
-    if connection_success:
-        print("🏁 所有测试通过！")
+    if success:
+        logger.info("\n🎉 Redis连接测试成功！")
     else:
-        print("🏁 测试完成，但存在问题")
-        print("💡 请检查Redis配置和服务状态")
+        logger.error("\n💥 Redis连接测试失败！")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
+    import asyncio
     asyncio.run(main()) 

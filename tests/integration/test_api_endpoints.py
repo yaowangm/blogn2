@@ -29,9 +29,9 @@ class TestAPIEndpoints:
 
     @pytest.mark.integration
     def test_index_html_endpoint(self, test_client):
-        """测试index.html端点"""
+        """测试index.html端点 - 重构后已移除，应返回404"""
         response = test_client.get("/index.html")
-        assert response.status_code == 200
+        assert response.status_code == 404
 
     @pytest.mark.integration
     @patch('src.controllers.user.get_user_service')
@@ -248,11 +248,11 @@ class TestAPIEndpoints:
     @pytest.mark.integration
     def test_static_upload_file_not_found(self, test_client):
         """测试静态文件不存在"""
-        response = test_client.get("/static/upload/nonexistent.jpg")
+        response = test_client.get("/upload/nonexistent.jpg")
         assert response.status_code == 404
 
     @pytest.mark.integration
     def test_avatar_file_not_found(self, test_client):
         """测试头像文件不存在"""
-        response = test_client.get("/avatars/123/nonexistent.jpg")
+        response = test_client.get("/avatar/123/nonexistent.jpg")
         assert response.status_code == 404 
