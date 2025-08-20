@@ -88,8 +88,23 @@ async def get_project_posts(
         # 获取文章列表
         posts = await project_item_repo.get_by_project_id_and_folder(project_id, folderid, limit, offset)
         
-        # 获取总数
-        total = await project_item_repo.count_by_project_id_and_folder(project_id, folderid)
+        # 获取总数 - 使用预存储的recordcount字段，避免实时查询
+        if folderid:
+            # 如果指定了文件夹，直接从folders表获取
+            folder_repo = FolderRepository(session)
+            try:
+                folder = await folder_repo.get_by_id(folderid)
+                if folder and folder.recordcount is not None:
+                    total = folder.recordcount
+                else:
+                    # 如果recordcount为空，回退到实时查询
+                    total = await project_item_repo.count_by_project_id_and_folder(project_id, folderid)
+            except:
+                # 如果获取失败，回退到实时查询
+                total = await project_item_repo.count_by_project_id_and_folder(project_id, folderid)
+        else:
+            # 如果没有指定文件夹，统计项目下所有文件夹的文章总数
+            total = await project_item_repo.get_count_from_folder_recordcount(project_id)
         
         # 获取分类信息
         category_name = "全部文章"
@@ -273,3 +288,32 @@ async def get_project_rss(
 </rss>"""
     
     return Response(content=rss_content, media_type="application/xml")
+
+@router.get("/projects/{project_id}/stats", response_model=Dict[str, Any])
+async def get_project_stats(
+    project_id: int,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    获取指定项目的统计信息（使用预存储数据，性能更优）
+    
+    Args:
+        project_id: 项目ID
+        session: 数据库会话
+        
+    Returns:
+        Dict[str, Any]: 项目统计信息
+    """
+    from src.services.metadata_service import MetadataService
+    from src.repositories.user_repository import UserRepository
+    from src.repositories.project_item_repository import ProjectItemRepository
+    
+    user_repo = UserRepository(session)
+    post_repo = ProjectItemRepository(session)
+    metadata_service = MetadataService(user_repo, post_repo)
+    
+    try:
+        stats = await metadata_service.get_project_stats_from_cache(project_id)
+        return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取项目统计信息失败: {str(e)}")

@@ -165,4 +165,34 @@ class ProjectItemRepository:
             statement = statement.where(ProjectItem.folderid == folder_id)
         
         result = await self.session.exec(statement)
-        return result.first() or 0 
+        return result.first() or 0
+    
+    async def get_count_from_folder_recordcount(self, project_id: int, folder_id: Optional[int] = None) -> int:
+        """
+        从folders表的recordcount字段获取文章数量，避免实时查询
+        
+        Args:
+            project_id: 项目ID
+            folder_id: 文件夹ID（可选）
+            
+        Returns:
+            int: 文章数量
+        """
+        from src.models.folder import Folder
+        
+        if folder_id is not None:
+            # 如果指定了文件夹，直接从该文件夹的recordcount获取
+            folder_query = select(Folder.recordcount).where(
+                Folder.id == folder_id,
+                Folder.projectid == project_id
+            )
+            result = await self.session.exec(folder_query)
+            folder = result.first()
+            return folder.recordcount if folder and folder.recordcount is not None else 0
+        else:
+            # 如果没有指定文件夹，统计项目下所有文件夹的文章总数
+            folders_query = select(Folder.recordcount).where(Folder.projectid == project_id)
+            result = await self.session.exec(folders_query)
+            folders = result.all()
+            total_count = sum(folder.recordcount or 0 for folder in folders)
+            return total_count 

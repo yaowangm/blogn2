@@ -27,4 +27,36 @@ class MetadataService:
             "post_count": post_count
         }
         
-        return metadata 
+        return metadata
+    
+    async def get_project_stats_from_cache(self, project_id: int) -> Dict[str, int]:
+        """
+        从预存储的统计字段获取项目统计信息，避免实时查询
+        
+        Args:
+            project_id: 项目ID
+            
+        Returns:
+            Dict[str, int]: 项目统计信息
+        """
+        from src.repositories.project_repository import ProjectRepository
+        from src.repositories.folder_repository import FolderRepository
+        
+        project_repo = ProjectRepository(self.post_repo.session)
+        folder_repo = FolderRepository(self.post_repo.session)
+        
+        # 获取项目信息
+        project = await project_repo.get_by_id(project_id)
+        if not project:
+            return {"error": "项目不存在"}
+        
+        # 获取项目下的文件夹统计
+        folders = await folder_repo.get_by_project_id(project_id)
+        total_posts = sum(folder.recordcount or 0 for folder in folders)
+        
+        return {
+            "project_id": project_id,
+            "total_posts": total_posts,
+            "comment_count": project.commentcount or 0,
+            "access_count": project.accesscount or 0
+        } 

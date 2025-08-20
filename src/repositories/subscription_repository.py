@@ -69,6 +69,9 @@ class SubscriptionRepository:
         total_result = await self.session.exec(count_query)
         total = total_result.first() or 0
         
+        # 注意：这里仍然使用实时查询，因为订阅文章的数量可能经常变化
+        # 如果需要优化，可以考虑在project表中添加subscription_count字段
+        
         return {
             "posts": posts,
             "total": total,
