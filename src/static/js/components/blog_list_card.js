@@ -9,6 +9,7 @@ class BlogListCard extends BaseComponent {
         this.currentFolderId = null;
         this.currentCategoryName = '全部文章';
         this.showCategoryInfo = false; // 控制是否显示分类信息
+        this.loadPageSizeConfig();
     }
 
     /**
@@ -595,6 +596,18 @@ class BlogListCard extends BaseComponent {
                 </div>
             </div>
         `;
+    }
+
+    loadPageSizeConfig() {
+        fetch('/api/config/app')
+            .then(response => response.json())
+            .then(config => {
+                this.pageSize = config.blog_posts_page_size || 10;
+                console.log(`📋 应用配置已加载: 博客文章每页显示数量=${this.pageSize}`);
+            })
+            .catch(error => {
+                console.warn('⚠️ 加载应用配置失败，使用默认pagesize=10:', error);
+            });
     }
 }
 
