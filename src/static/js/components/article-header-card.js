@@ -22,6 +22,9 @@ class ArticleHeaderCard extends BaseComponent {
         
         // 渲染组件
         this.render();
+        
+        // 更新页面标题
+        this.updatePageTitle();
     }
 
     /**
@@ -116,6 +119,15 @@ class ArticleHeaderCard extends BaseComponent {
         `;
 
         this.addStyles();
+    }
+
+    /**
+     * 更新页面标题
+     */
+    updatePageTitle() {
+        if (this.articleData && this.articleData.title) {
+            document.title = `${this.articleData.title} - BlogN`;
+        }
     }
 
     /**
