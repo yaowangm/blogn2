@@ -220,6 +220,19 @@ async def article_page(article_id: int):
     return FileResponse("src/static/article.html")
 
 
+@app.get("/debug/article-api")
+async def debug_article_api():
+    """
+    调试文章API页面
+    
+    返回调试页面HTML文件。
+    
+    Returns:
+        FileResponse: 调试页面HTML文件
+    """
+    return FileResponse("debug_article_api.html")
+
+
 # ==================== 系统端点 ====================
 
 @app.get("/health")

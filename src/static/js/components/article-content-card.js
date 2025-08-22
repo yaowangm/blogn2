@@ -40,6 +40,9 @@ class ArticleContentCard extends BaseComponent {
             const response = await fetch(`/api/articles/${this.articleId}`);
             if (response.ok) {
                 this.articleData = await response.json();
+            } else if (response.status === 404) {
+                this.showError('文章不存在');
+                return;
             } else {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }

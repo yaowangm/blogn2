@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>调试文章API - BlogN2</title>
+</head>
+<body>
+    <h1>调试文章API</h1>
+    <button onclick="testAPI()">测试API</button>
+    <div id="result"></div>
+
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '测试中...';
+            
+            try {
+                console.log('开始测试API...');
+                const response = await fetch('/api/articles/1');
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                resultDiv.innerHTML = `
+                    <h3>API响应结果:</h3>
+                    <p>状态码: ${response.status}</p>
+                    <p>响应数据: ${JSON.stringify(data, null, 2)}</p>
+                `;
+            } catch (error) {
+                console.error('API测试失败:', error);
+                resultDiv.innerHTML = `
+                    <h3>API测试失败:</h3>
+                    <p>错误: ${error.message}</p>
+                `;
+            }
+        }
+        
+        // 页面加载完成后自动测试
+        window.addEventListener('load', testAPI);
+    </script>
+</body>
+</html>

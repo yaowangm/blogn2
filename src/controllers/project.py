@@ -361,7 +361,7 @@ async def get_article_detail(
         
         # 获取文章评论
         post_repo = PostRepository(session)
-        comments = await post_repo.get_by_projectitem_id(article_id)
+        comments = await post_repo.get_by_project_item_id(article_id)
         
         return {
             "id": article.id,
@@ -370,7 +370,7 @@ async def get_article_detail(
             "author": {
                 "id": author.id if author else None,
                 "name": author.name if author else "未知作者",
-                "avatar": author.logo if author else None
+                "avatar": None  # users表没有logo字段
             } if author else None,
             "project": {
                 "id": project.id if project else None,
