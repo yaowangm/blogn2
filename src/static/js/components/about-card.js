@@ -8,9 +8,12 @@ class AboutCard extends BaseComponent {
         this.loadContent();
     }
 
-    async loadContent() {
+    /**
+     * 加载关于页面内容
+     */
+    async loadAboutContent() {
         try {
-            const response = await fetch('/api/blogs/about');
+            const response = await fetch('/api/about');
             if (!response.ok) {
                 throw new Error('Failed to fetch about content');
             }
@@ -22,12 +25,29 @@ class AboutCard extends BaseComponent {
         }
     }
 
+    /**
+     * HTML转义函数，防止XSS攻击
+     * @param {string} text - 需要转义的文本
+     * @returns {string} 转义后的安全文本
+     */
+    escapeHtml(text) {
+        if (typeof text !== 'string') return text;
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     updateContent(data) {
         const cardTitle = this.shadowRoot.querySelector('.card-title');
         const cardBody = this.shadowRoot.querySelector('.card-body');
         
         if (cardTitle) {
-            cardTitle.textContent = data.title || 'Why Blogn';
+            // 安全处理标题
+            const safeTitle = this.escapeHtml(data.title || 'Why Blogn');
+            cardTitle.textContent = safeTitle;
         }
         
         if (cardBody) {
@@ -42,9 +62,15 @@ class AboutCard extends BaseComponent {
             for (let i = 0; i < paragraphElements.length; i++) {
                 let paragraph = paragraphElements[i];
                 if (i === paragraphElements.length - 1 && data.link) {
-                    paragraph += ` <a href="${data.link}" class="read-more">查看详情</a>`;
+                    // 安全处理链接，只允许http和https协议
+                    const safeLink = this.escapeHtml(data.link);
+                    if (safeLink.startsWith('http://') || safeLink.startsWith('https://')) {
+                        paragraph += ` <a href="${safeLink}" class="read-more">查看详情</a>`;
+                    }
                 }
-                contentHtml += `<p>${paragraph}</p>`;
+                // 安全处理段落内容
+                const safeParagraph = this.escapeHtml(paragraph);
+                contentHtml += `<p>${safeParagraph}</p>`;
             }
             
             cardBody.innerHTML = `

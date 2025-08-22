@@ -1,0 +1,320 @@
+from fastapi import APIRouter, Depends, HTTPException
+from typing import List, Dict, Any, Optional
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from src.database import get_async_session
+from src.repositories.project_repository import ProjectRepository
+from src.repositories.project_item_repository import ProjectItemRepository
+from src.repositories.post_repository import PostRepository
+from src.repositories.folder_repository import FolderRepository
+from src.models.project import Project
+from src.models.project_item import ProjectItem
+from src.models.post import Post
+from src.models.folder import Folder
+
+# 创建项目API路由器
+router = APIRouter()
+
+@router.get("/projects/{project_id}", response_model=Dict[str, Any])
+async def get_project(
+    project_id: int,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    获取指定项目信息
+    
+    Args:
+        project_id: 项目ID
+        session: 数据库会话
+        
+    Returns:
+        Dict[str, Any]: 项目信息
+    """
+    project_repo = ProjectRepository(session)
+    project = await project_repo.get_by_id(project_id)
+    
+    if not project:
+        raise HTTPException(status_code=404, detail="项目不存在")
+    
+    return {
+        "id": project.id,
+        "name": project.name,
+        "comment": project.comment,
+        "recordcount": project.recordcount,
+        "accesscount": project.accesscount,
+        "userid": project.userid,
+        "createtime": project.createtime,
+        "updatetime": project.updatetime,
+        "commentcount": project.commentcount
+    }
+
+@router.get("/projects/{project_id}/posts", response_model=Dict[str, Any])
+async def get_project_posts(
+    project_id: int,
+    page: int = 1,
+    limit: int = 10,
+    type: str = "original",
+    category: Optional[str] = None,
+    folderid: Optional[int] = None,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    获取指定项目的文章列表
+    
+    Args:
+        project_id: 项目ID
+        page: 页码
+        limit: 每页数量
+        type: 文章类型 (original/subscription)
+        category: 分类筛选
+        folderid: 文件夹ID筛选
+        session: 数据库会话
+        
+    Returns:
+        Dict[str, Any]: 文章列表和总数
+    """
+    if type == "subscription":
+        # 获取订阅文章
+        from src.repositories.subscription_repository import SubscriptionRepository
+        subscription_repo = SubscriptionRepository(session)
+        return await subscription_repo.get_subscription_posts_by_project(project_id, page, limit)
+    else:
+        # 获取原创文章
+        project_item_repo = ProjectItemRepository(session)
+        
+        # 计算偏移量
+        offset = (page - 1) * limit
+        
+        # 获取文章列表
+        posts = await project_item_repo.get_by_project_id_and_folder(project_id, folderid, limit, offset)
+        
+        # 获取总数 - 使用预存储的recordcount字段，避免实时查询
+        if folderid:
+            # 如果指定了文件夹，直接从folders表获取
+            folder_repo = FolderRepository(session)
+            try:
+                folder = await folder_repo.get_by_id(folderid)
+                if folder and folder.recordcount is not None:
+                    total = folder.recordcount
+                else:
+                    # 如果recordcount为空，回退到实时查询
+                    total = await project_item_repo.count_by_project_id_and_folder(project_id, folderid)
+            except:
+                # 如果获取失败，回退到实时查询
+                total = await project_item_repo.count_by_project_id_and_folder(project_id, folderid)
+        else:
+            # 如果没有指定文件夹，统计项目下所有文件夹的文章总数
+            total = await project_item_repo.get_count_from_folder_recordcount(project_id)
+        
+        # 获取分类信息
+        category_name = "全部文章"
+        if folderid:
+            folder_repo = FolderRepository(session)
+            try:
+                folder = await folder_repo.get_by_id(folderid)
+                if folder:
+                    category_name = folder.name
+            except:
+                pass
+        
+        # 转换为字典格式
+        posts_data = []
+        for post in posts:
+            # 生成头像路径
+            avatar_path = None
+            if post["userid"]:
+                prefix = (post["userid"] // 10000) + 1
+                avatar_path = f"/avatar/{prefix}/s_{post['userid']}.jpg"
+            
+            posts_data.append({
+                "id": post["id"],
+                "name": post["name"],
+                "comment": post["comment"],
+                "createtime": post["createtime"],
+                "accesscount": post["accesscount"],
+                "commentcount": post["commentcount"],
+                "category": category_name,
+                "author_name": post["author_name"],
+                "userid": post["userid"],
+                "avatar": avatar_path,
+                "image": f"/upload/{post['attachment']}" if post.get("attachment") else None
+            })
+        
+        return {
+            "posts": posts_data,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": (total + limit - 1) // limit,
+            "category": category_name,
+            "folderid": folderid
+        }
+
+@router.get("/projects/{project_id}/comments/recent", response_model=List[Dict[str, Any]])
+async def get_project_recent_comments(
+    project_id: int,
+    limit: int = 5,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    获取指定项目的最近评论
+    
+    Args:
+        project_id: 项目ID
+        limit: 返回数量限制
+        session: 数据库会话
+        
+    Returns:
+        List[Dict[str, Any]]: 最近评论列表
+    """
+    post_repo = PostRepository(session)
+    
+    # 获取项目相关的评论（现在包含用户名和文章名）
+    comments = await post_repo.get_recent_comments_by_project(project_id, limit)
+    
+    # 格式化评论数据
+    comments_data = []
+    for comment in comments:
+        # 检查用户头像是否存在
+        userid = comment["userid"]
+        avatar_path = None
+        if userid:
+            prefix = (userid // 10000) + 1
+            avatar_path = f"/avatar/{prefix}/s_{userid}.jpg"
+        
+        comments_data.append({
+            "id": comment["id"],
+            "author": comment["user_name"],  # 改为author以匹配现有组件
+            "content": comment["content"],
+            "time": comment["post_time"],    # 改为time以匹配现有组件
+            "projectitemid": comment["projectitemid"],
+            "userid": comment["userid"],
+            "avatar": avatar_path
+        })
+    
+    return comments_data
+
+@router.get("/projects/{project_id}/categories", response_model=List[Dict[str, Any]])
+async def get_project_categories(
+    project_id: int,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    获取指定项目的分类列表
+    
+    Args:
+        project_id: 项目ID
+        session: 数据库会话
+        
+    Returns:
+        List[Dict[str, Any]]: 分类列表
+    """
+    folder_repo = FolderRepository(session)
+    
+    try:
+        # 从数据库获取项目的文件夹列表
+        folders = await folder_repo.get_by_project_id(project_id)
+        
+        # 转换为API响应格式
+        categories = []
+        for folder in folders:
+            categories.append({
+                "id": folder.id,
+                "name": folder.name,
+                "count": folder.recordcount or 0,  # 使用folders表中的recordcount字段
+                "color": "#3b82f6"  # 默认颜色
+            })
+        
+        return categories
+        
+    except Exception as e:
+        # 如果获取失败，返回空列表
+        return []
+
+@router.get("/projects/{project_id}/external-links", response_model=List[Dict[str, Any]])
+async def get_project_external_links(
+    project_id: int,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    获取指定项目的外站链接
+    
+    Args:
+        project_id: 项目ID
+        session: 数据库会话
+        
+    Returns:
+        List[Dict[str, Any]]: 外站链接列表
+    """
+    # 这里可以根据实际需求实现外站链接逻辑
+    # 目前返回模拟数据
+    return [
+        {"id": 1, "name": "GitHub", "url": "https://github.com", "description": "代码托管平台"},
+        {"id": 2, "name": "Stack Overflow", "url": "https://stackoverflow.com", "description": "程序员问答社区"},
+        {"id": 3, "name": "掘金", "url": "https://juejin.cn", "description": "开发者社区"}
+    ]
+
+@router.get("/projects/{project_id}/rss")
+async def get_project_rss(
+    project_id: int,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    获取指定项目的RSS订阅
+    
+    Args:
+        project_id: 项目ID
+        session: 数据库会话
+        
+    Returns:
+        RSS格式的响应
+    """
+    from fastapi.responses import Response
+    
+    project_repo = ProjectRepository(session)
+    project = await project_repo.get_by_id(project_id)
+    
+    if not project:
+        raise HTTPException(status_code=404, detail="项目不存在")
+    
+    # 生成RSS内容
+    rss_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+<channel>
+    <title>{project.name}</title>
+    <description>{project.comment or '博客RSS订阅'}</description>
+    <link>http://blogn2.local/blog/{project_id}</link>
+    <language>zh-CN</language>
+</channel>
+</rss>"""
+    
+    return Response(content=rss_content, media_type="application/xml")
+
+@router.get("/projects/{project_id}/stats", response_model=Dict[str, Any])
+async def get_project_stats(
+    project_id: int,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    获取指定项目的统计信息（使用预存储数据，性能更优）
+    
+    Args:
+        project_id: 项目ID
+        session: 数据库会话
+        
+    Returns:
+        Dict[str, Any]: 项目统计信息
+    """
+    from src.services.metadata_service import MetadataService
+    from src.repositories.user_repository import UserRepository
+    from src.repositories.project_item_repository import ProjectItemRepository
+    
+    user_repo = UserRepository(session)
+    post_repo = ProjectItemRepository(session)
+    metadata_service = MetadataService(user_repo, post_repo)
+    
+    try:
+        stats = await metadata_service.get_project_stats_from_cache(project_id)
+        return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取项目统计信息失败: {str(e)}")

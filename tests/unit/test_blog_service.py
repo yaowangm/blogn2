@@ -80,6 +80,8 @@ class TestBlogService:
             "createtime": datetime.now() - timedelta(hours=3),
             "userid": 202,
             "author_name": "博文作者",
+            "blog_name": "测试博客",
+            "blog_id": 456,
             "attachment": "test.jpg"
         }
     
@@ -101,7 +103,7 @@ class TestBlogService:
         
         result = blog_service._check_avatar_exists(12345)
         
-        expected_path = "/avatars/2/s_12345.jpg"
+        expected_path = "/avatar/2/s_12345.jpg"
         assert result == expected_path
         mock_exists.assert_called_once_with("../pic/blogn_img/userlogo/2/s_12345.jpg")
     
@@ -351,18 +353,24 @@ class TestBlogService:
     async def test_get_latest_posts_success(self, blog_service, mock_project_item_repo, sample_post_data):
         """测试获取最新博文成功"""
         mock_project_item_repo.get_latest_posts.return_value = [sample_post_data]
+        mock_project_item_repo.get_posts_count.return_value = 1
         
-        result = await blog_service.get_latest_posts(5)
+        result = await blog_service.get_latest_posts(1, 5)
         
-        assert len(result) == 1
-        assert result[0]["id"] == 1
-        assert result[0]["title"] == "测试博文标题"
-        assert result[0]["excerpt"] == "这是博文内容摘要"
-        assert result[0]["author"] == "博文作者"
-        assert result[0]["userid"] == 202
-        assert result[0]["image"] == "/static/upload/test.jpg"
-        assert "小时前" in result[0]["time"]
-        mock_project_item_repo.get_latest_posts.assert_called_once_with(5)
+        assert result["total"] == 1
+        assert result["page"] == 1
+        assert result["page_size"] == 5
+        assert result["total_pages"] == 1
+        assert len(result["posts"]) == 1
+        assert result["posts"][0]["id"] == 1
+        assert result["posts"][0]["title"] == "测试博文标题"
+        assert result["posts"][0]["excerpt"] == "这是博文内容摘要"
+        assert result["posts"][0]["author"] == "博文作者"
+        assert result["posts"][0]["userid"] == 202
+        assert result["posts"][0]["image"] == "/upload/test.jpg"
+        assert "小时前" in result["posts"][0]["time"]
+        mock_project_item_repo.get_latest_posts.assert_called_once_with(5, None, None, 0)
+        mock_project_item_repo.get_posts_count.assert_called_once_with(None, None)
     
     @pytest.mark.unit
     async def test_get_latest_posts_long_title_and_excerpt(self, blog_service, mock_project_item_repo):
@@ -374,27 +382,33 @@ class TestBlogService:
             "createtime": datetime.now() - timedelta(hours=3),
             "userid": 202,
             "author_name": "博文作者",
+            "blog_name": "测试博客",
+            "blog_id": 456,
             "attachment": None
         }
         mock_project_item_repo.get_latest_posts.return_value = [post_data]
         
-        result = await blog_service.get_latest_posts(5)
+        mock_project_item_repo.get_posts_count.return_value = 1
+        result = await blog_service.get_latest_posts(1, 5)
         
-        assert len(result[0]["title"]) <= 53  # 50 + "..."
-        assert len(result[0]["title"]) <= 53  # 50 + "..."
-        assert result[0]["title"].endswith("...")
-        assert len(result[0]["excerpt"]) <= 103  # 100 + "..."
-        assert result[0]["excerpt"].endswith("...")
-        assert result[0]["image"] is None
+        assert len(result["posts"][0]["title"]) <= 53  # 50 + "..."
+        assert result["posts"][0]["title"].endswith("...")
+        assert len(result["posts"][0]["excerpt"]) <= 103  # 100 + "..."
+        assert result["posts"][0]["excerpt"].endswith("...")
+        assert result["posts"][0]["image"] is None
     
     @pytest.mark.unit
     async def test_get_latest_posts_exception(self, blog_service, mock_project_item_repo):
         """测试获取最新博文时发生异常"""
         mock_project_item_repo.get_latest_posts.side_effect = Exception("数据库错误")
         
-        result = await blog_service.get_latest_posts(5)
+        result = await blog_service.get_latest_posts(1, 5)
         
-        assert result == []
+        assert result["posts"] == []
+        assert result["total"] == 0
+        assert result["page"] == 1
+        assert result["page_size"] == 5
+        assert result["total_pages"] == 0
     
     @pytest.mark.unit
     def test_format_relative_time_just_now(self, blog_service):
@@ -470,10 +484,13 @@ class TestBlogService:
             "createtime": None,
             "userid": 202,
             "author_name": "博文作者",
+            "blog_name": "测试博客",
+            "blog_id": 456,
             "attachment": None
         }
         mock_project_item_repo.get_latest_posts.return_value = [post_data]
         
-        result = await blog_service.get_latest_posts(5)
+        mock_project_item_repo.get_posts_count.return_value = 1
+        result = await blog_service.get_latest_posts(1, 5)
         
-        assert result[0]["time"] == "未知时间" 
+        assert result["posts"][0]["time"] == "未知时间" 

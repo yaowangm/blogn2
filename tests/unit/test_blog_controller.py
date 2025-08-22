@@ -151,17 +151,24 @@ class TestBlogController:
             {"id": 1, "title": "博文1", "content": "内容1"},
             {"id": 2, "title": "博文2", "content": "内容2"}
         ]
+        expected_result = {
+            "posts": expected_posts,
+            "total": 2,
+            "page": 1,
+            "page_size": 10,
+            "total_pages": 1
+        }
         
         # 模拟服务方法
         mock_service = AsyncMock(spec=BlogService)
-        mock_service.get_latest_posts.return_value = expected_posts
+        mock_service.get_latest_posts.return_value = expected_result
         
         # 执行测试
-        result = await get_latest_posts(limit=10, blog_service=mock_service)
+        result = await get_latest_posts(page=1, page_size=10, blog_service=mock_service)
         
         # 验证结果
-        assert result == expected_posts
-        mock_service.get_latest_posts.assert_called_once_with(10)
+        assert result == expected_result
+        mock_service.get_latest_posts.assert_called_once_with(1, 10, None, None)
 
     @pytest.mark.unit
     @pytest.mark.asyncio

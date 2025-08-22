@@ -1,6 +1,8 @@
 """
 缓存工具模块
-提供缓存装饰器和工具函数
+
+提供缓存装饰器和工具函数，支持Redis后端缓存系统。
+包含智能缓存管理、装饰器、统计功能等。
 """
 
 import asyncio
@@ -56,14 +58,14 @@ def _ensure_cache_prefix(key: str) -> str:
 # ==================== 缓存管理器 ====================
 
 class CacheManager:
-    """缓存管理器"""
+    """缓存管理器，负责Redis连接和缓存操作"""
     
     def __init__(self):
         self._backend = None
         self._initialized = False
     
     async def initialize(self):
-        """初始化缓存"""
+        """初始化缓存系统"""
         if self._initialized:
             return
         
@@ -159,12 +161,15 @@ def cache_decorator(
     enable_cache: bool = True
 ):
     """
-    缓存装饰器
+    通用缓存装饰器
     
     Args:
-        ttl: 缓存时间（秒）
-        key_builder: 自定义键生成器
+        ttl: 缓存时间（秒），默认使用配置中的default_ttl
+        key_builder: 自定义键生成器函数
         enable_cache: 是否启用缓存
+        
+    Returns:
+        装饰后的函数
     """
     def decorator(func: Callable) -> Callable:
         @wraps(func)
@@ -223,7 +228,10 @@ def invalidate_cache_pattern(pattern: str):
     缓存失效装饰器
     
     Args:
-        pattern: 缓存键模式
+        pattern: 缓存键模式，支持通配符
+        
+    Returns:
+        装饰后的函数
     """
     def decorator(func: Callable) -> Callable:
         @wraps(func)
@@ -242,16 +250,6 @@ def invalidate_cache_pattern(pattern: str):
 
 
 # ==================== 预定义缓存装饰器 ====================
-
-def _create_key_builder(key_template: str, param_names: list):
-    """创建键生成器的工厂函数"""
-    def key_builder(*args, **kwargs):
-        params = {}
-        for name in param_names:
-            params[name] = kwargs.get(name, 0)
-        return key_template.format(**params)
-    return key_builder
-
 
 # 用户相关缓存装饰器
 def cache_user_profile(ttl: int = None):
@@ -292,7 +290,7 @@ def cache_blog_list(ttl: int = None):
 def cache_blog_recent_list(ttl: int = None):
     """最新博客列表缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
-                          f"blog:recent:list:{kwargs.get('limit', 10)}")
+                          f"blog:recent:list:{kwargs.get('page', 1)}:{kwargs.get('page_size', 10)}:{kwargs.get('exclude', 'none')}:{kwargs.get('blogid', 'none')}")
 
 
 def cache_blog_popular_list(ttl: int = None):
@@ -356,7 +354,7 @@ def invalidate_metadata_cache():
 # ==================== 缓存统计 ====================
 
 class CacheStats:
-    """缓存统计"""
+    """缓存统计类，提供缓存命中率等统计信息"""
     
     def __init__(self):
         self.hits = 0
@@ -365,23 +363,28 @@ class CacheStats:
         self.deletes = 0
     
     def hit(self):
-        """缓存命中"""
+        """记录缓存命中"""
         self.hits += 1
     
     def miss(self):
-        """缓存未命中"""
+        """记录缓存未命中"""
         self.misses += 1
     
     def set(self):
-        """缓存设置"""
+        """记录缓存设置"""
         self.sets += 1
     
     def delete(self):
-        """缓存删除"""
+        """记录缓存删除"""
         self.deletes += 1
     
     def get_stats(self) -> dict:
-        """获取统计信息"""
+        """
+        获取统计信息
+        
+        Returns:
+            Dict: 包含缓存统计信息的字典
+        """
         total_requests = self.hits + self.misses
         hit_rate = (self.hits / total_requests * 100) if total_requests > 0 else 0
         

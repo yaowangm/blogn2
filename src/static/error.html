@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>页面不存在 - BlogN2</title>
+    <meta name="description" content="BlogN2错误页面">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- 顶栏组件 -->
+    <header-component></header-component>
+
+    <!-- 主要内容区域 -->
+    <main class="main-content">
+        <div class="container">
+            <div class="error-container">
+                <div class="error-card">
+                    <div class="error-icon">⚠️</div>
+                    <h1 class="error-title">页面不存在</h1>
+                    <p class="error-message">抱歉，您访问的博客页面不存在或已被删除。</p>
+                    <div class="error-actions">
+                        <a href="/" class="btn btn-primary">返回首页</a>
+                    </div>
+                    <div class="error-help">
+                        <p>可能的原因：</p>
+                        <ul>
+                            <li>博客ID不正确或不存在</li>
+                            <li>博客已被删除</li>
+                            <li>您没有访问权限</li>
+                        </ul>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底栏组件 -->
+    <footer-component></footer-component>
+
+    <!-- Web Components -->
+    <script src="/static/js/components/base-component.js"></script>
+    <script src="/static/js/components/header-component.js"></script>
+    <script src="/static/js/components/footer-component.js"></script>
+
+    <style>
+        .error-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 60vh;
+            padding: var(--spacing-8) 0;
+        }
+
+        .error-card {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--gray-200);
+            padding: var(--spacing-12);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: var(--spacing-6);
+        }
+
+        .error-title {
+            font-size: var(--font-size-2xl);
+            font-weight: 700;
+            color: var(--gray-800);
+            margin: 0 0 var(--spacing-4) 0;
+        }
+
+        .error-message {
+            font-size: var(--font-size-lg);
+            color: var(--gray-600);
+            margin: 0 0 var(--spacing-8) 0;
+            line-height: 1.6;
+        }
+
+        .error-actions {
+            display: flex;
+            gap: var(--spacing-4);
+            justify-content: center;
+            margin-bottom: var(--spacing-8);
+        }
+
+        .btn {
+            display: inline-block;
+            padding: var(--spacing-3) var(--spacing-6);
+            border-radius: var(--radius-lg);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+            font-size: var(--font-size-base);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--gray-100);
+            color: var(--gray-700);
+            border: 1px solid var(--gray-300);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-200);
+            transform: translateY(-1px);
+        }
+
+        .error-help {
+            text-align: left;
+            background: var(--gray-50);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-6);
+            border: 1px solid var(--gray-200);
+        }
+
+        .error-help p {
+            margin: 0 0 var(--spacing-3) 0;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .error-help ul {
+            margin: 0;
+            padding-left: var(--spacing-6);
+            color: var(--gray-600);
+        }
+
+        .error-help li {
+            margin-bottom: var(--spacing-2);
+        }
+    </style>
+</body>
+</html>
