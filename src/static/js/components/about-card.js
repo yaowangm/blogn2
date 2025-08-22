@@ -5,7 +5,7 @@ class AboutCard extends BaseComponent {
 
     connectedCallback() {
         this.render();
-        this.loadContent();
+        this.loadAboutContent();
     }
 
     /**
@@ -13,7 +13,7 @@ class AboutCard extends BaseComponent {
      */
     async loadAboutContent() {
         try {
-            const response = await fetch('/api/about');
+            const response = await fetch('/api/blogs/about');
             if (!response.ok) {
                 throw new Error('Failed to fetch about content');
             }
@@ -61,16 +61,26 @@ class AboutCard extends BaseComponent {
             let contentHtml = '';
             for (let i = 0; i < paragraphElements.length; i++) {
                 let paragraph = paragraphElements[i];
+                let linkHtml = '';
+                
                 if (i === paragraphElements.length - 1 && data.link) {
-                    // 安全处理链接，只允许http和https协议
+                    // 处理链接，支持http、https协议和相对路径
                     const safeLink = this.escapeHtml(data.link);
-                    if (safeLink.startsWith('http://') || safeLink.startsWith('https://')) {
-                        paragraph += ` <a href="${safeLink}" class="read-more">查看详情</a>`;
+                    let finalLink = safeLink;
+                    
+                    // 如果是旧的projectitem链接，转换为新的article链接
+                    if (safeLink.startsWith('/projectitem/')) {
+                        finalLink = safeLink.replace('/projectitem/', '/article/');
+                    }
+                    
+                    if (safeLink.startsWith('http://') || safeLink.startsWith('https://') || safeLink.startsWith('/')) {
+                        linkHtml = ` <a href="${finalLink}" class="read-more">查看详情</a>`;
                     }
                 }
-                // 安全处理段落内容
+                
+                // 安全处理段落内容，但不转义链接HTML
                 const safeParagraph = this.escapeHtml(paragraph);
-                contentHtml += `<p>${safeParagraph}</p>`;
+                contentHtml += `<p>${safeParagraph}${linkHtml}</p>`;
             }
             
             cardBody.innerHTML = `

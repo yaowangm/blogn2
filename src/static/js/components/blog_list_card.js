@@ -203,7 +203,7 @@ class BlogListCard extends BaseComponent {
                 const blogInfo = safeBlogName ? `<span class="post-blog">来自: ${safeBlogName}</span>` : '';
                 
                 return `
-                    <a href="/projectitem/${post.id}" class="post-item">
+                    <a href="/article/${post.id}" class="post-item">
                         <div class="post-avatar">
                             ${avatar ? 
                                 `<img src="${avatar}" alt="${safeAuthor}" onerror="this.style.display='none'">` :
