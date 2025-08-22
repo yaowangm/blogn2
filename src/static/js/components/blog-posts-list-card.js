@@ -8,7 +8,7 @@ class BlogPostsListCard extends BaseComponent {
         this.projectId = null;
         this.activeTab = 'original';
         this.currentPage = 1;
-        this.pageSize = 10;
+        this.pageSize = 10; // 默认值，后续会被BLOG_POSTS_PAGE_SIZE配置参数覆盖
         this.posts = [];
         this.totalPosts = 0;
         this.loading = true;
@@ -193,6 +193,8 @@ class BlogPostsListCard extends BaseComponent {
         fetch('/api/config/app')
             .then(response => response.json())
             .then(config => {
+                // 使用BLOG_POSTS_PAGE_SIZE环境变量对应的配置参数覆盖默认值
+                // 环境变量: BLOG_POSTS_PAGE_SIZE -> API配置键: blog_posts_page_size
                 this.pageSize = config.blog_posts_page_size || 10;
                 console.log(`📋 应用配置已加载: 博客文章每页显示数量=${this.pageSize}`);
             })
