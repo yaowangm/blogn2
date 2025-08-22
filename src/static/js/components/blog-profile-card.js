@@ -18,15 +18,43 @@ class BlogProfileCard extends BaseComponent {
     }
 
     getProjectIdFromUrl() {
-        const path = window.location.pathname;
-        const match = path.match(/\/blog\/(\d+)/);
-        return match ? parseInt(match[1]) : null;
+        // 使用基类的统一方法
+        return this.getProjectId();
     }
 
     async loadData() {
         if (!this.projectId) {
-            this.showError('无法获取博客ID');
-            return;
+            // 如果在文章页面，尝试从文章ID获取项目ID
+            if (this.isArticlePage()) {
+                const articleId = this.getArticleId();
+                if (articleId) {
+                    try {
+                        const articleResponse = await fetch(`/api/articles/${articleId}`);
+                        if (articleResponse.ok) {
+                            const articleData = await articleResponse.json();
+                            if (articleData.project?.id) {
+                                this.projectId = articleData.project.id;
+                            } else {
+                                this.showError('无法获取博客ID');
+                                return;
+                            }
+                        } else {
+                            this.showError('无法获取文章信息');
+                            return;
+                        }
+                    } catch (error) {
+                        console.error('Error loading article data:', error);
+                        this.showError('加载文章信息失败');
+                        return;
+                    }
+                } else {
+                    this.showError('无法获取文章ID');
+                    return;
+                }
+            } else {
+                this.showError('无法获取博客ID');
+                return;
+            }
         }
 
         try {

@@ -28,12 +28,8 @@ class ArticleContentCard extends BaseComponent {
      * 从URL获取文章ID
      */
     getArticleIdFromUrl() {
-        const pathParts = window.location.pathname.split('/');
-        const articleIndex = pathParts.indexOf('article');
-        if (articleIndex !== -1 && pathParts[articleIndex + 1]) {
-            return parseInt(pathParts[articleIndex + 1]);
-        }
-        return null;
+        // 使用基类的统一方法
+        return this.getArticleId();
     }
 
     /**
