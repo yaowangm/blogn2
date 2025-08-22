@@ -62,6 +62,21 @@ class BlogListCard extends BaseComponent {
                this.hasAttribute('show-category');
     }
 
+    /**
+     * HTML转义函数，防止XSS攻击
+     * @param {string} text - 需要转义的文本
+     * @returns {string} 转义后的安全文本
+     */
+    escapeHtml(text) {
+        if (typeof text !== 'string') return text;
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     connectedCallback() {
         // 检查是否应该显示分类信息
         this.showCategoryInfo = this.shouldShowCategoryInfo();
@@ -167,33 +182,44 @@ class BlogListCard extends BaseComponent {
                 const image = post.image || post.attachment;
                 const avatar = post.avatar;
                 
-                // 如果是订阅文章，显示博客名称
-                const blogInfo = post.blog_name ? `<span class="post-blog">来自: ${post.blog_name}</span>` : '';
+                // HTML转义函数，防止XSS攻击
+                const escapeHtml = (text) => {
+                    if (typeof text !== 'string') return text;
+                    return text
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+                };
                 
-                // 安全处理 excerpt 内容，防止HTML注入和结构破坏
-                const safeExcerpt = excerpt
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/"/g, '&quot;')
-                    .replace(/'/g, '&#39;');
+                // 安全处理所有文本字段，防止HTML注入和XSS攻击
+                const safeTitle = escapeHtml(title);
+                const safeAuthor = escapeHtml(author);
+                const safeExcerpt = escapeHtml(excerpt);
+                const safeBlogName = post.blog_name ? escapeHtml(post.blog_name) : '';
+                const safeTime = escapeHtml(time || '未知时间');
+                
+                // 如果是订阅文章，显示博客名称
+                const blogInfo = safeBlogName ? `<span class="post-blog">来自: ${safeBlogName}</span>` : '';
                 
                 return `
                     <a href="/projectitem/${post.id}" class="post-item">
                         <div class="post-avatar">
                             ${avatar ? 
-                                `<img src="${avatar}" alt="${author}" onerror="this.style.display='none'">` :
-                                `<span>${author ? author.charAt(0) : '用'}</span>`
+                                `<img src="${avatar}" alt="${safeAuthor}" onerror="this.style.display='none'">` :
+                                `<span>${safeAuthor ? safeAuthor.charAt(0) : '用'}</span>`
                             }
                         </div>
                         <div class="post-content">
-                            <h4 class="post-title">${title}</h4>
+                            <h4 class="post-title">${safeTitle}</h4>
                             <div class="post-meta">
-                                <span class="post-author">${author}</span>
-                                <span class="post-date">${(time || '未知时间').replace('T', ' ')}</span>
+                                <span class="post-author">${safeAuthor}</span>
+                                <span class="post-date">${safeTime.replace('T', ' ')}</span>
                                 ${blogInfo}
                             </div>
                             <p class="post-excerpt">${safeExcerpt}</p>
-                            ${image ? `<div class="post-attachment-image"><img src="${image}" alt="${title}" onerror="this.style.display='none'"></div>` : ''}
+                            ${image ? `<div class="post-attachment-image"><img src="${image}" alt="${safeTitle}" onerror="this.style.display='none'"></div>` : ''}
                         </div>
                     </a>
                 `;
@@ -243,7 +269,7 @@ class BlogListCard extends BaseComponent {
                         <div class="pagination-right">
                             <div class="category-info">
                                 <span class="category-label">分类：</span>
-                                <span class="category-name">${this.currentCategoryName}</span>
+                                <span class="category-name">${this.escapeHtml(this.currentCategoryName)}</span>
                             </div>
                         </div>
                     ` : ''}
@@ -263,7 +289,7 @@ class BlogListCard extends BaseComponent {
                         <div class="pagination-right">
                             <div class="category-info">
                                 <span class="category-label">分类：</span>
-                                <span class="category-name">${this.currentCategoryName}</span>
+                                <span class="category-name">${this.escapeHtml(this.currentCategoryName)}</span>
                             </div>
                         </div>
                     ` : ''}
