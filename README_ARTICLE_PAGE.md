@@ -155,5 +155,27 @@ Content-Type: application/json
 - ✅ 所有web components正确注册
 - ✅ API端点正确响应
 - ✅ 页面样式正确应用
+- ✅ 现有组件在文章页面中正常工作
+- ✅ 新组件正确获取文章ID
 
-博客文章页面已成功创建并可以正常访问！
+## 问题修复
+
+### 组件兼容性问题
+在开发过程中发现，现有的web components（如`blog-profile-card`、`categories-card`等）期望从URL中获取项目ID（如`/blog/123`），但文章页面的URL格式是`/article/123`。
+
+### 解决方案
+1. **扩展BaseComponent**: 在基类中添加了统一的方法：
+   - `getProjectId()`: 统一处理博客页面和文章页面的项目ID获取
+   - `getArticleId()`: 获取文章ID
+   - `isArticlePage()`: 检查当前是否在文章页面
+
+2. **修改现有组件**: 所有现有组件都改为使用基类的统一方法，确保在两种页面中都能正常工作
+
+3. **特殊处理逻辑**: 在`blog-profile-card`中添加了文章页面的特殊处理，当在文章页面时，会从文章ID获取项目ID
+
+### 技术细节
+- 现有组件通过`getProjectIdFromUrl()`方法获取项目ID
+- 新组件通过`getArticleIdFromUrl()`方法获取文章ID
+- 两种方法都使用基类的统一实现，确保代码的一致性和可维护性
+
+博客文章页面已成功创建并可以正常访问！所有组件都能在文章页面中正常工作。
