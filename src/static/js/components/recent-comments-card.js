@@ -3,6 +3,8 @@ class RecentCommentsCard extends BaseComponent {
         super();
         this.comments = [];
         this.loading = true;
+        this.error = false;
+        this.errorMessage = '';
     }
 
     connectedCallback() {
@@ -13,40 +15,139 @@ class RecentCommentsCard extends BaseComponent {
 
     async loadData() {
         try {
-            const response = await fetch('/api/comments/recent?limit=5');
-            if (!response.ok) {
+            // 检测是否在博客页面
+            const isBlogPage = this.isBlogPage();
+            let apiUrl;
+            
+            if (isBlogPage) {
+                // 在博客页面：获取当前博客的评论
+                const projectId = this.getProjectIdFromUrl();
+                if (projectId) {
+                    apiUrl = `/api/projects/${projectId}/comments/recent?limit=5`;
+                } else {
+                    // 如果无法获取projectId，回退到全站评论
+                    apiUrl = '/api/comments/recent?limit=5';
+                }
+            } else {
+                // 在首页：获取全站评论
+                apiUrl = '/api/comments/recent?limit=5';
+            }
+            
+            const response = await fetch(apiUrl);
+            if (response.ok) {
+                this.comments = await response.json();
+            } else if (response.status === 404) {
+                // 如果博客不存在，跳转到错误页面
+                window.location.href = '/static/error.html';
+                return;
+            } else {
                 throw new Error('Failed to fetch recent comments');
             }
-            this.comments = await response.json();
+            
+            // 格式化时间（如果是ISO格式）
+            this.comments = this.comments.map(comment => ({
+                ...comment,
+                time: this.formatTime(comment.time)
+            }));
         } catch (error) {
             this.logError('Error loading recent comments', error);
-            // 使用默认数据作为后备
-            this.comments = [
-                { 
-                    author: '张三', 
-                    content: '这篇文章写得很好，对我很有帮助！', 
-                    time: '2小时前'
-                },
-                { 
-                    author: '李四', 
-                    content: '感谢分享，学到了很多新知识。', 
-                    time: '4小时前'
-                },
-                { 
-                    author: '王五', 
-                    content: '这个观点很独特，值得深入思考。', 
-                    time: '6小时前'
-                },
-                { 
-                    author: '赵六', 
-                    content: '期待更多相关内容！', 
-                    time: '1天前'
-                }
-            ];
+            // 设置错误状态，不显示假数据
+            this.error = true;
+            this.errorMessage = '加载评论失败，请稍后重试';
         } finally {
             this.loading = false;
             this.render();
         }
+    }
+
+    /**
+     * 检测是否在博客页面
+     * @returns {boolean} 是否在博客页面
+     */
+    isBlogPage() {
+        const path = window.location.pathname;
+        return path.startsWith('/blog/');
+    }
+
+    /**
+     * 从URL获取项目ID
+     * @returns {number|null} 项目ID
+     */
+    getProjectIdFromUrl() {
+        const path = window.location.pathname;
+        const match = path.match(/\/blog\/(\d+)/);
+        return match ? parseInt(match[1]) : null;
+    }
+
+    /**
+     * 格式化时间
+     * @param {string|Date} time - 时间
+     * @returns {string} 格式化后的时间
+     */
+    formatTime(time) {
+        if (!time) {
+            return '未知时间';
+        }
+        
+        // 如果已经是相对时间格式，直接返回
+        if (typeof time === 'string' && (time.includes('前') || time.includes('小时') || time.includes('分钟'))) {
+            return time;
+        }
+        
+        try {
+            const dateObj = new Date(time);
+            const now = new Date();
+            const diff = now - dateObj;
+            
+            // 转换为秒
+            const seconds = Math.floor(diff / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+            
+            if (seconds < 60) {
+                return '刚刚';
+            } else if (minutes < 60) {
+                return `${minutes}分钟前`;
+            } else if (hours < 24) {
+                return `${hours}小时前`;
+            } else if (days < 7) {
+                return `${days}天前`;
+            } else {
+                return dateObj.toLocaleDateString('zh-CN');
+            }
+        } catch (error) {
+            return '未知时间';
+        }
+    }
+
+    /**
+     * 截断文本
+     * @param {string} text - 原始文本
+     * @param {number} maxLength - 最大长度
+     * @returns {string} 截断后的文本
+     */
+    truncateText(text, maxLength) {
+        if (!text || typeof text !== 'string') {
+            return '';
+        }
+        if (text.length <= maxLength) {
+            return text;
+        }
+        return text.substring(0, maxLength) + '...';
+    }
+
+    /**
+     * 创建加载状态HTML
+     * @returns {string} 加载状态HTML
+     */
+    createLoadingHTML() {
+        return `
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <div>加载中...</div>
+            </div>
+        `;
     }
 
     /**
@@ -55,19 +156,24 @@ class RecentCommentsCard extends BaseComponent {
      * @returns {string|null} 有效的URL或null
      */
     getNavigationUrl(comment) {
-        // 验证projectitemid是否存在且有效
+        // 验证projectitemid和comment id是否存在且有效
         if (!comment.projectitemid || comment.projectitemid === undefined || comment.projectitemid === null) {
             return null;
         }
         
-        // 确保projectitemid是数字
-        const projectitemid = parseInt(comment.projectitemid);
-        if (isNaN(projectitemid) || projectitemid <= 0) {
+        if (!comment.id || comment.id === undefined || comment.id === null) {
             return null;
         }
         
-        // 使用一致的URL模式：/projectitem/{id}
-        return `/projectitem/${projectitemid}`;
+        // 确保projectitemid和comment id是数字
+        const projectitemid = parseInt(comment.projectitemid);
+        const commentId = parseInt(comment.id);
+        if (isNaN(projectitemid) || projectitemid <= 0 || isNaN(commentId) || commentId <= 0) {
+            return null;
+        }
+        
+        // 使用新的URL模式：blogn/{projectid}#post{postid}
+        return `/blogn/${projectitemid}#post${commentId}`;
     }
 
     /**
@@ -189,6 +295,9 @@ class RecentCommentsCard extends BaseComponent {
                     background: var(--gray-50);
                     border: 1px solid var(--gray-200);
                     transition: var(--transition-normal);
+                    display: flex;
+                    align-items: flex-start;
+                    gap: var(--spacing-3);
                 }
 
                 .comment-item:hover {
@@ -205,6 +314,49 @@ class RecentCommentsCard extends BaseComponent {
                     opacity: 0.7;
                 }
 
+                .user-avatar {
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    flex-shrink: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: var(--gray-100);
+                    font-size: var(--font-size-lg);
+                    font-weight: 600;
+                    color: var(--gray-600);
+                    border: 2px solid var(--gray-200);
+                    overflow: hidden;
+                    position: relative;
+                }
+
+                .user-avatar img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                }
+
+                .user-avatar span {
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: var(--primary-color);
+                    color: white;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                }
+
+                .comment-content {
+                    flex: 1;
+                    min-width: 0;
+                }
+
                 .comment-header {
                     display: flex;
                     align-items: center;
@@ -213,7 +365,7 @@ class RecentCommentsCard extends BaseComponent {
                 }
 
                 .author {
-                    font-weight: 500;
+                    font-weight: 700;
                     color: var(--gray-900);
                     font-size: var(--font-size-sm);
                 }
@@ -238,6 +390,20 @@ class RecentCommentsCard extends BaseComponent {
                     justify-content: center;
                     padding: var(--spacing-8);
                     color: var(--gray-500);
+                }
+
+                .error {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: var(--spacing-8);
+                    color: var(--red-500);
+                    text-align: center;
+                }
+
+                .error-icon {
+                    margin-right: var(--spacing-2);
+                    font-size: 1.2em;
                 }
 
                 .loading-spinner {
@@ -268,7 +434,8 @@ class RecentCommentsCard extends BaseComponent {
                     <h3 class="card-title">最近评论</h3>
                 </div>
                 <div class="card-body">
-                    ${this.loading ? this.createLoadingHTML() : `
+                    ${this.loading ? this.createLoadingHTML() : 
+                      this.error ? this.createErrorHTML() : `
                         <div class="comment-list">
                             ${this.comments.map((comment, index) => {
                                 const isClickable = this.getNavigationUrl(comment) !== null;
@@ -277,6 +444,13 @@ class RecentCommentsCard extends BaseComponent {
                                 
                                 return `
                                     <div class="${cssClass}" ${dataAttributes}>
+                                        <div class="user-avatar">
+                                            ${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 
+                                                `<img src="${comment.avatar}" alt="${this.escapeHtml(comment.author)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` : 
+                                                ''
+                                            }
+                                            <span style="${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 'display: none;' : 'display: flex;'}">${this.escapeHtml(comment.author.charAt(0))}</span>
+                                        </div>
                                         <div class="comment-content">
                                             <div class="comment-header">
                                                 <span class="author">${this.escapeHtml(comment.author)}</span>
@@ -290,6 +464,15 @@ class RecentCommentsCard extends BaseComponent {
                         </div>
                     `}
                 </div>
+            </div>
+        `;
+    }
+
+    createErrorHTML() {
+        return `
+            <div class="error">
+                <span class="error-icon">⚠️</span>
+                <span>${this.errorMessage}</span>
             </div>
         `;
     }

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>博客页面 - BlogN2</title>
+    <meta name="description" content="BlogN2博客页面，展示个人博客内容和功能">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- 顶栏组件 -->
+    <header-component></header-component>
+
+    <!-- 主要内容区域 -->
+    <main class="main-content">
+        <div class="container">
+            <div class="content-grid">
+                <!-- 左边栏 -->
+                <aside class="sidebar sidebar-left">
+                    <!-- 用户头像和博客名称 -->
+                    <blog-profile-card></blog-profile-card>
+                    
+                    <!-- 博客导航 -->
+                    <blog-navigation-card></blog-navigation-card>
+                    
+                    <!-- 分类列表 -->
+                    <categories-card></categories-card>
+                    
+                    <!-- 最近评论 -->
+                    <recent-comments-card></recent-comments-card>
+                    
+                    <!-- 最近更新的博客 -->
+                    <recent-updates-card></recent-updates-card>
+                    
+                    <!-- 外站链接 -->
+                    <friend-links-card></friend-links-card>
+                </aside>
+
+                <!-- 右边栏 -->
+                <aside class="sidebar sidebar-right">
+                    <!-- 博客头部信息 -->
+                    <blog-header-card></blog-header-card>
+                    
+                    <!-- 博客文章摘要列表 -->
+                    <blog-posts-list-card></blog-posts-list-card>
+                </aside>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底栏组件 -->
+    <footer-component></footer-component>
+
+    <!-- Web Components -->
+    <script src="/static/js/components/base-component.js"></script>
+    <script src="/static/js/components/header-component.js"></script>
+    <script src="/static/js/components/footer-component.js"></script>
+    <script src="/static/js/components/blog-profile-card.js"></script>
+    <script src="/static/js/components/blog-navigation-card.js"></script>
+    <script src="/static/js/components/categories-card.js"></script>
+    <script src="/static/js/components/recent-comments-card.js"></script>
+    <script src="/static/js/components/recent-updates-card.js"></script>
+    <script src="/static/js/components/friend-links-card.js"></script>
+    <script src="/static/js/components/blog-header-card.js"></script>
+    <script src="/static/js/components/blog_list_card.js"></script>
+    <script src="/static/js/components/blog-posts-list-card.js"></script>
+</body>
+</html>

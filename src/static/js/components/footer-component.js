@@ -1,6 +1,22 @@
 class FooterComponent extends BaseComponent {
     constructor() {
         super();
+        this.metadata = null;
+    }
+
+    /**
+     * HTML转义函数，防止XSS攻击
+     * @param {string} text - 需要转义的文本
+     * @returns {string} 转义后的安全文本
+     */
+    escapeHtml(text) {
+        if (typeof text !== 'string') return text;
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     async connectedCallback() {
@@ -93,12 +109,12 @@ class FooterComponent extends BaseComponent {
                 <div class="footer-content">
                     <a href="/" class="footer-logo">
                         <div class="logo-icon">
-                            <img src="${logoUrl}" alt="${siteName} Logo">
+                            <img src="${this.escapeHtml(logoUrl)}" alt="${this.escapeHtml(siteName)} Logo">
                         </div>
-                        <span class="logo-text">${siteName}</span>
+                        <span class="logo-text">${this.escapeHtml(siteName)}</span>
                     </a>
                     <div class="footer-copyright">
-                        © ${currentYear} ${siteName}. 保留所有权利。
+                        © ${currentYear} ${this.escapeHtml(siteName)}. 保留所有权利。
                     </div>
                 </div>
             </div>
