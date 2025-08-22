@@ -36,7 +36,7 @@
     
     <div class="debug-section">
         <h2>3. 测试组件</h2>
-        <article-content-card id="testComponent"></article-content-card>
+        <article-content-card id="testComponent" article-id="5391"></article-content-card>
     </div>
 
     <script src="/static/js/components/base-component.js"></script>
@@ -66,10 +66,8 @@
         }
         
         // 模拟文章页面的URL路径
-        Object.defineProperty(window.location, 'pathname', {
-            value: '/article/5391',
-            writable: false
-        });
+        // 注意：不能直接修改window.location.pathname，因为它是不可配置的
+        // 我们将在组件中直接传递articleId
         
         // 页面加载完成后自动测试
         window.addEventListener('load', testAPI);

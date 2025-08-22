@@ -10,8 +10,8 @@ class ArticleContentCard extends BaseComponent {
     }
 
     async connectedCallback() {
-        // 从URL获取文章ID
-        this.articleId = this.getArticleIdFromUrl();
+        // 从URL获取文章ID，或者从属性获取
+        this.articleId = this.getArticleIdFromUrl() || this.getAttribute('article-id');
         if (!this.articleId) {
             this.showError('无法获取文章ID');
             return;
