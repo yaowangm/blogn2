@@ -11,6 +11,21 @@ class RecentUpdatesCard extends BaseComponent {
         this.errorMessage = '';
     }
 
+    /**
+     * HTML转义函数，防止XSS攻击
+     * @param {string} text - 需要转义的文本
+     * @returns {string} 转义后的安全文本
+     */
+    escapeHtml(text) {
+        if (typeof text !== 'string') return text;
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     connectedCallback() {
         this.render();
         this.loadData();
@@ -309,23 +324,30 @@ class RecentUpdatesCard extends BaseComponent {
     renderUpdates() {
         return `
             <ul class="updates-list">
-                ${this.recentUpdates.map((update, index) => `
-                    <li class="update-item" data-update-index="${index}">
-                        <div class="user-avatar">
-                            ${update.avatar ? 
-                                `<img src="${update.avatar}" alt="${update.blog_name}" />` : 
-                                `<span>${update.blog_name.charAt(0)}</span>`
-                            }
-                        </div>
-                        <div class="update-content">
-                            <div class="update-header">
-                                <span class="blog-name">${update.blog_name}</span>
-                                <span class="update-time">${update.time}</span>
+                ${this.recentUpdates.map((update, index) => {
+                    // 安全处理所有文本字段，防止HTML注入和XSS攻击
+                    const safeBlogName = this.escapeHtml(update.blog_name);
+                    const safeTime = this.escapeHtml(update.time);
+                    const safeTitle = this.escapeHtml(update.title);
+                    
+                    return `
+                        <li class="update-item" data-update-index="${index}">
+                            <div class="user-avatar">
+                                ${update.avatar ? 
+                                    `<img src="${update.avatar}" alt="${safeBlogName}" />` : 
+                                    `<span>${safeBlogName.charAt(0)}</span>`
+                                }
                             </div>
-                            <div class="latest-post">${this.truncateText(update.title, 40)}</div>
-                        </div>
-                    </li>
-                `).join('')}
+                            <div class="update-content">
+                                <div class="update-header">
+                                    <span class="blog-name">${safeBlogName}</span>
+                                    <span class="update-time">${safeTime}</span>
+                                </div>
+                                <div class="latest-post">${this.truncateText(safeTitle, 40)}</div>
+                            </div>
+                        </li>
+                    `;
+                }).join('')}
             </ul>
         `;
     }

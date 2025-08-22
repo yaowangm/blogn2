@@ -56,6 +56,21 @@ class BlogProfileCard extends BaseComponent {
         }
     }
 
+    /**
+     * HTML转义函数，防止XSS攻击
+     * @param {string} text - 需要转义的文本
+     * @returns {string} 转义后的安全文本
+     */
+    escapeHtml(text) {
+        if (typeof text !== 'string') return text;
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     render() {
         this.shadowRoot.innerHTML = `
             <style>
@@ -196,10 +211,11 @@ class BlogProfileCard extends BaseComponent {
     }
 
     renderContent() {
-        const avatarText = this.userData.name ? this.userData.name.charAt(0).toUpperCase() : '?';
-        const blogName = this.projectData.name || '未命名博客';
-        const userName = this.userData.name || '未知用户';
-        const userEmail = this.userData.email || '';
+        // 安全处理所有文本字段，防止HTML注入和XSS攻击
+        const safeAvatarText = this.userData.name ? this.escapeHtml(this.userData.name.charAt(0).toUpperCase()) : '?';
+        const safeBlogName = this.escapeHtml(this.projectData.name || '未命名博客');
+        const safeUserName = this.escapeHtml(this.userData.name || '未知用户');
+        const safeUserEmail = this.escapeHtml(this.userData.email || '');
         
         // 构建头像路径 - 用户资料卡片使用大头像格式
         let avatarPath = null;
@@ -213,20 +229,20 @@ class BlogProfileCard extends BaseComponent {
             <div class="card-header">
                 <div class="user-avatar">
                     ${avatarPath ? 
-                        `<img src="${avatarPath}" alt="${userName}" 
+                        `<img src="${avatarPath}" alt="${safeUserName}" 
                               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
                               onload="this.style.display='block'; this.nextElementSibling.style.display='none';"
                               style="display: block;">` : 
                         ''
                     }
-                    <span style="display: ${avatarPath ? 'none' : 'flex'}; color: var(--gray-600);">${avatarText}</span>
+                    <span style="display: ${avatarPath ? 'none' : 'flex'}; color: var(--gray-600);">${safeAvatarText}</span>
                 </div>
-                <h2 class="blog-name">${blogName}</h2>
+                <h2 class="blog-name">${safeBlogName}</h2>
             </div>
             <div class="card-body">
                 <div class="user-info">
-                    <h3 class="user-name">${userName}</h3>
-                    <p class="user-email">${userEmail}</p>
+                    <h3 class="user-name">${safeUserName}</h3>
+                    <p class="user-email">${safeUserEmail}</p>
                 </div>
                 <div class="blog-stats">
                     <div class="stat-item">

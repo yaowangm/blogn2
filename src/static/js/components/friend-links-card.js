@@ -12,6 +12,21 @@ class FriendLinksCard extends BaseComponent {
         this.loading = true;
     }
 
+    /**
+     * HTML转义函数，防止XSS攻击
+     * @param {string} text - 需要转义的文本
+     * @returns {string} 转义后的安全文本
+     */
+    escapeHtml(text) {
+        if (typeof text !== 'string') return text;
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     connectedCallback() {
         this.projectId = this.getProjectIdFromUrl();
         this.render();
@@ -179,11 +194,17 @@ class FriendLinksCard extends BaseComponent {
     renderFriendLinks() {
         return `
             <div class="friend-links">
-                ${this.friendLinks.map(link => `
-                    <a href="${link.linkstr}" class="friend-link" target="_blank" rel="noopener noreferrer" title="${link.subject}">
-                        ${link.subject}
-                    </a>
-                `).join('')}
+                ${this.friendLinks.map(link => {
+                    // 安全处理所有文本字段，防止HTML注入和XSS攻击
+                    const safeSubject = this.escapeHtml(link.subject);
+                    const safeLinkStr = this.escapeHtml(link.linkstr);
+                    
+                    return `
+                        <a href="${safeLinkStr}" class="friend-link" target="_blank" rel="noopener noreferrer" title="${safeSubject}">
+                            ${safeSubject}
+                        </a>
+                    `;
+                }).join('')}
             </div>
         `;
     }

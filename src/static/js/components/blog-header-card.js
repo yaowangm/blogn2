@@ -52,6 +52,47 @@ class BlogHeaderCard extends BaseComponent {
         }
     }
 
+    /**
+     * 加载博客头部信息
+     */
+    async loadBlogHeader() {
+        try {
+            this.loading = true;
+            this.render();
+            
+            const response = await fetch(`/api/projects/${this.projectId}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch blog data');
+            }
+            this.blogData = await response.json();
+            
+            // 更新页面标题
+            this.updatePageTitle();
+            
+        } catch (error) {
+            console.error('Error loading blog header data:', error);
+            this.showError('加载博客信息失败');
+        } finally {
+            this.loading = false;
+            this.render();
+        }
+    }
+
+    /**
+     * HTML转义函数，防止XSS攻击
+     * @param {string} text - 需要转义的文本
+     * @returns {string} 转义后的安全文本
+     */
+    escapeHtml(text) {
+        if (typeof text !== 'string') return text;
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     getMockBlogData() {
         return {
             id: this.projectId,
@@ -98,15 +139,16 @@ class BlogHeaderCard extends BaseComponent {
     }
 
     renderContent() {
-        const blogName = this.blogData.name || '未命名博客';
-        const blogDesc = this.blogData.comment || '这个博客还没有描述';
+        // 安全处理所有文本字段，防止HTML注入和XSS攻击
+        const safeBlogName = this.escapeHtml(this.blogData.name || '未命名博客');
+        const safeBlogDesc = this.escapeHtml(this.blogData.comment || '这个博客还没有描述');
         const createDate = this.blogData.createtime ? this.formatDate(this.blogData.createtime) : '未知';
         const updateDate = this.blogData.updatetime ? this.formatDate(this.blogData.updatetime) : '未知';
 
         return `
             <div class="card-header">
-                <h1 class="blog-title">${blogName}</h1>
-                <p class="blog-description">${blogDesc}</p>
+                <h1 class="blog-title">${safeBlogName}</h1>
+                <p class="blog-description">${safeBlogDesc}</p>
             </div>
             <div class="card-body">
                 <div class="blog-stats">

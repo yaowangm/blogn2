@@ -9,6 +9,21 @@ class CategoriesCard extends BaseComponent {
         this.loading = true;
     }
 
+    /**
+     * HTML转义函数，防止XSS攻击
+     * @param {string} text - 需要转义的文本
+     * @returns {string} 转义后的安全文本
+     */
+    escapeHtml(text) {
+        if (typeof text !== 'string') return text;
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     connectedCallback() {
         this.render();
         this.loadData();
@@ -310,17 +325,24 @@ class CategoriesCard extends BaseComponent {
                         <span class="category-count">全部</span>
                     </a>
                 </li>
-                ${this.categories.map(category => `
-                    <li class="category-item">
-                        <a href="#" class="category-link ${this.getCurrentFolderId() == category.id ? 'active' : ''}" data-folder-id="${category.id}" data-folder-name="${category.name}">
-                            <div class="category-info">
-                                <div class="category-color" style="background-color: ${category.color}"></div>
-                                <span class="category-name">${category.name}</span>
-                            </div>
-                            <span class="category-count">${category.count}</span>
-                        </a>
-                    </li>
-                `).join('')}
+                ${this.categories.map(category => {
+                    // 安全处理所有文本字段，防止HTML注入和XSS攻击
+                    const safeName = this.escapeHtml(category.name);
+                    const safeColor = this.escapeHtml(category.color);
+                    const safeCount = this.escapeHtml(category.count);
+                    
+                    return `
+                        <li class="category-item">
+                            <a href="#" class="category-link ${this.getCurrentFolderId() == category.id ? 'active' : ''}" data-folder-id="${category.id}" data-folder-name="${safeName}">
+                                <div class="category-info">
+                                    <div class="category-color" style="background-color: ${safeColor}"></div>
+                                    <span class="category-name">${safeName}</span>
+                                </div>
+                                <span class="category-count">${safeCount}</span>
+                            </a>
+                        </li>
+                    `;
+                }).join('')}
             </ul>
         `;
     }

@@ -5,6 +5,21 @@ class RecentBlogsCard extends BaseComponent {
         this.loading = true;
     }
 
+    /**
+     * HTML转义函数，防止XSS攻击
+     * @param {string} text - 需要转义的文本
+     * @returns {string} 转义后的安全文本
+     */
+    escapeHtml(text) {
+        if (typeof text !== 'string') return text;
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     connectedCallback() {
         this.render();
         this.loadData();
@@ -191,20 +206,26 @@ class RecentBlogsCard extends BaseComponent {
                 <div class="card-body">
                     ${this.loading ? this.createLoadingHTML() : `
                         <div class="blog-list">
-                            ${this.blogs.map(blog => `
-                                <a href="/blog/${blog.id}" class="blog-item">
-                                    <div class="blog-avatar">
-                                        ${blog.avatar ? 
-                                            `<img src="${blog.avatar}" alt="${blog.name}">` :
-                                            `<span>${blog.name ? blog.name.charAt(0) : '博'}</span>`
-                                        }
-                                    </div>
-                                    <div class="blog-info">
-                                        <div class="blog-name">${blog.name}</div>
-                                        <div class="blog-meta">${blog.join_date}</div>
-                                    </div>
-                                </a>
-                            `).join('')}
+                            ${this.blogs.map(blog => {
+                                // 安全处理所有文本字段，防止HTML注入和XSS攻击
+                                const safeName = this.escapeHtml(blog.name);
+                                const safeJoinDate = this.escapeHtml(blog.join_date);
+                                
+                                return `
+                                    <a href="/blog/${blog.id}" class="blog-item">
+                                        <div class="blog-avatar">
+                                            ${blog.avatar ? 
+                                                `<img src="${blog.avatar}" alt="${safeName}">` :
+                                                `<span>${safeName ? safeName.charAt(0) : '博'}</span>`
+                                            }
+                                        </div>
+                                        <div class="blog-info">
+                                            <div class="blog-name">${safeName}</div>
+                                            <div class="blog-meta">${safeJoinDate}</div>
+                                        </div>
+                                    </a>
+                                `;
+                            }).join('')}
                         </div>
                     `}
                 </div>

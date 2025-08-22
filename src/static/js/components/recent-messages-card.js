@@ -1,6 +1,23 @@
 class RecentMessagesCard extends BaseComponent {
     constructor() {
         super();
+        this.messages = [];
+        this.loading = true;
+    }
+
+    /**
+     * HTML转义函数，防止XSS攻击
+     * @param {string} text - 需要转义的文本
+     * @returns {string} 转义后的安全文本
+     */
+    escapeHtml(text) {
+        if (typeof text !== 'string') return text;
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     connectedCallback() {
@@ -37,19 +54,27 @@ class RecentMessagesCard extends BaseComponent {
                 return;
             }
             
-            const messagesHtml = messages.map(message => `
-                <div class="message-item">
-                    <div class="message-header">
-                        <div class="message-author-info">
-                            ${message.avatar ? `<img src="${message.avatar}" alt="${message.author}" class="message-avatar">` : `<div class="message-avatar-placeholder">${message.author.charAt(0).toUpperCase()}</div>`}
-                            <span class="message-author">${message.author}</span>
+            const messagesHtml = messages.map(message => {
+                // 安全处理所有文本字段，防止HTML注入和XSS攻击
+                const safeAuthor = this.escapeHtml(message.author);
+                const safeSubject = this.escapeHtml(message.subject);
+                const safeReplyInfo = message.reply_info ? this.escapeHtml(message.reply_info) : '';
+                const safeTime = this.escapeHtml(message.time);
+                
+                return `
+                    <div class="message-item">
+                        <div class="message-header">
+                            <div class="message-author-info">
+                                ${message.avatar ? `<img src="${message.avatar}" alt="${safeAuthor}" class="message-avatar">` : `<div class="message-avatar-placeholder">${safeAuthor.charAt(0).toUpperCase()}</div>`}
+                                <span class="message-author">${safeAuthor}</span>
+                            </div>
+                            <span class="message-time">${safeTime}</span>
                         </div>
-                        <span class="message-time">${message.time}</span>
+                        <div class="message-subject">${safeSubject}</div>
+                        ${safeReplyInfo ? `<div class="message-reply-info">${safeReplyInfo}</div>` : ''}
                     </div>
-                    <div class="message-subject">${message.subject}</div>
-                    ${message.reply_info ? `<div class="message-reply-info">${message.reply_info}</div>` : ''}
-                </div>
-            `).join('');
+                `;
+            }).join('');
             
             cardBody.innerHTML = `
                 <div class="message-list">

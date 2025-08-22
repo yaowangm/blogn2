@@ -1,6 +1,25 @@
 class HeaderComponent extends BaseComponent {
     constructor() {
         super();
+        this.siteName = '';
+        this.logoUrl = '';
+        this.isLoggedIn = false;
+        this.userName = '';
+    }
+
+    /**
+     * HTML转义函数，防止XSS攻击
+     * @param {string} text - 需要转义的文本
+     * @returns {string} 转义后的安全文本
+     */
+    escapeHtml(text) {
+        if (typeof text !== 'string') return text;
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     async connectedCallback() {
@@ -173,16 +192,16 @@ class HeaderComponent extends BaseComponent {
             <div class="header-container">
                 <a href="/" class="header-logo">
                     <div class="logo-icon">
-                        <img src="${logoUrl}" alt="${siteName} Logo">
+                        <img src="${this.escapeHtml(logoUrl)}" alt="${this.escapeHtml(siteName)} Logo">
                     </div>
-                    <span class="logo-text">${siteName}</span>
+                    <span class="logo-text">${this.escapeHtml(siteName)}</span>
                 </a>
 
                 <div class="header-actions">
                     ${isLoggedIn ? `
                         <div class="user-menu">
-                            <div class="user-avatar">${userName.charAt(0)}</div>
-                            <span>${userName}</span>
+                            <div class="user-avatar">${this.escapeHtml(userName.charAt(0))}</div>
+                            <span>${this.escapeHtml(userName)}</span>
                         </div>
                         <a href="/user" class="btn btn-ghost">我的首页</a>
                         <button class="search-button" title="搜索">
