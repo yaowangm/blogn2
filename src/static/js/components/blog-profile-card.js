@@ -201,21 +201,25 @@ class BlogProfileCard extends BaseComponent {
         const userName = this.userData.name || '未知用户';
         const userEmail = this.userData.email || '';
         
-        // 构建头像路径
+        // 构建头像路径 - 用户资料卡片使用大头像格式
         let avatarPath = null;
         if (this.userData.id) {
             const prefix = Math.floor(this.userData.id / 10000) + 1;
-            avatarPath = `/avatars/${prefix}/${this.userData.id}.jpg`;
+            // 用户资料卡片使用大头像：/avatar/prefix/userid.jpg
+            avatarPath = `/avatar/${prefix}/${this.userData.id}.jpg`;
         }
 
         return `
             <div class="card-header">
                 <div class="user-avatar">
                     ${avatarPath ? 
-                        `<img src="${avatarPath}" alt="${userName}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
+                        `<img src="${avatarPath}" alt="${userName}" 
+                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                              onload="this.style.display='block'; this.nextElementSibling.style.display='none';"
+                              style="display: block;">` : 
                         ''
                     }
-                    <span style="display: ${avatarPath ? 'none' : 'flex'}">${avatarText}</span>
+                    <span style="display: ${avatarPath ? 'none' : 'flex'}; color: var(--gray-600);">${avatarText}</span>
                 </div>
                 <h2 class="blog-name">${blogName}</h2>
             </div>
