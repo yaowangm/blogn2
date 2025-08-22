@@ -367,6 +367,7 @@ async def get_article_detail(
             "id": article.id,
             "title": article.name,
             "content": article.comment,
+            "attachment": article.attachment,  # 添加附件字段
             "author": {
                 "id": author.id if author else None,
                 "name": author.name if author else "未知作者",

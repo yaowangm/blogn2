@@ -233,6 +233,19 @@ async def debug_article_api():
     return FileResponse("debug_article_api.html")
 
 
+@app.get("/debug/image-display")
+async def debug_image_display():
+    """
+    调试图片显示页面
+    
+    返回调试页面HTML文件。
+    
+    Returns:
+        FileResponse: 调试页面HTML文件
+    """
+    return FileResponse("debug_image_display.html")
+
+
 # ==================== 系统端点 ====================
 
 @app.get("/health")
