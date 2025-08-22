@@ -204,6 +204,22 @@ async def blog_page(project_id: int):
     return FileResponse("src/static/blog.html")
 
 
+@app.get("/article/{article_id}")
+async def article_page(article_id: int):
+    """
+    博客文章页面路由
+    
+    返回指定文章的详情页面HTML文件。
+    
+    Args:
+        article_id: 文章ID
+        
+    Returns:
+        FileResponse: 文章页面HTML文件
+    """
+    return FileResponse("src/static/article.html")
+
+
 # ==================== 系统端点 ====================
 
 @app.get("/health")
