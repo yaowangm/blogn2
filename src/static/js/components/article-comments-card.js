@@ -259,7 +259,7 @@ class ArticleCommentsCard extends BaseComponent {
         }
 
         // 安全的URL正则表达式，只匹配http/https链接
-        const urlRegex = /(https?:\/\/[^\s<>"']+)/gi;
+        const urlRegex = /(https?:\/\/[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=%]+)/gi;
         
         return text.replace(urlRegex, (url) => {
             // 验证URL格式
