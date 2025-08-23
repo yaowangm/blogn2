@@ -23,6 +23,9 @@ class ArticleCommentsCard extends BaseComponent {
         
         // 渲染组件
         this.render();
+        
+        // 检查URL锚点，如果需要定位到特定评论
+        this.checkAndScrollToComment();
     }
 
     /**
@@ -132,6 +135,50 @@ class ArticleCommentsCard extends BaseComponent {
     }
 
     /**
+     * 检查URL锚点并滚动到对应评论
+     */
+    checkAndScrollToComment() {
+        // 获取URL中的锚点
+        const hash = window.location.hash;
+        if (!hash) return;
+        
+        // 检查锚点格式是否为 #post{commentId}
+        const match = hash.match(/^#post(\d+)$/);
+        if (!match) return;
+        
+        const commentId = match[1];
+        console.log('检测到评论锚点，准备定位到评论:', commentId);
+        
+        // 等待DOM渲染完成后再滚动
+        setTimeout(() => {
+            // 查找对应的评论元素
+            const commentElement = this.shadowRoot.querySelector(`#post${commentId}`);
+            if (commentElement) {
+                console.log('找到评论元素，开始滚动...');
+                // 滚动到评论位置
+                commentElement.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+                
+                // 添加高亮效果
+                commentElement.style.backgroundColor = 'var(--primary-color)';
+                commentElement.style.color = 'var(--white)';
+                
+                // 3秒后恢复原样式
+                setTimeout(() => {
+                    commentElement.style.backgroundColor = '';
+                    commentElement.style.color = '';
+                }, 3000);
+                
+                console.log('评论定位完成');
+            } else {
+                console.log('未找到评论元素:', commentId);
+            }
+        }, 500); // 增加延迟，确保评论完全渲染
+    }
+
+    /**
      * 渲染评论列表
      */
     renderComments(comments) {
@@ -178,7 +225,7 @@ class ArticleCommentsCard extends BaseComponent {
         }
         
         return `
-            <div class="comment-item" data-comment-id="${id}">
+            <div class="comment-item" id="post${id}" data-comment-id="${id}">
                 <div class="comment-avatar">
                     ${blogId ? `
                         <a href="/blog/${blogId}" class="avatar-link" title="查看博客">
@@ -337,6 +384,7 @@ class ArticleCommentsCard extends BaseComponent {
                 .comments-list {
                     max-height: 600px;
                     overflow-y: auto;
+                    scroll-behavior: smooth;
                 }
                 
                 .comment-item {

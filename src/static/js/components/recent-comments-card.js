@@ -152,6 +152,9 @@ class RecentCommentsCard extends BaseComponent {
      * 验证并生成导航URL
      * @param {Object} comment - 评论对象
      * @returns {string|null} 有效的URL或null
+     * 
+     * 生成的URL格式：/article/{articleId}#post{commentId}
+     * 这样可以直接跳转到文章页面并定位到对应评论
      */
     getNavigationUrl(comment) {
         // 验证projectitemid和comment id是否存在且有效
@@ -170,8 +173,8 @@ class RecentCommentsCard extends BaseComponent {
             return null;
         }
         
-        // 使用正确的URL模式：blog/{projectid}#post{postid}
-        return `/blog/${projectitemid}#post${commentId}`;
+        // 使用正确的URL模式：article/{articleid}#post{commentid}
+        return `/article/${projectitemid}#post${commentId}`;
     }
 
     /**
