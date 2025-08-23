@@ -217,7 +217,7 @@ class ArticleCommentsCard extends BaseComponent {
                     </div>
                     
                     <div class="comment-content">
-                        ${this.escapeHtml(content || '')}
+                        ${this.processTextWithLinks(content || '')}
                     </div>
                     
                     ${reply_count > 0 ? `
@@ -248,6 +248,38 @@ class ArticleCommentsCard extends BaseComponent {
         
         // 将换行符转换为HTML换行标签
         return escaped.replace(/\r?\n/g, '<br>');
+    }
+
+    /**
+     * 处理文本中的链接，安全地转换为可点击的链接
+     */
+    processTextWithLinks(text) {
+        if (!text || typeof text !== 'string') {
+            return '';
+        }
+
+        // 安全的URL正则表达式，只匹配http/https链接
+        const urlRegex = /(https?:\/\/[^\s<>"']+)/gi;
+        
+        return text.replace(urlRegex, (url) => {
+            // 验证URL格式
+            try {
+                const urlObj = new URL(url);
+                // 只允许http和https协议
+                if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+                    return this.escapeHtml(url);
+                }
+                
+                // 转义URL中的特殊字符
+                const safeUrl = this.escapeHtml(url);
+                const displayUrl = this.escapeHtml(url);
+                
+                return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="auto-link">${displayUrl}</a>`;
+            } catch (error) {
+                // 如果URL无效，只转义显示
+                return this.escapeHtml(url);
+            }
+        });
     }
 
     /**
@@ -395,6 +427,18 @@ class ArticleCommentsCard extends BaseComponent {
                     word-wrap: break-word;
                     white-space: pre-line;
                     overflow-wrap: break-word;
+                }
+
+                .auto-link {
+                    color: var(--primary-color);
+                    text-decoration: none;
+                    word-break: break-all;
+                    transition: color var(--transition-fast);
+                }
+
+                .auto-link:hover {
+                    color: var(--primary-hover);
+                    text-decoration: underline;
                 }
                 
                 .comment-replies {

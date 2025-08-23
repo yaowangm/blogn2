@@ -101,7 +101,7 @@ class ArticleContentCard extends BaseComponent {
             return '<p class="no-content">暂无内容</p>';
         }
 
-        return paragraphs.map(p => `<p>${this.escapeHtml(p)}</p>`).join('');
+        return paragraphs.map(p => `<p>${this.processTextWithLinks(p)}</p>`).join('');
     }
 
     /**
@@ -143,9 +143,48 @@ class ArticleContentCard extends BaseComponent {
      * HTML转义
      */
     escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        if (!text || typeof text !== 'string') {
+            return '';
+        }
+        
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    /**
+     * 处理文本中的链接，安全地转换为可点击的链接
+     */
+    processTextWithLinks(text) {
+        if (!text || typeof text !== 'string') {
+            return '';
+        }
+
+        // 安全的URL正则表达式，只匹配http/https链接
+        const urlRegex = /(https?:\/\/[^\s<>"']+)/gi;
+        
+        return text.replace(urlRegex, (url) => {
+            // 验证URL格式
+            try {
+                const urlObj = new URL(url);
+                // 只允许http和https协议
+                if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+                    return this.escapeHtml(url);
+                }
+                
+                // 转义URL中的特殊字符
+                const safeUrl = this.escapeHtml(url);
+                const displayUrl = this.escapeHtml(url);
+                
+                return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="auto-link">${displayUrl}</a>`;
+            } catch (error) {
+                // 如果URL无效，只转义显示
+                return this.escapeHtml(url);
+            }
+        });
     }
 
     /**
@@ -246,6 +285,18 @@ class ArticleContentCard extends BaseComponent {
                 }
                 
                 .attachment-link:hover {
+                    color: var(--primary-hover);
+                    text-decoration: underline;
+                }
+
+                .auto-link {
+                    color: var(--primary-color);
+                    text-decoration: none;
+                    word-break: break-all;
+                    transition: color var(--transition-fast);
+                }
+
+                .auto-link:hover {
                     color: var(--primary-hover);
                     text-decoration: underline;
                 }
