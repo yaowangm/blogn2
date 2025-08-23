@@ -44,14 +44,16 @@ class ArticleHeaderCard extends BaseComponent {
             if (response.ok) {
                 this.articleData = await response.json();
             } else if (response.status === 404) {
-                this.showError('文章不存在');
+                // 文章不存在，跳转到错误页面
+                window.location.href = '/static/error.html';
                 return;
             } else {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
         } catch (error) {
             this.logError('Failed to load article data', error);
-            this.showError('加载文章数据失败');
+            // 加载失败，跳转到错误页面
+            window.location.href = '/static/error.html';
         }
     }
 

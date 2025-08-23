@@ -90,7 +90,9 @@ class BlogProfileCard extends BaseComponent {
             }
         } catch (error) {
             console.error('Error loading blog profile data:', error);
-            this.showError('加载博客信息失败');
+            // 加载失败，跳转到错误页面
+            window.location.href = '/static/error.html';
+            return;
         } finally {
             this.loading = false;
             this.render();

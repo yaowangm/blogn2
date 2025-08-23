@@ -215,7 +215,8 @@ class RecentCommentsCard extends BaseComponent {
     handleCommentClick(comment) {
         const url = this.getNavigationUrl(comment);
         if (url) {
-            window.location.href = url;
+            // 在新窗口打开链接
+            window.open(url, '_blank');
         } else {
             // 如果URL无效，可以显示错误信息或记录日志
             console.warn('Invalid projectitemid for comment:', comment);

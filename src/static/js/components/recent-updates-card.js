@@ -57,8 +57,8 @@ class RecentUpdatesCard extends BaseComponent {
      */
     handleItemClick(update) {
         if (update.id) {
-            // 跳转到文章页面
-            window.location.href = `/article/${update.id}`;
+            // 在新窗口打开文章页面
+            window.open(`/article/${update.id}`, '_blank');
         } else {
             console.warn('Invalid article ID for update:', update);
         }
