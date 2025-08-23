@@ -14,13 +14,13 @@ class RecentCommentsCard extends BaseComponent {
 
     async loadData() {
         try {
-            // 检测是否在博客页面
-            const isBlogPage = this.isBlogPage();
+            // 检测当前页面类型
+            const isBlogRelatedPage = this.isBlogRelatedPage();
             let apiUrl;
             
-            if (isBlogPage) {
-                // 在博客页面：获取当前博客的评论
-                const projectId = this.getProjectIdFromUrl();
+            if (isBlogRelatedPage) {
+                // 在博客页面或博客文章页面：获取当前博客的评论
+                const projectId = await this.getProjectIdFromCurrentPage();
                 if (projectId) {
                     apiUrl = `/api/projects/${projectId}/comments/recent?limit=5`;
                 } else {
@@ -60,21 +60,64 @@ class RecentCommentsCard extends BaseComponent {
     }
 
     /**
-     * 检测是否在博客页面
-     * @returns {boolean} 是否在博客页面
+     * 检测是否在博客相关页面（博客页面或博客文章页面）
+     * @returns {boolean} 是否在博客相关页面
      */
-    isBlogPage() {
+    isBlogRelatedPage() {
         const path = window.location.pathname;
-        return path.startsWith('/blog/');
+        return path.startsWith('/blog/') || path.startsWith('/article/');
     }
 
     /**
-     * 从URL获取项目ID
-     * @returns {number|null} 项目ID
+     * 从当前页面获取项目ID
+     * @returns {Promise<number|null>} 项目ID
      */
-    getProjectIdFromUrl() {
-        // 使用基类的统一方法
-        return this.getProjectId();
+    async getProjectIdFromCurrentPage() {
+        const path = window.location.pathname;
+        
+        if (path.startsWith('/blog/')) {
+            // 博客页面：直接从URL获取项目ID
+            return this.getProjectId();
+        } else if (path.startsWith('/article/')) {
+            // 博客文章页面：需要从文章数据获取项目ID
+            return await this.getProjectIdFromArticlePage();
+        }
+        
+        return null;
+    }
+
+    /**
+     * 从博客文章页面获取项目ID
+     * @returns {Promise<number|null>} 项目ID
+     */
+    async getProjectIdFromArticlePage() {
+        // 从基类方法获取文章ID
+        const articleId = this.getArticleId();
+        if (!articleId) return null;
+        
+        try {
+            // 直接通过API获取文章信息来获得项目ID
+            const response = await fetch(`/api/projectitems/${articleId}`);
+            if (response.ok) {
+                const articleData = await response.json();
+                return articleData.projectid;
+            }
+        } catch (error) {
+            console.warn('Failed to fetch article data for project ID:', error);
+        }
+        
+        // 如果API调用失败，尝试从页面组件获取（可能不可靠，但作为后备方案）
+        const articleHeaderCard = document.querySelector('article-header-card');
+        if (articleHeaderCard && articleHeaderCard.articleData) {
+            return articleHeaderCard.articleData.projectid;
+        }
+        
+        const articleContentCard = document.querySelector('article-content-card');
+        if (articleContentCard && articleContentCard.articleData) {
+            return articleContentCard.articleData.projectid;
+        }
+        
+        return null;
     }
 
     /**
