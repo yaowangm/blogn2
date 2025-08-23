@@ -22,8 +22,8 @@ def get_rss_service(session: AsyncSession) -> RSSService:
 
 def get_rss_generator() -> RSSGenerator:
     """获取RSS生成器实例"""
-    # 这里可以根据配置获取base_url
-    base_url = "http://localhost:8000"  # 可以配置化
+    # 使用生产环境域名
+    base_url = "http://blogn2.local"  # 生产环境域名
     return RSSGenerator(base_url)
 
 @router.get("/rss/site")
