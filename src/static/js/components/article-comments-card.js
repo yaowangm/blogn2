@@ -231,12 +231,23 @@ class ArticleCommentsCard extends BaseComponent {
     }
 
     /**
-     * HTML转义
+     * HTML转义并处理换行
      */
     escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        if (!text || typeof text !== 'string') {
+            return '';
+        }
+        
+        // 先转义HTML特殊字符
+        const escaped = text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        
+        // 将换行符转换为HTML换行标签
+        return escaped.replace(/\r?\n/g, '<br>');
     }
 
     /**
@@ -382,6 +393,8 @@ class ArticleCommentsCard extends BaseComponent {
                     color: var(--gray-700);
                     margin-bottom: var(--spacing-3);
                     word-wrap: break-word;
+                    white-space: pre-line;
+                    overflow-wrap: break-word;
                 }
                 
                 .comment-replies {
