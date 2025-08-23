@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse
 import uvicorn
 
 # 导入API控制器模块
-from src.controllers import metadata, user, blog, project, urllink
+from src.controllers import metadata, user, blog, project, urllink, rss
 
 # 导入缓存相关模块
 from src.utils.cache import cache_manager, cache_stats
@@ -171,6 +171,7 @@ app.include_router(user.router, prefix="/api")
 app.include_router(blog.router, prefix="/api")
 app.include_router(project.router, prefix="/api")
 app.include_router(urllink.router, prefix="/api")
+app.include_router(rss.router, prefix="/api")
 
 
 # ==================== 页面路由 ====================
