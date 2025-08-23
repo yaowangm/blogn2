@@ -69,7 +69,7 @@ class ArticleContentCard extends BaseComponent {
             return;
         }
 
-        const { content, attachment } = this.articleData;
+        const { content, attachment, attachments } = this.articleData;
 
         this.shadowRoot.innerHTML = `
             <div class="card article-content-card">
@@ -78,12 +78,15 @@ class ArticleContentCard extends BaseComponent {
                         ${this.formatContent(content)}
                     </div>
                     
-                    ${attachment ? this.renderAttachment(attachment) : ''}
+                    ${this.renderAllAttachments(attachment, attachments)}
                 </div>
             </div>
         `;
 
         this.addStyles();
+        
+        // 设置图片模态框事件监听器
+        this.setupImageModalEvents();
     }
 
     /**
@@ -105,9 +108,28 @@ class ArticleContentCard extends BaseComponent {
     }
 
     /**
-     * 渲染附件
+     * 渲染所有附件（单张图片 + 多张图片）
      */
-    renderAttachment(attachment) {
+    renderAllAttachments(attachment, attachments) {
+        let html = '';
+        
+        // 渲染单张图片附件（如果存在）
+        if (attachment) {
+            html += this.renderSingleAttachment(attachment);
+        }
+        
+        // 渲染多张图片附件（如果存在）
+        if (attachments && attachments.length > 0) {
+            html += this.renderMultipleAttachments(attachments);
+        }
+        
+        return html;
+    }
+    
+    /**
+     * 渲染单张图片附件
+     */
+    renderSingleAttachment(attachment) {
         if (!attachment) return '';
 
         // 检查是否是图片文件
@@ -137,6 +159,119 @@ class ArticleContentCard extends BaseComponent {
                 </div>
             `;
         }
+    }
+    
+    /**
+     * 渲染多张图片附件
+     */
+    renderMultipleAttachments(attachments) {
+        if (!attachments || attachments.length === 0) return '';
+        
+        // 过滤出图片文件
+        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
+        const imageAttachments = attachments.filter(att => 
+            imageExtensions.some(ext => att.linkstr.toLowerCase().endsWith(ext))
+        );
+        
+        if (imageAttachments.length === 0) return '';
+        
+        return `
+            <div class="article-attachments">
+                <h3>更多图片 (${imageAttachments.length})</h3>
+                <div class="attachments-grid">
+                    ${imageAttachments.map(att => `
+                        <div class="attachment-item">
+                            <div class="attachment-image" style="cursor: pointer;">
+                                <img src="/upload/${att.linkstr}" 
+                                     alt="${this.escapeHtml(att.comment || '图片附件')}" 
+                                     loading="lazy"
+                                     title="${this.escapeHtml(att.comment || '')}"
+                                     data-image-src="/upload/${att.linkstr}" 
+                                     data-image-title="${this.escapeHtml(att.comment || '')}">
+                            </div>
+                            ${att.comment ? `
+                                <div class="attachment-comment">
+                                    ${this.escapeHtml(att.comment)}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            
+            <!-- 图片模态框 -->
+            <div class="image-modal" style="display: none;">
+                <div class="modal-overlay"></div>
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <span class="modal-title"></span>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <img class="modal-image" src="" alt="">
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * 设置图片模态框事件监听器
+     */
+    setupImageModalEvents() {
+        // 使用事件委托，为整个容器添加点击事件
+        const attachmentsGrid = this.shadowRoot.querySelector('.attachments-grid');
+        if (attachmentsGrid) {
+            attachmentsGrid.addEventListener('click', (event) => {
+                const clickedImage = event.target.closest('.attachment-image img');
+                if (clickedImage) {
+                    const imageSrc = clickedImage.getAttribute('data-image-src');
+                    const imageTitle = clickedImage.getAttribute('data-image-title');
+                    this.showImage(imageSrc, imageTitle);
+                }
+            });
+        }
+        
+        // 为模态框背景添加点击事件
+        const modalOverlay = this.shadowRoot.querySelector('.modal-overlay');
+        if (modalOverlay) {
+            modalOverlay.addEventListener('click', () => {
+                this.hideImage();
+            });
+        }
+        
+        // 为关闭按钮添加点击事件
+        const closeButton = this.shadowRoot.querySelector('.modal-close');
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                this.hideImage();
+            });
+        }
+    }
+
+    /**
+     * 显示图片模态框
+     */
+    showImage(imageSrc, title) {
+        const modal = this.shadowRoot.querySelector('.image-modal');
+        const modalImage = modal.querySelector('.modal-image');
+        const modalTitle = modal.querySelector('.modal-title');
+        
+        modalImage.src = imageSrc;
+        modalImage.alt = title || '图片';
+        modalTitle.textContent = title || '图片';
+        
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden'; // 防止背景滚动
+    }
+    
+    /**
+     * 隐藏图片模态框
+     */
+    hideImage() {
+        const modal = this.shadowRoot.querySelector('.image-modal');
+        modal.style.display = 'none';
+        document.body.style.overflow = ''; // 恢复背景滚动
     }
 
     /**
@@ -287,6 +422,137 @@ class ArticleContentCard extends BaseComponent {
                 .attachment-link:hover {
                     color: var(--primary-hover);
                     text-decoration: underline;
+                }
+
+                .article-attachments {
+                    margin-top: var(--spacing-8);
+                    padding-top: var(--spacing-6);
+                    border-top: 1px solid var(--gray-200);
+                }
+                
+                .article-attachments h3 {
+                    font-size: var(--font-size-lg);
+                    font-weight: 600;
+                    color: var(--gray-700);
+                    margin-bottom: var(--spacing-4);
+                }
+                
+                .attachments-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: var(--spacing-4);
+                    margin-bottom: var(--spacing-4);
+                }
+                
+                .attachment-item {
+                    display: flex;
+                    flex-direction: column;
+                    gap: var(--spacing-2);
+                }
+                
+                .attachment-item .attachment-image {
+                    position: relative;
+                    overflow: hidden;
+                    border-radius: var(--radius-lg);
+                    box-shadow: var(--shadow-md);
+                    transition: transform var(--transition-fast);
+                }
+                
+                .attachment-item .attachment-image:hover {
+                    transform: scale(1.02);
+                }
+                
+                .attachment-item .attachment-image img {
+                    width: 100%;
+                    height: 200px;
+                    object-fit: cover;
+                    display: block;
+                }
+                
+                .attachment-comment {
+                    font-size: var(--font-size-sm);
+                    color: var(--gray-600);
+                    text-align: center;
+                    padding: var(--spacing-2);
+                    background-color: var(--gray-50);
+                    border-radius: var(--radius-md);
+                    border: 1px solid var(--gray-200);
+                }
+
+                /* 图片模态框样式 */
+                .image-modal {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    z-index: 10000;
+                    display: none;
+                }
+                
+                .modal-overlay {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0, 0, 0, 0.8);
+                    cursor: pointer;
+                }
+                
+                .modal-content {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background-color: var(--white);
+                    border-radius: var(--radius-lg);
+                    box-shadow: var(--shadow-xl);
+                    max-width: 90%;
+                    max-height: 90%;
+                    overflow: hidden;
+                }
+                
+                .modal-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: var(--spacing-4);
+                    border-bottom: 1px solid var(--gray-200);
+                    background-color: var(--gray-50);
+                }
+                
+                .modal-title {
+                    font-weight: 600;
+                    color: var(--gray-800);
+                    font-size: var(--font-size-lg);
+                }
+                
+                .modal-close {
+                    background: none;
+                    border: none;
+                    font-size: var(--font-size-xl);
+                    color: var(--gray-500);
+                    cursor: pointer;
+                    padding: var(--spacing-1);
+                    border-radius: var(--radius-sm);
+                    transition: color var(--transition-fast);
+                }
+                
+                .modal-close:hover {
+                    color: var(--gray-700);
+                }
+                
+                .modal-body {
+                    padding: var(--spacing-4);
+                    text-align: center;
+                }
+                
+                .modal-image {
+                    max-width: 100%;
+                    max-height: 70vh;
+                    height: auto;
+                    border-radius: var(--radius-md);
                 }
 
                 .auto-link {

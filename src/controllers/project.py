@@ -363,11 +363,24 @@ async def get_article_detail(
         post_repo = PostRepository(session)
         comments = await post_repo.get_by_project_item_id(article_id)
         
+        # 获取文章附件图片
+        from src.repositories.attachment_repository import AttachmentRepository
+        attachment_repo = AttachmentRepository(session)
+        attachments = await attachment_repo.get_by_project_item_id(article_id)
+        
         return {
             "id": article.id,
             "title": article.name,
             "content": article.comment,
-            "attachment": article.attachment,  # 添加附件字段
+            "attachment": article.attachment,  # 单张图片附件
+            "attachments": [  # 多张图片附件
+                {
+                    "id": attachment.id,
+                    "comment": attachment.comment,
+                    "linkstr": attachment.linkstr,
+                    "created_at": attachment.createtime
+                } for attachment in attachments
+            ] if attachments else [],
             "author": {
                 "id": author.id if author else None,
                 "name": author.name if author else "未知作者",
