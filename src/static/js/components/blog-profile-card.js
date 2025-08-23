@@ -15,7 +15,6 @@ class BlogProfileCard extends BaseComponent {
         this.projectId = this.getProjectIdFromUrl();
         this.render();
         this.loadData();
-        this.addEventListeners();
     }
 
     getProjectIdFromUrl() {
@@ -23,17 +22,7 @@ class BlogProfileCard extends BaseComponent {
         return this.getProjectId();
     }
 
-    addEventListeners() {
-        // 添加点击事件监听器
-        this.addEventListener('click', this.handleCardClick.bind(this));
-    }
 
-    handleCardClick() {
-        if (this.projectId) {
-            // 跳转到博客主页
-            window.location.href = `/blog/${this.projectId}`;
-        }
-    }
 
     async loadData() {
         if (!this.projectId) {
@@ -129,7 +118,6 @@ class BlogProfileCard extends BaseComponent {
                     border: 1px solid var(--gray-200);
                     overflow: hidden;
                     margin-bottom: var(--spacing-6);
-                    cursor: pointer;
                     transition: all 0.2s ease;
                 }
 
@@ -253,6 +241,17 @@ class BlogProfileCard extends BaseComponent {
                     border-top: 1px solid var(--gray-200);
                     font-style: italic;
                 }
+
+                .blog-profile-link {
+                    text-decoration: none;
+                    color: inherit;
+                    display: block;
+                    cursor: pointer;
+                }
+
+                .blog-profile-link:hover {
+                    text-decoration: none;
+                }
             </style>
 
             <div class="card">
@@ -286,37 +285,41 @@ class BlogProfileCard extends BaseComponent {
             avatarPath = `/avatar/${prefix}/${this.userData.id}.jpg`;
         }
 
+        const blogLink = this.projectId ? `/blog/${this.projectId}` : '#';
+        
         return `
-            <div class="card-header">
-                <div class="user-avatar">
-                    ${avatarPath ? 
-                        `<img src="${avatarPath}" alt="${safeUserName}" 
-                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-                              onload="this.style.display='block'; this.nextElementSibling.style.display='none';"
-                              style="display: block;">` : 
-                        ''
-                    }
-                    <span style="display: ${avatarPath ? 'none' : 'flex'}; color: var(--gray-600);">${safeAvatarText}</span>
-                </div>
-                <h2 class="blog-name">${safeBlogName}</h2>
-            </div>
-            <div class="card-body">
-                <div class="user-info">
-                    <h3 class="user-name">${safeUserName}</h3>
-                    <p class="user-email">${safeUserEmail}</p>
-                </div>
-                <div class="blog-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">${this.projectData.recordcount || 0}</div>
-                        <div class="stat-label">文章</div>
+            <a href="${blogLink}" class="blog-profile-link" title="查看博客主页">
+                <div class="card-header">
+                    <div class="user-avatar">
+                        ${avatarPath ? 
+                            `<img src="${avatarPath}" alt="${safeUserName}" 
+                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                                  onload="this.style.display='block'; this.nextElementSibling.style.display='none';"
+                                  style="display: block;">` : 
+                            ''
+                        }
+                        <span style="display: ${avatarPath ? 'none' : 'flex'}; color: var(--gray-600);">${safeAvatarText}</span>
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-number">${this.projectData.commentcount || 0}</div>
-                        <div class="stat-label">评论</div>
-                    </div>
+                    <h2 class="blog-name">${safeBlogName}</h2>
                 </div>
-                <div class="click-hint">点击查看博客主页</div>
-            </div>
+                <div class="card-body">
+                    <div class="user-info">
+                        <h3 class="user-name">${safeUserName}</h3>
+                        <p class="user-email">${safeUserEmail}</p>
+                    </div>
+                    <div class="blog-stats">
+                        <div class="stat-item">
+                            <div class="stat-number">${this.projectData.recordcount || 0}</div>
+                            <div class="stat-label">文章</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">${this.projectData.commentcount || 0}</div>
+                            <div class="stat-label">评论</div>
+                        </div>
+                    </div>
+                    <div class="click-hint">点击查看博客主页</div>
+                </div>
+            </a>
         `;
     }
 

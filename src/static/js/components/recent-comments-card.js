@@ -10,7 +10,6 @@ class RecentCommentsCard extends BaseComponent {
     connectedCallback() {
         this.render();
         this.loadData();
-        this.setupEventListeners();
     }
 
     async loadData() {
@@ -176,25 +175,6 @@ class RecentCommentsCard extends BaseComponent {
     }
 
     /**
-     * 设置事件监听器
-     */
-    setupEventListeners() {
-        // 使用事件委托来处理评论点击
-        this.shadowRoot.addEventListener('click', (event) => {
-            const commentItem = event.target.closest('.comment-item.clickable');
-            if (commentItem) {
-                const commentIndex = commentItem.getAttribute('data-comment-index');
-                if (commentIndex !== null) {
-                    const index = parseInt(commentIndex);
-                    if (!isNaN(index) && index >= 0 && index < this.comments.length) {
-                        this.handleCommentClick(this.comments[index]);
-                    }
-                }
-            }
-        });
-    }
-
-    /**
      * HTML转义方法
      * @param {string} text - 需要转义的文本
      * @returns {string} 转义后的文本
@@ -206,22 +186,6 @@ class RecentCommentsCard extends BaseComponent {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
-    }
-
-    /**
-     * 处理评论点击事件
-     * @param {Object} comment - 评论对象
-     */
-    handleCommentClick(comment) {
-        const url = this.getNavigationUrl(comment);
-        if (url) {
-            // 在新窗口打开链接
-            window.open(url, '_blank');
-        } else {
-            // 如果URL无效，可以显示错误信息或记录日志
-            console.warn('Invalid projectitemid for comment:', comment);
-            // 可以选择显示一个提示或禁用点击
-        }
     }
 
     render() {
@@ -305,8 +269,14 @@ class RecentCommentsCard extends BaseComponent {
                     border-color: var(--gray-300);
                 }
 
-                .comment-item.clickable {
-                    cursor: pointer;
+                .comment-link {
+                    text-decoration: none;
+                    color: inherit;
+                    display: block;
+                }
+
+                .comment-link:hover {
+                    text-decoration: none;
                 }
 
                 .comment-item.disabled {
@@ -438,28 +408,49 @@ class RecentCommentsCard extends BaseComponent {
                       this.error ? this.createErrorHTML() : `
                         <div class="comment-list">
                             ${this.comments.map((comment, index) => {
-                                const isClickable = this.getNavigationUrl(comment) !== null;
-                                const cssClass = isClickable ? 'comment-item clickable' : 'comment-item disabled';
-                                const dataAttributes = isClickable ? `data-comment-index="${index}"` : '';
+                                const commentUrl = this.getNavigationUrl(comment);
                                 
-                                return `
-                                    <div class="${cssClass}" ${dataAttributes}>
-                                        <div class="user-avatar">
-                                            ${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 
-                                                `<img src="${comment.avatar}" alt="${this.escapeHtml(comment.author)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` : 
-                                                ''
-                                            }
-                                            <span style="${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 'display: none;' : 'display: flex;'}">${this.escapeHtml(comment.author.charAt(0))}</span>
-                                        </div>
-                                        <div class="comment-content">
-                                            <div class="comment-header">
-                                                <span class="author">${this.escapeHtml(comment.author)}</span>
-                                                <span class="time">${this.escapeHtml(comment.time)}</span>
+                                if (commentUrl) {
+                                    return `
+                                        <a href="${commentUrl}" class="comment-link" target="_blank" title="查看评论">
+                                            <div class="comment-item">
+                                                <div class="user-avatar">
+                                                    ${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 
+                                                        `<img src="${comment.avatar}" alt="${this.escapeHtml(comment.author)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` : 
+                                                        ''
+                                                    }
+                                                    <span style="${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 'display: none;' : 'display: flex;'}">${this.escapeHtml(comment.author.charAt(0))}</span>
+                                                </div>
+                                                <div class="comment-content">
+                                                    <div class="comment-header">
+                                                        <span class="author">${this.escapeHtml(comment.author)}</span>
+                                                        <span class="time">${this.escapeHtml(comment.time)}</span>
+                                                    </div>
+                                                    <div class="comment-text">${this.escapeHtml(this.truncateText(comment.content, 20))}</div>
+                                                </div>
                                             </div>
-                                            <div class="comment-text">${this.escapeHtml(this.truncateText(comment.content, 20))}</div>
+                                        </a>
+                                    `;
+                                } else {
+                                    return `
+                                        <div class="comment-item disabled">
+                                            <div class="user-avatar">
+                                                ${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 
+                                                    `<img src="${comment.avatar}" alt="${this.escapeHtml(comment.author)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` : 
+                                                    ''
+                                                }
+                                                <span style="${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 'display: none;' : 'display: flex;'}">${this.escapeHtml(comment.author.charAt(0))}</span>
+                                            </div>
+                                            <div class="comment-content">
+                                                <div class="comment-header">
+                                                    <span class="author">${this.escapeHtml(comment.author)}</span>
+                                                    <span class="time">${this.escapeHtml(comment.time)}</span>
+                                                </div>
+                                                <div class="comment-text">${this.escapeHtml(this.truncateText(comment.content, 20))}</div>
+                                            </div>
                                         </div>
-                                    </div>
-                                `;
+                                    `;
+                                }
                             }).join('')}
                         </div>
                     `}
