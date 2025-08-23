@@ -98,12 +98,12 @@ class RSSService:
             
             rss_items.append({
                 "title": article.get("name", "无标题"),
-                "link": f"/blog/{article.get('projectid', 0)}/article/{article.get('id', 0)}",
+                "link": f"/article/{article.get('id', 0)}",
                 "description": summary,
                 "author": author_name,
                 "category": project_name,
                 "pub_date": self._format_rss_date(article.get("createtime")),
-                "guid": f"/blog/{article.get('projectid', 0)}/article/{article.get('id', 0)}",
+                "guid": f"/article/{article.get('id', 0)}",
                 "content": summary
             })
         
@@ -148,12 +148,12 @@ class RSSService:
             
             rss_items.append({
                 "title": article.get("name", "无标题"),
-                "link": f"/blog/{project_id}/article/{article.get('id', 0)}",
+                "link": f"/article/{article.get('id', 0)}",
                 "description": summary,
                 "author": author_name,
                 "category": "文章",
                 "pub_date": self._format_rss_date(article.get("createtime")),
-                "guid": f"/blog/{project_id}/article/{article.get('id', 0)}",
+                "guid": f"/article/{article.get('id', 0)}",
                 "content": summary
             })
         
