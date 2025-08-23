@@ -15,11 +15,24 @@ class BlogProfileCard extends BaseComponent {
         this.projectId = this.getProjectIdFromUrl();
         this.render();
         this.loadData();
+        this.addEventListeners();
     }
 
     getProjectIdFromUrl() {
         // 使用基类的统一方法
         return this.getProjectId();
+    }
+
+    addEventListeners() {
+        // 添加点击事件监听器
+        this.addEventListener('click', this.handleCardClick.bind(this));
+    }
+
+    handleCardClick() {
+        if (this.projectId) {
+            // 跳转到博客主页
+            window.location.href = `/blog/${this.projectId}`;
+        }
     }
 
     async loadData() {
@@ -114,6 +127,14 @@ class BlogProfileCard extends BaseComponent {
                     border: 1px solid var(--gray-200);
                     overflow: hidden;
                     margin-bottom: var(--spacing-6);
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+
+                .card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: var(--shadow-lg);
+                    border-color: var(--primary-color);
                 }
 
                 .card-header {
@@ -220,6 +241,16 @@ class BlogProfileCard extends BaseComponent {
                     background: var(--gray-50);
                     border-radius: var(--radius-lg);
                 }
+
+                .click-hint {
+                    text-align: center;
+                    padding: var(--spacing-3);
+                    color: var(--gray-500);
+                    font-size: var(--font-size-xs);
+                    background: var(--gray-50);
+                    border-top: 1px solid var(--gray-200);
+                    font-style: italic;
+                }
             </style>
 
             <div class="card">
@@ -282,6 +313,7 @@ class BlogProfileCard extends BaseComponent {
                         <div class="stat-label">评论</div>
                     </div>
                 </div>
+                <div class="click-hint">点击查看博客主页</div>
             </div>
         `;
     }
