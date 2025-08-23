@@ -173,11 +173,7 @@ class RecentUpdatesCard extends BaseComponent {
                 .update-item {
                     border-bottom: 1px solid var(--gray-100);
                     padding: var(--spacing-4) var(--spacing-6);
-                    cursor: pointer;
                     transition: var(--transition-normal);
-                    display: flex;
-                    align-items: flex-start;
-                    gap: var(--spacing-3);
                 }
 
                 .update-item:hover {
@@ -187,7 +183,10 @@ class RecentUpdatesCard extends BaseComponent {
                 .update-link {
                     text-decoration: none;
                     color: inherit;
-                    display: block;
+                    display: flex;
+                    align-items: flex-start;
+                    gap: var(--spacing-3);
+                    width: 100%;
                 }
 
                 .update-link:hover {
