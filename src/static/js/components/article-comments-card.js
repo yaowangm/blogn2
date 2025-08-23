@@ -162,7 +162,17 @@ class ArticleCommentsCard extends BaseComponent {
         if (!this.shadowRoot.querySelector('style')) {
             const style = document.createElement('style');
             style.textContent = `
-                .article-comments-card {
+                :host {
+                    display: block;
+                    font-family: var(--font-family);
+                }
+
+                .card {
+                    background: var(--white);
+                    border-radius: var(--radius-xl);
+                    box-shadow: var(--shadow-md);
+                    border: 1px solid var(--gray-200);
+                    overflow: hidden;
                     margin-bottom: var(--spacing-6);
                 }
                 
@@ -177,6 +187,10 @@ class ArticleCommentsCard extends BaseComponent {
                     font-weight: 600;
                     color: var(--gray-800);
                     margin: 0;
+                }
+
+                .card-body {
+                    padding: var(--spacing-6);
                 }
                 
                 .comments-list {

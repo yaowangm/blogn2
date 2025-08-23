@@ -151,8 +151,22 @@ class ArticleHeaderCard extends BaseComponent {
         if (!this.shadowRoot.querySelector('style')) {
             const style = document.createElement('style');
             style.textContent = `
-                .article-header-card {
+                :host {
+                    display: block;
+                    font-family: var(--font-family);
+                }
+
+                .card {
+                    background: var(--white);
+                    border-radius: var(--radius-xl);
+                    box-shadow: var(--shadow-md);
+                    border: 1px solid var(--gray-200);
+                    overflow: hidden;
                     margin-bottom: var(--spacing-6);
+                }
+
+                .card-body {
+                    padding: var(--spacing-6);
                 }
                 
                 .article-title h1 {
