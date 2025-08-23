@@ -16,20 +16,30 @@ class RecentCommentsCard extends BaseComponent {
         try {
             // 检测当前页面类型
             const isBlogRelatedPage = this.isBlogRelatedPage();
+            console.log('最近评论卡片 - 页面类型检测:', { 
+                path: window.location.pathname, 
+                isBlogRelatedPage 
+            });
+            
             let apiUrl;
             
             if (isBlogRelatedPage) {
                 // 在博客页面或博客文章页面：获取当前博客的评论
                 const projectId = await this.getProjectIdFromCurrentPage();
+                console.log('最近评论卡片 - 获取到的项目ID:', projectId);
+                
                 if (projectId) {
                     apiUrl = `/api/projects/${projectId}/comments/recent?limit=5`;
+                    console.log('最近评论卡片 - 使用项目特定API:', apiUrl);
                 } else {
                     // 如果无法获取projectId，回退到全站评论
                     apiUrl = '/api/comments/recent?limit=5';
+                    console.log('最近评论卡片 - 回退到全站评论API:', apiUrl);
                 }
             } else {
                 // 在首页：获取全站评论
                 apiUrl = '/api/comments/recent?limit=5';
+                console.log('最近评论卡片 - 使用全站评论API:', apiUrl);
             }
             
             const response = await fetch(apiUrl);
@@ -93,17 +103,24 @@ class RecentCommentsCard extends BaseComponent {
     async getProjectIdFromArticlePage() {
         // 从基类方法获取文章ID
         const articleId = this.getArticleId();
+        console.log('最近评论卡片 - 文章ID:', articleId);
+        
         if (!articleId) return null;
         
         try {
             // 直接通过API获取文章信息来获得项目ID
-            const response = await fetch(`/api/projectitems/${articleId}`);
+            console.log('最近评论卡片 - 调用API获取文章数据:', `/api/articles/${articleId}`);
+            const response = await fetch(`/api/articles/${articleId}`);
             if (response.ok) {
                 const articleData = await response.json();
-                return articleData.projectid;
+                console.log('最近评论卡片 - 文章数据:', articleData);
+                console.log('最近评论卡片 - 项目ID:', articleData.project?.id);
+                return articleData.project?.id;
+            } else {
+                console.warn('最近评论卡片 - API响应状态:', response.status);
             }
         } catch (error) {
-            console.warn('Failed to fetch article data for project ID:', error);
+            console.warn('最近评论卡片 - 获取文章数据失败:', error);
         }
         
         // 如果API调用失败，尝试从页面组件获取（可能不可靠，但作为后备方案）
