@@ -342,6 +342,8 @@ class BlogListCard extends BaseComponent {
                     border: 1px solid var(--gray-200);
                     overflow: hidden;
                     transition: var(--transition-normal);
+                    max-width: 100%;
+                    width: 100%;
                 }
 
                 .card:hover {
@@ -364,12 +366,16 @@ class BlogListCard extends BaseComponent {
 
                 .card-body {
                     padding: var(--spacing-5);
+                    max-width: 100%;
+                    overflow: hidden;
                 }
 
                 .post-list {
                     display: flex;
                     flex-direction: column;
                     gap: var(--spacing-4);
+                    max-width: 100%;
+                    overflow: hidden;
                 }
 
                 .post-item {
@@ -382,6 +388,8 @@ class BlogListCard extends BaseComponent {
                     transition: var(--transition-fast);
                     text-decoration: none;
                     color: inherit;
+                    max-width: 100%;
+                    overflow: hidden;
                 }
 
                 .post-item:hover {
@@ -424,6 +432,8 @@ class BlogListCard extends BaseComponent {
                 .post-content {
                     flex: 1;
                     min-width: 0;
+                    max-width: 100%;
+                    overflow: hidden;
                 }
 
                 .post-title {
@@ -432,6 +442,10 @@ class BlogListCard extends BaseComponent {
                     color: var(--gray-900);
                     margin-bottom: var(--spacing-2);
                     line-height: 1.4;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                    max-width: 100%;
                 }
 
                 .post-meta {
@@ -470,6 +484,10 @@ class BlogListCard extends BaseComponent {
                     -webkit-box-orient: vertical;
                     overflow: hidden;
                     margin-bottom: var(--spacing-3);
+                    max-width: 100%;
+                    word-wrap: break-word;
+                    word-break: break-word;
+                    overflow-wrap: break-word;
                 }
 
                 .post-attachment-image {
