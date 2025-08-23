@@ -232,15 +232,7 @@ class BlogProfileCard extends BaseComponent {
                     border-radius: var(--radius-lg);
                 }
 
-                .click-hint {
-                    text-align: center;
-                    padding: var(--spacing-3);
-                    color: var(--gray-500);
-                    font-size: var(--font-size-xs);
-                    background: var(--gray-50);
-                    border-top: 1px solid var(--gray-200);
-                    font-style: italic;
-                }
+
 
                 .blog-profile-link {
                     text-decoration: none;
@@ -317,7 +309,7 @@ class BlogProfileCard extends BaseComponent {
                             <div class="stat-label">评论</div>
                         </div>
                     </div>
-                    <div class="click-hint">点击查看博客主页</div>
+
                 </div>
             </a>
         `;
