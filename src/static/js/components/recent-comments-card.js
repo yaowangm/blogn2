@@ -171,8 +171,8 @@ class RecentCommentsCard extends BaseComponent {
             return null;
         }
         
-        // 使用新的URL模式：blogn/{projectid}#post{postid}
-        return `/blogn/${projectitemid}#post${commentId}`;
+        // 使用正确的URL模式：blog/{projectid}#post{postid}
+        return `/blog/${projectitemid}#post${commentId}`;
     }
 
     /**
