@@ -7,6 +7,7 @@ class ArticleCommentsCard extends BaseComponent {
         super();
         this.articleId = null;
         this.articleData = null;
+        this.userMap = {};
     }
 
     async connectedCallback() {
@@ -40,6 +41,11 @@ class ArticleCommentsCard extends BaseComponent {
             const response = await fetch(`/api/articles/${this.articleId}`);
             if (response.ok) {
                 this.articleData = await response.json();
+                
+                // 如果有评论，获取每个评论的用户信息
+                if (this.articleData.comments && this.articleData.comments.length > 0) {
+                    await this.loadCommentUsers();
+                }
             } else if (response.status === 404) {
                 this.showError('文章不存在');
                 return;
@@ -49,6 +55,46 @@ class ArticleCommentsCard extends BaseComponent {
         } catch (error) {
             this.logError('Failed to load article data', error);
             this.showError('加载文章数据失败');
+        }
+    }
+
+    /**
+     * 加载评论用户信息
+     */
+    async loadCommentUsers() {
+        if (!this.articleData.comments) return;
+        
+        try {
+            // 获取所有不重复的用户ID
+            const userIds = [...new Set(this.articleData.comments
+                .map(comment => comment.user_id)
+                .filter(id => id))];
+            
+            // 批量获取用户信息
+            const userPromises = userIds.map(async (userId) => {
+                try {
+                    const userResponse = await fetch(`/api/users/${userId}`);
+                    if (userResponse.ok) {
+                        return await userResponse.json();
+                    }
+                } catch (error) {
+                    console.warn(`Failed to load user ${userId}:`, error);
+                }
+                return null;
+            });
+            
+            const users = await Promise.all(userPromises);
+            
+            // 创建用户ID到用户信息的映射
+            this.userMap = {};
+            users.forEach(user => {
+                if (user) {
+                    this.userMap[user.id] = user;
+                }
+            });
+        } catch (error) {
+            console.warn('Failed to load comment users:', error);
+            this.userMap = {};
         }
     }
 
@@ -108,26 +154,76 @@ class ArticleCommentsCard extends BaseComponent {
     renderComment(comment) {
         const { id, content, user_id, post_time, reply_count } = comment;
         
+        // 获取用户名和博客ID，如果没有则显示用户ID或匿名
+        let userName = '匿名';
+        let blogId = null;
+        let userAvatar = null;
+        
+        if (user_id) {
+            if (this.userMap && this.userMap[user_id]) {
+                const user = this.userMap[user_id];
+                userName = user.name || `用户${user_id}`;
+                blogId = user.projectid || null;
+                
+                // 构建头像路径
+                if (user.id) {
+                    const prefix = Math.floor(user.id / 10000) + 1;
+                    userAvatar = `/avatar/${prefix}/${user.id}.jpg`;
+                }
+            } else {
+                userName = `用户${user_id}`;
+            }
+        }
+        
         return `
             <div class="comment-item" data-comment-id="${id}">
-                <div class="comment-header">
-                    <div class="comment-user">
-                        <span class="user-id">用户 ${user_id || '匿名'}</span>
-                    </div>
-                    <div class="comment-time">
-                        ${this.formatDate(post_time)}
-                    </div>
+                <div class="comment-avatar">
+                    ${blogId ? `
+                        <a href="/blog/${blogId}" class="avatar-link" title="查看博客">
+                            <div class="user-avatar">
+                                ${userAvatar ? 
+                                    `<img src="${userAvatar}" alt="${this.escapeHtml(userName)}" 
+                                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                                          onload="this.style.display='block'; this.nextElementSibling.style.display='none';"
+                                          style="display: block;">` : 
+                                    ''
+                                }
+                                <span style="display: ${userAvatar ? 'none' : 'flex'}; color: var(--gray-600);">${userName.charAt(0).toUpperCase()}</span>
+                            </div>
+                        </a>
+                    ` : `
+                        <div class="user-avatar">
+                            <span style="color: var(--gray-600);">?</span>
+                        </div>
+                    `}
                 </div>
                 
-                <div class="comment-content">
-                    ${this.escapeHtml(content || '')}
-                </div>
-                
-                ${reply_count > 0 ? `
-                    <div class="comment-replies">
-                        <span class="reply-count">${reply_count} 条回复</span>
+                <div class="comment-content-wrapper">
+                    <div class="comment-header">
+                        <div class="comment-user">
+                            ${blogId ? `
+                                <a href="/blog/${blogId}" class="user-link" title="查看博客">
+                                    <span class="user-name">${this.escapeHtml(userName)}</span>
+                                </a>
+                            ` : `
+                                <span class="user-name">${this.escapeHtml(userName)}</span>
+                            `}
+                        </div>
+                        <div class="comment-time">
+                            ${this.formatDate(post_time)}
+                        </div>
                     </div>
-                ` : ''}
+                    
+                    <div class="comment-content">
+                        ${this.escapeHtml(content || '')}
+                    </div>
+                    
+                    ${reply_count > 0 ? `
+                        <div class="comment-replies">
+                            <span class="reply-count">${reply_count} 条回复</span>
+                        </div>
+                    ` : ''}
+                </div>
             </div>
         `;
     }
@@ -199,6 +295,8 @@ class ArticleCommentsCard extends BaseComponent {
                 }
                 
                 .comment-item {
+                    display: flex;
+                    gap: var(--spacing-4);
                     padding: var(--spacing-4);
                     border-bottom: 1px solid var(--gray-100);
                     transition: background-color var(--transition-fast);
@@ -211,6 +309,42 @@ class ArticleCommentsCard extends BaseComponent {
                 .comment-item:hover {
                     background-color: var(--gray-50);
                 }
+
+                .comment-avatar {
+                    flex-shrink: 0;
+                }
+
+                .avatar-link {
+                    text-decoration: none;
+                    color: inherit;
+                    display: block;
+                }
+
+                .user-avatar {
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: var(--gray-100);
+                    font-size: var(--font-size-lg);
+                    font-weight: 600;
+                    color: var(--gray-600);
+                    border: 2px solid var(--gray-200);
+                    overflow: hidden;
+                }
+
+                .user-avatar img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
+
+                .comment-content-wrapper {
+                    flex: 1;
+                    min-width: 0;
+                }
                 
                 .comment-header {
                     display: flex;
@@ -219,10 +353,21 @@ class ArticleCommentsCard extends BaseComponent {
                     margin-bottom: var(--spacing-3);
                 }
                 
-                .comment-user .user-id {
+                .comment-user .user-name {
                     font-weight: 600;
                     color: var(--primary-color);
                     font-size: var(--font-size-sm);
+                }
+
+                .user-link {
+                    text-decoration: none;
+                    color: inherit;
+                    transition: color var(--transition-fast);
+                }
+
+                .user-link:hover .user-name {
+                    color: var(--primary-hover);
+                    text-decoration: underline;
                 }
                 
                 .comment-time {
