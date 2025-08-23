@@ -65,6 +65,40 @@ class RSSService:
         # 转换为本地时区并格式化为RFC 822格式
         return date.strftime("%a, %d %b %Y %H:%M:%S %z")
     
+    def _extract_image_url(self, content: str) -> str:
+        """从文章内容中提取图片URL
+        
+        Args:
+            content: 文章内容
+            
+        Returns:
+            str: 图片URL，如果没有找到则返回空字符串
+        """
+        if not content:
+            return ""
+        
+        import re
+        
+        # 查找HTML img标签
+        img_pattern = r'<img[^>]+src=["\']([^"\']+)["\'][^>]*>'
+        img_match = re.search(img_pattern, content, re.IGNORECASE)
+        if img_match:
+            return img_match.group(1)
+        
+        # 查找Markdown图片语法 ![alt](url)
+        md_img_pattern = r'!\[[^\]]*\]\(([^)]+)\)'
+        md_img_match = re.search(md_img_pattern, content)
+        if md_img_match:
+            return md_img_match.group(1)
+        
+        # 查找纯URL链接（可能是图片）
+        url_pattern = r'https?://[^\s<>"\']+\.(jpg|jpeg|png|gif|webp|bmp)'
+        url_match = re.search(url_pattern, content, re.IGNORECASE)
+        if url_match:
+            return url_match.group(0)
+        
+        return ""
+    
     async def get_site_rss_data(self, limit: int = 20) -> Dict[str, Any]:
         """获取全站RSS数据
         
@@ -104,7 +138,8 @@ class RSSService:
                 "category": project_name,
                 "pub_date": self._format_rss_date(article.get("createtime")),
                 "guid": f"/article/{article.get('id', 0)}",
-                "content": summary
+                "content": summary,
+                "image_url": self._extract_image_url(article.get("comment", ""))
             })
         
         return {
@@ -154,7 +189,8 @@ class RSSService:
                 "category": "文章",
                 "pub_date": self._format_rss_date(article.get("createtime")),
                 "guid": f"/article/{article.get('id', 0)}",
-                "content": summary
+                "content": summary,
+                "image_url": self._extract_image_url(article.get("comment", ""))
             })
         
         return {

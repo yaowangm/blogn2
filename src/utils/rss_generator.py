@@ -72,6 +72,12 @@ class RSSGenerator:
         # 构建item标签
         items_content = ""
         for item in rss_data.get('items', []):
+            # 构建图片链接（如果有的话）
+            image_content = ""
+            if item.get('image_url'):
+                image_content = f"""
+            <enclosure url="{self._make_absolute_url(item.get('image_url'))}" type="image/jpeg" length="0" />"""
+            
             item_content = f"""
         <item>
             <title>{self._escape_xml(item.get('title', ''))}</title>
@@ -80,7 +86,7 @@ class RSSGenerator:
             <author>{self._escape_xml(item.get('author', ''))}</author>
             <category>{self._escape_xml(item.get('category', ''))}</category>
             <pubDate>{item.get('pub_date', '')}</pubDate>
-            <guid>{self._make_absolute_url(item.get('guid', ''))}</guid>
+            <guid>{self._make_absolute_url(item.get('guid', ''))}</guid>{image_content}
         </item>"""
             items_content += item_content
         
@@ -115,6 +121,12 @@ class RSSGenerator:
         # 构建item标签（包含完整内容）
         items_content = ""
         for item in rss_data.get('items', []):
+            # 构建图片链接（如果有的话）
+            image_content = ""
+            if item.get('image_url'):
+                image_content = f"""
+            <enclosure url="{self._make_absolute_url(item.get('image_url'))}" type="image/jpeg" length="0" />"""
+            
             item_content = f"""
         <item>
             <title>{self._escape_xml(item.get('title', ''))}</title>
@@ -124,7 +136,7 @@ class RSSGenerator:
             <author>{self._escape_xml(item.get('author', ''))}</author>
             <category>{self._escape_xml(item.get('category', ''))}</category>
             <pubDate>{item.get('pub_date', '')}</pubDate>
-            <guid>{self._make_absolute_url(item.get('guid', ''))}</guid>
+            <guid>{self._make_absolute_url(item.get('guid', ''))}</guid>{image_content}
         </item>"""
             items_content += item_content
         
