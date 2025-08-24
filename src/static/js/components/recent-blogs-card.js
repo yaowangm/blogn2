@@ -212,7 +212,7 @@ class RecentBlogsCard extends BaseComponent {
                                 const safeJoinDate = this.escapeHtml(blog.join_date);
                                 
                                 return `
-                                    <a href="/blog/${blog.id}" class="blog-item">
+                                    <a href="/blog/${blog.id}" class="blog-item" target="_blank" rel="noopener noreferrer">
                                         <div class="blog-avatar">
                                             ${blog.avatar ? 
                                                 `<img src="${blog.avatar}" alt="${safeName}">` :

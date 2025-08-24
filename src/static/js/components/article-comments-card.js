@@ -222,7 +222,7 @@ class ArticleCommentsCard extends BaseComponent {
             <div class="comment-item" id="post${id}" data-comment-id="${id}">
                 <div class="comment-avatar">
                     ${blogId ? `
-                        <a href="/blog/${blogId}" class="avatar-link" title="查看博客">
+                        <a href="/blog/${blogId}" class="avatar-link" title="查看博客" target="_blank" rel="noopener noreferrer">
                             <div class="user-avatar">
                                 ${userAvatar ? 
                                     `<img src="${userAvatar}" alt="${this.escapeHtml(userName)}" 
@@ -245,7 +245,7 @@ class ArticleCommentsCard extends BaseComponent {
                     <div class="comment-header">
                         <div class="comment-user">
                             ${blogId ? `
-                                <a href="/blog/${blogId}" class="user-link" title="查看博客">
+                                <a href="/blog/${blogId}" class="user-link" title="查看博客" target="_blank" rel="noopener noreferrer">
                                     <span class="user-name">${this.escapeHtml(userName)}</span>
                                 </a>
                             ` : `
