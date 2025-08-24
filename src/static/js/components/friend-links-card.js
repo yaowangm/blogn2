@@ -41,9 +41,35 @@ class FriendLinksCard extends BaseComponent {
     async loadData() {
         try {
             let apiUrl;
+            
             if (this.projectId) {
                 // 如果在博客页面，获取指定项目的友情链接
                 apiUrl = `/api/projects/${this.projectId}/friend-links`;
+            } else if (this.isArticlePage()) {
+                // 如果在文章页面，需要从文章ID获取项目ID
+                const articleId = this.getArticleId();
+                if (articleId) {
+                    try {
+                        // 先获取文章信息，从中提取项目ID
+                        const articleResponse = await fetch(`/api/articles/${articleId}`);
+                        if (articleResponse.ok) {
+                            const articleData = await articleResponse.json();
+                            const projectId = articleData.project?.id;
+                            if (projectId) {
+                                apiUrl = `/api/projects/${projectId}/friend-links`;
+                            } else {
+                                apiUrl = '/api/friend-links';
+                            }
+                        } else {
+                            apiUrl = '/api/friend-links';
+                        }
+                    } catch (error) {
+                        console.warn('获取文章信息失败，使用默认API');
+                        apiUrl = '/api/friend-links';
+                    }
+                } else {
+                    apiUrl = '/api/friend-links';
+                }
             } else {
                 // 如果在首页，获取所有友情链接
                 apiUrl = '/api/friend-links';
