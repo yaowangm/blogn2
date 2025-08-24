@@ -180,12 +180,6 @@ class BlogProfileCard extends BaseComponent {
                     font-size: var(--font-size-lg);
                     font-weight: 500;
                     color: var(--gray-800);
-                    margin: 0 0 var(--spacing-2) 0;
-                }
-
-                .user-email {
-                    font-size: var(--font-size-sm);
-                    color: var(--gray-500);
                     margin: 0;
                 }
 
@@ -267,7 +261,6 @@ class BlogProfileCard extends BaseComponent {
         const safeAvatarText = this.userData.name ? this.escapeHtml(this.userData.name.charAt(0).toUpperCase()) : '?';
         const safeBlogName = this.escapeHtml(this.projectData.name || '未命名博客');
         const safeUserName = this.escapeHtml(this.userData.name || '未知用户');
-        const safeUserEmail = this.escapeHtml(this.userData.email || '');
         
         // 构建头像路径 - 用户资料卡片使用大头像格式
         let avatarPath = null;
@@ -297,7 +290,6 @@ class BlogProfileCard extends BaseComponent {
                 <div class="card-body">
                     <div class="user-info">
                         <h3 class="user-name">${safeUserName}</h3>
-                        <p class="user-email">${safeUserEmail}</p>
                     </div>
                     <div class="blog-stats">
                         <div class="stat-item">
