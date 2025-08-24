@@ -648,7 +648,7 @@ class BlogListCard extends BaseComponent {
                 // 使用BLOG_POSTS_PAGE_SIZE环境变量对应的配置参数覆盖默认值
                 // 环境变量: BLOG_POSTS_PAGE_SIZE -> API配置键: blog_posts_page_size
                 this.pageSize = config.blog_posts_page_size || 10;
-                console.log(`📋 应用配置已加载: 博客文章每页显示数量=${this.pageSize}`);
+        
             })
             .catch(error => {
                 console.warn('⚠️ 加载应用配置失败，使用默认pagesize=10:', error);

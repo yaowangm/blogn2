@@ -153,23 +153,7 @@ class ArticleHeaderCard extends BaseComponent {
         if (!this.shadowRoot.querySelector('style')) {
             const style = document.createElement('style');
             style.textContent = `
-                :host {
-                    display: block;
-                    font-family: var(--font-family);
-                }
-
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-xl);
-                    box-shadow: var(--shadow-md);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    margin-bottom: var(--spacing-6);
-                }
-
-                .card-body {
-                    padding: var(--spacing-6);
-                }
+                @import url('/static/css/common-components.css');
                 
                 .article-title h1 {
                     font-size: var(--font-size-3xl);
@@ -203,18 +187,6 @@ class ArticleHeaderCard extends BaseComponent {
                 
                 .meta-value {
                     color: var(--gray-800);
-                }
-                
-                .loading {
-                    text-align: center;
-                    color: var(--gray-500);
-                    padding: var(--spacing-8);
-                }
-                
-                .error-message {
-                    text-align: center;
-                    color: var(--error-color);
-                    padding: var(--spacing-8);
                 }
             `;
             this.shadowRoot.appendChild(style);

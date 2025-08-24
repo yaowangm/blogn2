@@ -343,23 +343,7 @@ class ArticleContentCard extends BaseComponent {
         if (!this.shadowRoot.querySelector('style')) {
             const style = document.createElement('style');
             style.textContent = `
-                :host {
-                    display: block;
-                    font-family: var(--font-family);
-                }
-
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-xl);
-                    box-shadow: var(--shadow-md);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    margin-bottom: var(--spacing-6);
-                }
-
-                .card-body {
-                    padding: var(--spacing-6);
-                }
+                @import url('/static/css/common-components.css');
                 
                 .article-content {
                     line-height: 1.8;
@@ -373,13 +357,6 @@ class ArticleContentCard extends BaseComponent {
                 
                 .article-content p:last-child {
                     margin-bottom: 0;
-                }
-                
-                .no-content {
-                    color: var(--gray-500);
-                    font-style: italic;
-                    text-align: center;
-                    padding: var(--spacing-8);
                 }
                 
                 .article-attachment {

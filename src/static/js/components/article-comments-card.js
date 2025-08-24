@@ -147,14 +147,12 @@ class ArticleCommentsCard extends BaseComponent {
         if (!match) return;
         
         const commentId = match[1];
-        console.log('检测到评论锚点，准备定位到评论:', commentId);
         
         // 等待DOM渲染完成后再滚动
         setTimeout(() => {
             // 查找对应的评论元素
             const commentElement = this.shadowRoot.querySelector(`#post${commentId}`);
             if (commentElement) {
-                console.log('找到评论元素，开始滚动...');
                 // 滚动到评论位置
                 commentElement.scrollIntoView({ 
                     behavior: 'smooth', 
@@ -170,10 +168,6 @@ class ArticleCommentsCard extends BaseComponent {
                     commentElement.style.backgroundColor = '';
                     commentElement.style.color = '';
                 }, 3000);
-                
-                console.log('评论定位完成');
-            } else {
-                console.log('未找到评论元素:', commentId);
             }
         }, 500); // 增加延迟，确保评论完全渲染
     }
@@ -350,19 +344,7 @@ class ArticleCommentsCard extends BaseComponent {
         if (!this.shadowRoot.querySelector('style')) {
             const style = document.createElement('style');
             style.textContent = `
-                :host {
-                    display: block;
-                    font-family: var(--font-family);
-                }
-
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-xl);
-                    box-shadow: var(--shadow-md);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    margin-bottom: var(--spacing-6);
-                }
+                @import url('/static/css/common-components.css');
                 
                 .card-header {
                     padding: var(--spacing-4) var(--spacing-6);
@@ -375,10 +357,6 @@ class ArticleCommentsCard extends BaseComponent {
                     font-weight: 600;
                     color: var(--gray-800);
                     margin: 0;
-                }
-
-                .card-body {
-                    padding: var(--spacing-6);
                 }
                 
                 .comments-list {

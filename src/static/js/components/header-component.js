@@ -225,10 +225,10 @@ class HeaderComponent extends BaseComponent {
     addEventListeners() {
         const searchButton = this.shadowRoot.querySelector('.search-button');
         if (searchButton) {
-            searchButton.addEventListener('click', () => {
-                // 这里可以添加搜索功能
-                console.log('搜索按钮被点击');
-            });
+                          searchButton.addEventListener('click', () => {
+                  // TODO: 实现搜索功能
+         
+              });
         }
     }
 }
