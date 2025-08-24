@@ -292,6 +292,50 @@ class ArticleCommentsCard extends BaseComponent {
     }
 
     /**
+     * 验证URL是否安全有效
+     * @param {string} url - 要验证的URL
+     * @returns {boolean} - 是否安全有效
+     */
+    isValidUrl(url) {
+        try {
+            const urlObj = new URL(url);
+            
+            // 只允许http和https协议
+            if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+                return false;
+            }
+            
+            // 检查域名是否包含危险字符
+            const hostname = urlObj.hostname;
+            if (!hostname || /[<>\"'&]/.test(hostname)) {
+                return false;
+            }
+            
+            // 检查端口号是否在安全范围内
+            if (urlObj.port) {
+                const port = parseInt(urlObj.port);
+                if (port < 1 || port > 65535) {
+                    return false;
+                }
+            }
+            
+            // 检查URL长度是否合理
+            if (url.length > 2048) {
+                return false;
+            }
+            
+            // 检查是否包含可疑的JavaScript代码
+            if (/javascript:|data:|vbscript:|file:/i.test(url)) {
+                return false;
+            }
+            
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    /**
      * 处理文本中的链接，安全地转换为可点击的链接
      */
     processTextWithLinks(text) {
@@ -299,27 +343,18 @@ class ArticleCommentsCard extends BaseComponent {
             return '';
         }
 
-        // 安全的URL正则表达式，只匹配http/https链接
+        // 更严格的URL正则表达式，只匹配基本的http/https链接
         const urlRegex = /(https?:\/\/[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=%]+)/gi;
         
         return text.replace(urlRegex, (url) => {
-            // 验证URL格式
-            try {
-                const urlObj = new URL(url);
-                // 只允许http和https协议
-                if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-                    return this.escapeHtml(url);
-                }
-                
-                // 转义URL中的特殊字符
+            // 使用严格的URL验证
+            if (this.isValidUrl(url)) {
                 const safeUrl = this.escapeHtml(url);
                 const displayUrl = this.escapeHtml(url);
-                
                 return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="auto-link">${displayUrl}</a>`;
-            } catch (error) {
-                // 如果URL无效，只转义显示
-                return this.escapeHtml(url);
             }
+            // 如果URL不安全，只转义显示
+            return this.escapeHtml(url);
         });
     }
 
