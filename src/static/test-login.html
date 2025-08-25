@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 300px;
+        }
+        input, button {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>登录功能测试页面</h1>
+    
+    <div class="test-section">
+        <h2>1. 测试登录模态框组件</h2>
+        <button id="testModalBtn">打开登录模态框</button>
+        <div id="modalStatus"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. 直接测试登录API</h2>
+        <form class="login-form" id="directLoginForm">
+            <input type="text" id="username" placeholder="用户名或邮箱" required>
+            <input type="password" id="password" placeholder="密码" required>
+            <button type="submit">直接登录</button>
+        </form>
+        <div id="directLoginStatus"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 检查本地存储</h2>
+        <button id="checkStorageBtn">检查本地存储</button>
+        <div id="storageStatus"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. 测试认证状态</h2>
+        <button id="checkAuthBtn">检查认证状态</button>
+        <div id="authStatus"></div>
+    </div>
+
+    <!-- 引入必要的组件 -->
+    <script src="/static/js/components/base-component.js"></script>
+    <script src="/static/js/components/login-modal.js"></script>
+    
+    <script>
+        // 测试登录模态框
+        document.getElementById('testModalBtn').addEventListener('click', () => {
+            const modal = document.createElement('login-modal');
+            document.body.appendChild(modal);
+            modal.show();
+            
+            document.getElementById('modalStatus').innerHTML = 
+                '<div class="success">登录模态框已创建并显示</div>';
+        });
+        
+        // 直接测试登录API
+        document.getElementById('directLoginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const statusDiv = document.getElementById('directLoginStatus');
+            
+            try {
+                statusDiv.innerHTML = '<div class="info">正在发送登录请求...</div>';
+                
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username_or_email: username,
+                        password: password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = `
+                        <div class="success">
+                            登录成功！<br>
+                            用户: ${data.user.name}<br>
+                            角色: ${data.user.role}<br>
+                            令牌: ${data.access_token.substring(0, 20)}...
+                        </div>
+                    `;
+                    
+                    // 存储到本地
+                    localStorage.setItem('access_token', data.access_token);
+                    localStorage.setItem('refresh_token', data.refresh_token);
+                    localStorage.setItem('user_info', JSON.stringify(data.user));
+                } else {
+                    statusDiv.innerHTML = `
+                        <div class="error">
+                            登录失败: ${data.detail || '未知错误'}<br>
+                            状态码: ${response.status}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="error">
+                        网络错误: ${error.message}
+                    </div>
+                `;
+            }
+        });
+        
+        // 检查本地存储
+        document.getElementById('checkStorageBtn').addEventListener('click', () => {
+            const token = localStorage.getItem('access_token');
+            const refreshToken = localStorage.getItem('refresh_token');
+            const userInfo = localStorage.getItem('user_info');
+            
+            const statusDiv = document.getElementById('storageStatus');
+            
+            if (token && userInfo) {
+                try {
+                    const user = JSON.parse(userInfo);
+                    statusDiv.innerHTML = `
+                        <div class="success">
+                            本地存储正常<br>
+                            用户: ${user.name}<br>
+                            令牌: ${token.substring(0, 20)}...<br>
+                            刷新令牌: ${refreshToken ? refreshToken.substring(0, 20) + '...' : '无'}
+                        </div>
+                    `;
+                } catch (e) {
+                    statusDiv.innerHTML = `
+                        <div class="error">
+                            用户信息解析失败: ${e.message}
+                        </div>
+                    `;
+                }
+            } else {
+                statusDiv.innerHTML = `
+                    <div class="info">
+                        本地存储为空<br>
+                        访问令牌: ${token ? '有' : '无'}<br>
+                        用户信息: ${userInfo ? '有' : '无'}
+                    </div>
+                `;
+            }
+        });
+        
+        // 检查认证状态
+        document.getElementById('checkAuthBtn').addEventListener('click', async () => {
+            const token = localStorage.getItem('access_token');
+            const statusDiv = document.getElementById('authStatus');
+            
+            if (!token) {
+                statusDiv.innerHTML = '<div class="info">没有访问令牌</div>';
+                return;
+            }
+            
+            try {
+                statusDiv.innerHTML = '<div class="info">正在验证令牌...</div>';
+                
+                const response = await fetch('/api/auth/verify', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = `
+                        <div class="success">
+                            令牌有效<br>
+                            用户ID: ${data.user_id}<br>
+                            用户名: ${data.username}<br>
+                            角色: ${data.role}<br>
+                            过期时间: ${new Date(data.expires_at * 1000).toLocaleString()}
+                        </div>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `
+                        <div class="error">
+                            令牌无效: ${data.detail || '未知错误'}<br>
+                            状态码: ${response.status}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="error">
+                        验证失败: ${error.message}
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

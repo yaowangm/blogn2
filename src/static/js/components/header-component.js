@@ -5,6 +5,8 @@ class HeaderComponent extends BaseComponent {
         this.logoUrl = '';
         this.isLoggedIn = false;
         this.userName = '';
+        this.userInfo = null;
+        this.loginModal = null;
     }
 
     /**
@@ -24,14 +26,13 @@ class HeaderComponent extends BaseComponent {
 
     async connectedCallback() {
         await this.loadMetadata();
+        this.checkAuthStatus();
         this.render();
+        this.setupLoginModal();
+        this.addGlobalEventListeners();
     }
 
     render() {
-        // 模拟用户登录状态（实际应用中应该从后端获取）
-        const isLoggedIn = false;
-        const userName = '张三';
-        
         const siteName = this.metadata?.site_name || 'BlogN';
         const logoUrl = this.getLogoUrl();
 
@@ -198,21 +199,21 @@ class HeaderComponent extends BaseComponent {
                 </a>
 
                 <div class="header-actions">
-                    ${isLoggedIn ? `
+                    ${this.isLoggedIn ? `
                         <div class="user-menu">
-                            <div class="user-avatar">${this.escapeHtml(userName.charAt(0))}</div>
-                            <span>${this.escapeHtml(userName)}</span>
+                            <div class="user-avatar">${this.escapeHtml(this.userName.charAt(0))}</div>
+                            <span>${this.escapeHtml(this.userName)}</span>
                         </div>
                         <a href="/user" class="btn btn-ghost">我的首页</a>
                         <button class="search-button" title="搜索">
                             🔍
                         </button>
-                        <a href="/logout" class="btn btn-ghost">退出</a>
+                        <button class="btn btn-ghost" id="logoutButton">退出</button>
                     ` : `
                         <button class="search-button" title="搜索">
                             🔍
                         </button>
-                        <a href="/login" class="btn btn-primary">登录</a>
+                        <button class="btn btn-primary" id="loginButton">登录</button>
                     `}
                 </div>
             </div>
@@ -225,10 +226,107 @@ class HeaderComponent extends BaseComponent {
     addEventListeners() {
         const searchButton = this.shadowRoot.querySelector('.search-button');
         if (searchButton) {
-                          searchButton.addEventListener('click', () => {
-                  // TODO: 实现搜索功能
-         
-              });
+            searchButton.addEventListener('click', () => {
+                // TODO: 实现搜索功能
+            });
+        }
+
+        // 登录按钮事件
+        const loginButton = this.shadowRoot.querySelector('#loginButton');
+        if (loginButton) {
+            loginButton.addEventListener('click', () => this.showLoginModal());
+        }
+
+        // 退出按钮事件
+        const logoutButton = this.shadowRoot.querySelector('#logoutButton');
+        if (logoutButton) {
+            logoutButton.addEventListener('click', () => this.handleLogout());
+        }
+    }
+
+    setupLoginModal() {
+        // 创建登录模态框
+        this.loginModal = document.createElement('login-modal');
+        document.body.appendChild(this.loginModal);
+    }
+
+    addGlobalEventListeners() {
+        // 监听登录成功事件
+        document.addEventListener('userLoginSuccess', (e) => {
+            this.handleLoginSuccess(e.detail);
+        });
+    }
+
+    checkAuthStatus() {
+        // 检查本地存储的认证状态
+        const token = localStorage.getItem('access_token');
+        const userInfo = localStorage.getItem('user_info');
+        
+        if (token && userInfo) {
+            try {
+                this.userInfo = JSON.parse(userInfo);
+                this.isLoggedIn = true;
+                this.userName = this.userInfo.name;
+            } catch (error) {
+                console.error('Failed to parse user info:', error);
+                this.clearAuthData();
+            }
+        } else {
+            this.clearAuthData();
+        }
+    }
+
+    clearAuthData() {
+        this.isLoggedIn = false;
+        this.userName = '';
+        this.userInfo = null;
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user_info');
+    }
+
+    showLoginModal() {
+        if (this.loginModal) {
+            // 传递当前页面URL作为返回地址
+            const returnUrl = window.location.pathname + window.location.search;
+            this.loginModal.show(returnUrl);
+        }
+    }
+
+    async handleLoginSuccess(userData) {
+        this.userInfo = userData;
+        this.isLoggedIn = true;
+        this.userName = userData.name;
+        
+        // 重新渲染组件
+        this.render();
+        this.addEventListeners();
+    }
+
+    async handleLogout() {
+        try {
+            // 调用登出API
+            const token = localStorage.getItem('access_token');
+            if (token) {
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Logout error:', error);
+        } finally {
+            // 清除本地数据
+            this.clearAuthData();
+            
+            // 重新渲染组件
+            this.render();
+            this.addEventListeners();
+            
+            // 跳转到首页
+            window.location.href = '/';
         }
     }
 }

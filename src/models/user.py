@@ -10,7 +10,7 @@ class User(SQLModel, table=True):
     
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(max_length=50)
-    password: str = Field(max_length=50)
+    password: str = Field(max_length=60)
     state: int = Field(default=1)
     email: str = Field(max_length=50)
     regtime: datetime

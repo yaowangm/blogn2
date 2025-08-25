@@ -36,6 +36,13 @@ class UserRepository:
         result = await self.session.exec(statement)
         return result.first()
     
+    async def update(self, user: User) -> User:
+        """更新用户信息"""
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+        return user
+    
     async def get_active_users(self, limit: int = None) -> List[User]:
         """获取活跃用户"""
         statement = select(User).where(User.state == 1)
