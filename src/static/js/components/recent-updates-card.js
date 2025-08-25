@@ -29,40 +29,9 @@ class RecentUpdatesCard extends BaseComponent {
     connectedCallback() {
         this.render();
         this.loadData();
-        this.setupEventListeners();
     }
 
-    /**
-     * 设置事件监听器
-     */
-    setupEventListeners() {
-        // 使用事件委托来处理条目点击
-        this.shadowRoot.addEventListener('click', (event) => {
-            const updateItem = event.target.closest('.update-item');
-            if (updateItem) {
-                const updateIndex = updateItem.getAttribute('data-update-index');
-                if (updateIndex !== null) {
-                    const index = parseInt(updateIndex);
-                    if (!isNaN(index) && index >= 0 && index < this.recentUpdates.length) {
-                        this.handleItemClick(this.recentUpdates[index]);
-                    }
-                }
-            }
-        });
-    }
 
-    /**
-     * 处理条目点击事件
-     * @param {Object} update - 更新条目数据
-     */
-    handleItemClick(update) {
-        if (update.id) {
-            // 跳转到文章页面
-            window.location.href = `/article/${update.id}`;
-        } else {
-            console.warn('Invalid article ID for update:', update);
-        }
-    }
 
     async loadData() {
         // 检测是否在博客页面
@@ -120,9 +89,8 @@ class RecentUpdatesCard extends BaseComponent {
     }
 
     getProjectIdFromUrl() {
-        const path = window.location.pathname;
-        const match = path.match(/\/blog\/(\d+)/);
-        return match ? parseInt(match[1]) : null;
+        // 使用基类的统一方法
+        return this.getProjectId();
     }
 
     getMockRecentUpdates() {
@@ -205,15 +173,24 @@ class RecentUpdatesCard extends BaseComponent {
                 .update-item {
                     border-bottom: 1px solid var(--gray-100);
                     padding: var(--spacing-4) var(--spacing-6);
-                    cursor: pointer;
                     transition: var(--transition-normal);
-                    display: flex;
-                    align-items: flex-start;
-                    gap: var(--spacing-3);
                 }
 
                 .update-item:hover {
                     background: var(--gray-50);
+                }
+
+                .update-link {
+                    text-decoration: none;
+                    color: inherit;
+                    display: flex;
+                    align-items: flex-start;
+                    gap: var(--spacing-3);
+                    width: 100%;
+                }
+
+                .update-link:hover {
+                    text-decoration: none;
                 }
 
                 .update-item:last-child {
@@ -330,23 +307,45 @@ class RecentUpdatesCard extends BaseComponent {
                     const safeTime = this.escapeHtml(update.time);
                     const safeTitle = this.escapeHtml(update.title);
                     
-                    return `
-                        <li class="update-item" data-update-index="${index}">
-                            <div class="user-avatar">
-                                ${update.avatar ? 
-                                    `<img src="${update.avatar}" alt="${safeBlogName}" />` : 
-                                    `<span>${safeBlogName.charAt(0)}</span>`
-                                }
-                            </div>
-                            <div class="update-content">
-                                <div class="update-header">
-                                    <span class="blog-name">${safeBlogName}</span>
-                                    <span class="update-time">${safeTime}</span>
+                    if (update.id) {
+                        return `
+                            <li class="update-item">
+                                <a href="/article/${update.id}" class="update-link" target="_blank" title="查看文章">
+                                    <div class="user-avatar">
+                                        ${update.avatar ? 
+                                            `<img src="${update.avatar}" alt="${safeBlogName}" />` : 
+                                            `<span>${safeBlogName.charAt(0)}</span>`
+                                        }
+                                    </div>
+                                    <div class="update-content">
+                                        <div class="update-header">
+                                            <span class="blog-name">${safeBlogName}</span>
+                                            <span class="update-time">${safeTime}</span>
+                                        </div>
+                                        <div class="latest-post">${this.truncateText(safeTitle, 40)}</div>
+                                    </div>
+                                </a>
+                            </li>
+                        `;
+                    } else {
+                        return `
+                            <li class="update-item disabled">
+                                <div class="user-avatar">
+                                    ${update.avatar ? 
+                                        `<img src="${update.avatar}" alt="${safeBlogName}" />` : 
+                                        `<span>${safeBlogName.charAt(0)}</span>`
+                                    }
                                 </div>
-                                <div class="latest-post">${this.truncateText(safeTitle, 40)}</div>
-                            </div>
-                        </li>
-                    `;
+                                <div class="update-content">
+                                    <div class="update-header">
+                                        <span class="blog-name">${safeBlogName}</span>
+                                        <span class="update-time">${safeTime}</span>
+                                    </div>
+                                    <div class="latest-post">${this.truncateText(safeTitle, 40)}</div>
+                                </div>
+                            </li>
+                        `;
+                    }
                 }).join('')}
             </ul>
         `;

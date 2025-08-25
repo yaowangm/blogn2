@@ -26,9 +26,8 @@ class BlogListCard extends BaseComponent {
      * @returns {number|null} 项目ID
      */
     getProjectIdFromUrl() {
-        const path = window.location.pathname;
-        const match = path.match(/\/blog\/(\d+)/);
-        return match ? parseInt(match[1]) : null;
+        // 使用基类的统一方法
+        return this.getProjectId();
     }
 
     /**
@@ -204,7 +203,7 @@ class BlogListCard extends BaseComponent {
                 const blogInfo = safeBlogName ? `<span class="post-blog">来自: ${safeBlogName}</span>` : '';
                 
                 return `
-                    <a href="/projectitem/${post.id}" class="post-item">
+                    <a href="/article/${post.id}" class="post-item" target="_blank">
                         <div class="post-avatar">
                             ${avatar ? 
                                 `<img src="${avatar}" alt="${safeAuthor}" onerror="this.style.display='none'">` :
@@ -343,6 +342,8 @@ class BlogListCard extends BaseComponent {
                     border: 1px solid var(--gray-200);
                     overflow: hidden;
                     transition: var(--transition-normal);
+                    max-width: 100%;
+                    width: 100%;
                 }
 
                 .card:hover {
@@ -365,12 +366,16 @@ class BlogListCard extends BaseComponent {
 
                 .card-body {
                     padding: var(--spacing-5);
+                    max-width: 100%;
+                    overflow: hidden;
                 }
 
                 .post-list {
                     display: flex;
                     flex-direction: column;
                     gap: var(--spacing-4);
+                    max-width: 100%;
+                    overflow: hidden;
                 }
 
                 .post-item {
@@ -383,6 +388,8 @@ class BlogListCard extends BaseComponent {
                     transition: var(--transition-fast);
                     text-decoration: none;
                     color: inherit;
+                    max-width: 100%;
+                    overflow: hidden;
                 }
 
                 .post-item:hover {
@@ -425,6 +432,8 @@ class BlogListCard extends BaseComponent {
                 .post-content {
                     flex: 1;
                     min-width: 0;
+                    max-width: 100%;
+                    overflow: hidden;
                 }
 
                 .post-title {
@@ -433,6 +442,10 @@ class BlogListCard extends BaseComponent {
                     color: var(--gray-900);
                     margin-bottom: var(--spacing-2);
                     line-height: 1.4;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                    max-width: 100%;
                 }
 
                 .post-meta {
@@ -471,6 +484,10 @@ class BlogListCard extends BaseComponent {
                     -webkit-box-orient: vertical;
                     overflow: hidden;
                     margin-bottom: var(--spacing-3);
+                    max-width: 100%;
+                    word-wrap: break-word;
+                    word-break: break-word;
+                    overflow-wrap: break-word;
                 }
 
                 .post-attachment-image {
@@ -631,7 +648,7 @@ class BlogListCard extends BaseComponent {
                 // 使用BLOG_POSTS_PAGE_SIZE环境变量对应的配置参数覆盖默认值
                 // 环境变量: BLOG_POSTS_PAGE_SIZE -> API配置键: blog_posts_page_size
                 this.pageSize = config.blog_posts_page_size || 10;
-                console.log(`📋 应用配置已加载: 博客文章每页显示数量=${this.pageSize}`);
+        
             })
             .catch(error => {
                 console.warn('⚠️ 加载应用配置失败，使用默认pagesize=10:', error);

@@ -17,9 +17,8 @@ class BlogHeaderCard extends BaseComponent {
     }
 
     getProjectIdFromUrl() {
-        const path = window.location.pathname;
-        const match = path.match(/\/blog\/(\d+)/);
-        return match ? parseInt(match[1]) : null;
+        // 使用基类的统一方法
+        return this.getProjectId();
     }
 
     async loadData() {
@@ -109,12 +108,10 @@ class BlogHeaderCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
-                :host { display: block; font-family: var(--font-family); }
-                .card { background: var(--white); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); border: 1px solid var(--gray-200); overflow: hidden; margin-bottom: var(--spacing-6); }
+                @import url('/static/css/common-components.css');
                 .card-header { padding: var(--spacing-8) var(--spacing-6); background: var(--gray-50); color: var(--gray-800); text-align: center; border-bottom: 1px solid var(--gray-200); }
                 .blog-title { margin: 0 0 var(--spacing-4) 0; font-size: var(--font-size-3xl); font-weight: 700; color: var(--gray-800); }
                 .blog-description { margin: 0; font-size: var(--font-size-lg); color: var(--gray-600); opacity: 0.9; line-height: 1.6; max-width: 650px; margin-left: auto; margin-right: auto; }
-                .card-body { padding: var(--spacing-6); }
                 .blog-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--spacing-4); margin-bottom: var(--spacing-6); }
                 .stat-item { text-align: center; padding: var(--spacing-4); background: var(--gray-50); border-radius: var(--radius-lg); border: 1px solid var(--gray-200); }
                 .stat-number { font-size: var(--font-size-2xl); font-weight: 700; color: var(--primary-color); margin: 0 0 var(--spacing-2) 0; }
@@ -122,8 +119,6 @@ class BlogHeaderCard extends BaseComponent {
                 .blog-meta { display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-4) var(--spacing-6); background: var(--gray-50); border-radius: var(--radius-lg); }
                 .meta-item { display: flex; align-items: center; gap: var(--spacing-2); color: var(--gray-600); font-size: var(--font-size-sm); }
                 .meta-icon { width: 16px; height: 16px; color: var(--gray-500); }
-                .loading { text-align: center; padding: var(--spacing-8); color: var(--gray-500); }
-                .error { text-align: center; padding: var(--spacing-6); color: var(--error-color); background: var(--gray-50); border-radius: var(--radius-lg); }
             </style>
 
             <div class="card">

@@ -95,7 +95,7 @@ class NavigationCard extends BaseComponent {
                             <div class="nav-icon">👥</div>
                             <span class="nav-text">用户列表</span>
                         </a>
-                        <a href="/rss" class="nav-item">
+                        <a href="/api/rss/site" class="nav-item" target="_blank">
                             <div class="nav-icon">📡</div>
                             <span class="nav-text">全站RSS</span>
                         </a>

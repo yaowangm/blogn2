@@ -26,9 +26,8 @@ class BlogPostsListCard extends BaseComponent {
     }
 
     getProjectIdFromUrl() {
-        const path = window.location.pathname;
-        const match = path.match(/\/blog\/(\d+)/);
-        return match ? parseInt(match[1]) : null;
+        // 使用基类的统一方法
+        return this.getProjectId();
     }
 
     getCurrentFolderId() {
@@ -130,7 +129,7 @@ class BlogPostsListCard extends BaseComponent {
         this.shadowRoot.innerHTML = `
             <style>
                 :host { display: block; font-family: var(--font-family); }
-                .card { background: var(--white); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); border: 1px solid var(--gray-200); overflow: hidden; margin-bottom: var(--spacing-6); }
+                @import url('/static/css/common-components.css');
                 .tabs { display: flex; border-bottom: 1px solid var(--gray-200); }
                 .tab { flex: 1; padding: var(--spacing-4) var(--spacing-6); text-align: center; background: var(--gray-100); border: none; cursor: pointer; transition: var(--transition-fast); font-size: var(--font-size-sm); color: var(--gray-600); }
                 .tab.active { background: var(--white); color: var(--primary-color); border-bottom: 2px solid var(--primary-color); }
@@ -196,7 +195,7 @@ class BlogPostsListCard extends BaseComponent {
                 // 使用BLOG_POSTS_PAGE_SIZE环境变量对应的配置参数覆盖默认值
                 // 环境变量: BLOG_POSTS_PAGE_SIZE -> API配置键: blog_posts_page_size
                 this.pageSize = config.blog_posts_page_size || 10;
-                console.log(`📋 应用配置已加载: 博客文章每页显示数量=${this.pageSize}`);
+        
             })
             .catch(error => {
                 console.warn('⚠️ 加载应用配置失败，使用默认pagesize=10:', error);

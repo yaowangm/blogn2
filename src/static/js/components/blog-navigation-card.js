@@ -17,9 +17,8 @@ class BlogNavigationCard extends BaseComponent {
     }
 
     getProjectIdFromUrl() {
-        const path = window.location.pathname;
-        const match = path.match(/\/blog\/(\d+)/);
-        return match ? parseInt(match[1]) : null;
+        // 使用基类的统一方法
+        return this.getProjectId();
     }
 
     async loadUserData() {
@@ -211,7 +210,7 @@ class BlogNavigationCard extends BaseComponent {
                     <li class="nav-item">
                         <a href="${aboutLink}" class="nav-link">
                             <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
                                 <circle cx="12" cy="7" r="4"/>
                             </svg>
                             <span class="link-text">个人介绍</span>
@@ -228,7 +227,7 @@ class BlogNavigationCard extends BaseComponent {
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="/api/projects/${this.projectId}/rss" class="nav-link rss-link" target="_blank">
+                        <a href="/api/rss/blog/${this.projectId}" class="nav-link rss-link" target="_blank">
                             <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M4 11a9 9 0 0 1 9 9"/>
                                 <path d="M4 4a16 16 0 0 1 16 16"/>

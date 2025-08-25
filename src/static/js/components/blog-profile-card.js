@@ -18,15 +18,45 @@ class BlogProfileCard extends BaseComponent {
     }
 
     getProjectIdFromUrl() {
-        const path = window.location.pathname;
-        const match = path.match(/\/blog\/(\d+)/);
-        return match ? parseInt(match[1]) : null;
+        // 使用基类的统一方法
+        return this.getProjectId();
     }
+
+
 
     async loadData() {
         if (!this.projectId) {
-            this.showError('无法获取博客ID');
-            return;
+            // 如果在文章页面，尝试从文章ID获取项目ID
+            if (this.isArticlePage()) {
+                const articleId = this.getArticleId();
+                if (articleId) {
+                    try {
+                        const articleResponse = await fetch(`/api/articles/${articleId}`);
+                        if (articleResponse.ok) {
+                            const articleData = await articleResponse.json();
+                            if (articleData.project?.id) {
+                                this.projectId = articleData.project.id;
+                            } else {
+                                this.showError('无法获取博客ID');
+                                return;
+                            }
+                        } else {
+                            this.showError('无法获取文章信息');
+                            return;
+                        }
+                    } catch (error) {
+                        console.error('Error loading article data:', error);
+                        this.showError('加载文章信息失败');
+                        return;
+                    }
+                } else {
+                    this.showError('无法获取文章ID');
+                    return;
+                }
+            } else {
+                this.showError('无法获取博客ID');
+                return;
+            }
         }
 
         try {
@@ -49,7 +79,9 @@ class BlogProfileCard extends BaseComponent {
             }
         } catch (error) {
             console.error('Error loading blog profile data:', error);
-            this.showError('加载博客信息失败');
+            // 加载失败，跳转到错误页面
+            window.location.href = '/static/error.html';
+            return;
         } finally {
             this.loading = false;
             this.render();
@@ -86,6 +118,13 @@ class BlogProfileCard extends BaseComponent {
                     border: 1px solid var(--gray-200);
                     overflow: hidden;
                     margin-bottom: var(--spacing-6);
+                    transition: all 0.2s ease;
+                }
+
+                .card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: var(--shadow-lg);
+                    border-color: var(--primary-color);
                 }
 
                 .card-header {
@@ -141,12 +180,6 @@ class BlogProfileCard extends BaseComponent {
                     font-size: var(--font-size-lg);
                     font-weight: 500;
                     color: var(--gray-800);
-                    margin: 0 0 var(--spacing-2) 0;
-                }
-
-                .user-email {
-                    font-size: var(--font-size-sm);
-                    color: var(--gray-500);
                     margin: 0;
                 }
 
@@ -192,6 +225,19 @@ class BlogProfileCard extends BaseComponent {
                     background: var(--gray-50);
                     border-radius: var(--radius-lg);
                 }
+
+
+
+                .blog-profile-link {
+                    text-decoration: none;
+                    color: inherit;
+                    display: block;
+                    cursor: pointer;
+                }
+
+                .blog-profile-link:hover {
+                    text-decoration: none;
+                }
             </style>
 
             <div class="card">
@@ -215,7 +261,6 @@ class BlogProfileCard extends BaseComponent {
         const safeAvatarText = this.userData.name ? this.escapeHtml(this.userData.name.charAt(0).toUpperCase()) : '?';
         const safeBlogName = this.escapeHtml(this.projectData.name || '未命名博客');
         const safeUserName = this.escapeHtml(this.userData.name || '未知用户');
-        const safeUserEmail = this.escapeHtml(this.userData.email || '');
         
         // 构建头像路径 - 用户资料卡片使用大头像格式
         let avatarPath = null;
@@ -225,36 +270,40 @@ class BlogProfileCard extends BaseComponent {
             avatarPath = `/avatar/${prefix}/${this.userData.id}.jpg`;
         }
 
+        const blogLink = this.projectId ? `/blog/${this.projectId}` : '#';
+        
         return `
-            <div class="card-header">
-                <div class="user-avatar">
-                    ${avatarPath ? 
-                        `<img src="${avatarPath}" alt="${safeUserName}" 
-                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-                              onload="this.style.display='block'; this.nextElementSibling.style.display='none';"
-                              style="display: block;">` : 
-                        ''
-                    }
-                    <span style="display: ${avatarPath ? 'none' : 'flex'}; color: var(--gray-600);">${safeAvatarText}</span>
-                </div>
-                <h2 class="blog-name">${safeBlogName}</h2>
-            </div>
-            <div class="card-body">
-                <div class="user-info">
-                    <h3 class="user-name">${safeUserName}</h3>
-                    <p class="user-email">${safeUserEmail}</p>
-                </div>
-                <div class="blog-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">${this.projectData.recordcount || 0}</div>
-                        <div class="stat-label">文章</div>
+            <a href="${blogLink}" class="blog-profile-link" title="查看博客主页">
+                <div class="card-header">
+                    <div class="user-avatar">
+                        ${avatarPath ? 
+                            `<img src="${avatarPath}" alt="${safeUserName}" 
+                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                                  onload="this.style.display='block'; this.nextElementSibling.style.display='none';"
+                                  style="display: block;">` : 
+                            ''
+                        }
+                        <span style="display: ${avatarPath ? 'none' : 'flex'}; color: var(--gray-600);">${safeAvatarText}</span>
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-number">${this.projectData.commentcount || 0}</div>
-                        <div class="stat-label">评论</div>
-                    </div>
+                    <h2 class="blog-name">${safeBlogName}</h2>
                 </div>
-            </div>
+                <div class="card-body">
+                    <div class="user-info">
+                        <h3 class="user-name">${safeUserName}</h3>
+                    </div>
+                    <div class="blog-stats">
+                        <div class="stat-item">
+                            <div class="stat-number">${this.projectData.recordcount || 0}</div>
+                            <div class="stat-label">文章</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">${this.projectData.commentcount || 0}</div>
+                            <div class="stat-label">评论</div>
+                        </div>
+                    </div>
+
+                </div>
+            </a>
         `;
     }
 

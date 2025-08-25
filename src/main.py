@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse
 import uvicorn
 
 # 导入API控制器模块
-from src.controllers import metadata, user, blog, project, urllink
+from src.controllers import metadata, user, blog, project, article, urllink, rss
 
 # 导入缓存相关模块
 from src.utils.cache import cache_manager, cache_stats
@@ -170,7 +170,9 @@ app.include_router(metadata.router, prefix="/api")
 app.include_router(user.router, prefix="/api")
 app.include_router(blog.router, prefix="/api")
 app.include_router(project.router, prefix="/api")
+app.include_router(article.router, prefix="/api")
 app.include_router(urllink.router, prefix="/api")
+app.include_router(rss.router, prefix="/api")
 
 
 # ==================== 页面路由 ====================
@@ -202,6 +204,48 @@ async def blog_page(project_id: int):
         FileResponse: 博客页面HTML文件
     """
     return FileResponse("src/static/blog.html")
+
+
+@app.get("/article/{article_id}")
+async def article_page(article_id: int):
+    """
+    博客文章页面路由
+    
+    返回指定文章的详情页面HTML文件。
+    
+    Args:
+        article_id: 文章ID
+        
+    Returns:
+        FileResponse: 文章页面HTML文件
+    """
+    return FileResponse("src/static/article.html")
+
+
+@app.get("/debug/article-api")
+async def debug_article_api():
+    """
+    调试文章API页面
+    
+    返回调试页面HTML文件。
+    
+    Returns:
+        FileResponse: 调试页面HTML文件
+    """
+    return FileResponse("debug_article_api.html")
+
+
+@app.get("/debug/image-display")
+async def debug_image_display():
+    """
+    调试图片显示页面
+    
+    返回调试页面HTML文件。
+    
+    Returns:
+        FileResponse: 调试页面HTML文件
+    """
+    return FileResponse("debug_image_display.html")
 
 
 # ==================== 系统端点 ====================

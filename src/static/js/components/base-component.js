@@ -35,7 +35,7 @@ class BaseComponent extends HTMLElement {
      */
     logError(message, error) {
         console.error(`${message}:`, error);
-        // 这里可以添加错误上报逻辑
+        // TODO: 添加错误上报逻辑
     }
 
     /**
@@ -152,6 +152,48 @@ class BaseComponent extends HTMLElement {
                 ${message}
             </div>
         `;
+    }
+
+    /**
+     * 获取项目ID
+     * 统一处理博客页面和文章页面的项目ID获取
+     * 支持 /blog/{project_id} 和 /article/{article_id} 两种URL格式
+     */
+    getProjectId() {
+        const path = window.location.pathname;
+        
+        // 尝试从博客页面URL获取项目ID
+        const blogMatch = path.match(/\/blog\/(\d+)/);
+        if (blogMatch) {
+            return parseInt(blogMatch[1]);
+        }
+        
+        // 尝试从文章页面URL获取文章ID
+        const articleMatch = path.match(/\/article\/(\d+)/);
+        if (articleMatch) {
+            // 在文章页面，我们需要从文章ID获取项目ID
+            // 这里返回null，让组件知道当前在文章页面
+            return null;
+        }
+        
+        return null;
+    }
+
+    /**
+     * 获取文章ID
+     * 从URL中获取文章ID
+     */
+    getArticleId() {
+        const path = window.location.pathname;
+        const articleMatch = path.match(/\/article\/(\d+)/);
+        return articleMatch ? parseInt(articleMatch[1]) : null;
+    }
+
+    /**
+     * 检查当前是否在文章页面
+     */
+    isArticlePage() {
+        return window.location.pathname.includes('/article/');
     }
 }
 

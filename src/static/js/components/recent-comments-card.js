@@ -10,18 +10,19 @@ class RecentCommentsCard extends BaseComponent {
     connectedCallback() {
         this.render();
         this.loadData();
-        this.setupEventListeners();
     }
 
     async loadData() {
         try {
-            // 检测是否在博客页面
-            const isBlogPage = this.isBlogPage();
+            // 检测当前页面类型
+            const isBlogRelatedPage = this.isBlogRelatedPage();
+            
             let apiUrl;
             
-            if (isBlogPage) {
-                // 在博客页面：获取当前博客的评论
-                const projectId = this.getProjectIdFromUrl();
+            if (isBlogRelatedPage) {
+                // 在博客页面或博客文章页面：获取当前博客的评论
+                const projectId = await this.getProjectIdFromCurrentPage();
+                
                 if (projectId) {
                     apiUrl = `/api/projects/${projectId}/comments/recent?limit=5`;
                 } else {
@@ -61,22 +62,65 @@ class RecentCommentsCard extends BaseComponent {
     }
 
     /**
-     * 检测是否在博客页面
-     * @returns {boolean} 是否在博客页面
+     * 检测是否在博客相关页面（博客页面或博客文章页面）
+     * @returns {boolean} 是否在博客相关页面
      */
-    isBlogPage() {
+    isBlogRelatedPage() {
         const path = window.location.pathname;
-        return path.startsWith('/blog/');
+        return path.startsWith('/blog/') || path.startsWith('/article/');
     }
 
     /**
-     * 从URL获取项目ID
-     * @returns {number|null} 项目ID
+     * 从当前页面获取项目ID
+     * @returns {Promise<number|null>} 项目ID
      */
-    getProjectIdFromUrl() {
+    async getProjectIdFromCurrentPage() {
         const path = window.location.pathname;
-        const match = path.match(/\/blog\/(\d+)/);
-        return match ? parseInt(match[1]) : null;
+        
+        if (path.startsWith('/blog/')) {
+            // 博客页面：直接从URL获取项目ID
+            return this.getProjectId();
+        } else if (path.startsWith('/article/')) {
+            // 博客文章页面：需要从文章数据获取项目ID
+            return await this.getProjectIdFromArticlePage();
+        }
+        
+        return null;
+    }
+
+    /**
+     * 从博客文章页面获取项目ID
+     * @returns {Promise<number|null>} 项目ID
+     */
+    async getProjectIdFromArticlePage() {
+        // 从基类方法获取文章ID
+        const articleId = this.getArticleId();
+        
+        if (!articleId) return null;
+        
+        try {
+            // 直接通过API获取文章信息来获得项目ID
+            const response = await fetch(`/api/articles/${articleId}`);
+            if (response.ok) {
+                const articleData = await response.json();
+                return articleData.project?.id;
+            }
+        } catch (error) {
+            console.warn('Failed to fetch article data for project ID:', error);
+        }
+        
+        // 如果API调用失败，尝试从页面组件获取（可能不可靠，但作为后备方案）
+        const articleHeaderCard = document.querySelector('article-header-card');
+        if (articleHeaderCard && articleHeaderCard.articleData) {
+            return articleHeaderCard.articleData.projectid;
+        }
+        
+        const articleContentCard = document.querySelector('article-content-card');
+        if (articleContentCard && articleContentCard.articleData) {
+            return articleContentCard.articleData.projectid;
+        }
+        
+        return null;
     }
 
     /**
@@ -154,6 +198,9 @@ class RecentCommentsCard extends BaseComponent {
      * 验证并生成导航URL
      * @param {Object} comment - 评论对象
      * @returns {string|null} 有效的URL或null
+     * 
+     * 生成的URL格式：/article/{articleId}#post{commentId}
+     * 这样可以直接跳转到文章页面并定位到对应评论
      */
     getNavigationUrl(comment) {
         // 验证projectitemid和comment id是否存在且有效
@@ -172,27 +219,8 @@ class RecentCommentsCard extends BaseComponent {
             return null;
         }
         
-        // 使用新的URL模式：blogn/{projectid}#post{postid}
-        return `/blogn/${projectitemid}#post${commentId}`;
-    }
-
-    /**
-     * 设置事件监听器
-     */
-    setupEventListeners() {
-        // 使用事件委托来处理评论点击
-        this.shadowRoot.addEventListener('click', (event) => {
-            const commentItem = event.target.closest('.comment-item.clickable');
-            if (commentItem) {
-                const commentIndex = commentItem.getAttribute('data-comment-index');
-                if (commentIndex !== null) {
-                    const index = parseInt(commentIndex);
-                    if (!isNaN(index) && index >= 0 && index < this.comments.length) {
-                        this.handleCommentClick(this.comments[index]);
-                    }
-                }
-            }
-        });
+        // 使用正确的URL模式：article/{articleid}#post{commentid}
+        return `/article/${projectitemid}#post${commentId}`;
     }
 
     /**
@@ -207,21 +235,6 @@ class RecentCommentsCard extends BaseComponent {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
-    }
-
-    /**
-     * 处理评论点击事件
-     * @param {Object} comment - 评论对象
-     */
-    handleCommentClick(comment) {
-        const url = this.getNavigationUrl(comment);
-        if (url) {
-            window.location.href = url;
-        } else {
-            // 如果URL无效，可以显示错误信息或记录日志
-            console.warn('Invalid projectitemid for comment:', comment);
-            // 可以选择显示一个提示或禁用点击
-        }
     }
 
     render() {
@@ -305,8 +318,14 @@ class RecentCommentsCard extends BaseComponent {
                     border-color: var(--gray-300);
                 }
 
-                .comment-item.clickable {
-                    cursor: pointer;
+                .comment-link {
+                    text-decoration: none;
+                    color: inherit;
+                    display: block;
+                }
+
+                .comment-link:hover {
+                    text-decoration: none;
                 }
 
                 .comment-item.disabled {
@@ -438,28 +457,49 @@ class RecentCommentsCard extends BaseComponent {
                       this.error ? this.createErrorHTML() : `
                         <div class="comment-list">
                             ${this.comments.map((comment, index) => {
-                                const isClickable = this.getNavigationUrl(comment) !== null;
-                                const cssClass = isClickable ? 'comment-item clickable' : 'comment-item disabled';
-                                const dataAttributes = isClickable ? `data-comment-index="${index}"` : '';
+                                const commentUrl = this.getNavigationUrl(comment);
                                 
-                                return `
-                                    <div class="${cssClass}" ${dataAttributes}>
-                                        <div class="user-avatar">
-                                            ${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 
-                                                `<img src="${comment.avatar}" alt="${this.escapeHtml(comment.author)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` : 
-                                                ''
-                                            }
-                                            <span style="${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 'display: none;' : 'display: flex;'}">${this.escapeHtml(comment.author.charAt(0))}</span>
-                                        </div>
-                                        <div class="comment-content">
-                                            <div class="comment-header">
-                                                <span class="author">${this.escapeHtml(comment.author)}</span>
-                                                <span class="time">${this.escapeHtml(comment.time)}</span>
+                                if (commentUrl) {
+                                    return `
+                                        <a href="${commentUrl}" class="comment-link" target="_blank" title="查看评论">
+                                            <div class="comment-item">
+                                                <div class="user-avatar">
+                                                    ${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 
+                                                        `<img src="${comment.avatar}" alt="${this.escapeHtml(comment.author)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` : 
+                                                        ''
+                                                    }
+                                                    <span style="${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 'display: none;' : 'display: flex;'}">${this.escapeHtml(comment.author.charAt(0))}</span>
+                                                </div>
+                                                <div class="comment-content">
+                                                    <div class="comment-header">
+                                                        <span class="author">${this.escapeHtml(comment.author)}</span>
+                                                        <span class="time">${this.escapeHtml(comment.time)}</span>
+                                                    </div>
+                                                    <div class="comment-text">${this.escapeHtml(this.truncateText(comment.content, 20))}</div>
+                                                </div>
                                             </div>
-                                            <div class="comment-text">${this.escapeHtml(this.truncateText(comment.content, 20))}</div>
+                                        </a>
+                                    `;
+                                } else {
+                                    return `
+                                        <div class="comment-item disabled">
+                                            <div class="user-avatar">
+                                                ${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 
+                                                    `<img src="${comment.avatar}" alt="${this.escapeHtml(comment.author)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` : 
+                                                    ''
+                                                }
+                                                <span style="${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 'display: none;' : 'display: flex;'}">${this.escapeHtml(comment.author.charAt(0))}</span>
+                                            </div>
+                                            <div class="comment-content">
+                                                <div class="comment-header">
+                                                    <span class="author">${this.escapeHtml(comment.author)}</span>
+                                                    <span class="time">${this.escapeHtml(comment.time)}</span>
+                                                </div>
+                                                <div class="comment-text">${this.escapeHtml(this.truncateText(comment.content, 20))}</div>
+                                            </div>
                                         </div>
-                                    </div>
-                                `;
+                                    `;
+                                }
                             }).join('')}
                         </div>
                     `}

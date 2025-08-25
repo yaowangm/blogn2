@@ -12,6 +12,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- RSS自动发现链接 -->
+    <link rel="alternate" type="application/rss+xml" title="博客RSS" href="/api/rss/blog/4">
+    <link rel="alternate" type="application/atom+xml" title="博客Atom" href="/api/rss/blog/4?format=atom">
 </head>
 <body>
     <!-- 顶栏组件 -->
@@ -70,5 +74,8 @@
     <script src="/static/js/components/blog-header-card.js"></script>
     <script src="/static/js/components/blog_list_card.js"></script>
     <script src="/static/js/components/blog-posts-list-card.js"></script>
+    
+    <!-- RSS自动发现脚本 -->
+    <script src="/static/js/rss-discovery.js"></script>
 </body>
 </html>

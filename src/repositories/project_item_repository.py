@@ -210,4 +210,62 @@ class ProjectItemRepository:
             unassigned_result = await self.session.exec(unassigned_query)
             unassigned_count = unassigned_result.first() or 0
             
-            return folder_count + unassigned_count 
+            return folder_count + unassigned_count
+    
+    async def get_recent_articles(self, limit: int = 20) -> List[dict]:
+        """获取最新发布的文章列表（用于RSS）"""
+        from src.models.project import Project
+        
+        # 先尝试不限制任何条件，看看能获取到什么数据
+        query = (
+            select(ProjectItem, User.name.label("author_name"), Project.name.label("project_name"))
+            .join(User, ProjectItem.userid == User.id)
+            .join(Project, ProjectItem.projectid == Project.id)
+            .order_by(ProjectItem.createtime.desc())
+            .limit(limit)
+        )
+        
+        result = await self.session.exec(query)
+        
+        # 转换为字典格式
+        articles = []
+        for project_item, author_name, project_name in result:
+            articles.append({
+                "id": project_item.id,
+                "name": project_item.name,
+                "comment": project_item.comment,
+                "createtime": project_item.createtime,
+                "userid": project_item.userid,
+                "projectid": project_item.projectid,
+                "author_name": author_name,
+                "project_name": project_name
+            })
+        
+        return articles
+    
+    async def get_articles_by_project(self, project_id: int, limit: int = 20) -> List[dict]:
+        """获取指定博客下的最新文章列表（用于RSS）"""
+        query = (
+            select(ProjectItem, User.name.label("author_name"))
+            .join(User, ProjectItem.userid == User.id)
+            .where(ProjectItem.projectid == project_id)
+            .order_by(ProjectItem.createtime.desc())
+            .limit(limit)
+        )
+        
+        result = await self.session.exec(query)
+        
+        # 转换为字典格式
+        articles = []
+        for project_item, author_name in result:
+            articles.append({
+                "id": project_item.id,
+                "name": project_item.name,
+                "comment": project_item.comment,
+                "createtime": project_item.createtime,
+                "userid": project_item.userid,
+                "projectid": project_item.projectid,
+                "author_name": author_name
+            })
+        
+        return articles
