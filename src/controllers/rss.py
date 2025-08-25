@@ -9,6 +9,7 @@ from src.repositories.project_item_repository import ProjectItemRepository
 from src.repositories.user_repository import UserRepository
 from src.services.rss_service import RSSService
 from src.utils.rss_generator import RSSGenerator
+from src.config.app import get_base_url
 
 # 创建RSS API路由器
 router = APIRouter()
@@ -22,8 +23,8 @@ def get_rss_service(session: AsyncSession) -> RSSService:
 
 def get_rss_generator() -> RSSGenerator:
     """获取RSS生成器实例"""
-    # 使用生产环境域名
-    base_url = "http://blogn2.local"  # 生产环境域名
+    # 从环境变量读取基础URL配置
+    base_url = get_base_url()
     return RSSGenerator(base_url)
 
 @router.get("/rss/site")
