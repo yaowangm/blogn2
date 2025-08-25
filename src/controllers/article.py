@@ -15,12 +15,14 @@ from src.repositories.project_repository import ProjectRepository
 from src.repositories.post_repository import PostRepository
 from src.repositories.attachment_repository import AttachmentRepository
 from src.models.post import Post
+from src.utils.cache import cache_article_detail, cache_article_comments, cache_article_attachments, invalidate_article_detail_cache, invalidate_article_comments_cache
 
 # 创建文章API路由器
 router = APIRouter(tags=["文章管理"])
 
 
 @router.get("/articles/{article_id}", response_model=Dict[str, Any])
+@cache_article_detail(ttl=1800)  # 缓存30分钟
 async def get_article_detail(
     article_id: int,
     session: AsyncSession = Depends(get_async_session)
@@ -170,6 +172,10 @@ async def create_article_comment(
         # 更新文章的评论数
         await project_item_repo.increment_comment_count(article_id)
         
+        # 失效相关缓存
+        await invalidate_article_detail_cache(article_id)
+        await invalidate_article_comments_cache(article_id)
+        
         return {
             "success": True,
             "message": "评论创建成功",
@@ -183,6 +189,7 @@ async def create_article_comment(
 
 
 @router.get("/articles/{article_id}/comments", response_model=List[Dict[str, Any]])
+@cache_article_comments(ttl=900)  # 缓存15分钟
 async def get_article_comments(
     article_id: int,
     page: int = 1,
@@ -240,6 +247,7 @@ async def get_article_comments(
 
 
 @router.get("/articles/{article_id}/attachments", response_model=List[Dict[str, Any]])
+@cache_article_attachments(ttl=3600)  # 缓存1小时
 async def get_article_attachments(
     article_id: int,
     session: AsyncSession = Depends(get_async_session)

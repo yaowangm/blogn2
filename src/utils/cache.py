@@ -329,6 +329,29 @@ def cache_metadata(ttl: int = None):
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: CacheKeyGenerator.metadata())
 
 
+# 文章相关缓存装饰器
+def cache_article_detail(ttl: int = None):
+    """文章详情缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+                          CacheKeyGenerator.article_detail(kwargs.get('article_id', 0)))
+
+
+def cache_article_comments(ttl: int = None):
+    """文章评论缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+                          CacheKeyGenerator.article_comments(
+                              kwargs.get('article_id', 0), 
+                              kwargs.get('page', 1), 
+                              kwargs.get('limit', 20)
+                          ))
+
+
+def cache_article_attachments(ttl: int = None):
+    """文章附件缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+                          CacheKeyGenerator.article_attachments(kwargs.get('article_id', 0)))
+
+
 # ==================== 缓存失效装饰器 ====================
 
 def invalidate_user_cache():
@@ -349,6 +372,26 @@ def invalidate_search_cache():
 def invalidate_metadata_cache():
     """元数据缓存失效装饰器"""
     return invalidate_cache_pattern("metadata:*")
+
+
+def invalidate_article_cache():
+    """文章相关缓存失效装饰器"""
+    return invalidate_cache_pattern("article:*")
+
+
+def invalidate_article_detail_cache(article_id: int):
+    """特定文章详情缓存失效装饰器"""
+    return invalidate_cache_pattern(f"article:detail:{article_id}")
+
+
+def invalidate_article_comments_cache(article_id: int):
+    """特定文章评论缓存失效装饰器"""
+    return invalidate_cache_pattern(f"article:comments:{article_id}:*")
+
+
+def invalidate_article_attachments_cache(article_id: int):
+    """特定文章附件缓存失效装饰器"""
+    return invalidate_cache_pattern(f"article:attachments:{article_id}")
 
 
 # ==================== 缓存统计 ====================

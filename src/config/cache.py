@@ -207,4 +207,45 @@ class CacheKeyGenerator:
         Returns:
             str: 元数据缓存键
         """
-        return CacheKeyGenerator._build_key("metadata", "site") 
+        return CacheKeyGenerator._build_key("metadata", "site")
+    
+    @staticmethod
+    def article_detail(article_id: int) -> str:
+        """
+        文章详情缓存键
+        
+        Args:
+            article_id: 文章ID
+            
+        Returns:
+            str: 文章详情缓存键
+        """
+        return CacheKeyGenerator._build_key("article", "detail", article_id)
+    
+    @staticmethod
+    def article_comments(article_id: int, page: int = 1, limit: int = 20) -> str:
+        """
+        文章评论缓存键
+        
+        Args:
+            article_id: 文章ID
+            page: 页码
+            limit: 每页数量
+            
+        Returns:
+            str: 文章评论缓存键
+        """
+        return CacheKeyGenerator._build_key("article", "comments", article_id, page, limit)
+    
+    @staticmethod
+    def article_attachments(article_id: int) -> str:
+        """
+        文章附件缓存键
+        
+        Args:
+            article_id: 文章ID
+            
+        Returns:
+            str: 文章附件缓存键
+        """
+        return CacheKeyGenerator._build_key("article", "attachments", article_id) 
