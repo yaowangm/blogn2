@@ -195,11 +195,7 @@ class RecentBlogsCard extends BaseComponent {
             <div class="card">
                 <div class="card-header">
                     <div class="icon">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                            <path d="M2 17l10 5 10-5"/>
-                            <path d="M2 12l10 5 10-5"/>
-                        </svg>
+                        ${Icons.recent}
                     </div>
                     <h3 class="card-title">最新加入</h3>
                 </div>

@@ -248,4 +248,186 @@ class CacheKeyGenerator:
         Returns:
             str: 文章附件缓存键
         """
-        return CacheKeyGenerator._build_key("article", "attachments", article_id) 
+        return CacheKeyGenerator._build_key("article", "attachments", article_id)
+    
+    # ==================== 项目相关缓存键 ====================
+    
+    @staticmethod
+    def project_detail(project_id: int) -> str:
+        """
+        项目详情缓存键
+        
+        Args:
+            project_id: 项目ID
+            
+        Returns:
+            str: 项目详情缓存键
+        """
+        return CacheKeyGenerator._build_key("project", "detail", project_id)
+    
+    @staticmethod
+    def project_posts(project_id: int, page: int = 1, page_size: int = 10, post_type: str = "original") -> str:
+        """
+        项目文章列表缓存键
+        
+        Args:
+            project_id: 项目ID
+            page: 页码
+            page_size: 每页数量
+            post_type: 文章类型
+            
+        Returns:
+            str: 项目文章列表缓存键
+        """
+        return CacheKeyGenerator._build_key("project", "posts", project_id, page, page_size, post_type)
+    
+    @staticmethod
+    def project_comments(project_id: int) -> str:
+        """
+        项目评论缓存键
+        
+        Args:
+            project_id: 项目ID
+            
+        Returns:
+            str: 项目评论缓存键
+        """
+        return CacheKeyGenerator._build_key("project", "comments", project_id, "recent")
+    
+    @staticmethod
+    def project_categories(project_id: int) -> str:
+        """
+        项目分类缓存键
+        
+        Args:
+            project_id: 项目ID
+            
+        Returns:
+            str: 项目分类缓存键
+        """
+        return CacheKeyGenerator._build_key("project", "categories", project_id)
+    
+    @staticmethod
+    def project_external_links(project_id: int) -> str:
+        """
+        项目外部链接缓存键
+        
+        Args:
+            project_id: 项目ID
+            
+        Returns:
+            str: 项目外部链接缓存键
+        """
+        return CacheKeyGenerator._build_key("project", "external_links", project_id)
+    
+    @staticmethod
+    def project_rss(project_id: int) -> str:
+        """
+        项目RSS缓存键
+        
+        Args:
+            project_id: 项目ID
+            
+        Returns:
+            str: 项目RSS缓存键
+        """
+        return CacheKeyGenerator._build_key("project", "rss", project_id)
+    
+    @staticmethod
+    def project_stats(project_id: int) -> str:
+        """
+        项目统计缓存键
+        
+        Args:
+            project_id: 项目ID
+            
+        Returns:
+            str: 项目统计缓存键
+        """
+        return CacheKeyGenerator._build_key("project", "stats", project_id)
+    
+    @staticmethod
+    def user_projects(user_id: int) -> str:
+        """
+        用户项目缓存键
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            str: 用户项目缓存键
+        """
+        return CacheKeyGenerator._build_key("user", "projects", user_id)
+    
+    # ==================== RSS相关缓存键 ====================
+    
+    @staticmethod
+    def site_rss() -> str:
+        """
+        站点RSS缓存键
+        
+        Returns:
+            str: 站点RSS缓存键
+        """
+        return CacheKeyGenerator._build_key("rss", "site")
+    
+    @staticmethod
+    def blog_rss(project_id: int) -> str:
+        """
+        博客RSS缓存键
+        
+        Args:
+            project_id: 项目ID
+            
+        Returns:
+            str: 博客RSS缓存键
+        """
+        return CacheKeyGenerator._build_key("rss", "blog", project_id)
+    
+    @staticmethod
+    def site_rss_full() -> str:
+        """
+        完整站点RSS缓存键
+        
+        Returns:
+            str: 完整站点RSS缓存键
+        """
+        return CacheKeyGenerator._build_key("rss", "site", "full")
+    
+    @staticmethod
+    def blog_rss_full(project_id: int) -> str:
+        """
+        完整博客RSS缓存键
+        
+        Args:
+            project_id: 项目ID
+            
+        Returns:
+            str: 完整博客RSS缓存键
+        """
+        return CacheKeyGenerator._build_key("rss", "blog", project_id, "full")
+    
+    # ==================== 友情链接相关缓存键 ====================
+    
+    @staticmethod
+    def project_friend_links(project_id: int) -> str:
+        """
+        项目友情链接缓存键
+        
+        Args:
+            project_id: 项目ID
+            
+        Returns:
+            str: 项目友情链接缓存键
+        """
+        return CacheKeyGenerator._build_key("friend_links", "project", project_id)
+    
+    @staticmethod
+    def all_friend_links() -> str:
+        """
+        所有友情链接缓存键
+        
+        Returns:
+            str: 所有友情链接缓存键
+        """
+        return CacheKeyGenerator._build_key("friend_links", "all") 

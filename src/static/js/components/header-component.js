@@ -5,6 +5,9 @@ class HeaderComponent extends BaseComponent {
         this.logoUrl = '';
         this.isLoggedIn = false;
         this.userName = '';
+        this.userInfo = null;
+        this.loginModal = null;
+        this.registrationLogin = false; // 注册登录标识
     }
 
     /**
@@ -24,16 +27,24 @@ class HeaderComponent extends BaseComponent {
 
     async connectedCallback() {
         await this.loadMetadata();
+        await this.checkAuthStatus();
         this.render();
+        this.setupLoginModal();
+        this.addGlobalEventListeners();
+        
+        // 监听令牌相关事件
+        this.setupTokenEventListeners();
     }
 
     render() {
-        // 模拟用户登录状态（实际应用中应该从后端获取）
-        const isLoggedIn = false;
-        const userName = '张三';
-        
         const siteName = this.metadata?.site_name || 'BlogN';
         const logoUrl = this.getLogoUrl();
+        
+        // 检查图标库是否可用
+        const hasIcons = typeof Icons !== 'undefined';
+        const searchIcon = hasIcons ? Icons.search : this.getDefaultSearchIcon();
+        const userHomeIcon = hasIcons ? Icons.userHome : this.getDefaultUserHomeIcon();
+        const logoutIcon = hasIcons ? Icons.logout : this.getDefaultLogoutIcon();
 
         this.shadowRoot.innerHTML = `
             <style>
@@ -97,6 +108,87 @@ class HeaderComponent extends BaseComponent {
                     align-items: center;
                     gap: var(--spacing-2);
                     position: relative;
+                    cursor: pointer;
+                    padding: var(--spacing-2);
+                    border-radius: var(--radius-md);
+                    transition: var(--transition-fast);
+                }
+
+                .user-menu:hover {
+                    background: var(--gray-100);
+                }
+
+                .user-name {
+                    font-weight: 500;
+                    color: var(--gray-700);
+                }
+
+                .dropdown-arrow {
+                    font-size: var(--font-size-xs);
+                    color: var(--gray-500);
+                    transition: var(--transition-fast);
+                }
+
+                .user-menu.active .dropdown-arrow {
+                    transform: rotate(180deg);
+                }
+
+                .dropdown-menu {
+                    position: absolute;
+                    top: 100%;
+                    right: 0;
+                    background: var(--white);
+                    border: 1px solid var(--gray-200);
+                    border-radius: var(--radius-md);
+                    box-shadow: var(--shadow-lg);
+                    min-width: 180px;
+                    z-index: 1000;
+                    opacity: 0;
+                    visibility: hidden;
+                    transform: translateY(-10px);
+                    transition: var(--transition-fast);
+                    margin-top: var(--spacing-1);
+                }
+
+                .user-menu.active .dropdown-menu {
+                    opacity: 1;
+                    visibility: visible;
+                    transform: translateY(0);
+                }
+
+                .dropdown-item {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                    padding: var(--spacing-3);
+                    color: var(--gray-700);
+                    text-decoration: none;
+                    transition: var(--transition-fast);
+                    border-radius: var(--radius-sm);
+                    margin: var(--spacing-1);
+                }
+
+                .dropdown-item:hover {
+                    background: var(--gray-100);
+                    color: var(--gray-900);
+                }
+
+                .dropdown-icon {
+                    width: 16px;
+                    height: 16px;
+                    flex-shrink: 0;
+                    color: var(--gray-600);
+                    transition: var(--transition-fast);
+                }
+
+                .dropdown-item:hover .dropdown-icon {
+                    color: var(--gray-900);
+                }
+
+                .dropdown-divider {
+                    height: 1px;
+                    background: var(--gray-200);
+                    margin: var(--spacing-2) var(--spacing-1);
                 }
 
                 .user-avatar {
@@ -110,6 +202,26 @@ class HeaderComponent extends BaseComponent {
                     color: var(--white);
                     font-weight: 600;
                     font-size: var(--font-size-sm);
+                    overflow: hidden;
+                }
+
+                .user-avatar img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    border-radius: 50%;
+                }
+
+                .avatar-placeholder {
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: var(--white);
+                    font-weight: 600;
+                    font-size: var(--font-size-sm);
+                    border-radius: 50%;
                 }
 
                 .search-button {
@@ -198,21 +310,61 @@ class HeaderComponent extends BaseComponent {
                 </a>
 
                 <div class="header-actions">
-                    ${isLoggedIn ? `
-                        <div class="user-menu">
-                            <div class="user-avatar">${this.escapeHtml(userName.charAt(0))}</div>
-                            <span>${this.escapeHtml(userName)}</span>
+                    <!-- 注册链接始终显示 -->
+                    <a href="/user_register" class="btn btn-ghost">注册</a>
+                    
+                    ${this.isLoggedIn ? `
+                        <div class="user-menu" id="userMenu">
+                            <div class="user-avatar">
+                                ${(() => {
+                                    // 按照最新评论卡片的方式：同时渲染头像和用户名首字母
+                                    const hasAvatar = this.userInfo && this.userInfo.avatar_url && this.userInfo.avatar_url !== 'null' && this.userInfo.avatar_url !== '';
+                                    const firstChar = this.userName && this.userName.length > 0 ? this.userName.charAt(0).toUpperCase() : 'U';
+                                    
+                                    if (hasAvatar) {
+                                        // 有头像URL，显示头像，失败时显示用户名首字母
+                                        return `<img src="${this.escapeHtml(this.userInfo.avatar_url)}" alt="Avatar" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <div class="avatar-placeholder" style="display: none;">${this.escapeHtml(firstChar)}</div>`;
+                                    } else {
+                                        // 没有头像URL，直接显示用户名首字母
+                                        return `<div class="avatar-placeholder">${this.escapeHtml(firstChar)}</div>`;
+                                    }
+                                })()}
+                            </div>
+                            <span class="user-name">${this.escapeHtml(this.userName)}</span>
+                            <div class="dropdown-arrow">▼</div>
+                            
+                            <!-- 下拉菜单 -->
+                            <div class="dropdown-menu" id="dropdownMenu">
+                                <a href="#" class="dropdown-item" id="searchMenuItem">
+                                    ${searchIcon}
+                                    搜索
+                                </a>
+                                <a href="${this.userInfo && this.userInfo.id ? `/profile/${this.userInfo.id}` : '/profile'}" class="dropdown-item" id="profileMenuItem">
+                                    ${userHomeIcon}
+                                    个人资料
+                                </a>
+                                ${this.isLoggedIn && this.userInfo && this.userInfo.state === 10 ? `
+                                <a href="/users" class="dropdown-item" id="usersListMenuItem">
+                                    ${hasIcons ? Icons.usersList : this.getDefaultUsersListIcon()}
+                                    用户列表
+                                </a>
+                                ` : ''}
+                                ${this.isLoggedIn ? `
+                                <a href="/regkey" class="dropdown-item" id="registrationCodeMenuItem">
+                                    ${hasIcons ? Icons.registrationCode : this.getDefaultRegistrationCodeIcon()}
+                                    注册码管理
+                                </a>
+                                ` : ''}
+                                <div class="dropdown-divider"></div>
+                                <a href="#" class="dropdown-item" id="logoutMenuItem">
+                                    ${logoutIcon}
+                                    退出
+                                </a>
+                            </div>
                         </div>
-                        <a href="/user" class="btn btn-ghost">我的首页</a>
-                        <button class="search-button" title="搜索">
-                            🔍
-                        </button>
-                        <a href="/logout" class="btn btn-ghost">退出</a>
                     ` : `
-                        <button class="search-button" title="搜索">
-                            🔍
-                        </button>
-                        <a href="/login" class="btn btn-primary">登录</a>
+                        <button class="btn btn-primary" id="loginButton">登录</button>
                     `}
                 </div>
             </div>
@@ -223,13 +375,275 @@ class HeaderComponent extends BaseComponent {
     }
 
     addEventListeners() {
-        const searchButton = this.shadowRoot.querySelector('.search-button');
-        if (searchButton) {
-                          searchButton.addEventListener('click', () => {
-                  // TODO: 实现搜索功能
-         
-              });
+        // 用户菜单下拉功能
+        const userMenu = this.shadowRoot.querySelector('#userMenu');
+        if (userMenu) {
+            userMenu.addEventListener('click', (e) => {
+                e.stopPropagation();
+                userMenu.classList.toggle('active');
+            });
         }
+
+        // 点击其他地方关闭下拉菜单
+        document.addEventListener('click', (e) => {
+            if (userMenu && !userMenu.contains(e.target)) {
+                userMenu.classList.remove('active');
+            }
+        });
+
+        // 搜索菜单项
+        const searchMenuItem = this.shadowRoot.querySelector('#searchMenuItem');
+        if (searchMenuItem) {
+            searchMenuItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // TODO: 实现搜索功能
+                userMenu.classList.remove('active');
+            });
+        }
+
+        // 个人资料菜单项
+        const profileMenuItem = this.shadowRoot.querySelector('#profileMenuItem');
+        if (profileMenuItem) {
+            profileMenuItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // 链接已经直接指向正确的URL，只需要关闭菜单
+                userMenu.classList.remove('active');
+            });
+        }
+
+
+
+        // 退出菜单项
+        const logoutMenuItem = this.shadowRoot.querySelector('#logoutMenuItem');
+        if (logoutMenuItem) {
+            logoutMenuItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.handleLogout();
+                userMenu.classList.remove('active');
+            });
+        }
+
+        // 登录按钮事件
+        const loginButton = this.shadowRoot.querySelector('#loginButton');
+        if (loginButton) {
+            loginButton.addEventListener('click', () => this.showLoginModal());
+        }
+    }
+
+    setupLoginModal() {
+        // 检查 login-modal 组件是否已定义
+        if (!customElements.get('login-modal')) {
+            // 如果组件未定义，动态加载脚本
+            const script = document.createElement('script');
+            script.src = '/static/js/components/login-modal.js';
+            script.onload = () => {
+                // 脚本加载完成后创建模态框
+                this.createLoginModal();
+            };
+            script.onerror = () => {
+                console.error('Failed to load login-modal.js');
+            };
+            document.head.appendChild(script);
+        } else {
+            // 如果组件已定义，直接创建模态框
+            this.createLoginModal();
+        }
+    }
+
+    createLoginModal() {
+        // 创建登录模态框
+        this.loginModal = document.createElement('login-modal');
+        document.body.appendChild(this.loginModal);
+    }
+
+    addGlobalEventListeners() {
+        // 监听登录成功事件
+        document.addEventListener('userLoginSuccess', (e) => {
+            this.handleLoginSuccess(e.detail);
+        });
+        
+        // 监听显示登录模态框事件
+        document.addEventListener('showLoginModal', (e) => {
+            const options = e.detail || {};
+            this.showLoginModal(null, options);
+        });
+    }
+    
+    setupTokenEventListeners() {
+        // 监听令牌刷新事件
+        window.addEventListener('tokenRefreshed', (event) => {
+            // 可以在这里更新UI状态
+        });
+        
+        // 监听令牌清除事件
+        window.addEventListener('tokensCleared', () => {
+            this.clearAuthData();
+            this.render();
+        });
+    }
+
+    async checkAuthStatus() {
+        // 使用令牌管理服务验证令牌有效性
+        if (window.tokenManager) {
+            const isValid = await window.tokenManager.validateToken();
+            if (!isValid) {
+                this.clearAuthData();
+                return;
+            }
+        }
+        
+        // 检查本地存储的认证状态
+        const token = localStorage.getItem('access_token');
+        const userInfo = localStorage.getItem('user_info');
+        
+        if (token && userInfo) {
+            try {
+                this.userInfo = JSON.parse(userInfo);
+                this.isLoggedIn = true;
+                // 清理用户名中的多余空格
+                this.userName = (this.userInfo.name || 'User').trim();
+            } catch (error) {
+                console.error('Failed to parse user info:', error);
+                this.clearAuthData();
+            }
+        } else {
+            this.clearAuthData();
+        }
+    }
+
+    clearAuthData() {
+        this.isLoggedIn = false;
+        this.userName = '';
+        this.userInfo = null;
+        this.registrationLogin = false; // 重置注册登录标识
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user_info');
+    }
+
+    showLoginModal(returnUrl = null, options = {}) {
+        // 设置注册登录标识
+        if (options.fromRegistration) {
+            this.registrationLogin = true;
+        }
+        
+        if (!this.loginModal) {
+            // 如果模态框未初始化，先初始化
+            this.setupLoginModal();
+            // 等待一小段时间让脚本加载完成
+            setTimeout(() => {
+                if (this.loginModal) {
+                    const finalReturnUrl = returnUrl || window.location.pathname + window.location.search;
+                    this.loginModal.show(finalReturnUrl);
+                }
+            }, 100);
+        } else {
+            // 传递指定的返回地址或当前页面URL
+            const finalReturnUrl = returnUrl || window.location.pathname + window.location.search;
+            this.loginModal.show(finalReturnUrl);
+        }
+    }
+
+    async handleLoginSuccess(userData) {
+        this.userInfo = userData;
+        this.isLoggedIn = true;
+        // 清理用户名中的多余空格
+        this.userName = (userData.name || 'User').trim();
+        
+        // 重新渲染组件
+        this.render();
+        this.addEventListeners();
+        
+        // 根据登录来源决定跳转行为
+        if (this.registrationLogin) {
+            // 注册后的登录，跳转到首页
+            this.registrationLogin = false; // 重置标识
+            window.location.href = '/';
+        } else if (this.returnUrl) {
+            // 普通登录，回到原页面
+            const returnUrl = this.returnUrl;
+            this.returnUrl = null; // 清除returnUrl
+            window.location.href = returnUrl;
+        }
+        // 如果没有特殊标识，保持在当前页面
+    }
+
+    async handleLogout() {
+        try {
+            // 调用登出API
+            const token = localStorage.getItem('access_token');
+            if (token) {
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Logout error:', error);
+        } finally {
+            // 清除本地数据
+            this.clearAuthData();
+            
+            // 重新渲染组件
+            this.render();
+            this.addEventListeners();
+            
+            // 跳转到首页
+            window.location.href = '/';
+        }
+    }
+
+    // 默认图标方法，当图标库不可用时使用
+    getDefaultSearchIcon() {
+        return `<svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+        </svg>`;
+    }
+
+    getDefaultHomeIcon() {
+        return `<svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9,22 9,12 15,12 15,22"></polyline>
+        </svg>`;
+    }
+
+    getDefaultUserHomeIcon() {
+        return `<svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+            <circle cx="12" cy="7" r="4"/>
+        </svg>`;
+    }
+
+    getDefaultLogoutIcon() {
+        return `<svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16,17 21,12 16,7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>`;
+    }
+
+    getDefaultRegistrationCodeIcon() {
+        return `<svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 0 1 21.75 8.25z"></path>
+        </svg>`;
+    }
+
+    /**
+     * 获取默认用户列表图标
+     * @returns {string} SVG图标HTML
+     */
+    getDefaultUsersListIcon() {
+        return `<svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>`;
     }
 }
 

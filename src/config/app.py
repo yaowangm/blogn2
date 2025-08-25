@@ -74,6 +74,9 @@ def get_blog_posts_page_size() -> int:
         return 10
 
 
+
+
+
 def validate_app_config() -> dict:
     """
     验证应用配置并返回配置信息

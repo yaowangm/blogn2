@@ -1,0 +1,259 @@
+"""
+注册码管理API路由
+提供注册码的查询、兑换等功能
+"""
+
+from fastapi import APIRouter, HTTPException, Depends, Body
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
+import uuid
+from datetime import datetime
+
+from src.database import get_async_session
+from src.models.regkey import RegKey, RegKeyWithUserInfo
+from src.models.user import User
+from src.utils.auth_middleware import get_optional_current_user
+from src.utils.permission_decorators import require_auth
+
+# 请求模型
+class ExchangeRegKeyRequest(BaseModel):
+    user_id: int
+
+router = APIRouter(prefix="/regkey", tags=["注册码管理"])
+
+@router.get("/list", response_model=dict)
+@require_auth()
+async def get_regkey_list(
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
+):
+    """
+    获取注册码列表
+    
+    Args:
+        session: 数据库会话
+        current_user: 当前登录用户
+        
+    Returns:
+        包含注册码列表的字典
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="需要登录才能访问")
+        
+    try:
+        # 查询注册码数据，关联用户信息，只显示当前用户的注册码
+        stmt = select(
+            RegKey.id,
+            RegKey.name,
+            RegKey.ownerid,
+            RegKey.userid,
+            RegKey.status,
+            RegKey.createtime,
+            User.name.label("owner_name")
+        ).select_from(
+            RegKey.__table__.join(
+                User.__table__,
+                RegKey.ownerid == User.id,
+                isouter=True
+            )
+        ).where(RegKey.ownerid == current_user["id"]).order_by(RegKey.id)
+        
+        result = await session.exec(stmt)
+        rows = result.all()
+        
+        # 处理结果，添加使用者信息
+        regkeys = []
+        for row in rows:
+            regkey_info = {
+                "id": row.id,
+                "regkey": row.name,  # 使用name字段
+                "ownerid": row.ownerid,
+                "owner_name": row.owner_name,
+                "userid": row.userid,
+                "user_name": None,
+                "status": row.status,
+                "createtime": row.createtime
+            }
+            
+            # 如果有使用者，查询使用者姓名
+            if row.userid:
+                user_stmt = select(User.name).where(User.id == row.userid)
+                user_result = await session.exec(user_stmt)
+                user_name = user_result.first()
+                if user_name:
+                    regkey_info["user_name"] = user_name
+                    
+            regkeys.append(regkey_info)
+        
+        return {"regkeys": regkeys}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取注册码列表失败: {str(e)}")
+
+
+@router.post("/exchange", response_model=dict)
+@require_auth()
+async def exchange_regkey(
+    request: ExchangeRegKeyRequest,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
+):
+    """
+    兑换注册码
+    
+    Args:
+        user_id: 申请者用户ID
+        session: 数据库会话
+        current_user: 当前登录用户
+        
+    Returns:
+        包含新注册码的字典
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="需要登录才能访问")
+        
+    try:
+        # 验证用户权限（只能为自己兑换）
+        if current_user["id"] != request.user_id:
+            raise HTTPException(status_code=403, detail="只能为自己兑换注册码")
+        
+        # 先查询用户信息，获取积分
+        user_stmt = select(User).where(User.id == current_user["id"])
+        user_result = await session.exec(user_stmt)
+        user = user_result.first()
+        if not user:
+            raise HTTPException(status_code=404, detail="用户不存在")
+        
+        # 检查用户积分是否足够
+        if user.point < 10:
+            raise HTTPException(status_code=400, detail="积分不足，需要10积分")
+        
+        # 生成唯一注册码（确保25位字符）
+        regkey = str(uuid.uuid4()).replace('-', '')[:25].upper()
+        
+        # 创建新的注册码记录
+        new_regkey = RegKey(
+            name=regkey,
+            ownerid=request.user_id,
+            status=1,  # 未使用
+            createtime=datetime.now()
+        )
+        
+        # 扣除用户积分
+        user.point -= 10
+        
+        # 先添加注册码记录到session
+        session.add(new_regkey)
+        session.add(user)
+        
+        # 刷新session以获取生成的ID
+        await session.flush()
+        
+        # 提交事务
+        await session.commit()
+        
+        # 提交成功后，重新查询用户信息以获取最新积分
+        await session.refresh(user)
+        
+        return {
+            "regkey": regkey,
+            "message": "注册码兑换成功",
+            "remaining_points": user.point
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"兑换注册码失败: {str(e)}")
+
+
+@router.get("/validate/{regkey}", response_model=dict)
+async def validate_regkey(
+    regkey: str,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    验证注册码是否有效
+    
+    Args:
+        regkey: 注册码
+        session: 数据库会话
+        
+    Returns:
+        注册码验证结果
+    """
+    try:
+        # 查询注册码
+        stmt = select(RegKey).where(RegKey.name == regkey)
+        result = await session.exec(stmt)
+        regkey_record = result.first()
+        
+        if not regkey_record:
+            return {"valid": False, "message": "注册码不存在"}
+        
+        if regkey_record.status == 2:
+            return {"valid": False, "message": "注册码已被使用"}
+        
+        return {
+            "valid": True,
+            "message": "注册码有效",
+            "regkey_id": regkey_record.id,
+            "owner_id": regkey_record.ownerid
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"验证注册码失败: {str(e)}")
+
+
+@router.post("/use/{regkey_id}", response_model=dict)
+@require_auth()
+async def use_regkey(
+    regkey_id: int,
+    user_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
+):
+    """
+    使用注册码
+    
+    Args:
+        regkey_id: 注册码ID
+        user_id: 使用者用户ID
+        session: 数据库会话
+        current_user: 当前登录用户
+        
+    Returns:
+        使用结果
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="需要登录才能访问")
+        
+    try:
+        # 查询注册码
+        stmt = select(RegKey).where(RegKey.id == regkey_id)
+        result = await session.exec(stmt)
+        regkey_record = result.first()
+        
+        if not regkey_record:
+            raise HTTPException(status_code=404, detail="注册码不存在")
+        
+        if regkey_record.status == 2:
+            raise HTTPException(status_code=404, detail="注册码已被使用")
+        
+        # 更新注册码状态
+        regkey_record.status = 2  # 已使用
+        regkey_record.userid = user_id
+        
+        session.add(regkey_record)
+        await session.commit()
+        
+        return {"message": "注册码使用成功"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"使用注册码失败: {str(e)}")

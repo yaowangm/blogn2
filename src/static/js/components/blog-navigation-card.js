@@ -135,6 +135,14 @@ class BlogNavigationCard extends BaseComponent {
                     flex-shrink: 0;
                 }
 
+                /* 为所有SVG图标设置默认尺寸 */
+                .nav-link svg {
+                    width: 18px;
+                    height: 18px;
+                    color: inherit;
+                    flex-shrink: 0;
+                }
+
                 .link-text {
                     flex: 1;
                 }
@@ -169,9 +177,7 @@ class BlogNavigationCard extends BaseComponent {
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">
-                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 12h18M3 6h18M3 18h18"/>
-                        </svg>
+                        ${Icons.menu}
                         博客导航
                     </h3>
                 </div>
@@ -200,39 +206,26 @@ class BlogNavigationCard extends BaseComponent {
                 <ul class="nav-list">
                     <li class="nav-item">
                         <a href="/" class="nav-link">
-                            <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                                <polyline points="9,22 9,12 15,12 15,22"/>
-                            </svg>
+                            ${Icons.home}
                             <span class="link-text">日志首页</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="${aboutLink}" class="nav-link">
-                            <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-                                <circle cx="12" cy="7" r="4"/>
-                            </svg>
+                            ${Icons.about}
                             <span class="link-text">个人介绍</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="/blog/${this.projectId}/subscriptions" class="nav-link">
-                            <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
-                            </svg>
+                            ${Icons.subscription}
                             <span class="link-text">订阅的博客</span>
                             <span class="link-badge">新</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="/api/rss/blog/${this.projectId}" class="nav-link rss-link" target="_blank">
-                            <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M4 11a9 9 0 0 1 9 9"/>
-                                <path d="M4 4a16 16 0 0 1 16 16"/>
-                                <circle cx="5" cy="19" r="1"/>
-                            </svg>
+                            ${Icons.rss}
                             <span class="link-text">RSS订阅</span>
                         </a>
                     </li>

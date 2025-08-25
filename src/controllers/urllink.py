@@ -4,10 +4,12 @@ from src.database import get_async_session
 from src.repositories.urllink_repository import UrlLinkRepository
 from src.models.urllink import UrlLink
 from typing import List
+from src.utils.cache import cache_project_friend_links, cache_all_friend_links
 
 router = APIRouter(tags=["友情链接"])
 
 @router.get("/projects/{project_id}/friend-links", response_model=List[UrlLink])
+@cache_project_friend_links()  # 使用环境变量配置的缓存时间
 async def get_project_friend_links(
     project_id: int,
     session: AsyncSession = Depends(get_async_session)
@@ -30,6 +32,7 @@ async def get_project_friend_links(
         return []
 
 @router.get("/friend-links", response_model=List[UrlLink])
+@cache_all_friend_links()  # 使用环境变量配置的缓存时间
 async def get_all_friend_links(
     session: AsyncSession = Depends(get_async_session)
 ):

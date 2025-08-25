@@ -13,6 +13,7 @@ from functools import wraps
 from typing import Any, Callable, Optional, Union
 from datetime import datetime, timedelta
 
+from fastapi import HTTPException
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 from fastapi_cache.decorator import cache
@@ -174,10 +175,6 @@ def cache_decorator(
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            # 测试环境检查
-            if _is_testing_environment() and _has_mock_objects(kwargs):
-                return await func(*args, **kwargs)
-            
             # 缓存启用检查
             if not enable_cache or not cache_settings.enable_cache:
                 return await func(*args, **kwargs)
@@ -216,6 +213,11 @@ def cache_decorator(
                 
                 return result
             except Exception as e:
+                # 对于HTTPException等业务异常，应该直接抛出
+                if isinstance(e, (HTTPException, ValueError, TypeError)):
+                    raise e
+                
+                # 对于缓存相关的异常，记录日志并直接执行函数
                 logger.warning(f"缓存操作失败，直接执行函数: {e}")
                 return await func(*args, **kwargs)
         
@@ -350,6 +352,95 @@ def cache_article_attachments(ttl: int = None):
     """文章附件缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
                           CacheKeyGenerator.article_attachments(kwargs.get('article_id', 0)))
+
+
+# 项目相关缓存装饰器
+def cache_project_detail(ttl: int = None):
+    """项目详情缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+                          CacheKeyGenerator.project_detail(kwargs.get('project_id', 0)))
+
+
+def cache_project_posts(ttl: int = None):
+    """项目文章列表缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+                          CacheKeyGenerator.project_posts(
+                              kwargs.get('project_id', 0),
+                              kwargs.get('page', 1),
+                              kwargs.get('limit', 10),
+                              kwargs.get('type', 'original')
+                          ))
+
+
+def cache_project_comments(ttl: int = None):
+    """项目评论缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+                          CacheKeyGenerator.project_comments(kwargs.get('project_id', 0)))
+
+
+def cache_project_categories(ttl: int = None):
+    """项目分类缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+                          CacheKeyGenerator.project_categories(kwargs.get('project_id', 0)))
+
+
+def cache_project_external_links(ttl: int = None):
+    """项目外部链接缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+                          CacheKeyGenerator.project_external_links(kwargs.get('project_id', 0)))
+
+
+def cache_project_rss(ttl: int = None):
+    """项目RSS缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+                          CacheKeyGenerator.project_rss(kwargs.get('project_id', 0)))
+
+
+def cache_project_stats(ttl: int = None):
+    """项目统计缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+                          CacheKeyGenerator.project_stats(kwargs.get('project_id', 0)))
+
+
+def cache_user_projects(ttl: int = None):
+    """用户项目缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+                          CacheKeyGenerator.user_projects(kwargs.get('user_id', 0)))
+
+
+# RSS相关缓存装饰器
+def cache_site_rss(ttl: int = None):
+    """站点RSS缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: CacheKeyGenerator.site_rss())
+
+
+def cache_blog_rss(ttl: int = None):
+    """博客RSS缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+                          CacheKeyGenerator.blog_rss(kwargs.get('project_id', 0)))
+
+
+def cache_site_rss_full(ttl: int = None):
+    """完整站点RSS缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: CacheKeyGenerator.site_rss_full())
+
+
+def cache_blog_rss_full(ttl: int = None):
+    """完整博客RSS缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+                          CacheKeyGenerator.blog_rss_full(kwargs.get('project_id', 0)))
+
+
+# 友情链接相关缓存装饰器
+def cache_project_friend_links(ttl: int = None):
+    """项目友情链接缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+                          CacheKeyGenerator.project_friend_links(kwargs.get('project_id', 0)))
+
+
+def cache_all_friend_links(ttl: int = None):
+    """所有友情链接缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: CacheKeyGenerator.all_friend_links())
 
 
 # ==================== 缓存失效装饰器 ====================

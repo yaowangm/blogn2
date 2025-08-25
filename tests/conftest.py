@@ -62,9 +62,31 @@ def real_async_engine():
     import asyncio
     try:
         loop = asyncio.get_running_loop()
+        if loop.is_running():
+            # 如果事件循环正在运行，同步等待引擎释放完成
+            # 使用asyncio.run_coroutine_threadsafe确保在正确的线程中执行
+            import concurrent.futures
+            import threading
+            
+            # 创建Future来等待任务完成
+            future = asyncio.run_coroutine_threadsafe(engine.dispose(), loop)
+            try:
+                # 等待最多30秒完成，避免无限等待
+                future.result(timeout=30)
+            except concurrent.futures.TimeoutError:
+                # 如果超时，记录警告但不阻塞测试
+                import warnings
+                warnings.warn("Engine disposal timed out after 30 seconds")
+        else:
+            loop.run_until_complete(engine.dispose())
     except RuntimeError:
+        # 如果没有运行中的事件循环，创建新的
         loop = asyncio.new_event_loop()
-    loop.run_until_complete(engine.dispose())
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(engine.dispose())
+        finally:
+            loop.close()
 
 @pytest.fixture
 def real_sync_engine():
@@ -79,18 +101,30 @@ def real_sync_engine():
         max_overflow=0,      # 不允许溢出连接
     )
     yield engine
-    # 清理：关闭引擎
-    engine.dispose()
+    # 清理：关闭引擎和所有连接
+    try:
+        engine.dispose()
+    except Exception:
+        # 忽略清理时的异常
+        pass
 
 @pytest.fixture
 def real_sync_session(real_sync_engine):
     """创建真实PostgreSQL同步会话"""
-    with Session(real_sync_engine) as session:
+    session = Session(real_sync_engine)
+    try:
         # 开始事务
         session.begin()
         yield session
         # 回滚事务，不提交更改
         session.rollback()
+    finally:
+        # 确保会话被正确关闭
+        try:
+            session.close()
+        except Exception:
+            # 忽略关闭时的异常
+            pass
 
 @pytest.fixture
 def mock_async_session():
@@ -123,10 +157,18 @@ def test_client(real_async_engine):
         expire_on_commit=False
     )
     
+    client = None
     try:
-        with TestClient(app) as client:
-            yield client
+        client = TestClient(app)
+        yield client
     finally:
+        # 确保客户端被正确关闭
+        if client:
+            try:
+                client.close()
+            except Exception:
+                # 忽略关闭时的异常
+                pass
         # 确保恢复原始引擎和会话工厂
         src.database.async_engine = original_engine
         src.database.async_session = original_session
@@ -179,12 +221,12 @@ def setup_test_env():
         os.environ.pop("DATABASE_URL", None)
 
 
-@pytest.fixture(scope="session", autouse=True)
-async def clear_cache_before_tests():
-    """在所有测试开始前清理所有缓存"""
+@pytest.fixture(autouse=True)
+async def clear_cache_after_each_test():
+    """在每个测试后清理所有缓存"""
+    yield
     try:
         from src.utils.cache import cache_manager
-        await cache_manager.initialize()
         if cache_manager.is_available():
             # 清理所有缓存
             await cache_manager.clear_pattern("*")

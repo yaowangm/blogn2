@@ -10,6 +10,9 @@ from src.repositories.user_repository import UserRepository
 from src.services.rss_service import RSSService
 from src.utils.rss_generator import RSSGenerator
 from src.config.app import get_base_url
+from src.utils.cache import (
+    cache_site_rss, cache_blog_rss, cache_site_rss_full, cache_blog_rss_full
+)
 
 # 创建RSS API路由器
 router = APIRouter()
@@ -28,6 +31,7 @@ def get_rss_generator() -> RSSGenerator:
     return RSSGenerator(base_url)
 
 @router.get("/rss/site")
+@cache_site_rss()  # 使用环境变量配置的缓存时间
 async def get_site_rss(
     limit: int = Query(20, ge=1, le=100, description="文章数量限制"),
     session: AsyncSession = Depends(get_async_session)
@@ -64,6 +68,7 @@ async def get_site_rss(
         raise HTTPException(status_code=500, detail=f"生成全站RSS失败: {str(e)}")
 
 @router.get("/rss/blog/{project_id}")
+@cache_blog_rss()  # 使用环境变量配置的缓存时间
 async def get_blog_rss(
     project_id: int,
     limit: int = Query(20, ge=1, le=100, description="文章数量限制"),
@@ -104,6 +109,7 @@ async def get_blog_rss(
         raise HTTPException(status_code=500, detail=f"生成博客RSS失败: {str(e)}")
 
 @router.get("/rss/site/full")
+@cache_site_rss_full()  # 使用环境变量配置的缓存时间
 async def get_site_rss_full(
     limit: int = Query(20, ge=1, le=100, description="文章数量限制"),
     session: AsyncSession = Depends(get_async_session)
@@ -140,6 +146,7 @@ async def get_site_rss_full(
         raise HTTPException(status_code=500, detail=f"生成全站RSS失败: {str(e)}")
 
 @router.get("/rss/blog/{project_id}/full")
+@cache_blog_rss_full()  # 使用环境变量配置的缓存时间
 async def get_blog_rss_full(
     project_id: int,
     limit: int = Query(20, ge=1, le=100, description="文章数量限制"),

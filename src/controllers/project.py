@@ -11,11 +11,17 @@ from src.repositories.folder_repository import FolderRepository
 from src.models.project import Project
 from src.models.project_item import ProjectItem
 from src.models.folder import Folder
+from src.utils.cache import (
+    cache_project_detail, cache_project_posts, cache_project_comments,
+    cache_project_categories, cache_project_external_links, cache_project_rss,
+    cache_project_stats, cache_user_projects
+)
 
 # 创建项目API路由器
 router = APIRouter()
 
 @router.get("/projects/{project_id}", response_model=Dict[str, Any])
+@cache_project_detail()  # 使用环境变量配置的缓存时间
 async def get_project(
     project_id: int,
     session: AsyncSession = Depends(get_async_session)
@@ -49,6 +55,7 @@ async def get_project(
     }
 
 @router.get("/projects/{project_id}/posts", response_model=Dict[str, Any])
+@cache_project_posts()  # 使用环境变量配置的缓存时间
 async def get_project_posts(
     project_id: int,
     page: int = 1,
@@ -151,6 +158,7 @@ async def get_project_posts(
         }
 
 @router.get("/projects/{project_id}/comments/recent", response_model=List[Dict[str, Any]])
+@cache_project_comments()  # 使用环境变量配置的缓存时间
 async def get_project_recent_comments(
     project_id: int,
     limit: int = 5,
@@ -195,6 +203,7 @@ async def get_project_recent_comments(
     return comments_data
 
 @router.get("/projects/{project_id}/categories", response_model=List[Dict[str, Any]])
+@cache_project_categories()  # 使用环境变量配置的缓存时间
 async def get_project_categories(
     project_id: int,
     session: AsyncSession = Depends(get_async_session)
@@ -232,6 +241,7 @@ async def get_project_categories(
         return []
 
 @router.get("/projects/{project_id}/external-links", response_model=List[Dict[str, Any]])
+@cache_project_external_links()  # 使用环境变量配置的缓存时间
 async def get_project_external_links(
     project_id: int,
     session: AsyncSession = Depends(get_async_session)
@@ -255,6 +265,7 @@ async def get_project_external_links(
     ]
 
 @router.get("/projects/{project_id}/rss")
+@cache_project_rss()  # 使用环境变量配置的缓存时间
 async def get_project_rss(
     project_id: int,
     session: AsyncSession = Depends(get_async_session)
@@ -291,6 +302,7 @@ async def get_project_rss(
     return Response(content=rss_content, media_type="application/xml")
 
 @router.get("/projects/{project_id}/stats", response_model=Dict[str, Any])
+@cache_project_stats()  # 使用环境变量配置的缓存时间
 async def get_project_stats(
     project_id: int,
     session: AsyncSession = Depends(get_async_session)
@@ -320,4 +332,114 @@ async def get_project_stats(
         raise HTTPException(status_code=500, detail=f"获取项目统计信息失败: {str(e)}")
 
 
+@router.get("/projects/user/{user_id}", response_model=Dict[str, Any])
+@cache_user_projects()  # 使用环境变量配置的缓存时间
+async def get_user_project(
+    user_id: int,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    根据用户ID获取用户的博客信息
+    
+    Args:
+        user_id: 用户ID
+        session: 数据库会话
+        
+    Returns:
+        Dict[str, Any]: 用户博客信息
+    """
+    project_repo = ProjectRepository(session)
+    
+    try:
+        # 根据用户ID查找项目
+        project = await project_repo.get_by_user_id_single(user_id)
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="用户博客不存在")
+        
+        return {
+            "id": project.id,
+            "name": project.name,
+            "comment": project.comment,
+            "recordcount": project.recordcount,
+            "accesscount": project.accesscount,
+            "userid": project.userid,
+            "createtime": project.createtime,
+            "updatetime": project.updatetime,
+            "commentcount": project.commentcount
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取用户博客信息失败: {str(e)}")
 
+@router.post("/projects/create", response_model=Dict[str, Any])
+async def create_project(
+    project_data: Dict[str, Any],
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    创建新博客项目
+    
+    Args:
+        project_data: 包含博客名称和描述的字典
+        session: 数据库会话
+        
+    Returns:
+        Dict[str, Any]: 新创建的博客信息
+    """
+    from src.repositories.user_repository import UserRepository
+    
+    # 验证输入数据
+    if not project_data.get("name"):
+        raise HTTPException(status_code=400, detail="博客名称不能为空")
+    
+    if len(project_data["name"]) > 100:
+        raise HTTPException(status_code=400, detail="博客名称不能超过100个字符")
+    
+    if project_data.get("comment") and len(project_data["comment"]) > 500:
+        raise HTTPException(status_code=400, detail="博客描述不能超过500个字符")
+    
+    # 获取当前用户ID（从请求头中的token解析）
+    # 这里需要实现用户认证逻辑
+    # 暂时从project_data中获取userid，实际应该从token中获取
+    userid = project_data.get("userid")
+    if not userid:
+        raise HTTPException(status_code=400, detail="用户ID不能为空")
+    
+    try:
+        # 开始事务
+        async with session.begin():
+            # 创建新项目
+            project_repo = ProjectRepository(session)
+            new_project = Project(
+                name=project_data["name"],
+                comment=project_data.get("comment"),
+                userid=userid,
+                createtime=datetime.now(),
+                updatetime=datetime.now(),
+                state=1,  # 正常状态
+                recordcount=0,
+                accesscount=0,
+                commentcount=0
+            )
+            
+            created_project = await project_repo.create(new_project)
+            
+            # 更新用户的projectid
+            user_repo = UserRepository(session)
+            await user_repo.update_projectid(userid, created_project.id)
+            
+            return {
+                "id": created_project.id,
+                "name": created_project.name,
+                "comment": created_project.comment,
+                "userid": created_project.userid,
+                "createtime": created_project.createtime,
+                "updatetime": created_project.updatetime,
+                "state": created_project.state
+            }
+            
+    except Exception as e:
+        # 事务会自动回滚
+        raise HTTPException(status_code=500, detail=f"创建博客失败: {str(e)}")

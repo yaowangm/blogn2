@@ -14,7 +14,22 @@ class BlogProfileCard extends BaseComponent {
     connectedCallback() {
         this.projectId = this.getProjectIdFromUrl();
         this.render();
-        this.loadData();
+        
+        // 如果在个人资料页面，等待targetUserIdReady事件
+        if (window.location.pathname.startsWith('/profile')) {
+            if (window.targetUserId) {
+                // 如果已经有targetUserId，直接加载数据
+                this.loadData();
+            } else {
+                // 等待targetUserIdReady事件
+                window.addEventListener('targetUserIdReady', (event) => {
+                    this.loadData();
+                }, { once: true });
+            }
+        } else {
+            // 不在个人资料页面，直接加载数据
+            this.loadData();
+        }
     }
 
     getProjectIdFromUrl() {
@@ -26,6 +41,65 @@ class BlogProfileCard extends BaseComponent {
 
     async loadData() {
         if (!this.projectId) {
+            // 如果在个人资料页面，尝试获取目标用户的博客信息
+            if (window.location.pathname.startsWith('/profile')) {
+                try {
+                    // 优先使用全局目标用户ID
+                    let userId = window.targetUserId;
+                    
+                    if (!userId) {
+                        // 如果没有目标用户ID，使用当前登录用户
+                        const userInfo = localStorage.getItem('user_info');
+                        if (userInfo) {
+                            const currentUser = JSON.parse(userInfo);
+                            userId = currentUser.id;
+                        }
+                    }
+                    
+                    if (userId) {
+                        // 获取用户的博客信息
+                        const token = localStorage.getItem('access_token');
+                        const headers = {};
+                        if (token) {
+                            headers['Authorization'] = `Bearer ${token}`;
+                        }
+                        
+                        // 获取用户信息
+                        const userResponse = await fetch(`/api/users/${userId}`, { headers });
+                        if (userResponse.ok) {
+                            this.userData = await userResponse.json();
+                            
+                            // 检查用户是否有博客项目
+                            if (this.userData.projectid) {
+                                // 用户有博客，获取博客详细信息
+                                const projectResponse = await fetch(`/api/projects/${this.userData.projectid}`, { headers });
+                                if (projectResponse.ok) {
+                                    this.projectData = await projectResponse.json();
+                                    this.projectId = this.projectData.id;
+                                }
+                            } else {
+                                // 用户没有博客
+                                this.projectData = null;
+                            }
+                            
+                            this.loading = false;
+                            this.render();
+                            return;
+                        } else {
+                            this.showError(`获取用户信息失败: ${userResponse.status}`);
+                            return;
+                        }
+                    } else {
+                        this.showError('无法获取用户ID');
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error loading user blog data:', error);
+                    this.showError('加载用户博客数据失败');
+                    return;
+                }
+            }
+            
             // 如果在文章页面，尝试从文章ID获取项目ID
             if (this.isArticlePage()) {
                 const articleId = this.getArticleId();
@@ -242,7 +316,7 @@ class BlogProfileCard extends BaseComponent {
 
             <div class="card">
                 ${this.loading ? this.renderLoading() : 
-                  this.userData && this.projectData ? this.renderContent() : 
+                  this.userData ? this.renderContent() : 
                   this.renderError()}
             </div>
         `;
@@ -259,7 +333,7 @@ class BlogProfileCard extends BaseComponent {
     renderContent() {
         // 安全处理所有文本字段，防止HTML注入和XSS攻击
         const safeAvatarText = this.userData.name ? this.escapeHtml(this.userData.name.charAt(0).toUpperCase()) : '?';
-        const safeBlogName = this.escapeHtml(this.projectData.name || '未命名博客');
+        const safeBlogName = this.projectData ? this.escapeHtml(this.projectData.name || '未命名博客') : '暂无博客';
         const safeUserName = this.escapeHtml(this.userData.name || '未知用户');
         
         // 构建头像路径 - 用户资料卡片使用大头像格式
@@ -273,7 +347,7 @@ class BlogProfileCard extends BaseComponent {
         const blogLink = this.projectId ? `/blog/${this.projectId}` : '#';
         
         return `
-            <a href="${blogLink}" class="blog-profile-link" title="查看博客主页">
+            <a href="${blogLink}" class="blog-profile-link" title="查看博客主页" target="_blank" rel="noopener noreferrer">
                 <div class="card-header">
                     <div class="user-avatar">
                         ${avatarPath ? 
@@ -293,11 +367,11 @@ class BlogProfileCard extends BaseComponent {
                     </div>
                     <div class="blog-stats">
                         <div class="stat-item">
-                            <div class="stat-number">${this.projectData.recordcount || 0}</div>
+                            <div class="stat-number">${this.projectData ? (this.projectData.recordcount || 0) : 0}</div>
                             <div class="stat-label">文章</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-number">${this.projectData.commentcount || 0}</div>
+                            <div class="stat-number">${this.projectData ? (this.projectData.commentcount || 0) : 0}</div>
                             <div class="stat-label">评论</div>
                         </div>
                     </div>

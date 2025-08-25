@@ -20,7 +20,8 @@ from fastapi.responses import FileResponse
 import uvicorn
 
 # 导入API控制器模块
-from src.controllers import metadata, user, blog, project, article, urllink, rss
+from src.controllers import metadata, user, blog, project, article, urllink, rss, auth
+from src.routes import regkey
 
 # 导入缓存相关模块
 from src.utils.cache import cache_manager, cache_stats
@@ -66,6 +67,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 添加缓存控制中间件
+@app.middleware("http")
+async def add_cache_control_headers(request, call_next):
+    """
+    为敏感API添加缓存控制头的中间件
+    """
+    response = await call_next(request)
+    
+    # 为敏感的个人资料相关API添加缓存控制
+    if request.url.path.startswith("/api/users/") or request.url.path.startswith("/api/projects/user/"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    
+    return response
 
 # 静态文件服务配置
 UPLOAD_BASE_PATH = "../pic/blogn_img/upload"
@@ -173,6 +190,14 @@ app.include_router(project.router, prefix="/api")
 app.include_router(article.router, prefix="/api")
 app.include_router(urllink.router, prefix="/api")
 app.include_router(rss.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
+# 注册码管理路由
+app.include_router(regkey.router, prefix="/api")
+# 用户注册路由
+from src.routes import user_register
+app.include_router(user_register.router, prefix="/api")
+
+
 
 
 # ==================== 页面路由 ====================
@@ -204,6 +229,69 @@ async def blog_page(project_id: int):
         FileResponse: 博客页面HTML文件
     """
     return FileResponse("src/static/blog.html")
+
+
+@app.get("/profile")
+@app.get("/profile/{user_id}")
+async def profile_page(user_id: int = None):
+    """
+    个人资料页面路由
+    
+    支持两种访问方式：
+    1. /profile - 显示当前登录用户的个人资料
+    2. /profile/{user_id} - 显示指定用户的个人资料
+    
+    Args:
+        user_id: 用户ID，可选参数
+        
+    Returns:
+        FileResponse: 个人资料页面HTML文件
+    """
+    return FileResponse("src/static/profile.html")
+
+
+@app.get("/regkey")
+async def registration_code_page():
+    """
+    注册码管理页面路由
+    
+    注意：此页面需要用户登录，前端会进行认证检查
+    如果未登录用户访问，前端会重定向到首页
+    
+    Returns:
+        FileResponse: 注册码管理页面HTML文件
+    """
+    return FileResponse("src/static/regkey.html")
+
+
+@app.get("/users")
+async def users_list_page():
+    """
+    用户列表页面路由
+    
+    注意：此页面需要管理员权限，前端会进行权限检查
+    如果非管理员用户访问，前端会重定向到首页
+    
+    Returns:
+        FileResponse: 用户列表页面HTML文件
+    """
+    return FileResponse("src/static/users.html")
+
+
+@app.get("/user_register")
+async def user_register_page():
+    """
+    用户注册页面路由
+    
+    注意：此页面不需要用户登录，任何人都可以访问
+    
+    Returns:
+        FileResponse: 用户注册页面HTML文件
+    """
+    return FileResponse("src/static/user_register.html")
+
+
+
 
 
 @app.get("/article/{article_id}")

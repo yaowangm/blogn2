@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人资料 - BlogN2</title>
+    <meta name="description" content="BlogN2个人资料页面，展示用户信息和博客统计">
+    
+    <!-- 安全设置：防止浏览器缓存敏感信息 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* 确保侧边栏有正确的间距 */
+        .sidebar {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 24px !important;
+        }
+        
+        /* 组件样式 */
+        user-profile-card, blog-info-card {
+            display: block;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        /* 卡片内部样式 */
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #111827;
+            margin: 0;
+        }
+        
+        .profile-grid, .info-grid {
+            display: grid;
+            gap: 16px;
+        }
+        
+        .profile-item, .info-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        
+        .profile-label, .info-label {
+            min-width: 100px;
+            font-weight: 500;
+            color: #374151;
+            font-size: 14px;
+        }
+        
+        .profile-value, .info-value {
+            flex: 1;
+            color: #111827;
+            font-size: 14px;
+            word-break: break-word;
+        }
+        
+        .loading, .error {
+            text-align: center;
+            padding: 32px;
+        }
+        
+        .loading {
+            color: #6b7280;
+        }
+        
+        .error {
+            color: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶栏组件 -->
+    <header-component></header-component>
+
+    <!-- 主要内容区域 -->
+    <main class="main-content">
+        <div class="container">
+            <div class="content-grid">
+                <!-- 左边栏 -->
+                <aside class="sidebar sidebar-left">
+                    <!-- 用户头像和博客名称 -->
+                    <blog-profile-card></blog-profile-card>
+                </aside>
+
+                <!-- 右边栏 -->
+                <aside class="sidebar sidebar-right">
+                    <!-- 个人资料卡片 -->
+                    <user-profile-card></user-profile-card>
+                    
+                    <!-- 博客信息卡片 -->
+                    <blog-info-card></blog-info-card>
+                </aside>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底栏组件 -->
+    <footer-component></footer-component>
+
+    <!-- 图标库 -->
+    <script src="/static/js/components/icons.js"></script>
+    
+    <!-- Web Components -->
+    <script src="/static/js/components/base-component.js"></script>
+    <script src="/static/js/components/header-component.js"></script>
+    <script src="/static/js/components/footer-component.js"></script>
+    <script src="/static/js/components/blog-profile-card.js"></script>
+    <script src="/static/js/components/user-profile-card.js"></script>
+    <script src="/static/js/components/blog-info-card.js"></script>
+    <!-- 个人资料页面脚本 -->
+    <script src="/static/js/profile.js"></script>
+</body>
+</html>
