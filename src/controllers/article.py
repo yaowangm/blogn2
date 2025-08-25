@@ -15,7 +15,7 @@ from src.repositories.project_repository import ProjectRepository
 from src.repositories.post_repository import PostRepository
 from src.repositories.attachment_repository import AttachmentRepository
 from src.models.post import Post
-from src.utils.cache import cache_article_detail, cache_article_comments, cache_article_attachments, invalidate_article_detail_cache, invalidate_article_comments_cache
+from src.utils.cache import cache_article_detail, cache_article_comments, cache_article_attachments, clear_article_detail_cache, clear_article_comments_cache
 
 # 创建文章API路由器
 router = APIRouter(tags=["文章管理"])
@@ -173,8 +173,8 @@ async def create_article_comment(
         await project_item_repo.increment_comment_count(article_id)
         
         # 失效相关缓存
-        await invalidate_article_detail_cache(article_id)
-        await invalidate_article_comments_cache(article_id)
+        await clear_article_detail_cache(article_id)
+        await clear_article_comments_cache(article_id)
         
         return {
             "success": True,

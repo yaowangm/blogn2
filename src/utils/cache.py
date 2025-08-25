@@ -394,6 +394,40 @@ def invalidate_article_attachments_cache(article_id: int):
     return invalidate_cache_pattern(f"article:attachments:{article_id}")
 
 
+# ==================== 直接缓存失效函数 ====================
+
+async def clear_article_cache():
+    """直接清除所有文章相关缓存"""
+    if cache_settings.enable_cache:
+        await cache_manager.clear_pattern("article:*")
+        if cache_settings.cache_debug:
+            logger.debug("清除所有文章相关缓存")
+
+
+async def clear_article_detail_cache(article_id: int):
+    """直接清除特定文章详情缓存"""
+    if cache_settings.enable_cache:
+        await cache_manager.clear_pattern(f"article:detail:{article_id}")
+        if cache_settings.cache_debug:
+            logger.debug(f"清除文章详情缓存: article:detail:{article_id}")
+
+
+async def clear_article_comments_cache(article_id: int):
+    """直接清除特定文章评论缓存"""
+    if cache_settings.enable_cache:
+        await cache_manager.clear_pattern(f"article:comments:{article_id}:*")
+        if cache_settings.cache_debug:
+            logger.debug(f"清除文章评论缓存: article:comments:{article_id}:*")
+
+
+async def clear_article_attachments_cache(article_id: int):
+    """直接清除特定文章附件缓存"""
+    if cache_settings.enable_cache:
+        await cache_manager.clear_pattern(f"article:attachments:{article_id}")
+        if cache_settings.cache_debug:
+            logger.debug(f"清除文章附件缓存: article:attachments:{article_id}")
+
+
 # ==================== 缓存统计 ====================
 
 class CacheStats:
