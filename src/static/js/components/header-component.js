@@ -35,6 +35,12 @@ class HeaderComponent extends BaseComponent {
     render() {
         const siteName = this.metadata?.site_name || 'BlogN';
         const logoUrl = this.getLogoUrl();
+        
+        // 检查图标库是否可用
+        const hasIcons = typeof Icons !== 'undefined';
+        const searchIcon = hasIcons ? Icons.search : this.getDefaultSearchIcon();
+        const homeIcon = hasIcons ? Icons.home : this.getDefaultHomeIcon();
+        const logoutIcon = hasIcons ? Icons.logout : this.getDefaultLogoutIcon();
 
         this.shadowRoot.innerHTML = `
             <style>
@@ -317,26 +323,16 @@ class HeaderComponent extends BaseComponent {
                             <!-- 下拉菜单 -->
                             <div class="dropdown-menu" id="dropdownMenu">
                                 <a href="#" class="dropdown-item" id="searchMenuItem">
-                                    <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle cx="11" cy="11" r="8"></circle>
-                                        <path d="m21 21-4.35-4.35"></path>
-                                    </svg>
+                                    ${searchIcon}
                                     搜索
                                 </a>
                                 <a href="/user" class="dropdown-item">
-                                    <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                                        <polyline points="9,22 9,12 15,12 15,22"></polyline>
-                                    </svg>
+                                    ${homeIcon}
                                     我的首页
                                 </a>
                                 <div class="dropdown-divider"></div>
                                 <a href="#" class="dropdown-item" id="logoutMenuItem">
-                                    <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                        <polyline points="16,17 21,12 16,7"></polyline>
-                                        <line x1="21" y1="12" x2="9" y2="12"></line>
-                                    </svg>
+                                    ${logoutIcon}
                                     退出
                                 </a>
                             </div>
@@ -512,6 +508,29 @@ class HeaderComponent extends BaseComponent {
             // 跳转到首页
             window.location.href = '/';
         }
+    }
+
+    // 默认图标方法，当图标库不可用时使用
+    getDefaultSearchIcon() {
+        return `<svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+        </svg>`;
+    }
+
+    getDefaultHomeIcon() {
+        return `<svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9,22 9,12 15,12 15,22"></polyline>
+        </svg>`;
+    }
+
+    getDefaultLogoutIcon() {
+        return `<svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16,17 21,12 16,7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>`;
     }
 }
 
