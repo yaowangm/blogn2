@@ -165,6 +165,18 @@ class UserProfileCard extends BaseComponent {
                     line-height: 1.5;
                 }
                 
+                .intro-link {
+                    color: var(--primary-color);
+                    text-decoration: none;
+                    font-weight: 500;
+                    transition: color var(--transition-fast);
+                }
+                
+                .intro-link:hover {
+                    color: var(--primary-hover);
+                    text-decoration: underline;
+                }
+                
                 .loading, .error {
                     text-align: center;
                     padding: var(--spacing-8);
@@ -204,8 +216,8 @@ class UserProfileCard extends BaseComponent {
                 </div>
 
                 <div class="profile-item">
-                    <span class="profile-label">最后登录</span>
-                    <span class="profile-value">${this.formatDateTime(this.userData.iplog)}</span>
+                    <span class="profile-label">最后登录IP</span>
+                    <span class="profile-value">${this.escapeHtml(this.userData.iplog || '未知')}</span>
                 </div>
 
                 <div class="profile-item">
@@ -221,7 +233,10 @@ class UserProfileCard extends BaseComponent {
                 <div class="profile-item">
                     <span class="profile-label">自我介绍</span>
                     <span class="profile-value intro">
-                        ${this.userData.intropiid ? '已设置' : '未设置'}
+                        ${this.userData.intropiid ? 
+                            `<a href="/article/${this.userData.intropiid}" class="intro-link">查看自我介绍</a>` : 
+                            '未设置'
+                        }
                     </span>
                 </div>
             </div>
