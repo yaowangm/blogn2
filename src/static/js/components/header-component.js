@@ -98,6 +98,81 @@ class HeaderComponent extends BaseComponent {
                     align-items: center;
                     gap: var(--spacing-2);
                     position: relative;
+                    cursor: pointer;
+                    padding: var(--spacing-2);
+                    border-radius: var(--radius-md);
+                    transition: var(--transition-fast);
+                }
+
+                .user-menu:hover {
+                    background: var(--gray-100);
+                }
+
+                .user-name {
+                    font-weight: 500;
+                    color: var(--gray-700);
+                }
+
+                .dropdown-arrow {
+                    font-size: var(--font-size-xs);
+                    color: var(--gray-500);
+                    transition: var(--transition-fast);
+                }
+
+                .user-menu.active .dropdown-arrow {
+                    transform: rotate(180deg);
+                }
+
+                .dropdown-menu {
+                    position: absolute;
+                    top: 100%;
+                    right: 0;
+                    background: var(--white);
+                    border: 1px solid var(--gray-200);
+                    border-radius: var(--radius-md);
+                    box-shadow: var(--shadow-lg);
+                    min-width: 180px;
+                    z-index: 1000;
+                    opacity: 0;
+                    visibility: hidden;
+                    transform: translateY(-10px);
+                    transition: var(--transition-fast);
+                    margin-top: var(--spacing-1);
+                }
+
+                .user-menu.active .dropdown-menu {
+                    opacity: 1;
+                    visibility: visible;
+                    transform: translateY(0);
+                }
+
+                .dropdown-item {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                    padding: var(--spacing-3);
+                    color: var(--gray-700);
+                    text-decoration: none;
+                    transition: var(--transition-fast);
+                    border-radius: var(--radius-sm);
+                    margin: var(--spacing-1);
+                }
+
+                .dropdown-item:hover {
+                    background: var(--gray-100);
+                    color: var(--gray-900);
+                }
+
+                .dropdown-icon {
+                    font-size: var(--font-size-sm);
+                    width: 16px;
+                    text-align: center;
+                }
+
+                .dropdown-divider {
+                    height: 1px;
+                    background: var(--gray-200);
+                    margin: var(--spacing-2) var(--spacing-1);
                 }
 
                 .user-avatar {
@@ -200,19 +275,29 @@ class HeaderComponent extends BaseComponent {
 
                 <div class="header-actions">
                     ${this.isLoggedIn ? `
-                        <div class="user-menu">
+                        <div class="user-menu" id="userMenu">
                             <div class="user-avatar">${this.escapeHtml(this.userName.charAt(0))}</div>
-                            <span>${this.escapeHtml(this.userName)}</span>
+                            <span class="user-name">${this.escapeHtml(this.userName)}</span>
+                            <div class="dropdown-arrow">▼</div>
+                            
+                            <!-- 下拉菜单 -->
+                            <div class="dropdown-menu" id="dropdownMenu">
+                                <a href="#" class="dropdown-item" id="searchMenuItem">
+                                    <span class="dropdown-icon">🔍</span>
+                                    搜索
+                                </a>
+                                <a href="/user" class="dropdown-item">
+                                    <span class="dropdown-icon">🏠</span>
+                                    我的首页
+                                </a>
+                                <div class="dropdown-divider"></div>
+                                <a href="#" class="dropdown-item" id="logoutMenuItem">
+                                    <span class="dropdown-icon">🚪</span>
+                                    退出
+                                </a>
+                            </div>
                         </div>
-                        <a href="/user" class="btn btn-ghost">我的首页</a>
-                        <button class="search-button" title="搜索">
-                            🔍
-                        </button>
-                        <button class="btn btn-ghost" id="logoutButton">退出</button>
                     ` : `
-                        <button class="search-button" title="搜索">
-                            🔍
-                        </button>
                         <button class="btn btn-primary" id="loginButton">登录</button>
                     `}
                 </div>
@@ -224,10 +309,42 @@ class HeaderComponent extends BaseComponent {
     }
 
     addEventListeners() {
-        const searchButton = this.shadowRoot.querySelector('.search-button');
-        if (searchButton) {
-            searchButton.addEventListener('click', () => {
+        // 用户菜单下拉功能
+        const userMenu = this.shadowRoot.querySelector('#userMenu');
+        if (userMenu) {
+            userMenu.addEventListener('click', (e) => {
+                e.stopPropagation();
+                userMenu.classList.toggle('active');
+            });
+        }
+
+        // 点击其他地方关闭下拉菜单
+        document.addEventListener('click', (e) => {
+            if (userMenu && !userMenu.contains(e.target)) {
+                userMenu.classList.remove('active');
+            }
+        });
+
+        // 搜索菜单项
+        const searchMenuItem = this.shadowRoot.querySelector('#searchMenuItem');
+        if (searchMenuItem) {
+            searchMenuItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 // TODO: 实现搜索功能
+                console.log('搜索功能待实现');
+                userMenu.classList.remove('active');
+            });
+        }
+
+        // 退出菜单项
+        const logoutMenuItem = this.shadowRoot.querySelector('#logoutMenuItem');
+        if (logoutMenuItem) {
+            logoutMenuItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.handleLogout();
+                userMenu.classList.remove('active');
             });
         }
 
@@ -235,12 +352,6 @@ class HeaderComponent extends BaseComponent {
         const loginButton = this.shadowRoot.querySelector('#loginButton');
         if (loginButton) {
             loginButton.addEventListener('click', () => this.showLoginModal());
-        }
-
-        // 退出按钮事件
-        const logoutButton = this.shadowRoot.querySelector('#logoutButton');
-        if (logoutButton) {
-            logoutButton.addEventListener('click', () => this.handleLogout());
         }
     }
 
