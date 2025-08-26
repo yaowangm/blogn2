@@ -22,7 +22,7 @@
         <div class="container">
             <div class="error-container">
                 <div class="error-card">
-                    <div class="error-icon">⚠️</div>
+                    <div class="error-icon" id="errorIcon"></div>
                     <h1 class="error-title">页面不存在</h1>
                     <p class="error-message">抱歉，您访问的博客页面不存在或已被删除。</p>
                     <div class="error-actions">
@@ -45,10 +45,23 @@
     <!-- 底栏组件 -->
     <footer-component></footer-component>
 
+    <!-- 图标库 -->
+    <script src="/static/js/components/icons.js"></script>
+    
     <!-- Web Components -->
     <script src="/static/js/components/base-component.js"></script>
     <script src="/static/js/components/header-component.js"></script>
     <script src="/static/js/components/footer-component.js"></script>
+    
+    <script>
+        // 初始化错误图标
+        document.addEventListener('DOMContentLoaded', () => {
+            const errorIcon = document.getElementById('errorIcon');
+            if (errorIcon && typeof Icons !== 'undefined') {
+                errorIcon.innerHTML = Icons.warning;
+            }
+        });
+    </script>
 
     <style>
         .error-container {

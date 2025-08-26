@@ -216,7 +216,7 @@ class LoginModal extends BaseComponent {
                     <form id="loginForm">
                         <!-- 全局错误提示区域 -->
                         <div class="global-error" id="globalError" style="display: none;">
-                            <div class="error-icon">⚠️</div>
+                            <div class="error-icon">${Icons.warning}</div>
                             <div class="error-text" id="globalErrorText"></div>
                         </div>
                         

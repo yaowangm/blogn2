@@ -362,7 +362,7 @@ class RecentUpdatesCard extends BaseComponent {
     renderError() {
         return `
             <div class="error">
-                <div>⚠️ ${this.errorMessage}</div>
+                <div>${Icons.warning} ${this.errorMessage}</div>
             </div>
         `;
     }

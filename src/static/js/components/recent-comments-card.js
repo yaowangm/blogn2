@@ -444,11 +444,7 @@ class RecentCommentsCard extends BaseComponent {
             <div class="card">
                 <div class="card-header">
                     <div class="icon">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                            <path d="M8 9h8"/>
-                            <path d="M8 13h6"/>
-                        </svg>
+                        ${Icons.comments}
                     </div>
                     <h3 class="card-title">最近评论</h3>
                 </div>
@@ -511,7 +507,7 @@ class RecentCommentsCard extends BaseComponent {
     createErrorHTML() {
         return `
             <div class="error">
-                <span class="error-icon">⚠️</span>
+                ${Icons.warning}
                 <span>${this.errorMessage}</span>
             </div>
         `;

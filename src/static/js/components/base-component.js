@@ -148,7 +148,7 @@ class BaseComponent extends HTMLElement {
                 color: var(--red-500);
                 font-size: 14px;
             ">
-                <span style="margin-right: 8px;">⚠️</span>
+                <span style="margin-right: 8px;">${Icons.warning}</span>
                 ${message}
             </div>
         `;

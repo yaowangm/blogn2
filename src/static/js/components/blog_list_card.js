@@ -241,11 +241,11 @@ class BlogListCard extends BaseComponent {
                 <div class="pagination">
                     <div class="pagination-left">
                         <button class="nav-btn" onclick="this.getRootNode().host.goToPage(1)" ${this.currentPage === 1 ? 'disabled' : ''}>
-                            <span class="nav-icon">🏠</span>
+                            <span class="nav-icon">${Icons.firstPage}</span>
                             <span class="nav-text">首页</span>
                         </button>
                         <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.currentPage - 1})" ${this.currentPage === 1 ? 'disabled' : ''}>
-                            <span class="nav-icon">⬅️</span>
+                            <span class="nav-icon">${Icons.prevPage}</span>
                             <span class="nav-text">上一页</span>
                         </button>
                         
@@ -255,11 +255,11 @@ class BlogListCard extends BaseComponent {
                         </div>
                         
                         <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.currentPage + 1})" ${this.currentPage === this.totalPages ? 'disabled' : ''}>
-                            <span class="nav-icon">➡️</span>
+                            <span class="nav-icon">${Icons.nextPage}</span>
                             <span class="nav-text">下一页</span>
                         </button>
                         <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.totalPages})" ${this.currentPage === this.totalPages ? 'disabled' : ''}>
-                            <span class="nav-icon">🏁</span>
+                            <span class="nav-icon">${Icons.lastPage}</span>
                             <span class="nav-text">尾页</span>
                         </button>
                     </div>

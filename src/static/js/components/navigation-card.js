@@ -92,19 +92,19 @@ class NavigationCard extends BaseComponent {
                 <div class="card-body">
                     <div class="nav-list">
                         <a href="/users" class="nav-item">
-                            <div class="nav-icon">👥</div>
+                            <div class="nav-icon">${Icons.usersList}</div>
                             <span class="nav-text">用户列表</span>
                         </a>
                         <a href="/api/rss/site" class="nav-item" target="_blank">
-                            <div class="nav-icon">📡</div>
+                            <div class="nav-icon">${Icons.rss}</div>
                             <span class="nav-text">全站RSS</span>
                         </a>
                         <a href="/categories" class="nav-item">
-                            <div class="nav-icon">📂</div>
+                            <div class="nav-icon">${Icons.folder}</div>
                             <span class="nav-text">分类浏览</span>
                         </a>
                         <a href="/tags" class="nav-item">
-                            <div class="nav-icon">🏷️</div>
+                            <div class="nav-icon">${Icons.tag}</div>
                             <span class="nav-text">标签云</span>
                         </a>
                     </div>

@@ -39,7 +39,7 @@ class HeaderComponent extends BaseComponent {
         // 检查图标库是否可用
         const hasIcons = typeof Icons !== 'undefined';
         const searchIcon = hasIcons ? Icons.search : this.getDefaultSearchIcon();
-        const homeIcon = hasIcons ? Icons.home : this.getDefaultHomeIcon();
+        const userHomeIcon = hasIcons ? Icons.userHome : this.getDefaultUserHomeIcon();
         const logoutIcon = hasIcons ? Icons.logout : this.getDefaultLogoutIcon();
 
         this.shadowRoot.innerHTML = `
@@ -327,7 +327,7 @@ class HeaderComponent extends BaseComponent {
                                     搜索
                                 </a>
                                 <a href="/user" class="dropdown-item">
-                                    ${homeIcon}
+                                    ${userHomeIcon}
                                     我的首页
                                 </a>
                                 <div class="dropdown-divider"></div>
@@ -522,6 +522,13 @@ class HeaderComponent extends BaseComponent {
         return `<svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
             <polyline points="9,22 9,12 15,12 15,22"></polyline>
+        </svg>`;
+    }
+
+    getDefaultUserHomeIcon() {
+        return `<svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+            <circle cx="12" cy="7" r="4"/>
         </svg>`;
     }
 
