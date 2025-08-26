@@ -183,6 +183,27 @@ class LoginModal extends BaseComponent {
                 .footer-link:hover {
                     text-decoration: underline;
                 }
+
+                .global-error {
+                    background-color: var(--red-100);
+                    color: var(--red-800);
+                    padding: var(--spacing-2) var(--spacing-3);
+                    border-radius: var(--radius-md);
+                    display: flex;
+                    align-items: center;
+                    margin-bottom: var(--spacing-4);
+                    border: 1px solid var(--red-300);
+                }
+
+                .error-icon {
+                    font-size: var(--font-size-lg);
+                    margin-right: var(--spacing-2);
+                }
+
+                .error-text {
+                    font-size: var(--font-size-sm);
+                    font-weight: 500;
+                }
             </style>
 
             <div class="modal-container">
@@ -193,6 +214,12 @@ class LoginModal extends BaseComponent {
 
                 <div class="modal-body">
                     <form id="loginForm">
+                        <!-- 全局错误提示区域 -->
+                        <div class="global-error" id="globalError" style="display: none;">
+                            <div class="error-icon">⚠️</div>
+                            <div class="error-text" id="globalErrorText"></div>
+                        </div>
+                        
                         <div class="form-group">
                             <label class="form-label" for="username">用户名或邮箱</label>
                             <input 
@@ -240,11 +267,12 @@ class LoginModal extends BaseComponent {
         const closeButton = this.shadowRoot.querySelector('.close-button');
         closeButton.addEventListener('click', () => this.hide());
 
-        this.addEventListener('click', (e) => {
-            if (e.target === this) {
-                this.hide();
-            }
-        });
+        // 移除点击背景关闭模态框的功能
+        // this.addEventListener('click', (e) => {
+        //     if (e.target === this) {
+        //         this.hide();
+        //     }
+        // });
 
         const form = this.shadowRoot.querySelector('#loginForm');
         form.addEventListener('submit', (e) => this.handleLogin(e));
@@ -282,6 +310,13 @@ class LoginModal extends BaseComponent {
     }
 
     clearErrors() {
+        // 清除全局错误
+        const globalError = this.shadowRoot.querySelector('#globalError');
+        if (globalError) {
+            globalError.style.display = 'none';
+        }
+        
+        // 清除字段错误
         const errorElements = this.shadowRoot.querySelectorAll('.error-message');
         errorElements.forEach(el => {
             el.textContent = '';
@@ -300,6 +335,19 @@ class LoginModal extends BaseComponent {
             input.classList.add('error');
             errorElement.textContent = message;
             errorElement.classList.add('show');
+        }
+    }
+
+    showGlobalError(message) {
+        const globalError = this.shadowRoot.querySelector('#globalError');
+        const globalErrorText = this.shadowRoot.querySelector('#globalErrorText');
+        
+        if (globalError && globalErrorText) {
+            globalErrorText.textContent = message;
+            globalError.style.display = 'flex';
+            
+            // 滚动到错误提示区域
+            globalError.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }
 
@@ -387,8 +435,19 @@ class LoginModal extends BaseComponent {
     }
 
     handleLoginError(message) {
+        // 显示全局错误提示
+        this.showGlobalError(message);
+        
+        // 同时显示在用户名字段上（保持向后兼容）
         this.showError('username', message);
+        
+        // 密码字段也显示错误状态
         const passwordInput = this.shadowRoot.querySelector('#password');
+        if (passwordInput) {
+            passwordInput.classList.add('error');
+        }
+        
+        // 密码输入框获得焦点
         passwordInput.focus();
     }
 
