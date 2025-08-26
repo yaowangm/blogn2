@@ -197,7 +197,7 @@ class BlogInfoCard extends BaseComponent {
 
             <div class="blog-info">
                 <div class="blog-name">
-                    <a href="/blog/${this.blogData.id}">${this.escapeHtml(this.blogData.name || '未设置')}</a>
+                    <a href="/blog/${this.blogData.id}" target="_blank" rel="noopener noreferrer">${this.escapeHtml(this.blogData.name || '未设置')}</a>
                 </div>
                 
                 <div class="blog-description">

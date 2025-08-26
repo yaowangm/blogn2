@@ -234,7 +234,7 @@ class UserProfileCard extends BaseComponent {
                     <span class="profile-label">自我介绍</span>
                     <span class="profile-value intro">
                         ${this.userData.intropiid ? 
-                            `<a href="/article/${this.userData.intropiid}" class="intro-link">查看自我介绍</a>` : 
+                            `<a href="/article/${this.userData.intropiid}" class="intro-link" target="_blank" rel="noopener noreferrer">查看自我介绍</a>` : 
                             '未设置'
                         }
                     </span>

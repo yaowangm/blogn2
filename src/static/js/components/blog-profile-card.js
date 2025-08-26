@@ -303,7 +303,7 @@ class BlogProfileCard extends BaseComponent {
         const blogLink = this.projectId ? `/blog/${this.projectId}` : '#';
         
         return `
-            <a href="${blogLink}" class="blog-profile-link" title="查看博客主页">
+            <a href="${blogLink}" class="blog-profile-link" title="查看博客主页" target="_blank" rel="noopener noreferrer">
                 <div class="card-header">
                     <div class="user-avatar">
                         ${avatarPath ? 
