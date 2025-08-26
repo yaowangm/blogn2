@@ -95,84 +95,84 @@ class UserProfileCard extends BaseComponent {
             <style>
                 :host {
                     display: block;
-                    background: #ffffff;
-                    border-radius: 8px;
-                    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-                    padding: 24px;
-                    margin-bottom: 24px;
-                    border: 1px solid #e5e7eb;
+                    background: var(--card-bg);
+                    border-radius: var(--card-radius);
+                    box-shadow: var(--card-shadow);
+                    padding: var(--card-padding);
+                    margin-bottom: var(--card-margin);
+                    border: 1px solid var(--card-border);
                 }
                 
                 .card-header {
                     display: flex;
                     align-items: center;
-                    gap: 12px;
-                    margin-bottom: 24px;
-                    padding-bottom: 16px;
-                    border-bottom: 1px solid #e5e7eb;
+                    gap: var(--spacing-3);
+                    margin-bottom: var(--card-content-gap);
+                    padding-bottom: var(--spacing-4);
+                    border-bottom: 1px solid var(--card-header-border);
                 }
                 
                 .card-title {
-                    font-size: 20px;
-                    font-weight: 600;
-                    color: #111827;
+                    font-size: var(--card-title-size);
+                    font-weight: var(--card-title-weight);
+                    color: var(--card-title-color);
                     margin: 0;
                 }
                 
                 .profile-grid {
                     display: grid;
-                    gap: 16px;
+                    gap: var(--card-content-gap);
                 }
                 
                 .profile-item {
                     display: flex;
                     align-items: flex-start;
-                    gap: 12px;
+                    gap: var(--spacing-3);
                 }
                 
                 .profile-label {
                     min-width: 100px;
                     font-weight: 500;
-                    color: #374151;
-                    font-size: 14px;
+                    color: var(--gray-600);
+                    font-size: var(--font-size-sm);
                 }
                 
                 .profile-value {
                     flex: 1;
-                    color: #111827;
-                    font-size: 14px;
+                    color: var(--gray-800);
+                    font-size: var(--font-size-sm);
                     word-break: break-word;
                 }
                 
                 .profile-value.state-admin {
-                    color: #dc2626;
+                    color: var(--state-admin);
                     font-weight: 600;
                 }
                 
                 .profile-value.state-user {
-                    color: #059669;
+                    color: var(--state-user);
                     font-weight: 600;
                 }
                 
                 .profile-value.state-frozen {
-                    color: #6b7280;
+                    color: var(--state-frozen);
                     font-weight: 600;
                 }
                 
                 .profile-value.intro {
                     font-style: italic;
-                    color: #4b5563;
+                    color: var(--gray-500);
                     line-height: 1.5;
                 }
                 
                 .loading, .error {
                     text-align: center;
-                    padding: 32px;
-                    color: #6b7280;
+                    padding: var(--spacing-8);
+                    color: var(--loading-color);
                 }
                 
                 .error {
-                    color: #dc2626;
+                    color: var(--error-color);
                 }
             </style>
             

@@ -1,5 +1,41 @@
 /* Web Components 专用样式 */
 
+/* 卡片通用样式变量 */
+:root {
+    /* 卡片基础样式 */
+    --card-bg: var(--white);
+    --card-border: var(--gray-200);
+    --card-shadow: var(--shadow-md);
+    --card-shadow-hover: var(--shadow-lg);
+    --card-radius: var(--radius-xl);
+    --card-padding: var(--spacing-6);
+    --card-margin: var(--spacing-6);
+    
+    /* 卡片头部样式 */
+    --card-header-bg: var(--gray-50);
+    --card-header-border: var(--gray-200);
+    --card-header-padding: var(--spacing-4) var(--spacing-6);
+    
+    /* 卡片标题样式 */
+    --card-title-color: var(--gray-800);
+    --card-title-size: var(--font-size-lg);
+    --card-title-weight: 600;
+    
+    /* 卡片内容样式 */
+    --card-content-padding: var(--spacing-6);
+    --card-content-gap: var(--spacing-4);
+    
+    /* 状态颜色 */
+    --state-admin: var(--red-600);
+    --state-user: var(--success-color);
+    --state-frozen: var(--gray-500);
+    
+    /* 加载和错误状态 */
+    --loading-color: var(--gray-500);
+    --error-color: var(--error-color);
+    --error-bg: var(--gray-50);
+}
+
 /* 顶栏组件样式 */
 header-component {
     display: block;

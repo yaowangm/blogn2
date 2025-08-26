@@ -77,39 +77,39 @@ class BlogInfoCard extends BaseComponent {
             <style>
                 :host {
                     display: block;
-                    background: #ffffff;
-                    border-radius: 8px;
-                    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-                    padding: 24px;
-                    margin-bottom: 24px;
-                    border: 1px solid #e5e7eb;
+                    background: var(--card-bg);
+                    border-radius: var(--card-radius);
+                    box-shadow: var(--card-shadow);
+                    padding: var(--card-padding);
+                    margin-bottom: var(--card-margin);
+                    border: 1px solid var(--card-border);
                 }
                 
                 .card-header {
                     display: flex;
                     align-items: center;
-                    gap: 12px;
-                    margin-bottom: 24px;
-                    padding-bottom: 16px;
-                    border-bottom: 1px solid #e5e7eb;
+                    gap: var(--spacing-3);
+                    margin-bottom: var(--card-content-gap);
+                    padding-bottom: var(--spacing-4);
+                    border-bottom: 1px solid var(--card-header-border);
                 }
                 
                 .card-title {
-                    font-size: 20px;
-                    font-weight: 600;
-                    color: #111827;
+                    font-size: var(--card-title-size);
+                    font-weight: var(--card-title-weight);
+                    color: var(--card-title-color);
                     margin: 0;
                 }
                 
                 .blog-info {
-                    margin-bottom: 24px;
+                    margin-bottom: var(--card-content-gap);
                 }
                 
                 .blog-name {
-                    font-size: 18px;
+                    font-size: var(--font-size-lg);
                     font-weight: 600;
-                    color: #2563eb;
-                    margin-bottom: 12px;
+                    color: var(--primary-color);
+                    margin-bottom: var(--spacing-3);
                     word-break: break-word;
                 }
                 
@@ -123,8 +123,8 @@ class BlogInfoCard extends BaseComponent {
                 }
                 
                 .blog-description {
-                    color: #4b5563;
-                    margin-bottom: 16px;
+                    color: var(--gray-500);
+                    margin-bottom: var(--spacing-4);
                     line-height: 1.5;
                     word-break: break-word;
                 }
@@ -132,62 +132,62 @@ class BlogInfoCard extends BaseComponent {
                 .stats-grid {
                     display: grid;
                     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-                    gap: 16px;
-                    margin-bottom: 24px;
+                    gap: var(--spacing-4);
+                    margin-bottom: var(--card-content-gap);
                 }
                 
                 .stat-item {
                     text-align: center;
-                    padding: 12px;
-                    background: #f9fafb;
-                    border-radius: 6px;
+                    padding: var(--spacing-3);
+                    background: var(--gray-50);
+                    border-radius: var(--radius-lg);
                 }
                 
                 .stat-number {
-                    font-size: 20px;
+                    font-size: var(--font-size-xl);
                     font-weight: 700;
-                    color: #2563eb;
+                    color: var(--primary-color);
                     display: block;
                 }
                 
                 .stat-label {
-                    font-size: 12px;
-                    color: #6b7280;
-                    margin-top: 4px;
+                    font-size: var(--font-size-xs);
+                    color: var(--gray-500);
+                    margin-top: var(--spacing-1);
                 }
                 
                 .info-grid {
                     display: grid;
-                    gap: 12px;
+                    gap: var(--spacing-3);
                 }
                 
                 .info-item {
                     display: flex;
                     align-items: flex-start;
-                    gap: 12px;
+                    gap: var(--spacing-3);
                 }
                 
                 .info-label {
                     min-width: 100px;
                     font-weight: 500;
-                    color: #374151;
-                    font-size: 14px;
+                    color: var(--gray-600);
+                    font-size: var(--font-size-sm);
                 }
                 
                 .info-value {
                     flex: 1;
-                    color: #111827;
-                    font-size: 14px;
+                    color: var(--gray-800);
+                    font-size: var(--font-size-sm);
                 }
                 
                 .loading, .error {
                     text-align: center;
-                    padding: 32px;
-                    color: #6b7280;
+                    padding: var(--spacing-8);
+                    color: var(--loading-color);
                 }
                 
                 .error {
-                    color: #dc2626;
+                    color: var(--error-color);
                 }
             </style>
             
