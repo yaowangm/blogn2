@@ -186,6 +186,26 @@ class HeaderComponent extends BaseComponent {
                     color: var(--white);
                     font-weight: 600;
                     font-size: var(--font-size-sm);
+                    overflow: hidden;
+                }
+
+                .user-avatar img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    border-radius: 50%;
+                }
+
+                .avatar-placeholder {
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: var(--white);
+                    font-weight: 600;
+                    font-size: var(--font-size-sm);
+                    border-radius: 50%;
                 }
 
                 .search-button {
@@ -276,7 +296,15 @@ class HeaderComponent extends BaseComponent {
                 <div class="header-actions">
                     ${this.isLoggedIn ? `
                         <div class="user-menu" id="userMenu">
-                            <div class="user-avatar">${this.escapeHtml(this.userName.charAt(0))}</div>
+                            <div class="user-avatar">
+                                ${(() => {
+                                    if (this.userInfo && this.userInfo.avatar_url) {
+                                        return `<img src="${this.escapeHtml(this.userInfo.avatar_url)}" alt="Avatar">`;
+                                    } else {
+                                        return `<div class="avatar-placeholder">${this.escapeHtml(this.userName.charAt(0))}</div>`;
+                                    }
+                                })()}
+                            </div>
                             <span class="user-name">${this.escapeHtml(this.userName)}</span>
                             <div class="dropdown-arrow">▼</div>
                             
@@ -332,7 +360,6 @@ class HeaderComponent extends BaseComponent {
                 e.preventDefault();
                 e.stopPropagation();
                 // TODO: 实现搜索功能
-                console.log('搜索功能待实现');
                 userMenu.classList.remove('active');
             });
         }

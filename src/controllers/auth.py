@@ -87,7 +87,8 @@ async def login(
         "state": user.state,
         "role": "admin" if user.state == 10 else "user",
         "lastupdate": user.lastupdate,
-        "iplog": user.iplog
+        "iplog": user.iplog,
+        "avatar_url": f"/avatar/1/s_{user.id}.jpg"  # 添加头像路径
     }
     
     return LoginResponse(
