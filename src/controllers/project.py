@@ -320,4 +320,42 @@ async def get_project_stats(
         raise HTTPException(status_code=500, detail=f"获取项目统计信息失败: {str(e)}")
 
 
-
+@router.get("/projects/user/{user_id}", response_model=Dict[str, Any])
+async def get_user_project(
+    user_id: int,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    根据用户ID获取用户的博客信息
+    
+    Args:
+        user_id: 用户ID
+        session: 数据库会话
+        
+    Returns:
+        Dict[str, Any]: 用户博客信息
+    """
+    project_repo = ProjectRepository(session)
+    
+    try:
+        # 根据用户ID查找项目
+        project = await project_repo.get_by_user_id_single(user_id)
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="用户博客不存在")
+        
+        return {
+            "id": project.id,
+            "name": project.name,
+            "comment": project.comment,
+            "recordcount": project.recordcount,
+            "accesscount": project.accesscount,
+            "userid": project.userid,
+            "createtime": project.createtime,
+            "updatetime": project.updatetime,
+            "commentcount": project.commentcount
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取用户博客信息失败: {str(e)}")

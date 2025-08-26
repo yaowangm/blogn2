@@ -326,9 +326,9 @@ class HeaderComponent extends BaseComponent {
                                     ${searchIcon}
                                     搜索
                                 </a>
-                                <a href="/user" class="dropdown-item">
+                                <a href="/profile" class="dropdown-item">
                                     ${userHomeIcon}
-                                    我的首页
+                                    个人资料
                                 </a>
                                 <div class="dropdown-divider"></div>
                                 <a href="#" class="dropdown-item" id="logoutMenuItem">

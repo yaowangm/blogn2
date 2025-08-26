@@ -50,9 +50,15 @@ class ProjectRepository:
         return result.first()
     
     async def get_by_user_id(self, user_id: int, limit: int = None) -> List[Project]:
-        """根据用户ID获取项目"""
+        """根据用户ID获取项目列表"""
         statement = select(Project).where(Project.userid == user_id)
         if limit:
             statement = statement.limit(limit)
         result = await self.session.exec(statement)
-        return result.all() 
+        return result.all()
+    
+    async def get_by_user_id_single(self, user_id: int) -> Optional[Project]:
+        """根据用户ID获取单个项目（一对一关系）"""
+        statement = select(Project).where(Project.userid == user_id)
+        result = await self.session.exec(statement)
+        return result.first() 

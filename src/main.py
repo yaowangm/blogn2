@@ -207,6 +207,22 @@ async def blog_page(project_id: int):
     return FileResponse("src/static/blog.html")
 
 
+@app.get("/profile")
+async def profile_page():
+    """
+    个人资料页面路由
+    
+    返回用户的个人资料页面HTML文件。
+    
+    Returns:
+        FileResponse: 个人资料页面HTML文件
+    """
+    return FileResponse("src/static/profile.html")
+
+
+
+
+
 @app.get("/article/{article_id}")
 async def article_page(article_id: int):
     """

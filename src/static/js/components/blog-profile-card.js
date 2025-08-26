@@ -26,6 +26,36 @@ class BlogProfileCard extends BaseComponent {
 
     async loadData() {
         if (!this.projectId) {
+            // 如果在个人资料页面，尝试获取当前用户的博客信息
+            if (window.location.pathname === '/profile') {
+                try {
+                    const userInfo = localStorage.getItem('user_info');
+                    if (userInfo) {
+                        const currentUser = JSON.parse(userInfo);
+                        const userId = currentUser.id;
+                        
+                        // 获取用户的博客信息
+                        const projectResponse = await fetch(`/api/projects/user/${userId}`);
+                        if (projectResponse.ok) {
+                            this.projectData = await projectResponse.json();
+                            this.projectId = this.projectData.id;
+                            
+                            // 获取用户信息
+                            const userResponse = await fetch(`/api/users/${userId}`);
+                            if (userResponse.ok) {
+                                this.userData = await userResponse.json();
+                            }
+                            
+                            this.loading = false;
+                            this.render();
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading user blog data:', error);
+                }
+            }
+            
             // 如果在文章页面，尝试从文章ID获取项目ID
             if (this.isArticlePage()) {
                 const articleId = this.getArticleId();
