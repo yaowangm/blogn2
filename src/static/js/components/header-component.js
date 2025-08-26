@@ -245,6 +245,26 @@ class HeaderComponent extends BaseComponent {
     }
 
     setupLoginModal() {
+        // 检查 login-modal 组件是否已定义
+        if (!customElements.get('login-modal')) {
+            // 如果组件未定义，动态加载脚本
+            const script = document.createElement('script');
+            script.src = '/static/js/components/login-modal.js';
+            script.onload = () => {
+                // 脚本加载完成后创建模态框
+                this.createLoginModal();
+            };
+            script.onerror = () => {
+                console.error('Failed to load login-modal.js');
+            };
+            document.head.appendChild(script);
+        } else {
+            // 如果组件已定义，直接创建模态框
+            this.createLoginModal();
+        }
+    }
+
+    createLoginModal() {
         // 创建登录模态框
         this.loginModal = document.createElement('login-modal');
         document.body.appendChild(this.loginModal);
@@ -286,7 +306,17 @@ class HeaderComponent extends BaseComponent {
     }
 
     showLoginModal() {
-        if (this.loginModal) {
+        if (!this.loginModal) {
+            // 如果模态框未初始化，先初始化
+            this.setupLoginModal();
+            // 等待一小段时间让脚本加载完成
+            setTimeout(() => {
+                if (this.loginModal) {
+                    const returnUrl = window.location.pathname + window.location.search;
+                    this.loginModal.show(returnUrl);
+                }
+            }, 100);
+        } else {
             // 传递当前页面URL作为返回地址
             const returnUrl = window.location.pathname + window.location.search;
             this.loginModal.show(returnUrl);
