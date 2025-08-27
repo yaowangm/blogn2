@@ -67,7 +67,7 @@ async def get_user_count(
     count = await user_service.get_user_count()
     return {"count": count}
 
-@router.get("/users/{user_id}", response_model=Dict[str, Any])
+@router.get("/users/{user_id}", response_model=User)
 @handle_api_errors("获取用户信息失败")
 @cache_user_profile()  # 使用默认缓存时间
 async def get_user_by_id(
@@ -80,8 +80,7 @@ async def get_user_by_id(
     
     权限控制：
     - 如果查看自己的资料，返回完整信息
-    - 如果查看其他用户的资料，返回公开信息，敏感字段标记为"无权限查看"
-    - 管理员可查看任何用户的完整信息
+    - 如果查看其他用户的资料，只返回公开信息（隐藏敏感字段）
     
     Args:
         user_id: 用户ID
@@ -89,7 +88,7 @@ async def get_user_by_id(
         current_user: 当前登录用户信息（可选）
         
     Returns:
-        Dict[str, Any]: 包含用户信息和权限标记的字典
+        User: 用户信息
         
     Raises:
         HTTPException: 当用户不存在时抛出404错误
@@ -100,30 +99,22 @@ async def get_user_by_id(
     
     # 检查权限：如果是查看自己的资料或者是管理员，返回完整信息
     if current_user and (current_user["id"] == user_id or current_user["role"] == "admin"):
-        # 有完整权限，返回所有字段
-        return {
-            "id": user.id,
-            "name": user.name,
-            "email": user.email,
-            "password": user.password,
-            "state": user.state,
-            "regtime": user.regtime,
-            "iplog": user.iplog,
-            "point": user.point,
-            "projectid": user.projectid,
-            "lastupdate": user.lastupdate,
-            "intropiid": user.intropiid
-        }
+        return user
     
-    # 查看其他用户的资料，返回公开信息（不包含敏感字段）
-    return {
-        "id": user.id,
-        "name": user.name,
-        "state": user.state,
-        "regtime": user.regtime,
-        "point": user.point,
-        "projectid": user.projectid,
-        "lastupdate": user.lastupdate,
-        "intropiid": user.intropiid
-        # 注意：不包含 email, iplog, password 字段
-    } 
+    # 查看其他用户的资料，返回公开信息（隐藏敏感字段）
+    # 创建用户对象的副本，隐藏敏感信息
+    public_user = User(
+        id=user.id,
+        name=user.name,
+        email=None,  # 隐藏邮箱
+        password="",  # 清空密码
+        state=user.state,
+        regtime=user.regtime,
+        iplog=None,  # 隐藏IP日志
+        point=user.point,
+        projectid=user.projectid,
+        lastupdate=user.lastupdate,
+        intropiid=user.intropiid
+    )
+    
+    return public_user 

@@ -223,7 +223,7 @@ class UserProfileCard extends BaseComponent {
 
                 <div class="profile-item">
                     <span class="profile-label">电子邮件</span>
-                    <span class="profile-value">${this.userData.email ? this.escapeHtml(this.userData.email) : '未设置'}</span>
+                    <span class="profile-value">${this.userData.hasOwnProperty('email') ? (this.userData.email ? this.escapeHtml(this.userData.email) : '未设置') : '无权限查看'}</span>
                 </div>
 
                 <div class="profile-item">
@@ -240,7 +240,7 @@ class UserProfileCard extends BaseComponent {
 
                 <div class="profile-item">
                     <span class="profile-label">最后登录IP</span>
-                    <span class="profile-value">${this.userData.iplog ? this.escapeHtml(this.userData.iplog) : '未知'}</span>
+                    <span class="profile-value">${this.userData.hasOwnProperty('iplog') ? (this.userData.iplog ? this.escapeHtml(this.userData.iplog) : '未知') : '无权限查看'}</span>
                 </div>
 
                 <div class="profile-item">
