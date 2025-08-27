@@ -91,6 +91,64 @@ class UserProfileCard extends BaseComponent {
         }
     }
 
+    /**
+     * 获取电子邮件显示文本
+     * 区分"权限不够"和"根本没有设置"两种情况
+     */
+    getEmailDisplay() {
+        // 检查当前用户是否有权限查看此字段
+        const currentUserInfo = localStorage.getItem('user_info');
+        if (currentUserInfo) {
+            try {
+                const currentUser = JSON.parse(currentUserInfo);
+                // 如果是查看自己的资料，应该有权限看到所有字段
+                if (currentUser.id === this.userData.id) {
+                    return this.userData.email ? this.escapeHtml(this.userData.email) : '未设置';
+                }
+            } catch (error) {
+                console.error('解析当前用户信息失败:', error);
+            }
+        }
+        
+        // 查看他人资料或未登录，根据返回的数据判断
+        if (this.userData.email === null) {
+            return '未显示'; // 权限不够，字段被隐藏
+        } else if (this.userData.email === '') {
+            return '未设置'; // 字段为空字符串，表示没有设置
+        } else {
+            return this.escapeHtml(this.userData.email); // 有数据，正常显示
+        }
+    }
+
+    /**
+     * 获取最后登录IP显示文本
+     * 区分"权限不够"和"根本没有设置"两种情况
+     */
+    getIplogDisplay() {
+        // 检查当前用户是否有权限查看此字段
+        const currentUserInfo = localStorage.getItem('user_info');
+        if (currentUserInfo) {
+            try {
+                const currentUser = JSON.parse(currentUserInfo);
+                // 如果是查看自己的资料，应该有权限看到所有字段
+                if (currentUser.id === this.userData.id) {
+                    return this.userData.iplog ? this.escapeHtml(this.userData.iplog) : '未知';
+                }
+            } catch (error) {
+                console.error('解析当前用户信息失败:', error);
+            }
+        }
+        
+        // 查看他人资料或未登录，根据返回的数据判断
+        if (this.userData.iplog === null) {
+            return '未显示'; // 权限不够，字段被隐藏
+        } else if (this.userData.iplog === '') {
+            return '未知'; // 字段为空字符串，表示没有设置
+        } else {
+            return this.escapeHtml(this.userData.iplog); // 有数据，正常显示
+        }
+    }
+
     formatDateTime(dateString) {
         if (!dateString) return '未设置';
         const date = new Date(dateString);
@@ -220,7 +278,7 @@ class UserProfileCard extends BaseComponent {
 
                 <div class="profile-item">
                     <span class="profile-label">电子邮件</span>
-                    <span class="profile-value">${this.userData.email ? this.escapeHtml(this.userData.email) : '未设置'}</span>
+                    <span class="profile-value">${this.getEmailDisplay()}</span>
                 </div>
 
                 <div class="profile-item">
@@ -237,7 +295,7 @@ class UserProfileCard extends BaseComponent {
 
                 <div class="profile-item">
                     <span class="profile-label">最后登录IP</span>
-                    <span class="profile-value">${this.userData.iplog ? this.escapeHtml(this.userData.iplog) : '未知'}</span>
+                    <span class="profile-value">${this.getIplogDisplay()}</span>
                 </div>
 
                 <div class="profile-item">
