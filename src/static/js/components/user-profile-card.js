@@ -129,6 +129,7 @@ class UserProfileCard extends BaseComponent {
                 .card-header {
                     display: flex;
                     align-items: center;
+                    justify-content: space-between;
                     gap: var(--spacing-3);
                     margin-bottom: var(--card-content-gap);
                     padding-bottom: var(--spacing-4);
@@ -140,6 +141,42 @@ class UserProfileCard extends BaseComponent {
                     font-weight: var(--card-title-weight);
                     color: var(--card-title-color);
                     margin: 0;
+                }
+                
+                .card-actions {
+                    display: flex;
+                    gap: var(--spacing-2);
+                }
+                
+                .btn {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                    padding: var(--spacing-2) var(--spacing-3);
+                    font-size: var(--font-size-sm);
+                    font-weight: 500;
+                    border-radius: var(--radius-md);
+                    border: 1px solid transparent;
+                    cursor: pointer;
+                    transition: all var(--transition-fast);
+                    text-decoration: none;
+                    line-height: 1;
+                }
+                
+                .btn-warning {
+                    background-color: var(--warning-color, #f59e0b);
+                    color: white;
+                    border-color: var(--warning-color, #f59e0b);
+                }
+                
+                .btn-warning:hover {
+                    background-color: var(--warning-hover, #d97706);
+                    border-color: var(--warning-hover, #d97706);
+                }
+                
+                .btn:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
                 }
                 
                 .profile-grid {
@@ -209,10 +246,117 @@ class UserProfileCard extends BaseComponent {
                 .error {
                     color: var(--error-color);
                 }
+                
+                .reset-password-modal {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: none;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                }
+                
+                .reset-password-modal.show {
+                    display: flex;
+                }
+                
+                .reset-password-content {
+                    background: white;
+                    padding: var(--spacing-6);
+                    border-radius: var(--radius-lg);
+                    box-shadow: var(--shadow-xl);
+                    max-width: 400px;
+                    width: 90%;
+                }
+                
+                .reset-password-title {
+                    font-size: var(--font-size-lg);
+                    font-weight: 600;
+                    margin-bottom: var(--spacing-4);
+                    color: var(--gray-900);
+                }
+                
+                .reset-password-form {
+                    display: flex;
+                    flex-direction: column;
+                    gap: var(--spacing-4);
+                }
+                
+                .form-group {
+                    display: flex;
+                    flex-direction: column;
+                    gap: var(--spacing-2);
+                }
+                
+                .form-label {
+                    font-weight: 500;
+                    color: var(--gray-700);
+                    font-size: var(--font-size-sm);
+                }
+                
+                .form-input {
+                    padding: var(--spacing-3);
+                    border: 1px solid var(--gray-300);
+                    border-radius: var(--radius-md);
+                    font-size: var(--font-size-sm);
+                    transition: border-color var(--transition-fast);
+                }
+                
+                .form-input:focus {
+                    outline: none;
+                    border-color: var(--primary-color);
+                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                }
+                
+                .reset-password-actions {
+                    display: flex;
+                    gap: var(--spacing-3);
+                    justify-content: flex-end;
+                    margin-top: var(--spacing-4);
+                }
+                
+                .btn-secondary {
+                    background-color: var(--gray-100);
+                    color: var(--gray-700);
+                    border-color: var(--gray-300);
+                }
+                
+                .btn-secondary:hover {
+                    background-color: var(--gray-200);
+                    border-color: var(--gray-400);
+                }
+                
+                .btn-danger {
+                    background-color: var(--error-color, #ef4444);
+                    color: white;
+                    border-color: var(--error-color, #ef4444);
+                }
+                
+                .btn-danger:hover {
+                    background-color: var(--error-hover, #dc2626);
+                    border-color: var(--error-hover, #dc2626);
+                }
             </style>
             
             <div class="card-header">
                 <h2 class="card-title">个人资料</h2>
+                ${this.canResetPassword() ? `
+                    <div class="card-actions">
+                        <button class="btn btn-warning" id="resetPasswordBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                                <path d="M21 3v5h-5"></path>
+                                <path d="M21 12a9 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                                <path d="M3 21v-5h5"></path>
+                            </svg>
+                            重置密码
+                        </button>
+                    </div>
+                ` : ''}
             </div>
 
             <div class="profile-grid">
@@ -263,7 +407,231 @@ class UserProfileCard extends BaseComponent {
                     </span>
                 </div>
             </div>
+            
+            <!-- 重置密码模态框 -->
+            <div class="reset-password-modal" id="resetPasswordModal">
+                <div class="reset-password-content">
+                    <h3 class="reset-password-title">重置密码</h3>
+                    <form class="reset-password-form" id="resetPasswordForm">
+                        <div class="form-group">
+                            <label class="form-label" for="newPassword">新密码</label>
+                            <input type="password" id="newPassword" class="form-input" required minlength="6" placeholder="请输入新密码">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="confirmPassword">确认密码</label>
+                            <input type="password" id="confirmPassword" class="form-input" required minlength="6" placeholder="请再次输入新密码">
+                        </div>
+                        <div class="reset-password-actions">
+                            <button type="button" class="btn btn-secondary" id="cancelResetBtn">取消</button>
+                            <button type="submit" class="btn btn-danger" id="confirmResetBtn">确认重置</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         `;
+
+        // 添加事件监听器
+        this.addEventListeners();
+    }
+
+    /**
+     * 检查当前用户是否有权限重置密码
+     */
+    canResetPassword() {
+        try {
+            // 获取当前登录用户信息
+            const userInfo = localStorage.getItem('user_info');
+            if (!userInfo) return false;
+            
+            const currentUser = JSON.parse(userInfo);
+            
+            // 管理员可以重置任何用户的密码
+            if (currentUser.state === 10) return true;
+            
+            // 普通用户只能重置自己的密码
+            if (currentUser.state === 1 && currentUser.id === this.userData.id) return true;
+            
+            return false;
+        } catch (error) {
+            console.error('检查重置密码权限失败:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 添加事件监听器
+     */
+    addEventListeners() {
+        // 重置密码按钮
+        const resetPasswordBtn = this.shadowRoot.querySelector('#resetPasswordBtn');
+        if (resetPasswordBtn) {
+            resetPasswordBtn.addEventListener('click', () => {
+                this.showResetPasswordModal();
+            });
+        }
+
+        // 取消重置密码
+        const cancelResetBtn = this.shadowRoot.querySelector('#cancelResetBtn');
+        if (cancelResetBtn) {
+            cancelResetBtn.addEventListener('click', () => {
+                this.hideResetPasswordModal();
+            });
+        }
+
+        // 确认重置密码
+        const resetPasswordForm = this.shadowRoot.querySelector('#resetPasswordForm');
+        if (resetPasswordForm) {
+            resetPasswordForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleResetPassword();
+            });
+        }
+
+        // 点击模态框外部关闭
+        const modal = this.shadowRoot.querySelector('#resetPasswordModal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    this.hideResetPasswordModal();
+                }
+            });
+        }
+    }
+
+    /**
+     * 显示重置密码模态框
+     */
+    showResetPasswordModal() {
+        const modal = this.shadowRoot.querySelector('#resetPasswordModal');
+        if (modal) {
+            modal.classList.add('show');
+            // 聚焦到第一个输入框
+            const firstInput = modal.querySelector('#newPassword');
+            if (firstInput) {
+                firstInput.focus();
+            }
+        }
+    }
+
+    /**
+     * 隐藏重置密码模态框
+     */
+    hideResetPasswordModal() {
+        const modal = this.shadowRoot.querySelector('#resetPasswordModal');
+        if (modal) {
+            modal.classList.remove('show');
+            // 清空表单
+            const form = modal.querySelector('#resetPasswordForm');
+            if (form) {
+                form.reset();
+            }
+        }
+    }
+
+    /**
+     * 处理重置密码
+     */
+    async handleResetPassword() {
+        const newPassword = this.shadowRoot.querySelector('#newPassword').value;
+        const confirmPassword = this.shadowRoot.querySelector('#confirmPassword').value;
+
+        // 验证密码
+        if (newPassword.length < 6) {
+            this.showResetPasswordError('密码长度至少6位');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            this.showResetPasswordError('两次输入的密码不一致');
+            return;
+        }
+
+        try {
+            // 获取当前用户token
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                this.showResetPasswordError('请先登录');
+                return;
+            }
+
+            // 调用重置密码API
+            const response = await fetch(`/api/users/${this.userData.id}/reset-password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    new_password: newPassword
+                })
+            });
+
+            if (response.ok) {
+                this.showResetPasswordSuccess('密码重置成功！');
+                this.hideResetPasswordModal();
+            } else {
+                const errorData = await response.json();
+                this.showResetPasswordError(errorData.detail || '密码重置失败');
+            }
+        } catch (error) {
+            console.error('重置密码失败:', error);
+            this.showResetPasswordError('网络错误，请稍后重试');
+        }
+    }
+
+    /**
+     * 显示重置密码错误信息
+     */
+    showResetPasswordError(message) {
+        // 在模态框中显示错误信息
+        const modal = this.shadowRoot.querySelector('#resetPasswordModal');
+        if (modal) {
+            let errorDiv = modal.querySelector('.reset-password-error');
+            if (!errorDiv) {
+                errorDiv = document.createElement('div');
+                errorDiv.className = 'reset-password-error';
+                errorDiv.style.cssText = `
+                    color: var(--error-color, #ef4444);
+                    font-size: var(--font-size-sm);
+                    margin-top: var(--spacing-2);
+                    text-align: center;
+                `;
+                const form = modal.querySelector('#resetPasswordForm');
+                if (form) {
+                    form.insertBefore(errorDiv, form.querySelector('.reset-password-actions'));
+                }
+            }
+            errorDiv.textContent = message;
+        }
+    }
+
+    /**
+     * 显示重置密码成功信息
+     */
+    showResetPasswordSuccess(message) {
+        // 显示全局成功提示
+        const successDiv = document.createElement('div');
+        successDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1001;
+            font-size: 14px;
+        `;
+        successDiv.textContent = message;
+        
+        document.body.appendChild(successDiv);
+        
+        setTimeout(() => {
+            if (successDiv.parentNode) {
+                successDiv.parentNode.removeChild(successDiv);
+            }
+        }, 3000);
     }
 
     showError(message) {

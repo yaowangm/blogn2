@@ -66,4 +66,32 @@ class UserRepository:
             .limit(limit)
         )
         result = await self.session.exec(statement)
-        return [{"id": user.id, "name": user.name, "point": user.point or 0, "regtime": user.regtime} for user in result.all()] 
+        return [{"id": user.id, "name": user.name, "point": user.point or 0, "regtime": user.regtime} for user in result.all()]
+    
+    async def update_password(self, user_id: int, new_password: str) -> bool:
+        """
+        更新用户密码
+        
+        Args:
+            user_id: 用户ID
+            new_password: 新密码
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        try:
+            # 获取用户
+            user = await self.get_by_id(user_id)
+            if not user:
+                return False
+            
+            # 更新密码
+            user.password = new_password
+            await self.session.commit()
+            
+            return True
+            
+        except Exception as e:
+            await self.session.rollback()
+            print(f"更新密码失败: {e}")
+            return False 

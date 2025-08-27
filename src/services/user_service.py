@@ -1,6 +1,7 @@
 from typing import List, Optional, Dict, Any
 from src.repositories.user_repository import UserRepository
 from src.database import User
+from src.services.auth_service import AuthService
 
 class UserService:
     """用户业务逻辑服务类
@@ -56,3 +57,37 @@ class UserService:
                 for user in recent_users
             ]
         } 
+    
+    async def reset_user_password(self, user_id: int, new_password: str) -> bool:
+        """
+        重置用户密码
+        
+        Args:
+            user_id: 用户ID
+            new_password: 新密码
+            
+        Returns:
+            bool: 重置是否成功
+            
+        Raises:
+            Exception: 当重置失败时
+        """
+        try:
+            # 获取用户
+            user = await self.user_repo.get_by_id(user_id)
+            if not user:
+                raise Exception("用户不存在")
+            
+            # 使用正确的双重哈希处理密码
+            auth_service = AuthService(self.user_repo, "dummy_secret")  # 临时创建，只用于哈希
+            hashed_password = auth_service.hash_password(new_password)
+            
+            # 更新密码
+            success = await self.user_repo.update_password(user_id, hashed_password)
+            if not success:
+                raise Exception("密码更新失败")
+            
+            return True
+            
+        except Exception as e:
+            raise Exception(f"重置密码失败: {str(e)}") 

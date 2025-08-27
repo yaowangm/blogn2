@@ -129,4 +129,58 @@ async def get_user_by_id(
     # 添加权限信息到返回数据
     filtered_data["permissions"] = permissions
     
-    return filtered_data 
+    return filtered_data
+
+@router.post("/users/{user_id}/reset-password")
+@handle_api_errors("重置密码失败")
+async def reset_user_password(
+    user_id: int,
+    password_data: Dict[str, str],
+    user_service: UserService = Depends(get_user_service),
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
+):
+    """
+    重置用户密码
+    
+    权限控制：
+    - 管理员可以重置任何用户的密码
+    - 普通用户只能重置自己的密码
+    
+    Args:
+        user_id: 要重置密码的用户ID
+        password_data: 包含新密码的数据 {"new_password": "新密码"}
+        user_service: 用户服务实例
+        current_user: 当前登录用户信息
+        
+    Returns:
+        Dict[str, str]: 重置结果
+        
+    Raises:
+        HTTPException: 当无权限或用户不存在时
+    """
+    # 检查权限
+    if not current_user:
+        raise HTTPException(status_code=401, detail="需要登录才能重置密码")
+    
+    # 检查目标用户是否存在
+    target_user = await user_service.get_user_by_id(user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    # 权限检查：管理员可以重置任何用户的密码，普通用户只能重置自己的密码
+    if current_user.get("state") != 10 and current_user.get("id") != user_id:
+        raise HTTPException(status_code=403, detail="无权限重置该用户的密码")
+    
+    # 验证新密码
+    new_password = password_data.get("new_password")
+    if not new_password or len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="新密码长度至少6位")
+    
+    try:
+        # 调用用户服务重置密码
+        await user_service.reset_user_password(user_id, new_password)
+        
+        return {"message": "密码重置成功"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"重置密码失败: {str(e)}") 
