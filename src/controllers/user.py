@@ -7,6 +7,7 @@ from src.utils.error_handlers import handle_api_errors
 from src.utils.dependencies import get_user_service
 from src.utils.auth_middleware import get_optional_current_user
 from src.utils.cache import cache_user_profile, cache_user_blogs, cache_user_summary, cache_user_count, cache_new_users
+from src.utils.permission_manager import permission_manager
 
 # 创建用户API路由器
 router = APIRouter()
@@ -100,10 +101,16 @@ async def get_user_by_id(
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
     
-    # 检查权限：如果是查看自己的资料或者是管理员，返回完整信息
-    if current_user and (current_user["id"] == user_id or current_user["role"] == "admin"):
-        # 有完整权限，返回所有字段
-        return {
+    # 使用权限管理器检查是否可以查看个人资料
+    if not permission_manager.can_view_profile(current_user, user_id, user.state):
+        raise HTTPException(status_code=403, detail="无权限查看该用户资料")
+    
+    # 获取权限配置
+    permissions = permission_manager.get_profile_data_permissions(current_user, user_id)
+    
+    # 使用权限管理器过滤数据
+    filtered_data = permission_manager.filter_profile_data(
+        {
             "id": user.id,
             "name": user.name,
             "email": user.email,
@@ -115,17 +122,11 @@ async def get_user_by_id(
             "projectid": user.projectid,
             "lastupdate": user.lastupdate,
             "intropiid": user.intropiid
-        }
+        },
+        permissions
+    )
     
-    # 查看其他用户的资料，返回公开信息（不包含敏感字段）
-    return {
-        "id": user.id,
-        "name": user.name,
-        "state": user.state,
-        "regtime": user.regtime,
-        "point": user.point,
-        "projectid": user.projectid,
-        "lastupdate": user.lastupdate,
-        "intropiid": user.intropiid
-        # 注意：不包含 email, iplog, password 字段
-    } 
+    # 添加权限信息到返回数据
+    filtered_data["permissions"] = permissions
+    
+    return filtered_data 
