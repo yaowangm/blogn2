@@ -208,12 +208,18 @@ async def blog_page(project_id: int):
 
 
 @app.get("/profile")
-async def profile_page():
+@app.get("/profile/{user_id}")
+async def profile_page(user_id: int = None):
     """
     个人资料页面路由
     
-    返回用户的个人资料页面HTML文件。
+    支持两种访问方式：
+    1. /profile - 显示当前登录用户的个人资料
+    2. /profile/{user_id} - 显示指定用户的个人资料
     
+    Args:
+        user_id: 用户ID，可选参数
+        
     Returns:
         FileResponse: 个人资料页面HTML文件
     """

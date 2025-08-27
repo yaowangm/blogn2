@@ -326,7 +326,7 @@ class HeaderComponent extends BaseComponent {
                                     ${searchIcon}
                                     搜索
                                 </a>
-                                <a href="/profile" class="dropdown-item">
+                                <a href="/profile" class="dropdown-item" id="profileMenuItem">
                                     ${userHomeIcon}
                                     个人资料
                                 </a>
@@ -372,6 +372,22 @@ class HeaderComponent extends BaseComponent {
                 e.preventDefault();
                 e.stopPropagation();
                 // TODO: 实现搜索功能
+                userMenu.classList.remove('active');
+            });
+        }
+
+        // 个人资料菜单项
+        const profileMenuItem = this.shadowRoot.querySelector('#profileMenuItem');
+        if (profileMenuItem) {
+            profileMenuItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // 跳转到当前用户的个人资料页面
+                if (this.userInfo && this.userInfo.id) {
+                    window.location.href = `/profile/${this.userInfo.id}`;
+                } else {
+                    window.location.href = '/profile';
+                }
                 userMenu.classList.remove('active');
             });
         }

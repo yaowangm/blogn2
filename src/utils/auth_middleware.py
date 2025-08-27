@@ -120,6 +120,49 @@ async def get_current_admin_user(
         )
     return current_user
 
+async def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    auth_service: AuthService = Depends(get_auth_service),
+    user_service: UserService = Depends(get_user_service)
+) -> Optional[Dict[str, Any]]:
+    """
+    获取可选的当前登录用户
+    
+    如果用户已登录，返回用户信息；如果未登录，返回None。
+    不会抛出异常，用于需要区分登录状态的场景。
+    
+    Args:
+        credentials: HTTP认证凭据
+        auth_service: 认证服务实例
+        user_service: 用户服务实例
+        
+    Returns:
+        Optional[Dict]: 当前用户信息，如果未登录则为None
+    """
+    try:
+        # 验证令牌
+        user_data = auth_service.get_user_from_token(credentials.credentials)
+        if not user_data:
+            return None
+        
+        # 获取用户详细信息
+        user = await user_service.get_user_by_id(user_data["user_id"])
+        if not user or user.state == 0:
+            return None
+        
+        return {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "state": user.state,
+            "role": "admin" if user.state == 10 else "user",
+            "lastupdate": user.lastupdate,
+            "iplog": user.iplog
+        }
+    except Exception:
+        # 任何错误都返回None，表示未登录
+        return None
+
 def require_auth(admin_only: bool = False):
     """
     认证装饰器

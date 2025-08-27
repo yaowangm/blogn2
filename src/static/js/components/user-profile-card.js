@@ -16,28 +16,33 @@ class UserProfileCard extends BaseComponent {
 
     async loadUserData() {
         try {
-            // 从localStorage获取当前用户信息
-            const userInfo = localStorage.getItem('user_info');
+            // 优先使用全局目标用户ID，如果没有则使用当前登录用户
+            let userId = window.targetUserId;
             
-            if (!userInfo) {
-                // 在开发环境中使用测试数据
-                this.userData = {
-                    id: 5503,
-                    name: 'hjy12227',
-                    email: '2465226798@qq.com',
-                    state: 1,
-                    regtime: '2016-12-19T19:15:33',
-                    iplog: '118.163.0.211',
-                    point: 0,
-                    lastupdate: '2025-08-25T21:03:11.511482',
-                    intropiid: 0
-                };
-                this.render();
-                return;
-            }
+            if (!userId) {
+                // 从localStorage获取当前用户信息
+                const userInfo = localStorage.getItem('user_info');
+                
+                if (!userInfo) {
+                    // 在开发环境中使用测试数据
+                    this.userData = {
+                        id: 5503,
+                        name: 'hjy12227',
+                        email: '2465226798@qq.com',
+                        state: 1,
+                        regtime: '2016-12-19T19:15:33',
+                        iplog: '118.163.0.211',
+                        point: 0,
+                        lastupdate: '2025-08-25T21:03:11.511482',
+                        intropiid: 0
+                    };
+                    this.render();
+                    return;
+                }
 
-            const currentUser = JSON.parse(userInfo);
-            const userId = currentUser.id;
+                const currentUser = JSON.parse(userInfo);
+                userId = currentUser.id;
+            }
 
             // 获取用户详细信息
             const userResponse = await fetch(`/api/users/${userId}`);
@@ -56,6 +61,11 @@ class UserProfileCard extends BaseComponent {
             }
 
             this.render();
+            
+            // 更新页面标题
+            if (this.userData && this.userData.name) {
+                document.title = `${this.userData.name}的个人资料 - BlogN2`;
+            }
         } catch (error) {
             console.error('加载用户数据失败:', error);
             this.showError('加载用户数据失败');
@@ -200,7 +210,7 @@ class UserProfileCard extends BaseComponent {
 
                 <div class="profile-item">
                     <span class="profile-label">电子邮件</span>
-                    <span class="profile-value">${this.escapeHtml(this.userData.email || '未设置')}</span>
+                    <span class="profile-value">${this.userData.email ? this.escapeHtml(this.userData.email) : '未设置'}</span>
                 </div>
 
                 <div class="profile-item">
@@ -217,7 +227,7 @@ class UserProfileCard extends BaseComponent {
 
                 <div class="profile-item">
                     <span class="profile-label">最后登录IP</span>
-                    <span class="profile-value">${this.escapeHtml(this.userData.iplog || '未知')}</span>
+                    <span class="profile-value">${this.userData.iplog ? this.escapeHtml(this.userData.iplog) : '未知'}</span>
                 </div>
 
                 <div class="profile-item">

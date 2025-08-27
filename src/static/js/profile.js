@@ -6,12 +6,48 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('个人资料页面加载完成');
     
-    // 检查用户登录状态
+    // 获取目标用户ID（从URL或当前登录用户）
+    const targetUserId = getTargetUserId();
+    
+    // 检查用户认证状态
     checkAuthStatus();
     
     // 初始化页面
-    initializePage();
+    initializePage(targetUserId);
 });
+
+/**
+ * 获取目标用户ID
+ * 从URL路径中提取用户ID，如果没有则返回当前登录用户的ID
+ * @returns {number|null} 目标用户ID
+ */
+function getTargetUserId() {
+    const pathSegments = window.location.pathname.split('/');
+    const profileIndex = pathSegments.indexOf('profile');
+    
+    if (profileIndex !== -1 && pathSegments[profileIndex + 1]) {
+        const userId = parseInt(pathSegments[profileIndex + 1]);
+        if (!isNaN(userId) && userId > 0) {
+            console.log('从URL获取到目标用户ID:', userId);
+            return userId;
+        }
+    }
+    
+    // 如果没有指定用户ID，则使用当前登录用户
+    const userInfo = localStorage.getItem('user_info');
+    if (userInfo) {
+        try {
+            const user = JSON.parse(userInfo);
+            console.log('使用当前登录用户ID:', user.id);
+            return user.id;
+        } catch (error) {
+            console.error('解析用户信息失败:', error);
+        }
+    }
+    
+    console.log('无法获取用户ID');
+    return null;
+}
 
 /**
  * 检查用户认证状态
@@ -43,10 +79,14 @@ function checkAuthStatus() {
 
 /**
  * 初始化页面
+ * @param {number} targetUserId - 目标用户ID
  */
-function initializePage() {
+function initializePage(targetUserId) {
     // 设置页面标题
     updatePageTitle();
+    
+    // 将目标用户ID存储到全局变量，供组件使用
+    window.targetUserId = targetUserId;
     
     // 添加页面加载完成事件
     window.addEventListener('load', function() {
@@ -58,13 +98,20 @@ function initializePage() {
  * 更新页面标题
  */
 function updatePageTitle() {
-    const userInfo = localStorage.getItem('user_info');
-    if (userInfo) {
-        try {
-            const user = JSON.parse(userInfo);
-            document.title = `${user.name}的个人资料 - BlogN2`;
-        } catch (error) {
-            console.error('更新页面标题失败:', error);
+    // 如果有目标用户ID，需要从API获取用户信息来设置标题
+    if (window.targetUserId) {
+        // 标题将在用户数据加载完成后更新
+        document.title = '个人资料 - BlogN2';
+    } else {
+        // 使用当前登录用户信息
+        const userInfo = localStorage.getItem('user_info');
+        if (userInfo) {
+            try {
+                const user = JSON.parse(userInfo);
+                document.title = `${user.name}的个人资料 - BlogN2`;
+            } catch (error) {
+                console.error('更新页面标题失败:', error);
+            }
         }
     }
 }

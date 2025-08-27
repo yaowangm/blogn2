@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from src.services.user_service import UserService
 from src.database import User
 from src.utils.error_handlers import handle_api_errors
 from src.utils.dependencies import get_user_service
+from src.utils.auth_middleware import get_optional_current_user
 from src.utils.cache import cache_user_profile, cache_user_blogs, cache_user_summary, cache_user_count, cache_new_users
 
 # 创建用户API路由器
@@ -71,14 +72,20 @@ async def get_user_count(
 @cache_user_profile()  # 使用默认缓存时间
 async def get_user_by_id(
     user_id: int,
-    user_service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
     """
     根据用户ID获取用户信息
     
+    权限控制：
+    - 如果查看自己的资料，返回完整信息
+    - 如果查看其他用户的资料，只返回公开信息（隐藏敏感字段）
+    
     Args:
         user_id: 用户ID
         user_service: 用户服务实例
+        current_user: 当前登录用户信息（可选）
         
     Returns:
         User: 用户信息
@@ -89,4 +96,25 @@ async def get_user_by_id(
     user = await user_service.get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
-    return user 
+    
+    # 检查权限：如果是查看自己的资料，返回完整信息
+    if current_user and current_user["id"] == user_id:
+        return user
+    
+    # 查看其他用户的资料，返回公开信息（隐藏敏感字段）
+    # 创建用户对象的副本，隐藏敏感信息
+    public_user = User(
+        id=user.id,
+        name=user.name,
+        email=None,  # 隐藏邮箱
+        password="",  # 清空密码
+        state=user.state,
+        regtime=user.regtime,
+        iplog=None,  # 隐藏IP日志
+        point=user.point,
+        projectid=user.projectid,
+        lastupdate=user.lastupdate,
+        intropiid=user.intropiid
+    )
+    
+    return public_user 

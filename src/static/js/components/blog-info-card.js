@@ -15,28 +15,33 @@ class BlogInfoCard extends BaseComponent {
 
     async loadBlogData() {
         try {
-            // 从localStorage获取当前用户信息
-            const userInfo = localStorage.getItem('user_info');
+            // 优先使用全局目标用户ID，如果没有则使用当前登录用户
+            let userId = window.targetUserId;
             
-            if (!userInfo) {
-                // 在开发环境中使用测试数据
-                this.blogData = {
-                    id: 162,
-                    name: '各路资源',
-                    comment: '你不知道的，我这里都有',
-                    recordcount: 0,
-                    accesscount: 78329,
-                    userid: 5503,
-                    createtime: '2016-08-19T19:16:09',
-                    updatetime: '2016-08-19T19:16:09',
-                    commentcount: 0
-                };
-                this.render();
-                return;
-            }
+            if (!userId) {
+                // 从localStorage获取当前用户信息
+                const userInfo = localStorage.getItem('user_info');
+                
+                if (!userInfo) {
+                    // 在开发环境中使用测试数据
+                    this.blogData = {
+                        id: 162,
+                        name: '各路资源',
+                        comment: '你不知道的，我这里都有',
+                        recordcount: 0,
+                        accesscount: 78329,
+                        userid: 5503,
+                        createtime: '2016-08-19T19:16:09',
+                        updatetime: '2016-08-19T19:16:09',
+                        commentcount: 0
+                    };
+                    this.render();
+                    return;
+                }
 
-            const currentUser = JSON.parse(userInfo);
-            const userId = currentUser.id;
+                const currentUser = JSON.parse(userInfo);
+                userId = currentUser.id;
+            }
 
             // 获取用户的博客信息
             const response = await fetch(`/api/projects/user/${userId}`);

@@ -26,14 +26,22 @@ class BlogProfileCard extends BaseComponent {
 
     async loadData() {
         if (!this.projectId) {
-            // 如果在个人资料页面，尝试获取当前用户的博客信息
-            if (window.location.pathname === '/profile') {
+            // 如果在个人资料页面，尝试获取目标用户的博客信息
+            if (window.location.pathname.startsWith('/profile')) {
                 try {
-                    const userInfo = localStorage.getItem('user_info');
-                    if (userInfo) {
-                        const currentUser = JSON.parse(userInfo);
-                        const userId = currentUser.id;
-                        
+                    // 优先使用全局目标用户ID
+                    let userId = window.targetUserId;
+                    
+                    if (!userId) {
+                        // 如果没有目标用户ID，使用当前登录用户
+                        const userInfo = localStorage.getItem('user_info');
+                        if (userInfo) {
+                            const currentUser = JSON.parse(userInfo);
+                            userId = currentUser.id;
+                        }
+                    }
+                    
+                    if (userId) {
                         // 获取用户的博客信息
                         const projectResponse = await fetch(`/api/projects/user/${userId}`);
                         if (projectResponse.ok) {
