@@ -101,8 +101,8 @@ class UserProfileCard extends BaseComponent {
         if (currentUserInfo) {
             try {
                 const currentUser = JSON.parse(currentUserInfo);
-                // 如果是查看自己的资料，应该有权限看到所有字段
-                if (currentUser.id === this.userData.id) {
+                // 如果是查看自己的资料或者是管理员，应该有权限看到所有字段
+                if (currentUser.id === this.userData.id || currentUser.role === 'admin') {
                     return this.userData.email ? this.escapeHtml(this.userData.email) : '未设置';
                 }
             } catch (error) {
@@ -130,8 +130,8 @@ class UserProfileCard extends BaseComponent {
         if (currentUserInfo) {
             try {
                 const currentUser = JSON.parse(currentUserInfo);
-                // 如果是查看自己的资料，应该有权限看到所有字段
-                if (currentUser.id === this.userData.id) {
+                // 如果是查看自己的资料或者是管理员，应该有权限看到所有字段
+                if (currentUser.id === this.userData.id || currentUser.role === 'admin') {
                     return this.userData.iplog ? this.escapeHtml(this.userData.iplog) : '未知';
                 }
             } catch (error) {

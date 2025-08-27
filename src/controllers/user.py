@@ -97,8 +97,8 @@ async def get_user_by_id(
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
     
-    # 检查权限：如果是查看自己的资料，返回完整信息
-    if current_user and current_user["id"] == user_id:
+    # 检查权限：如果是查看自己的资料或者是管理员，返回完整信息
+    if current_user and (current_user["id"] == user_id or current_user["role"] == "admin"):
         return user
     
     # 查看其他用户的资料，返回公开信息（隐藏敏感字段）
