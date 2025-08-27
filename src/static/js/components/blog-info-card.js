@@ -7,7 +7,22 @@ class BlogInfoCard extends BaseComponent {
     async connectedCallback() {
         try {
             this.render();
-            await this.loadBlogData();
+            
+            // 如果在个人资料页面，等待targetUserIdReady事件
+            if (window.location.pathname.startsWith('/profile')) {
+                if (window.targetUserId) {
+                    // 如果已经有targetUserId，直接加载数据
+                    await this.loadBlogData();
+                } else {
+                    // 等待targetUserIdReady事件
+                    window.addEventListener('targetUserIdReady', async (event) => {
+                        await this.loadBlogData();
+                    }, { once: true });
+                }
+            } else {
+                // 不在个人资料页面，直接加载数据
+                await this.loadBlogData();
+            }
         } catch (error) {
             console.error('BlogInfoCard connectedCallback 错误:', error);
         }
@@ -23,19 +38,8 @@ class BlogInfoCard extends BaseComponent {
                 const userInfo = localStorage.getItem('user_info');
                 
                 if (!userInfo) {
-                    // 在开发环境中使用测试数据
-                    this.blogData = {
-                        id: 162,
-                        name: '各路资源',
-                        comment: '你不知道的，我这里都有',
-                        recordcount: 0,
-                        accesscount: 78329,
-                        userid: 5503,
-                        createtime: '2016-08-19T19:16:09',
-                        updatetime: '2016-08-19T19:16:09',
-                        commentcount: 0
-                    };
-                    this.render();
+                    // 如果没有目标用户ID且未登录，显示错误
+                    this.showError('无法获取用户ID');
                     return;
                 }
 

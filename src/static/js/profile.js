@@ -4,8 +4,6 @@
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('个人资料页面加载完成');
-    
     // 获取目标用户ID（从URL或当前登录用户）
     const targetUserId = getTargetUserId();
     
@@ -28,7 +26,6 @@ function getTargetUserId() {
     if (profileIndex !== -1 && pathSegments[profileIndex + 1]) {
         const userId = parseInt(pathSegments[profileIndex + 1]);
         if (!isNaN(userId) && userId > 0) {
-            console.log('从URL获取到目标用户ID:', userId);
             return userId;
         }
     }
@@ -38,14 +35,12 @@ function getTargetUserId() {
     if (userInfo) {
         try {
             const user = JSON.parse(userInfo);
-            console.log('使用当前登录用户ID:', user.id);
             return user.id;
         } catch (error) {
             console.error('解析用户信息失败:', error);
         }
     }
     
-    console.log('无法获取用户ID');
     return null;
 }
 
@@ -57,23 +52,16 @@ function checkAuthStatus() {
     const userInfo = localStorage.getItem('user_info');
     
     if (!token || !userInfo) {
-        // 用户未登录，在开发环境中使用测试数据
-        console.log('用户未登录，使用测试数据');
-        // 为了测试，我们可以设置一些测试数据
-        // 在实际生产环境中，这里应该重定向到登录页面
-        // window.location.href = '/';
+        // 用户未登录，这是正常情况，不需要特殊处理
         return;
     }
     
     try {
         const user = JSON.parse(userInfo);
-        console.log('当前用户:', user.name);
     } catch (error) {
         console.error('解析用户信息失败:', error);
         localStorage.removeItem('access_token');
         localStorage.removeItem('user_info');
-        // 在开发环境中不重定向
-        // window.location.href = '/';
     }
 }
 
@@ -88,9 +76,14 @@ function initializePage(targetUserId) {
     // 将目标用户ID存储到全局变量，供组件使用
     window.targetUserId = targetUserId;
     
+    // 触发自定义事件，通知组件可以开始加载数据
+    window.dispatchEvent(new CustomEvent('targetUserIdReady', { 
+        detail: { userId: targetUserId } 
+    }));
+    
     // 添加页面加载完成事件
     window.addEventListener('load', function() {
-        console.log('页面所有资源加载完成');
+        // 页面加载完成
     });
 }
 

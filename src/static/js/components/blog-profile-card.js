@@ -14,7 +14,22 @@ class BlogProfileCard extends BaseComponent {
     connectedCallback() {
         this.projectId = this.getProjectIdFromUrl();
         this.render();
-        this.loadData();
+        
+        // 如果在个人资料页面，等待targetUserIdReady事件
+        if (window.location.pathname.startsWith('/profile')) {
+            if (window.targetUserId) {
+                // 如果已经有targetUserId，直接加载数据
+                this.loadData();
+            } else {
+                // 等待targetUserIdReady事件
+                window.addEventListener('targetUserIdReady', (event) => {
+                    this.loadData();
+                }, { once: true });
+            }
+        } else {
+            // 不在个人资料页面，直接加载数据
+            this.loadData();
+        }
     }
 
     getProjectIdFromUrl() {
@@ -57,10 +72,18 @@ class BlogProfileCard extends BaseComponent {
                             this.loading = false;
                             this.render();
                             return;
+                        } else {
+                            this.showError(`获取用户博客信息失败: ${projectResponse.status}`);
+                            return;
                         }
+                    } else {
+                        this.showError('无法获取用户ID');
+                        return;
                     }
                 } catch (error) {
                     console.error('Error loading user blog data:', error);
+                    this.showError('加载用户博客数据失败');
+                    return;
                 }
             }
             

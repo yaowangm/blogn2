@@ -8,7 +8,22 @@ class UserProfileCard extends BaseComponent {
     async connectedCallback() {
         try {
             this.render();
-            await this.loadUserData();
+            
+            // 如果在个人资料页面，等待targetUserIdReady事件
+            if (window.location.pathname.startsWith('/profile')) {
+                if (window.targetUserId) {
+                    // 如果已经有targetUserId，直接加载数据
+                    await this.loadUserData();
+                } else {
+                    // 等待targetUserIdReady事件
+                    window.addEventListener('targetUserIdReady', async (event) => {
+                        await this.loadUserData();
+                    }, { once: true });
+                }
+            } else {
+                // 不在个人资料页面，直接加载数据
+                await this.loadUserData();
+            }
         } catch (error) {
             console.error('UserProfileCard connectedCallback 错误:', error);
         }
@@ -24,19 +39,8 @@ class UserProfileCard extends BaseComponent {
                 const userInfo = localStorage.getItem('user_info');
                 
                 if (!userInfo) {
-                    // 在开发环境中使用测试数据
-                    this.userData = {
-                        id: 5503,
-                        name: 'hjy12227',
-                        email: '2465226798@qq.com',
-                        state: 1,
-                        regtime: '2016-12-19T19:15:33',
-                        iplog: '118.163.0.211',
-                        point: 0,
-                        lastupdate: '2025-08-25T21:03:11.511482',
-                        intropiid: 0
-                    };
-                    this.render();
+                    // 如果没有目标用户ID且未登录，显示错误
+                    this.showError('无法获取用户ID');
                     return;
                 }
 
