@@ -310,10 +310,17 @@ class HeaderComponent extends BaseComponent {
                         <div class="user-menu" id="userMenu">
                             <div class="user-avatar">
                                 ${(() => {
-                                    if (this.userInfo && this.userInfo.avatar_url) {
-                                        return `<img src="${this.escapeHtml(this.userInfo.avatar_url)}" alt="Avatar">`;
+                                    // 按照最新评论卡片的方式：同时渲染头像和用户名首字母
+                                    const hasAvatar = this.userInfo && this.userInfo.avatar_url && this.userInfo.avatar_url !== 'null' && this.userInfo.avatar_url !== '';
+                                    const firstChar = this.userName && this.userName.length > 0 ? this.userName.charAt(0).toUpperCase() : 'U';
+                                    
+                                    if (hasAvatar) {
+                                        // 有头像URL，显示头像，失败时显示用户名首字母
+                                        return `<img src="${this.escapeHtml(this.userInfo.avatar_url)}" alt="Avatar" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <div class="avatar-placeholder" style="display: none;">${this.escapeHtml(firstChar)}</div>`;
                                     } else {
-                                        return `<div class="avatar-placeholder">${this.escapeHtml(this.userName.charAt(0))}</div>`;
+                                        // 没有头像URL，直接显示用户名首字母
+                                        return `<div class="avatar-placeholder">${this.escapeHtml(firstChar)}</div>`;
                                     }
                                 })()}
                             </div>
@@ -452,7 +459,8 @@ class HeaderComponent extends BaseComponent {
             try {
                 this.userInfo = JSON.parse(userInfo);
                 this.isLoggedIn = true;
-                this.userName = this.userInfo.name;
+                // 清理用户名中的多余空格
+                this.userName = (this.userInfo.name || 'User').trim();
             } catch (error) {
                 console.error('Failed to parse user info:', error);
                 this.clearAuthData();
@@ -492,7 +500,8 @@ class HeaderComponent extends BaseComponent {
     async handleLoginSuccess(userData) {
         this.userInfo = userData;
         this.isLoggedIn = true;
-        this.userName = userData.name;
+        // 清理用户名中的多余空格
+        this.userName = (userData.name || 'User').trim();
         
         // 重新渲染组件
         this.render();
