@@ -67,7 +67,7 @@ async def get_user_count(
     count = await user_service.get_user_count()
     return {"count": count}
 
-@router.get("/users/{user_id}", response_model=User)
+@router.get("/users/{user_id}", response_model=Dict[str, Any])
 @handle_api_errors("获取用户信息失败")
 @cache_user_profile()  # 使用默认缓存时间
 async def get_user_by_id(
@@ -80,7 +80,8 @@ async def get_user_by_id(
     
     权限控制：
     - 如果查看自己的资料，返回完整信息
-    - 如果查看其他用户的资料，只返回公开信息（隐藏敏感字段）
+    - 如果查看其他用户的资料，返回公开信息，敏感字段标记为"无权限查看"
+    - 管理员可查看任何用户的完整信息
     
     Args:
         user_id: 用户ID
@@ -88,7 +89,7 @@ async def get_user_by_id(
         current_user: 当前登录用户信息（可选）
         
     Returns:
-        User: 用户信息
+        Dict[str, Any]: 包含用户信息和权限标记的字典
         
     Raises:
         HTTPException: 当用户不存在时抛出404错误
@@ -98,23 +99,39 @@ async def get_user_by_id(
         raise HTTPException(status_code=404, detail="用户不存在")
     
     # 检查权限：如果是查看自己的资料或者是管理员，返回完整信息
-    if current_user and (current_user["id"] == user_id or current_user["role"] == "admin"):
-        return user
+    has_full_access = current_user and (current_user["id"] == user_id or current_user["role"] == "admin")
     
-    # 查看其他用户的资料，返回公开信息（隐藏敏感字段）
-    # 创建用户对象的副本，隐藏敏感信息
-    public_user = User(
-        id=user.id,
-        name=user.name,
-        email=None,  # 隐藏邮箱
-        password="",  # 清空密码
-        state=user.state,
-        regtime=user.regtime,
-        iplog=None,  # 隐藏IP日志
-        point=user.point,
-        projectid=user.projectid,
-        lastupdate=user.lastupdate,
-        intropiid=user.intropiid
-    )
+    # 构建返回数据，包含权限标记
+    user_data = {
+        "id": user.id,
+        "name": user.name,
+        "state": user.state,
+        "regtime": user.regtime,
+        "point": user.point,
+        "projectid": user.projectid,
+        "lastupdate": user.lastupdate,
+        "intropiid": user.intropiid,
+        "permissions": {
+            "has_full_access": has_full_access,
+            "can_view_email": has_full_access,
+            "can_view_iplog": has_full_access,
+            "can_view_password": has_full_access
+        }
+    }
     
-    return public_user 
+    if has_full_access:
+        # 有完整权限，返回所有字段
+        user_data.update({
+            "email": user.email,
+            "iplog": user.iplog,
+            "password": user.password
+        })
+    else:
+        # 无完整权限，敏感字段标记为"无权限查看"
+        user_data.update({
+            "email": "无权限查看" if user.email else "未设置",
+            "iplog": "无权限查看" if user.iplog else "未设置",
+            "password": "无权限查看"
+        })
+    
+    return user_data 
