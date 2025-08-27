@@ -478,14 +478,14 @@ class UserProfileCard extends BaseComponent {
             });
         }
 
-        // 确认重置密码
-        const resetPasswordForm = this.shadowRoot.querySelector('#resetPasswordForm');
-        if (resetPasswordForm) {
-            resetPasswordForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.handleResetPassword();
-            });
-        }
+        // 确认重置密码 - 现在在showResetPasswordModal中动态绑定
+        // const resetPasswordForm = this.shadowRoot.querySelector('#resetPasswordForm');
+        // if (resetPasswordForm) {
+        //     resetPasswordForm.addEventListener('submit', (e) => {
+        //         e.preventDefault();
+        //         this.handleResetPassword();
+        //     });
+        // }
 
         // 点击模态框外部关闭
         const modal = this.shadowRoot.querySelector('#resetPasswordModal');
@@ -505,6 +505,25 @@ class UserProfileCard extends BaseComponent {
         const modal = this.shadowRoot.querySelector('#resetPasswordModal');
         if (modal) {
             modal.classList.add('show');
+            // 清除之前的错误信息
+            this.clearResetPasswordError();
+            
+            // 绑定确认按钮的点击事件
+            const confirmBtn = modal.querySelector('#confirmResetBtn');
+            if (confirmBtn) {
+                // 移除之前的事件监听器（如果有的话）
+                if (this.handleConfirmClick) {
+                    confirmBtn.removeEventListener('click', this.handleConfirmClick);
+                }
+                
+                // 添加新的事件监听器
+                this.handleConfirmClick = (e) => {
+                    e.preventDefault();
+                    this.handleResetPassword();
+                };
+                confirmBtn.addEventListener('click', this.handleConfirmClick);
+            }
+            
             // 聚焦到第一个输入框
             const firstInput = modal.querySelector('#newPassword');
             if (firstInput) {
@@ -525,6 +544,21 @@ class UserProfileCard extends BaseComponent {
             if (form) {
                 form.reset();
             }
+            // 清除错误信息
+            this.clearResetPasswordError();
+        }
+    }
+
+    /**
+     * 清除重置密码错误信息
+     */
+    clearResetPasswordError() {
+        const modal = this.shadowRoot.querySelector('#resetPasswordModal');
+        if (modal) {
+            const errorDiv = modal.querySelector('.reset-password-error');
+            if (errorDiv) {
+                errorDiv.remove();
+            }
         }
     }
 
@@ -534,6 +568,9 @@ class UserProfileCard extends BaseComponent {
     async handleResetPassword() {
         const newPassword = this.shadowRoot.querySelector('#newPassword').value;
         const confirmPassword = this.shadowRoot.querySelector('#confirmPassword').value;
+
+        // 清除之前的错误信息
+        this.clearResetPasswordError();
 
         // 验证密码
         if (newPassword.length < 6) {
@@ -590,18 +627,31 @@ class UserProfileCard extends BaseComponent {
             if (!errorDiv) {
                 errorDiv = document.createElement('div');
                 errorDiv.className = 'reset-password-error';
-                errorDiv.style.cssText = `
-                    color: var(--error-color, #ef4444);
-                    font-size: var(--font-size-sm);
-                    margin-top: var(--spacing-2);
-                    text-align: center;
-                `;
+                // 使用内联样式，确保不被CSS覆盖
+                errorDiv.style.color = '#ef4444';
+                errorDiv.style.fontSize = '14px';
+                errorDiv.style.margin = '12px 0';
+                errorDiv.style.textAlign = 'center';
+                errorDiv.style.padding = '12px';
+                errorDiv.style.backgroundColor = '#fef2f2';
+                errorDiv.style.border = '1px solid #ef4444';
+                errorDiv.style.borderRadius = '6px';
+                errorDiv.style.fontWeight = '500';
+                errorDiv.style.display = 'block';
+                
+                // 将错误信息插入到表单的第一个输入框之前
                 const form = modal.querySelector('#resetPasswordForm');
                 if (form) {
-                    form.insertBefore(errorDiv, form.querySelector('.reset-password-actions'));
+                    const firstInputGroup = form.querySelector('.form-group');
+                    if (firstInputGroup) {
+                        form.insertBefore(errorDiv, firstInputGroup);
+                    } else {
+                        form.insertBefore(errorDiv, form.firstChild);
+                    }
                 }
             }
             errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
         }
     }
 
@@ -622,16 +672,41 @@ class UserProfileCard extends BaseComponent {
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             z-index: 1001;
             font-size: 14px;
+            font-weight: 500;
+            min-width: 200px;
+            text-align: center;
         `;
         successDiv.textContent = message;
         
         document.body.appendChild(successDiv);
         
+        // 3秒后自动消失
         setTimeout(() => {
             if (successDiv.parentNode) {
                 successDiv.parentNode.removeChild(successDiv);
             }
         }, 3000);
+        
+        // 添加点击关闭功能
+        successDiv.addEventListener('click', () => {
+            if (successDiv.parentNode) {
+                successDiv.parentNode.removeChild(successDiv);
+            }
+        });
+        
+        // 添加鼠标悬停样式
+        successDiv.style.cursor = 'pointer';
+        successDiv.style.transition = 'all 0.2s ease';
+        
+        successDiv.addEventListener('mouseenter', () => {
+            successDiv.style.transform = 'scale(1.05)';
+            successDiv.style.boxShadow = '0 6px 16px rgba(0,0,0,0.2)';
+        });
+        
+        successDiv.addEventListener('mouseleave', () => {
+            successDiv.style.transform = 'scale(1)';
+            successDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+        });
     }
 
     showError(message) {
