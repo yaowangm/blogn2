@@ -3,7 +3,7 @@
 提供JWT令牌验证和用户认证功能
 """
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, Dict, Any
 from functools import wraps
@@ -121,7 +121,7 @@ async def get_current_admin_user(
     return current_user
 
 async def get_optional_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
     auth_service: AuthService = Depends(get_auth_service),
     user_service: UserService = Depends(get_user_service)
 ) -> Optional[Dict[str, Any]]:
@@ -140,8 +140,18 @@ async def get_optional_current_user(
         Optional[Dict]: 当前用户信息，如果未登录则为None
     """
     try:
+        # 手动检查Authorization头
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return None
+        
+        # 提取令牌
+        token = auth_header.split(" ")[1]
+        if not token:
+            return None
+        
         # 验证令牌
-        user_data = auth_service.get_user_from_token(credentials.credentials)
+        user_data = auth_service.get_user_from_token(token)
         if not user_data:
             return None
         
