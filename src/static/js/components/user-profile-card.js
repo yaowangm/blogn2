@@ -346,12 +346,10 @@ class UserProfileCard extends BaseComponent {
                 <h2 class="card-title">个人资料</h2>
                 ${this.canResetPassword() ? `
                     <div class="card-actions">
-                        <button class="btn btn-warning" id="resetPasswordBtn">
+                        <button class="btn btn-danger" id="resetPasswordBtn">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
-                                <path d="M21 3v5h-5"></path>
-                                <path d="M21 12a9 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
-                                <path d="M3 21v-5h5"></path>
+                                <path d="M1 4v6h6"></path>
+                                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
                             </svg>
                             重置密码
                         </button>
