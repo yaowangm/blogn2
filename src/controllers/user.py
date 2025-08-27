@@ -69,7 +69,7 @@ async def get_user_count(
 
 @router.get("/users/{user_id}", response_model=Dict[str, Any])
 @handle_api_errors("获取用户信息失败")
-@cache_user_profile()  # 使用默认缓存时间
+# 注意：不缓存用户个人资料，因为包含敏感信息
 async def get_user_by_id(
     user_id: int,
     user_service: UserService = Depends(get_user_service),
@@ -82,6 +82,8 @@ async def get_user_by_id(
     - 如果查看自己的资料，返回完整信息
     - 如果查看其他用户的资料，返回公开信息，敏感字段标记为"无权限查看"
     - 管理员可查看任何用户的完整信息
+    
+    安全说明：此API包含敏感信息，要求不缓存以防止信息泄露
     
     Args:
         user_id: 用户ID

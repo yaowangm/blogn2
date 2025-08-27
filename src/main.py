@@ -67,6 +67,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 添加缓存控制中间件
+@app.middleware("http")
+async def add_cache_control_headers(request, call_next):
+    """
+    为敏感API添加缓存控制头的中间件
+    """
+    response = await call_next(request)
+    
+    # 为敏感的个人资料相关API添加缓存控制
+    if request.url.path.startswith("/api/users/") or request.url.path.startswith("/api/projects/user/"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    
+    return response
+
 # 静态文件服务配置
 UPLOAD_BASE_PATH = "../pic/blogn_img/upload"
 AVATAR_BASE_PATH = "../pic/blogn_img/userlogo"
