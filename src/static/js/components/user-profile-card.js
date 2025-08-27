@@ -49,7 +49,13 @@ class UserProfileCard extends BaseComponent {
             }
 
             // 获取用户详细信息
-            const userResponse = await fetch(`/api/users/${userId}`);
+            const token = localStorage.getItem('access_token');
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            const userResponse = await fetch(`/api/users/${userId}`, { headers });
             
             if (!userResponse.ok) {
                 throw new Error(`获取用户信息失败: ${userResponse.status}`);
@@ -58,7 +64,7 @@ class UserProfileCard extends BaseComponent {
             this.userData = await userResponse.json();
 
             // 获取用户的博客信息
-            const projectResponse = await fetch(`/api/projects/user/${userId}`);
+            const projectResponse = await fetch(`/api/projects/user/${userId}`, { headers });
             
             if (projectResponse.ok) {
                 this.projectData = await projectResponse.json();

@@ -48,7 +48,13 @@ class BlogInfoCard extends BaseComponent {
             }
 
             // 获取用户的博客信息
-            const response = await fetch(`/api/projects/user/${userId}`);
+            const token = localStorage.getItem('access_token');
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            const response = await fetch(`/api/projects/user/${userId}`, { headers });
             
             if (!response.ok) {
                 throw new Error(`获取博客信息失败: ${response.status}`);

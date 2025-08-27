@@ -58,13 +58,19 @@ class BlogProfileCard extends BaseComponent {
                     
                     if (userId) {
                         // 获取用户的博客信息
-                        const projectResponse = await fetch(`/api/projects/user/${userId}`);
+                        const token = localStorage.getItem('access_token');
+                        const headers = {};
+                        if (token) {
+                            headers['Authorization'] = `Bearer ${token}`;
+                        }
+                        
+                        const projectResponse = await fetch(`/api/projects/user/${userId}`, { headers });
                         if (projectResponse.ok) {
                             this.projectData = await projectResponse.json();
                             this.projectId = this.projectData.id;
                             
                             // 获取用户信息
-                            const userResponse = await fetch(`/api/users/${userId}`);
+                            const userResponse = await fetch(`/api/users/${userId}`, { headers });
                             if (userResponse.ok) {
                                 this.userData = await userResponse.json();
                             }
