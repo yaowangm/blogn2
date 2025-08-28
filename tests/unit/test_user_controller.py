@@ -86,7 +86,7 @@ class TestUserController:
     async def test_get_user_by_id_success(self, mock_async_session):
         """测试根据ID获取用户成功"""
         # 准备测试数据
-        expected_user = User(
+        mock_user = User(
             id=1,
             name="testuser",
             email="test@example.com"
@@ -94,14 +94,45 @@ class TestUserController:
         
         # 模拟服务方法
         mock_service = AsyncMock(spec=UserService)
-        mock_service.get_user_by_id.return_value = expected_user
+        mock_service.get_user_by_id.return_value = mock_user
         
-        # 执行测试
-        result = await get_user_by_id(user_id=1, user_service=mock_service)
-        
-        # 验证结果
-        assert result == expected_user
-        mock_service.get_user_by_id.assert_called_once_with(1)
+        # 模拟权限管理器
+        with patch('src.controllers.user.permission_manager') as mock_permission_manager:
+            # 模拟权限检查通过
+            mock_permission_manager.can_view_profile.return_value = True
+            mock_permission_manager.get_profile_data_permissions.return_value = {
+                "can_view_email": True,
+                "can_view_iplog": True,
+                "can_view_password": False
+            }
+            mock_permission_manager.filter_profile_data.return_value = {
+                "id": 1,
+                "name": "testuser",
+                "email": "test@example.com",
+                "state": 1,
+                "regtime": "2025-01-01T00:00:00",
+                "iplog": "127.0.0.1",
+                "point": 0,
+                "projectid": None,
+                "lastupdate": "2025-01-01T00:00:00",
+                "intropiid": None,
+                "permissions": {
+                    "can_view_email": True,
+                    "can_view_iplog": True,
+                    "can_view_password": False
+                }
+            }
+            
+            # 执行测试
+            result = await get_user_by_id(user_id=1, user_service=mock_service, current_user={"id": 1, "state": 1})
+            
+            # 验证结果
+            assert isinstance(result, dict)
+            assert result["id"] == 1
+            assert result["name"] == "testuser"
+            assert result["email"] == "test@example.com"
+            assert "permissions" in result
+            mock_service.get_user_by_id.assert_called_once_with(1)
 
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -113,7 +144,7 @@ class TestUserController:
         
         # 执行测试并验证异常
         with pytest.raises(HTTPException) as exc_info:
-            await get_user_by_id(user_id=999, user_service=mock_service)
+            await get_user_by_id(user_id=999, user_service=mock_service, current_user={"id": 1, "state": 1})
         
         # 验证异常信息
         assert exc_info.value.status_code == 404
