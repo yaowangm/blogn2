@@ -53,13 +53,7 @@ permission_manager.filter_profile_data(user_data, permissions)
 - 权限检查规则配置
 - 权限错误消息配置
 
-### 4. 权限中间件 (`src/middleware/permission_middleware.py`)
 
-**全局权限控制**：
-- 自动识别受保护的路径
-- 请求日志记录
-- 权限审计功能
-- 全局权限拦截
 
 ## 权限矩阵
 
@@ -107,23 +101,26 @@ async def get_system_config(current_user: Dict[str, Any] = Depends(get_current_u
     return system_config
 ```
 
-### 3. 在中间件中集成
+### 3. 在依赖注入中使用
 
 ```python
-from src.middleware.permission_middleware import create_permission_middleware
+from src.utils.permission_decorators import get_current_user_for_permission
 
-# 在FastAPI应用中添加中间件
-app.add_middleware(create_permission_middleware())
+@router.get("/users/profile")
+async def get_user_profile(
+    current_user: Dict[str, Any] = Depends(get_current_user_for_permission())
+):
+    # 自动获取当前用户信息用于权限检查
+    return user_profile
 ```
 
 ## 权限检查流程
 
-1. **请求到达** → 中间件拦截
-2. **路径识别** → 判断是否需要权限检查
-3. **用户认证** → 获取当前用户信息
-4. **权限验证** → 使用权限管理器检查权限
-5. **数据过滤** → 根据权限过滤返回数据
-6. **日志记录** → 记录权限检查和访问日志
+1. **请求到达** → 路由匹配
+2. **依赖注入** → 获取当前用户信息
+3. **权限验证** → 使用权限管理器检查权限
+4. **数据过滤** → 根据权限过滤返回数据
+5. **响应返回** → 返回过滤后的数据
 
 ## 安全特性
 
