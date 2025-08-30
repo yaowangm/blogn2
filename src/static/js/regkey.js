@@ -205,7 +205,7 @@ class RegistrationCodeManager {
             <table class="regkey-table">
                 <thead>
                     <tr>
-                        <th>序号</th>
+                        <th>ID</th>
                         <th>注册码</th>
                         <th>申请者</th>
                         <th>使用者</th>
@@ -216,7 +216,7 @@ class RegistrationCodeManager {
                 <tbody>
                     ${this.regkeyData.map((item, index) => `
                         <tr>
-                            <td>${index + 1}</td>
+                            <td>${item.id}</td>
                             <td><code>${this.escapeHtml(window.RegKeyFormatter.format(item.regkey))}</code></td>
                             <td>
                                 ${item.ownerid && item.owner_name ? 
