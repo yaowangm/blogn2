@@ -67,6 +67,25 @@
             font-weight: 600;
         }
         
+        .user-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color var(--transition-fast);
+        }
+        
+        .user-link:hover {
+            color: var(--primary-hover);
+            text-decoration: underline;
+        }
+        
+        .user-link::after {
+            content: "↗";
+            margin-left: 4px;
+            font-size: 0.8em;
+            opacity: 0.7;
+        }
+        
         .info-text {
             color: var(--gray-600);
             font-size: var(--font-size-base);

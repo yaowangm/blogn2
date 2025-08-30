@@ -218,8 +218,18 @@ class RegistrationCodeManager {
                         <tr>
                             <td>${index + 1}</td>
                             <td><code>${this.escapeHtml(window.RegKeyFormatter.format(item.regkey))}</code></td>
-                            <td>${this.escapeHtml(item.owner_name || '未知')}</td>
-                            <td>${this.escapeHtml(item.user_name || '-')}</td>
+                            <td>
+                                ${item.ownerid && item.owner_name ? 
+                                    `<a href="/profile/${item.ownerid}" class="user-link" target="_blank" rel="noopener noreferrer">${this.escapeHtml(item.owner_name)}</a>` : 
+                                    this.escapeHtml(item.owner_name || '未知')
+                                }
+                            </td>
+                            <td>
+                                ${item.userid && item.user_name ? 
+                                    `<a href="/profile/${item.userid}" class="user-link" target="_blank" rel="noopener noreferrer">${this.escapeHtml(item.user_name)}</a>` : 
+                                    (item.user_name ? this.escapeHtml(item.user_name) : '-')
+                                }
+                            </td>
                             <td>
                                 <span class="status-badge ${item.status === 1 ? 'status-unused' : 'status-used'}">
                                     ${item.status === 1 ? '未使用' : '已使用'}
