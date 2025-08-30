@@ -255,7 +255,7 @@ async def registration_code_page():
     Returns:
         FileResponse: 注册码管理页面HTML文件
     """
-    return FileResponse("src/static/registration-code.html")
+    return FileResponse("src/static/regkey.html")
 
 
 
