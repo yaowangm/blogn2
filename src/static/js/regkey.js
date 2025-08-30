@@ -217,7 +217,7 @@ class RegistrationCodeManager {
                     ${this.regkeyData.map((item, index) => `
                         <tr>
                             <td>${index + 1}</td>
-                            <td><code>${this.escapeHtml(item.regkey)}</code></td>
+                            <td><code>${this.escapeHtml(window.RegKeyFormatter.format(item.regkey))}</code></td>
                             <td>${this.escapeHtml(item.owner_name || '未知')}</td>
                             <td>${this.escapeHtml(item.user_name || '-')}</td>
                             <td>
@@ -299,7 +299,8 @@ class RegistrationCodeManager {
             }
 
             const result = await response.json();
-            alert(`兑换成功！\n注册码：${result.regkey}\n请妥善保管，注册码只能使用一次。`);
+            const formattedRegkey = window.RegKeyFormatter.format(result.regkey);
+            alert(`兑换成功！\n注册码：${formattedRegkey}\n请妥善保管，注册码只能使用一次。`);
             
             // 刷新数据
             await this.loadRegKeyData();
@@ -354,6 +355,8 @@ class RegistrationCodeManager {
             return dateTimeStr;
         }
     }
+
+
 }
 
 // 页面加载完成后初始化
