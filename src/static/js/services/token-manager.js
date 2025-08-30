@@ -176,5 +176,3 @@ class TokenManager {
 
 // 创建全局实例
 window.tokenManager = new TokenManager();
-
-export default TokenManager;

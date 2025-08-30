@@ -45,7 +45,26 @@
             font-size: var(--font-size-2xl);
             font-weight: var(--card-title-weight);
             color: var(--card-title-color);
-            margin: 0;
+            margin: 0 0 var(--spacing-3) 0;
+        }
+        
+        .user-points {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-2);
+            margin-bottom: var(--spacing-2);
+        }
+        
+        .points-label {
+            color: var(--gray-600);
+            font-size: var(--font-size-base);
+        }
+        
+        .points-value {
+            color: var(--primary-color);
+            font-size: var(--font-size-lg);
+            font-weight: 600;
         }
         
         .info-text {
@@ -211,6 +230,10 @@
                 <div class="operation-panel">
                     <div class="panel-header">
                         <h1 class="panel-title">注册码管理</h1>
+                        <div class="user-points">
+                            <span class="points-label">当前积分：</span>
+                            <span class="points-value" id="userPoints">--</span>
+                        </div>
                     </div>
                     <p class="info-text">使用10分积分可以兑换一个注册码</p>
                     <div class="exchange-button-container">

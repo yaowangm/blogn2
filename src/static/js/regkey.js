@@ -17,6 +17,9 @@ class RegistrationCodeManager {
         // 绑定事件
         this.bindEvents();
         
+        // 加载用户积分
+        await this.loadUserPoints();
+        
         // 加载注册码数据
         await this.loadRegKeyData();
         
@@ -58,6 +61,57 @@ class RegistrationCodeManager {
         const exchangeBtn = document.getElementById('exchangeBtn');
         if (exchangeBtn) {
             exchangeBtn.addEventListener('click', () => this.handleExchange());
+        }
+    }
+
+    async loadUserPoints() {
+        try {
+            // 永远从服务端获取积分信息
+            let token;
+            if (window.tokenManager) {
+                token = await window.tokenManager.getValidAccessToken();
+            } else {
+                token = localStorage.getItem('access_token');
+            }
+            
+            if (!token) {
+                throw new Error('未找到访问令牌');
+            }
+            
+            // 获取用户详细信息（包含积分）
+            if (!this.currentUser || !this.currentUser.id) {
+                throw new Error('用户信息不完整');
+            }
+            
+            const response = await fetch(`/api/users/${this.currentUser.id}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const userData = await response.json();
+            const userPoints = userData.point || 0;
+            
+            // 更新页面显示的积分
+            const pointsElement = document.getElementById('userPoints');
+            if (pointsElement) {
+                pointsElement.textContent = userPoints;
+            }
+            
+            // 保存用户积分到实例变量，用于兑换时的验证
+            this.userPoints = userPoints;
+            
+        } catch (error) {
+            console.error('加载用户积分失败:', error);
+            // 如果获取积分失败，显示默认值
+            const pointsElement = document.getElementById('userPoints');
+            if (pointsElement) {
+                pointsElement.textContent = '--';
+            }
         }
     }
 
@@ -185,13 +239,15 @@ class RegistrationCodeManager {
         const exchangeBtn = document.getElementById('exchangeBtn');
         if (!exchangeBtn || !this.currentUser) return;
 
-        const hasEnoughPoints = this.currentUser.point >= 10;
+        // 使用实时积分数据
+        const currentPoints = this.userPoints !== undefined ? this.userPoints : this.currentUser.point;
+        const hasEnoughPoints = currentPoints >= 10;
         exchangeBtn.disabled = !hasEnoughPoints;
         
         if (!hasEnoughPoints) {
-            exchangeBtn.title = `积分不足，当前积分：${this.currentUser.point}，需要10积分`;
+            exchangeBtn.title = `积分不足，当前积分：${currentPoints}，需要10积分`;
         } else {
-            exchangeBtn.title = `当前积分：${this.currentUser.point}，兑换后将扣除10积分`;
+            exchangeBtn.title = `当前积分：${currentPoints}，兑换后将扣除10积分`;
         }
     }
 
@@ -201,12 +257,15 @@ class RegistrationCodeManager {
             return;
         }
 
-        if (this.currentUser.point < 10) {
-            alert(`积分不足，当前积分：${this.currentUser.point}，需要10积分`);
+        // 使用实时积分数据
+        const currentPoints = this.userPoints !== undefined ? this.userPoints : this.currentUser.point;
+        
+        if (currentPoints < 10) {
+            alert(`积分不足，当前积分：${currentPoints}，需要10积分`);
             return;
         }
 
-        if (!confirm(`确定要使用10积分兑换一个注册码吗？\n当前积分：${this.currentUser.point}`)) {
+        if (!confirm(`确定要使用10积分兑换一个注册码吗？\n当前积分：${currentPoints}`)) {
             return;
         }
 
@@ -247,6 +306,14 @@ class RegistrationCodeManager {
             
             // 更新用户积分信息
             this.currentUser.point -= 10;
+            this.userPoints = result.remaining_points || (this.userPoints - 10);
+            
+            // 更新页面显示的积分
+            const pointsElement = document.getElementById('userPoints');
+            if (pointsElement) {
+                pointsElement.textContent = this.userPoints;
+            }
+            
             this.updateExchangeButtonState();
             
         } catch (error) {
