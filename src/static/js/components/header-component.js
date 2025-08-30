@@ -354,6 +354,7 @@ class HeaderComponent extends BaseComponent {
                             </div>
                         </div>
                     ` : `
+                        <a href="/user_register" class="btn btn-ghost">注册</a>
                         <button class="btn btn-primary" id="loginButton">登录</button>
                     `}
                 </div>

@@ -193,6 +193,9 @@ app.include_router(rss.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 # 注册码管理路由
 app.include_router(regkey.router, prefix="/api")
+# 用户注册路由
+from src.routes import user_register
+app.include_router(user_register.router, prefix="/api")
 
 
 
@@ -259,6 +262,19 @@ async def registration_code_page():
         FileResponse: 注册码管理页面HTML文件
     """
     return FileResponse("src/static/regkey.html")
+
+
+@app.get("/user_register")
+async def user_register_page():
+    """
+    用户注册页面路由
+    
+    注意：此页面不需要用户登录，任何人都可以访问
+    
+    Returns:
+        FileResponse: 用户注册页面HTML文件
+    """
+    return FileResponse("src/static/user_register.html")
 
 
 
