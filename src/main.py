@@ -21,6 +21,7 @@ import uvicorn
 
 # 导入API控制器模块
 from src.controllers import metadata, user, blog, project, article, urllink, rss, auth
+from src.routes import regkey_minimal as regkey
 
 # 导入缓存相关模块
 from src.utils.cache import cache_manager, cache_stats
@@ -190,6 +191,10 @@ app.include_router(article.router, prefix="/api")
 app.include_router(urllink.router, prefix="/api")
 app.include_router(rss.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
+# 注册码管理路由
+app.include_router(regkey.router, prefix="/api")
+
+
 
 
 # ==================== 页面路由 ====================
@@ -240,6 +245,17 @@ async def profile_page(user_id: int = None):
         FileResponse: 个人资料页面HTML文件
     """
     return FileResponse("src/static/profile.html")
+
+
+@app.get("/regkey")
+async def registration_code_page():
+    """
+    注册码管理页面路由
+    
+    Returns:
+        FileResponse: 注册码管理页面HTML文件
+    """
+    return FileResponse("src/static/registration-code.html")
 
 
 

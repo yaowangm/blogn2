@@ -26,10 +26,13 @@ class HeaderComponent extends BaseComponent {
 
     async connectedCallback() {
         await this.loadMetadata();
-        this.checkAuthStatus();
+        await this.checkAuthStatus();
         this.render();
         this.setupLoginModal();
         this.addGlobalEventListeners();
+        
+        // 监听令牌相关事件
+        this.setupTokenEventListeners();
     }
 
     render() {
@@ -337,7 +340,7 @@ class HeaderComponent extends BaseComponent {
                                     ${userHomeIcon}
                                     个人资料
                                 </a>
-                                <a href="#" class="dropdown-item" id="registrationCodeMenuItem">
+                                <a href="/regkey" class="dropdown-item" id="registrationCodeMenuItem">
                                     ${hasIcons ? Icons.registrationCode : this.getDefaultRegistrationCodeIcon()}
                                     注册码管理
                                 </a>
@@ -403,18 +406,7 @@ class HeaderComponent extends BaseComponent {
             });
         }
 
-        // 注册码管理菜单项
-        const registrationCodeMenuItem = this.shadowRoot.querySelector('#registrationCodeMenuItem');
-        if (registrationCodeMenuItem) {
-            registrationCodeMenuItem.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                // TODO: 实现注册码管理功能
-                // 可以跳转到注册码管理页面或显示相关功能
-                console.log('注册码管理功能待实现');
-                userMenu.classList.remove('active');
-            });
-        }
+
 
         // 退出菜单项
         const logoutMenuItem = this.shadowRoot.querySelector('#logoutMenuItem');
@@ -466,8 +458,30 @@ class HeaderComponent extends BaseComponent {
             this.handleLoginSuccess(e.detail);
         });
     }
+    
+    setupTokenEventListeners() {
+        // 监听令牌刷新事件
+        window.addEventListener('tokenRefreshed', (event) => {
+            // 可以在这里更新UI状态
+        });
+        
+        // 监听令牌清除事件
+        window.addEventListener('tokensCleared', () => {
+            this.clearAuthData();
+            this.render();
+        });
+    }
 
-    checkAuthStatus() {
+    async checkAuthStatus() {
+        // 使用令牌管理服务验证令牌有效性
+        if (window.tokenManager) {
+            const isValid = await window.tokenManager.validateToken();
+            if (!isValid) {
+                this.clearAuthData();
+                return;
+            }
+        }
+        
         // 检查本地存储的认证状态
         const token = localStorage.getItem('access_token');
         const userInfo = localStorage.getItem('user_info');

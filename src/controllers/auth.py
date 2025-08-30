@@ -233,3 +233,77 @@ async def verify_token(
         "role": user_data["role"],
         "expires_at": user_data["exp"]
     }
+
+@router.post("/refresh", response_model=TokenRefreshResponse)
+@handle_api_errors("令牌刷新失败")
+async def refresh_token(
+    request: TokenRefreshRequest,
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    """
+    使用刷新令牌获取新的访问令牌
+    
+    Args:
+        request: 令牌刷新请求数据
+        auth_service: 认证服务实例
+        
+    Returns:
+        TokenRefreshResponse: 新的访问令牌和刷新令牌
+        
+    Raises:
+        HTTPException: 当刷新令牌无效时
+    """
+    # 使用刷新令牌获取新的访问令牌
+    new_access_token = auth_service.refresh_access_token(request.refresh_token)
+    
+    if not new_access_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的刷新令牌"
+        )
+    
+    # 获取用户信息以创建新的刷新令牌
+    user_data = auth_service.get_user_from_token(new_access_token)
+    if not user_data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无法获取用户信息"
+        )
+    
+    # 创建新的刷新令牌
+    new_refresh_token = auth_service.create_refresh_token(user_data)
+    
+    return TokenRefreshResponse(
+        access_token=new_access_token,
+        refresh_token=new_refresh_token,
+        token_type="bearer",
+        expires_in=auth_service.access_token_expire_minutes * 60
+    )
+
+@router.get("/validate")
+@handle_api_errors("令牌验证失败")
+async def validate_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    """
+    验证访问令牌（简化版，用于前端检查）
+    
+    Args:
+        credentials: HTTP认证凭据
+        auth_service: 认证服务实例
+        
+    Returns:
+        Dict: 令牌验证结果
+        
+    Raises:
+        HTTPException: 当令牌无效时
+    """
+    user_data = auth_service.get_user_from_token(credentials.credentials)
+    if not user_data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的访问令牌"
+        )
+    
+    return {"valid": True}

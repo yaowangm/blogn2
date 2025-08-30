@@ -34,6 +34,13 @@
     --loading-color: var(--gray-500);
     --error-color: var(--error-color);
     --error-bg: var(--gray-50);
+    
+    /* 错误页面样式 */
+    --error-icon-size: 48px;
+    --error-text-color: var(--gray-600);
+    --login-btn-bg: var(--primary-color);
+    --login-btn-color: var(--white);
+    --login-btn-hover: var(--primary-dark);
 }
 
 /* 顶栏组件样式 */
@@ -556,4 +563,47 @@ latest-posts-card {
     .header-actions {
         gap: var(--spacing-2);
     }
+}
+
+/* 错误页面和登录按钮样式 */
+.error {
+    text-align: center;
+    padding: var(--spacing-8);
+    background: var(--error-bg);
+    border-radius: var(--card-radius);
+    border: 1px solid var(--card-border);
+}
+
+.error .empty-state-icon {
+    width: var(--error-icon-size);
+    height: var(--error-icon-size);
+    color: var(--error-color);
+    margin: 0 auto var(--spacing-4);
+}
+
+.error p {
+    color: var(--error-text-color);
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--spacing-6);
+}
+
+.login-btn {
+    background: var(--login-btn-bg);
+    color: var(--login-btn-color);
+    border: none;
+    padding: var(--spacing-3) var(--spacing-6);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.login-btn:hover {
+    background: var(--login-btn-hover);
+    transform: translateY(-1px);
+}
+
+.login-btn:active {
+    transform: translateY(0);
 } 
