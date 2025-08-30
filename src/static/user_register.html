@@ -95,17 +95,26 @@
         }
         
         .form-error.show {
-            display: block;
+            display: block !important;
         }
         
         .general-error {
-            margin-top: var(--spacing-4);
+            margin-bottom: var(--spacing-4);
             text-align: center;
             padding: var(--spacing-3);
-            background: var(--error-color);
-            color: white;
+            background: var(--error-color) !important;
+            color: white !important;
             border-radius: var(--radius-md);
             font-weight: 500;
+            border: 2px solid var(--error-color) !important;
+            box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2) !important;
+        }
+        
+        /* 强制显示通用错误信息 */
+        .general-error.show {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
         }
         
         .submit-button {
@@ -211,6 +220,9 @@
                 </div>
                 
                 <form class="register-form" id="registerForm">
+                    <!-- 通用错误信息显示区域 -->
+                    <div class="form-error general-error" id="generalError"></div>
+                    
                     <div class="form-group">
                         <label for="username" class="form-label">用户名</label>
                         <input 
@@ -267,9 +279,6 @@
                     <button type="submit" class="submit-button" id="submitBtn">
                         注册
                     </button>
-                    
-                    <!-- 通用错误信息显示区域 -->
-                    <div class="form-error general-error" id="generalError" style="display: none;"></div>
                 </form>
                 
                 <div class="login-link">
@@ -550,6 +559,9 @@
                 this.clearGeneralError();
                 this.clearAllFieldErrors();
                 
+                // 显示错误信息
+                let errorMessage = '注册失败，请重试';
+                
                 if (result.detail) {
                     if (Array.isArray(result.detail)) {
                         // 处理字段验证错误
@@ -562,16 +574,18 @@
                                 this.showGeneralError(error.msg);
                             }
                         });
+                        return; // 字段错误已处理，直接返回
                     } else if (typeof result.detail === 'string') {
                         // 处理字符串错误信息
-                        this.showGeneralError(result.detail);
+                        errorMessage = result.detail;
                     } else {
                         // 处理其他类型的错误
-                        this.showGeneralError('注册失败，请重试');
+                        errorMessage = '注册失败，请重试';
                     }
-                } else {
-                    this.showGeneralError('注册失败，请重试');
                 }
+                
+                // 显示通用错误
+                this.showGeneralError(errorMessage);
             }
             
             showFieldError(fieldName, message) {
@@ -589,14 +603,39 @@
                 const generalError = document.getElementById('generalError');
                 if (generalError) {
                     generalError.textContent = message;
-                    generalError.style.display = 'block';
+                    
+                    // 使用更强制的方式设置样式
+                    generalError.setAttribute('style', `
+                        display: block !important;
+                        background: #ef4444 !important;
+                        color: white !important;
+                        padding: 12px !important;
+                        border-radius: 6px !important;
+                        margin-top: 16px !important;
+                        text-align: center !important;
+                        font-weight: 500 !important;
+                        border: 2px solid #ef4444 !important;
+                        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2) !important;
+                        position: relative !important;
+                        z-index: 1000 !important;
+                    `);
+                    
+                    // 同时添加CSS类
+                    generalError.classList.add('show');
+                    
+                    // 强制重绘
+                    generalError.offsetHeight;
                 }
             }
             
             clearGeneralError() {
                 const generalError = document.getElementById('generalError');
                 if (generalError) {
-                    generalError.style.display = 'none';
+                    // 使用更强制的方式清除样式
+                    generalError.setAttribute('style', 'display: none !important;');
+                    
+                    // 同时移除CSS类
+                    generalError.classList.remove('show');
                     generalError.textContent = '';
                 }
             }
