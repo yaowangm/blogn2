@@ -252,6 +252,9 @@ async def registration_code_page():
     """
     注册码管理页面路由
     
+    注意：此页面需要用户登录，前端会进行认证检查
+    如果未登录用户访问，前端会重定向到首页
+    
     Returns:
         FileResponse: 注册码管理页面HTML文件
     """

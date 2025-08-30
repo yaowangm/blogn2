@@ -6,22 +6,24 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import uuid
 from datetime import datetime
 
 from src.database import get_async_session
 from src.models.regkey import RegKey, RegKeyWithUserInfo
 from src.models.user import User
-from src.utils.auth_middleware import get_current_user
+from src.utils.auth_middleware import get_optional_current_user
+from src.utils.permission_decorators import require_auth
 
 router = APIRouter(prefix="/api/regkey", tags=["注册码管理"])
 
 
 @router.get("/list", response_model=dict)
+@require_auth()
 async def get_regkey_list(
     session: AsyncSession = Depends(get_async_session),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
     """
     获取注册码列表
@@ -33,8 +35,11 @@ async def get_regkey_list(
     Returns:
         包含注册码列表的字典
     """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="需要登录才能访问")
+        
     try:
-        # 查询注册码数据，关联用户信息
+        # 查询注册码数据，关联用户信息，只显示当前用户的注册码
         stmt = select(
             RegKey.id,
             RegKey.name,
@@ -49,7 +54,7 @@ async def get_regkey_list(
                 RegKey.ownerid == User.id,
                 isouter=True
             )
-        ).order_by(RegKey.id)
+        ).where(RegKey.ownerid == current_user["id"]).order_by(RegKey.id)
         
         result = await session.exec(stmt)
         rows = result.all()
@@ -85,10 +90,11 @@ async def get_regkey_list(
 
 
 @router.post("/exchange", response_model=dict)
+@require_auth()
 async def exchange_regkey(
     user_id: int,
     session: AsyncSession = Depends(get_async_session),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
     """
     兑换注册码
@@ -101,13 +107,16 @@ async def exchange_regkey(
     Returns:
         包含新注册码的字典
     """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="需要登录才能访问")
+        
     try:
         # 验证用户权限（只能为自己兑换）
-        if current_user.id != user_id:
+        if current_user["id"] != user_id:
             raise HTTPException(status_code=403, detail="只能为自己兑换注册码")
         
         # 检查用户积分是否足够
-        if current_user.point < 10:
+        if current_user["point"] < 10:
             raise HTTPException(status_code=400, detail="积分不足，需要10积分")
         
         # 生成唯一注册码
@@ -124,8 +133,14 @@ async def exchange_regkey(
         session.add(new_regkey)
         
         # 扣除用户积分
-        current_user.point -= 10
-        session.add(current_user)
+        user_stmt = select(User).where(User.id == current_user["id"])
+        user_result = await session.exec(user_stmt)
+        user = user_result.first()
+        if not user:
+            raise HTTPException(status_code=404, detail="用户不存在")
+            
+        user.point -= 10
+        session.add(user)
         
         # 提交事务
         await session.commit()
@@ -134,7 +149,7 @@ async def exchange_regkey(
         return {
             "regkey": regkey,
             "message": "注册码兑换成功",
-            "remaining_points": current_user.point
+            "remaining_points": user.point
         }
         
     except HTTPException:
@@ -183,11 +198,12 @@ async def validate_regkey(
 
 
 @router.post("/use/{regkey_id}", response_model=dict)
+@require_auth()
 async def use_regkey(
     regkey_id: int,
     user_id: int,
     session: AsyncSession = Depends(get_async_session),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
     """
     使用注册码
@@ -201,6 +217,9 @@ async def use_regkey(
     Returns:
         使用结果
     """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="需要登录才能访问")
+        
     try:
         # 查询注册码
         stmt = select(RegKey).where(RegKey.id == regkey_id)

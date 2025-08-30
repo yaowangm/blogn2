@@ -340,10 +340,12 @@ class HeaderComponent extends BaseComponent {
                                     ${userHomeIcon}
                                     个人资料
                                 </a>
+                                ${this.isLoggedIn ? `
                                 <a href="/regkey" class="dropdown-item" id="registrationCodeMenuItem">
                                     ${hasIcons ? Icons.registrationCode : this.getDefaultRegistrationCodeIcon()}
                                     注册码管理
                                 </a>
+                                ` : ''}
                                 <div class="dropdown-divider"></div>
                                 <a href="#" class="dropdown-item" id="logoutMenuItem">
                                     ${logoutIcon}
