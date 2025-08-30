@@ -98,6 +98,16 @@
             display: block;
         }
         
+        .general-error {
+            margin-top: var(--spacing-4);
+            text-align: center;
+            padding: var(--spacing-3);
+            background: var(--error-color);
+            color: white;
+            border-radius: var(--radius-md);
+            font-weight: 500;
+        }
+        
         .submit-button {
             background: var(--primary-color);
             color: var(--white);
@@ -257,6 +267,9 @@
                     <button type="submit" class="submit-button" id="submitBtn">
                         注册
                     </button>
+                    
+                    <!-- 通用错误信息显示区域 -->
+                    <div class="form-error general-error" id="generalError" style="display: none;"></div>
                 </form>
                 
                 <div class="login-link">
@@ -325,6 +338,7 @@
                 inputs.forEach(input => {
                     input.addEventListener('input', () => {
                         this.clearError(input.name);
+                        this.clearGeneralError();
                         this.updateSubmitButton();
                     });
                 });
@@ -492,7 +506,7 @@
                     if (response.ok) {
                         this.showSuccessPage();
                     } else {
-                        this.showErrorMessage(result.detail || '注册失败，请重试');
+                        this.handleRegistrationError(result);
                     }
                     
                 } catch (error) {
@@ -529,6 +543,69 @@
                         document.dispatchEvent(new CustomEvent('showLoginModal'));
                     });
                 }
+            }
+            
+            handleRegistrationError(result) {
+                // 清除之前的错误
+                this.clearGeneralError();
+                this.clearAllFieldErrors();
+                
+                if (result.detail) {
+                    if (Array.isArray(result.detail)) {
+                        // 处理字段验证错误
+                        result.detail.forEach(error => {
+                            if (error.loc && error.loc.length > 1) {
+                                const fieldName = error.loc[1]; // 获取字段名
+                                this.showFieldError(fieldName, error.msg);
+                            } else {
+                                // 通用错误
+                                this.showGeneralError(error.msg);
+                            }
+                        });
+                    } else if (typeof result.detail === 'string') {
+                        // 处理字符串错误信息
+                        this.showGeneralError(result.detail);
+                    } else {
+                        // 处理其他类型的错误
+                        this.showGeneralError('注册失败，请重试');
+                    }
+                } else {
+                    this.showGeneralError('注册失败，请重试');
+                }
+            }
+            
+            showFieldError(fieldName, message) {
+                const errorElement = document.getElementById(fieldName + 'Error');
+                const inputElement = document.getElementById(fieldName);
+                if (errorElement && inputElement) {
+                    errorElement.textContent = message;
+                    errorElement.classList.add('show');
+                    inputElement.classList.add('error');
+                    inputElement.classList.remove('success');
+                }
+            }
+            
+            showGeneralError(message) {
+                const generalError = document.getElementById('generalError');
+                if (generalError) {
+                    generalError.textContent = message;
+                    generalError.style.display = 'block';
+                }
+            }
+            
+            clearGeneralError() {
+                const generalError = document.getElementById('generalError');
+                if (generalError) {
+                    generalError.style.display = 'none';
+                    generalError.textContent = '';
+                }
+            }
+            
+            clearAllFieldErrors() {
+                const fields = ['username', 'email', 'password', 'regkey'];
+                fields.forEach(field => {
+                    this.clearError(field);
+                });
             }
             
             showSuccessMessage(message) {
