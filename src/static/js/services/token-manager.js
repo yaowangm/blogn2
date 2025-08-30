@@ -12,10 +12,29 @@ class TokenManager {
         // 检查是否有有效的令牌
         this.checkAndRefreshToken();
         
-        // 设置定期检查（每5分钟检查一次）
-        setInterval(() => {
-            this.checkAndRefreshToken();
-        }, 5 * 60 * 1000);
+        // 监听用户活动，在用户活跃时主动刷新令牌
+        this.setupUserActivityListener();
+    }
+
+    /**
+     * 设置用户活动监听器
+     */
+    setupUserActivityListener() {
+        const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+        
+        // 监听用户活动事件，在用户活跃时检查令牌
+        events.forEach(event => {
+            document.addEventListener(event, () => {
+                this.checkAndRefreshToken();
+            }, { passive: true });
+        });
+        
+        // 页面可见性变化时也检查令牌
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                this.checkAndRefreshToken();
+            }
+        });
     }
 
     /**
@@ -30,7 +49,7 @@ class TokenManager {
         }
 
         try {
-            // 检查访问令牌是否即将过期（提前2分钟刷新）
+            // 检查访问令牌是否即将过期（提前5分钟刷新）
             if (this.isTokenExpiringSoon(accessToken)) {
                 const refreshed = await this.refreshAccessToken(refreshToken);
                 if (!refreshed) {
@@ -65,8 +84,8 @@ class TokenManager {
             const now = Math.floor(Date.now() / 1000);
             const expiresIn = payload.exp - now;
             
-            // 如果令牌在2分钟内过期，则刷新
-            return expiresIn <= 120;
+            // 如果令牌在5分钟内过期，则刷新（提前更长时间）
+            return expiresIn <= 300;
         } catch (error) {
             console.error('令牌解析失败:', error);
             return true;
