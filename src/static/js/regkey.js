@@ -130,8 +130,13 @@ class RegistrationCodeManager {
                 token = localStorage.getItem('access_token');
             }
             
+            // 如果令牌管理服务没有返回令牌，尝试直接从localStorage获取
             if (!token) {
-                throw new Error('未找到访问令牌');
+                token = localStorage.getItem('access_token');
+            }
+            
+            if (!token) {
+                throw new Error('未找到访问令牌，请重新登录');
             }
             
             const response = await fetch('/api/regkey/list', {
@@ -288,8 +293,13 @@ class RegistrationCodeManager {
                 token = localStorage.getItem('access_token');
             }
             
+            // 如果令牌管理服务没有返回令牌，尝试直接从localStorage获取
             if (!token) {
-                throw new Error('未找到访问令牌');
+                token = localStorage.getItem('access_token');
+            }
+            
+            if (!token) {
+                throw new Error('未找到访问令牌，请重新登录');
             }
             
             const response = await fetch('/api/regkey/exchange', {

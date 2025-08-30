@@ -32,11 +32,22 @@ class TokenManager {
         try {
             // 检查访问令牌是否即将过期（提前2分钟刷新）
             if (this.isTokenExpiringSoon(accessToken)) {
-                return await this.refreshAccessToken(refreshToken);
+                const refreshed = await this.refreshAccessToken(refreshToken);
+                if (!refreshed) {
+                    // 只有在刷新失败且令牌确实过期时才清除
+                    const payload = this.decodeToken(accessToken);
+                    if (payload && payload.exp) {
+                        const now = Math.floor(Date.now() / 1000);
+                        if (payload.exp <= now) {
+                            this.clearTokens();
+                        }
+                    }
+                }
+                return refreshed;
             }
         } catch (error) {
             console.error('令牌检查失败:', error);
-            this.clearTokens();
+            // 不要立即清除令牌，让用户继续使用直到真正过期
             return false;
         }
         
@@ -106,11 +117,13 @@ class TokenManager {
                 
                 return true;
             } else {
-                throw new Error('刷新令牌失败');
+                // 不要立即清除令牌，让调用者决定如何处理
+                console.error('刷新令牌失败:', response.status, response.statusText);
+                return false;
             }
         } catch (error) {
             console.error('刷新访问令牌失败:', error);
-            this.clearTokens();
+            // 网络错误等情况下不要清除令牌
             return false;
         }
     }
