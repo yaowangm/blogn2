@@ -21,7 +21,7 @@ import uvicorn
 
 # 导入API控制器模块
 from src.controllers import metadata, user, blog, project, article, urllink, rss, auth
-from src.routes import regkey_minimal as regkey
+from src.routes import regkey
 
 # 导入缓存相关模块
 from src.utils.cache import cache_manager, cache_stats

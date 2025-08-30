@@ -3,10 +3,11 @@
 提供注册码的查询、兑换等功能
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Body
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
 import uuid
 from datetime import datetime
 
@@ -16,8 +17,11 @@ from src.models.user import User
 from src.utils.auth_middleware import get_optional_current_user
 from src.utils.permission_decorators import require_auth
 
-router = APIRouter(prefix="/api/regkey", tags=["注册码管理"])
+# 请求模型
+class ExchangeRegKeyRequest(BaseModel):
+    user_id: int
 
+router = APIRouter(prefix="/regkey", tags=["注册码管理"])
 
 @router.get("/list", response_model=dict)
 @require_auth()
@@ -92,7 +96,7 @@ async def get_regkey_list(
 @router.post("/exchange", response_model=dict)
 @require_auth()
 async def exchange_regkey(
-    user_id: int,
+    request: ExchangeRegKeyRequest,
     session: AsyncSession = Depends(get_async_session),
     current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
@@ -112,39 +116,46 @@ async def exchange_regkey(
         
     try:
         # 验证用户权限（只能为自己兑换）
-        if current_user["id"] != user_id:
+        if current_user["id"] != request.user_id:
             raise HTTPException(status_code=403, detail="只能为自己兑换注册码")
         
-        # 检查用户积分是否足够
-        if current_user["point"] < 10:
-            raise HTTPException(status_code=400, detail="积分不足，需要10积分")
-        
-        # 生成唯一注册码
-        regkey = str(uuid.uuid4()).replace('-', '')[:16].upper()
-        
-        # 创建新的注册码记录
-        new_regkey = RegKey(
-            name=regkey,
-            ownerid=user_id,
-            status=1,  # 未使用
-            createtime=datetime.now()
-        )
-        
-        session.add(new_regkey)
-        
-        # 扣除用户积分
+        # 先查询用户信息，获取积分
         user_stmt = select(User).where(User.id == current_user["id"])
         user_result = await session.exec(user_stmt)
         user = user_result.first()
         if not user:
             raise HTTPException(status_code=404, detail="用户不存在")
-            
+        
+        # 检查用户积分是否足够
+        if user.point < 10:
+            raise HTTPException(status_code=400, detail="积分不足，需要10积分")
+        
+        # 生成唯一注册码（确保25位字符）
+        regkey = str(uuid.uuid4()).replace('-', '')[:25].upper()
+        
+        # 创建新的注册码记录
+        new_regkey = RegKey(
+            name=regkey,
+            ownerid=request.user_id,
+            status=1,  # 未使用
+            createtime=datetime.now()
+        )
+        
+        # 扣除用户积分
         user.point -= 10
+        
+        # 先添加注册码记录到session
+        session.add(new_regkey)
         session.add(user)
+        
+        # 刷新session以获取生成的ID
+        await session.flush()
         
         # 提交事务
         await session.commit()
-        await session.refresh(new_regkey)
+        
+        # 提交成功后，重新查询用户信息以获取最新积分
+        await session.refresh(user)
         
         return {
             "regkey": regkey,

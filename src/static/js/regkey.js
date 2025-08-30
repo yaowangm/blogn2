@@ -305,7 +305,25 @@ class RegistrationCodeManager {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.detail || '兑换失败');
+                
+                // 处理不同类型的错误详情
+                let errorMessage = '兑换失败';
+                if (errorData.detail) {
+                    if (typeof errorData.detail === 'string') {
+                        errorMessage = errorData.detail;
+                    } else if (typeof errorData.detail === 'object') {
+                        errorMessage = JSON.stringify(errorData.detail);
+                    } else {
+                        errorMessage = String(errorData.detail);
+                    }
+                }
+                
+                // 如果还是无法获取错误信息，尝试其他字段
+                if (errorMessage === '兑换失败' && errorData.message) {
+                    errorMessage = errorData.message;
+                }
+                
+                throw new Error(errorMessage);
             }
 
             const result = await response.json();
@@ -338,7 +356,18 @@ class RegistrationCodeManager {
                 alert('登录已过期，请重新登录');
                 window.location.href = '/';
             } else {
-                alert(`兑换失败：${error.message}`);
+                // 尝试获取更详细的错误信息
+                let errorMessage = '兑换失败';
+                if (error.message) {
+                    errorMessage += `: ${error.message}`;
+                } else if (error.detail) {
+                    errorMessage += `: ${error.detail}`;
+                } else if (typeof error === 'string') {
+                    errorMessage += `: ${error}`;
+                } else {
+                    errorMessage += `: ${JSON.stringify(error)}`;
+                }
+                alert(errorMessage);
             }
         }
     }
