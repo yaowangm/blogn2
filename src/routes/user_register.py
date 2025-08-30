@@ -121,8 +121,12 @@ async def register_user(
             raise HTTPException(status_code=400, detail="注册码无效或已被使用")
         
         # 4. 创建新用户
-        # 对密码进行MD5加密
-        password_hash = hashlib.md5(request.password.encode()).hexdigest()
+        # 对密码进行双重哈希加密：password → MD5 → bcrypt
+        from passlib.context import CryptContext
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        
+        md5_hash = hashlib.md5(request.password.encode()).hexdigest()
+        password_hash = pwd_context.hash(md5_hash)
         
         new_user = User(
             name=request.username,
