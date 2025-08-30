@@ -337,6 +337,10 @@ class HeaderComponent extends BaseComponent {
                                     ${userHomeIcon}
                                     个人资料
                                 </a>
+                                <a href="#" class="dropdown-item" id="registrationCodeMenuItem">
+                                    ${hasIcons ? Icons.registrationCode : this.getDefaultRegistrationCodeIcon()}
+                                    注册码管理
+                                </a>
                                 <div class="dropdown-divider"></div>
                                 <a href="#" class="dropdown-item" id="logoutMenuItem">
                                     ${logoutIcon}
@@ -395,6 +399,19 @@ class HeaderComponent extends BaseComponent {
                 } else {
                     window.location.href = '/profile';
                 }
+                userMenu.classList.remove('active');
+            });
+        }
+
+        // 注册码管理菜单项
+        const registrationCodeMenuItem = this.shadowRoot.querySelector('#registrationCodeMenuItem');
+        if (registrationCodeMenuItem) {
+            registrationCodeMenuItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // TODO: 实现注册码管理功能
+                // 可以跳转到注册码管理页面或显示相关功能
+                console.log('注册码管理功能待实现');
                 userMenu.classList.remove('active');
             });
         }
@@ -562,6 +579,12 @@ class HeaderComponent extends BaseComponent {
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
             <polyline points="16,17 21,12 16,7"></polyline>
             <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>`;
+    }
+
+    getDefaultRegistrationCodeIcon() {
+        return `<svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 0 1 21.75 8.25z"></path>
         </svg>`;
     }
 }
