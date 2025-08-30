@@ -136,6 +136,57 @@
         .login-link a:hover {
             text-decoration: underline;
         }
+        
+        /* 成功页面样式 */
+        .success-page {
+            text-align: center;
+            padding: var(--spacing-8) 0;
+        }
+        
+        .success-content {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .success-icon {
+            font-size: 4rem;
+            margin-bottom: var(--spacing-4);
+        }
+        
+        .success-title {
+            font-size: var(--font-size-2xl);
+            font-weight: var(--card-title-weight);
+            color: var(--card-title-color);
+            margin: 0 0 var(--spacing-3) 0;
+        }
+        
+        .success-message {
+            color: var(--gray-600);
+            font-size: var(--font-size-base);
+            margin: 0 0 var(--spacing-6) 0;
+        }
+        
+        .success-actions {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-3);
+        }
+        
+        .success-actions .btn {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        @media (min-width: 480px) {
+            .success-actions {
+                flex-direction: row;
+            }
+            
+            .success-actions .btn {
+                width: auto;
+                flex: 1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -210,6 +261,19 @@
                 
                 <div class="login-link">
                     已有账号？<a href="#" id="loginLink">立即登录</a>
+                </div>
+                
+                <!-- 注册成功页面 -->
+                <div class="success-page" id="successPage" style="display: none;">
+                    <div class="success-content">
+                        <div class="success-icon">✅</div>
+                        <h2 class="success-title">注册成功！</h2>
+                        <p class="success-message">恭喜您成功注册BlogN账户</p>
+                        <div class="success-actions">
+                            <button class="btn btn-primary" id="loginNowBtn">立即登录</button>
+                            <a href="/" class="btn btn-ghost">返回首页</a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -426,10 +490,7 @@
                     const result = await response.json();
                     
                     if (response.ok) {
-                        this.showSuccessMessage('注册成功！正在跳转到登录页面...');
-                        setTimeout(() => {
-                            document.dispatchEvent(new CustomEvent('showLoginModal'));
-                        }, 2000);
+                        this.showSuccessPage();
                     } else {
                         this.showErrorMessage(result.detail || '注册失败，请重试');
                     }
@@ -446,6 +507,28 @@
             handleLoginClick(e) {
                 e.preventDefault();
                 document.dispatchEvent(new CustomEvent('showLoginModal'));
+            }
+            
+            showSuccessPage() {
+                // 隐藏表单
+                this.form.style.display = 'none';
+                document.querySelector('.login-link').style.display = 'none';
+                
+                // 显示成功页面
+                const successPage = document.getElementById('successPage');
+                successPage.style.display = 'block';
+                
+                // 绑定成功页面的按钮事件
+                this.bindSuccessPageEvents();
+            }
+            
+            bindSuccessPageEvents() {
+                const loginNowBtn = document.getElementById('loginNowBtn');
+                if (loginNowBtn) {
+                    loginNowBtn.addEventListener('click', () => {
+                        document.dispatchEvent(new CustomEvent('showLoginModal'));
+                    });
+                }
             }
             
             showSuccessMessage(message) {
