@@ -231,8 +231,7 @@ class TokenManager {
             // 防重复刷新的标志
             let isRefreshing = false;
             let refreshPromise = null;
-            let retryCount = 0;
-            const MAX_RETRIES = 1; // 最多重试1次
+            let hasRetried = false; // 是否已经重试过
             
             // 全局请求拦截器
             const originalFetch = window.fetch;
@@ -253,7 +252,7 @@ class TokenManager {
                     
                     const response = await originalFetch(...args);
                     
-                    if (response.status === 401 && retryCount < MAX_RETRIES) {
+                    if (response.status === 401 && !hasRetried) {
                         // 防止重复刷新
                         if (isRefreshing) {
                             // 如果正在刷新，等待刷新完成
@@ -262,7 +261,7 @@ class TokenManager {
                                 // 刷新完成后，使用新令牌重新发起请求
                                 const newToken = localStorage.getItem('access_token');
                                 if (newToken) {
-                                    retryCount++;
+                                    hasRetried = true;
                                     const newHeaders = new Headers(args[1]?.headers);
                                     newHeaders.set('Authorization', `Bearer ${newToken}`);
                                     
@@ -287,7 +286,7 @@ class TokenManager {
                                     // 刷新成功，使用新令牌重新发起请求
                                     const newToken = localStorage.getItem('access_token');
                                     if (newToken) {
-                                        retryCount++;
+                                        hasRetried = true;
                                         const newHeaders = new Headers(args[1]?.headers);
                                         newHeaders.set('Authorization', `Bearer ${newToken}`);
                                         
@@ -309,9 +308,9 @@ class TokenManager {
                         }
                     }
                     
-                    // 重置重试计数（成功响应或非401错误）
+                    // 重置重试标志（成功响应或非401错误）
                     if (response.status !== 401) {
-                        retryCount = 0;
+                        hasRetried = false;
                     }
                     
                     return response;
