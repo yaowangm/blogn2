@@ -182,7 +182,27 @@
         .success-message {
             color: var(--gray-600);
             font-size: var(--font-size-base);
+            margin: 0 0 var(--spacing-4) 0;
+        }
+        
+        .success-username {
+            color: var(--gray-700);
+            font-size: var(--font-size-base);
+            margin: 0 0 var(--spacing-3) 0;
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        .success-username span {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .success-tip {
+            color: var(--gray-500);
+            font-size: var(--font-size-sm);
             margin: 0 0 var(--spacing-6) 0;
+            text-align: center;
         }
         
         .success-actions {
@@ -291,9 +311,10 @@
                         <div class="success-icon">✅</div>
                         <h2 class="success-title">注册成功！</h2>
                         <p class="success-message">恭喜您成功注册BlogN账户</p>
+                        <p class="success-username">用户名：<span id="registeredUsername"></span></p>
+                        <p class="success-tip">请到首页登录您的账户</p>
                         <div class="success-actions">
-                            <button class="btn btn-primary" id="loginNowBtn">立即登录</button>
-                            <a href="/" class="btn btn-ghost">返回首页</a>
+                            <a href="/" class="btn btn-primary">前往首页</a>
                         </div>
                     </div>
                 </div>
@@ -537,22 +558,19 @@
                 this.form.style.display = 'none';
                 document.querySelector('.login-link').style.display = 'none';
                 
+                // 设置注册成功的用户名
+                const username = document.getElementById('username').value;
+                const usernameSpan = document.getElementById('registeredUsername');
+                if (usernameSpan) {
+                    usernameSpan.textContent = username;
+                }
+                
                 // 显示成功页面
                 const successPage = document.getElementById('successPage');
                 successPage.style.display = 'block';
-                
-                // 绑定成功页面的按钮事件
-                this.bindSuccessPageEvents();
             }
             
-            bindSuccessPageEvents() {
-                const loginNowBtn = document.getElementById('loginNowBtn');
-                if (loginNowBtn) {
-                    loginNowBtn.addEventListener('click', () => {
-                        document.dispatchEvent(new CustomEvent('showLoginModal'));
-                    });
-                }
-            }
+
             
             handleRegistrationError(result) {
                 // 清除之前的错误

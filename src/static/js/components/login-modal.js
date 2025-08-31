@@ -431,7 +431,15 @@ class LoginModal extends BaseComponent {
         
         this.hide();
         this.showSuccessMessage('登录成功！');
-        this.handleRedirect();
+        
+        // 检查是否是注册后的登录，如果是则不自动跳转
+        const headerComponent = document.querySelector('header-component');
+        if (headerComponent && headerComponent.registrationLogin) {
+            // 注册后的登录，不自动跳转，让顶栏组件处理
+        } else {
+            // 普通登录，执行自动跳转
+            this.handleRedirect();
+        }
     }
 
     handleLoginError(message) {

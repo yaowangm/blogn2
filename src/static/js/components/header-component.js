@@ -7,6 +7,7 @@ class HeaderComponent extends BaseComponent {
         this.userName = '';
         this.userInfo = null;
         this.loginModal = null;
+        this.registrationLogin = false; // 注册登录标识
     }
 
     /**
@@ -309,6 +310,9 @@ class HeaderComponent extends BaseComponent {
                 </a>
 
                 <div class="header-actions">
+                    <!-- 注册链接始终显示 -->
+                    <a href="/user_register" class="btn btn-ghost">注册</a>
+                    
                     ${this.isLoggedIn ? `
                         <div class="user-menu" id="userMenu">
                             <div class="user-avatar">
@@ -354,7 +358,6 @@ class HeaderComponent extends BaseComponent {
                             </div>
                         </div>
                     ` : `
-                        <a href="/user_register" class="btn btn-ghost">注册</a>
                         <button class="btn btn-primary" id="loginButton">登录</button>
                     `}
                 </div>
@@ -460,6 +463,12 @@ class HeaderComponent extends BaseComponent {
         document.addEventListener('userLoginSuccess', (e) => {
             this.handleLoginSuccess(e.detail);
         });
+        
+        // 监听显示登录模态框事件
+        document.addEventListener('showLoginModal', (e) => {
+            const options = e.detail || {};
+            this.showLoginModal(null, options);
+        });
     }
     
     setupTokenEventListeners() {
@@ -508,26 +517,32 @@ class HeaderComponent extends BaseComponent {
         this.isLoggedIn = false;
         this.userName = '';
         this.userInfo = null;
+        this.registrationLogin = false; // 重置注册登录标识
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user_info');
     }
 
-    showLoginModal() {
+    showLoginModal(returnUrl = null, options = {}) {
+        // 设置注册登录标识
+        if (options.fromRegistration) {
+            this.registrationLogin = true;
+        }
+        
         if (!this.loginModal) {
             // 如果模态框未初始化，先初始化
             this.setupLoginModal();
             // 等待一小段时间让脚本加载完成
             setTimeout(() => {
                 if (this.loginModal) {
-                    const returnUrl = window.location.pathname + window.location.search;
-                    this.loginModal.show(returnUrl);
+                    const finalReturnUrl = returnUrl || window.location.pathname + window.location.search;
+                    this.loginModal.show(finalReturnUrl);
                 }
             }, 100);
         } else {
-            // 传递当前页面URL作为返回地址
-            const returnUrl = window.location.pathname + window.location.search;
-            this.loginModal.show(returnUrl);
+            // 传递指定的返回地址或当前页面URL
+            const finalReturnUrl = returnUrl || window.location.pathname + window.location.search;
+            this.loginModal.show(finalReturnUrl);
         }
     }
 
@@ -540,6 +555,19 @@ class HeaderComponent extends BaseComponent {
         // 重新渲染组件
         this.render();
         this.addEventListeners();
+        
+        // 根据登录来源决定跳转行为
+        if (this.registrationLogin) {
+            // 注册后的登录，跳转到首页
+            this.registrationLogin = false; // 重置标识
+            window.location.href = '/';
+        } else if (this.returnUrl) {
+            // 普通登录，回到原页面
+            const returnUrl = this.returnUrl;
+            this.returnUrl = null; // 清除returnUrl
+            window.location.href = returnUrl;
+        }
+        // 如果没有特殊标识，保持在当前页面
     }
 
     async handleLogout() {
