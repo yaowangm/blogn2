@@ -28,7 +28,7 @@ class AuthService:
         
         # JWT配置
         self.access_token_expire_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))  # 访问令牌过期时间
-        self.refresh_token_expire_days = 7     # 刷新令牌7天过期
+        self.refresh_token_expire_days = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))      # 刷新令牌过期天数
     
     def verify_password(self, plain_password: str, stored_hash: str) -> bool:
         """
