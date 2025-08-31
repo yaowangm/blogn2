@@ -16,7 +16,7 @@ class LoginResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
-    expires_in: int  # 访问令牌过期时间（秒）
+    expires_in: int  # 访问令牌过期时间（秒，由后端计算）
     user: dict
 
 class TokenRefreshRequest(BaseModel):
