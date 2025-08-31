@@ -227,33 +227,104 @@ class TokenManager {
      * 设置全局请求拦截器
      */
     setupGlobalFetchInterceptor() {
-        // 全局请求拦截器
-        const originalFetch = window.fetch;
-        window.fetch = async function(...args) {
-            const response = await originalFetch(...args);
+        try {
+            // 防重复刷新的标志
+            let isRefreshing = false;
+            let refreshPromise = null;
+            let retryCount = 0;
+            const MAX_RETRIES = 1; // 最多重试1次
             
-            if (response.status === 401) {
-                // 自动刷新令牌
-                const refreshed = await window.tokenManager.checkAndRefreshToken();
-                if (refreshed) {
-                    // 重新发送原始请求
-                    const newToken = localStorage.getItem('access_token');
-                    const newHeaders = new Headers(args[1]?.headers);
-                    newHeaders.set('Authorization', `Bearer ${newToken}`);
+            // 全局请求拦截器
+            const originalFetch = window.fetch;
+            window.fetch = async function(...args) {
+                try {
+                    // 只拦截API请求，避免影响页面资源加载
+                    const url = args[0];
+                    const isApiRequest = typeof url === 'string' && (
+                        url.startsWith('/api/') || 
+                        url.startsWith('http://localhost:') ||
+                        url.startsWith('https://')
+                    );
                     
-                    const newArgs = [...args];
-                    if (newArgs[1]) {
-                        newArgs[1].headers = newHeaders;
-                    } else {
-                        newArgs[1] = { headers: newHeaders };
+                    if (!isApiRequest) {
+                        // 非API请求，直接使用原始fetch
+                        return await originalFetch(...args);
                     }
                     
-                    return await originalFetch(...newArgs);
+                    const response = await originalFetch(...args);
+                    
+                    if (response.status === 401 && retryCount < MAX_RETRIES) {
+                        // 防止重复刷新
+                        if (isRefreshing) {
+                            // 如果正在刷新，等待刷新完成
+                            if (refreshPromise) {
+                                await refreshPromise;
+                                // 刷新完成后，使用新令牌重新发起请求
+                                const newToken = localStorage.getItem('access_token');
+                                if (newToken) {
+                                    retryCount++;
+                                    const newHeaders = new Headers(args[1]?.headers);
+                                    newHeaders.set('Authorization', `Bearer ${newToken}`);
+                                    
+                                    const newArgs = [...args];
+                                    if (newArgs[1]) {
+                                        newArgs[1].headers = newHeaders;
+                                    } else {
+                                        newArgs[1] = { headers: newHeaders };
+                                    }
+                                    
+                                    return await originalFetch(...newArgs);
+                                }
+                            }
+                        } else {
+                            // 开始刷新令牌
+                            isRefreshing = true;
+                            refreshPromise = window.tokenManager.checkAndRefreshToken();
+                            
+                            try {
+                                const refreshed = await refreshPromise;
+                                if (refreshed) {
+                                    // 刷新成功，使用新令牌重新发起请求
+                                    const newToken = localStorage.getItem('access_token');
+                                    if (newToken) {
+                                        retryCount++;
+                                        const newHeaders = new Headers(args[1]?.headers);
+                                        newHeaders.set('Authorization', `Bearer ${newToken}`);
+                                        
+                                        const newArgs = [...args];
+                                        if (newArgs[1]) {
+                                            newArgs[1].headers = newHeaders;
+                                        } else {
+                                            newArgs[1] = { headers: newHeaders };
+                                        }
+                                        
+                                        return await originalFetch(...newArgs);
+                                    }
+                                }
+                            } finally {
+                                // 重置刷新状态
+                                isRefreshing = false;
+                                refreshPromise = null;
+                            }
+                        }
+                    }
+                    
+                    // 重置重试计数（成功响应或非401错误）
+                    if (response.status !== 401) {
+                        retryCount = 0;
+                    }
+                    
+                    return response;
+                } catch (error) {
+                    console.error('Fetch拦截器错误:', error);
+                    // 出错时回退到原始fetch
+                    return await originalFetch(...args);
                 }
-            }
-            
-            return response;
-        };
+            };
+            console.log('全局请求拦截器设置成功');
+        } catch (error) {
+            console.error('设置全局请求拦截器失败:', error);
+        }
     }
 }
 
