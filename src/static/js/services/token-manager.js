@@ -14,6 +14,9 @@ class TokenManager {
         
         // 监听用户活动，在用户活跃时主动刷新令牌
         this.setupUserActivityListener();
+        
+        // 设置全局请求拦截器
+        this.setupGlobalFetchInterceptor();
     }
 
     /**
@@ -152,13 +155,28 @@ class TokenManager {
      */
     async getValidAccessToken() {
         const accessToken = localStorage.getItem('access_token');
-        if (!accessToken) return null;
+        const refreshToken = localStorage.getItem('refresh_token');
+        
+        if (!accessToken || !refreshToken) return null;
 
-        // 如果令牌即将过期，先刷新
+        // 策略1：提前刷新（减少失败请求）
         if (this.isTokenExpiringSoon(accessToken)) {
-            const refreshed = await this.checkAndRefreshToken();
+            const refreshed = await this.refreshAccessToken(refreshToken);
             if (refreshed) {
                 return localStorage.getItem('access_token');
+            }
+        }
+
+        // 策略2：过期后自动刷新（兜底机制）
+        const payload = this.decodeToken(accessToken);
+        if (payload && payload.exp) {
+            const now = Math.floor(Date.now() / 1000);
+            if (payload.exp <= now) {
+                // 令牌已过期，立即刷新
+                const refreshed = await this.refreshAccessToken(refreshToken);
+                if (refreshed) {
+                    return localStorage.getItem('access_token');
+                }
             }
         }
 
@@ -203,6 +221,39 @@ class TokenManager {
     setTokens(accessToken, refreshToken) {
         localStorage.setItem('access_token', accessToken);
         localStorage.setItem('refresh_token', refreshToken);
+    }
+
+    /**
+     * 设置全局请求拦截器
+     */
+    setupGlobalFetchInterceptor() {
+        // 全局请求拦截器
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            const response = await originalFetch(...args);
+            
+            if (response.status === 401) {
+                // 自动刷新令牌
+                const refreshed = await window.tokenManager.checkAndRefreshToken();
+                if (refreshed) {
+                    // 重新发送原始请求
+                    const newToken = localStorage.getItem('access_token');
+                    const newHeaders = new Headers(args[1]?.headers);
+                    newHeaders.set('Authorization', `Bearer ${newToken}`);
+                    
+                    const newArgs = [...args];
+                    if (newArgs[1]) {
+                        newArgs[1].headers = newHeaders;
+                    } else {
+                        newArgs[1] = { headers: newHeaders };
+                    }
+                    
+                    return await originalFetch(...newArgs);
+                }
+            }
+            
+            return response;
+        };
     }
 }
 
