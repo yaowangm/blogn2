@@ -61,4 +61,11 @@ class ProjectRepository:
         """根据用户ID获取单个项目（一对一关系）"""
         statement = select(Project).where(Project.userid == user_id)
         result = await self.session.exec(statement)
-        return result.first() 
+        return result.first()
+    
+    async def create(self, project: Project) -> Project:
+        """创建新项目"""
+        self.session.add(project)
+        # 不在这里commit，由外层事务管理器控制
+        await self.session.flush()  # 刷新以获取生成的ID
+        return project 

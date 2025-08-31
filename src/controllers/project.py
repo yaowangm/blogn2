@@ -359,3 +359,74 @@ async def get_user_project(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取用户博客信息失败: {str(e)}")
+
+@router.post("/projects/create", response_model=Dict[str, Any])
+async def create_project(
+    project_data: Dict[str, Any],
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    创建新博客项目
+    
+    Args:
+        project_data: 包含博客名称和描述的字典
+        session: 数据库会话
+        
+    Returns:
+        Dict[str, Any]: 新创建的博客信息
+    """
+    from src.repositories.user_repository import UserRepository
+    
+    # 验证输入数据
+    if not project_data.get("name"):
+        raise HTTPException(status_code=400, detail="博客名称不能为空")
+    
+    if len(project_data["name"]) > 100:
+        raise HTTPException(status_code=400, detail="博客名称不能超过100个字符")
+    
+    if project_data.get("comment") and len(project_data["comment"]) > 500:
+        raise HTTPException(status_code=400, detail="博客描述不能超过500个字符")
+    
+    # 获取当前用户ID（从请求头中的token解析）
+    # 这里需要实现用户认证逻辑
+    # 暂时从project_data中获取userid，实际应该从token中获取
+    userid = project_data.get("userid")
+    if not userid:
+        raise HTTPException(status_code=400, detail="用户ID不能为空")
+    
+    try:
+        # 开始事务
+        async with session.begin():
+            # 创建新项目
+            project_repo = ProjectRepository(session)
+            new_project = Project(
+                name=project_data["name"],
+                comment=project_data.get("comment"),
+                userid=userid,
+                createtime=datetime.now(),
+                updatetime=datetime.now(),
+                state=1,  # 正常状态
+                recordcount=0,
+                accesscount=0,
+                commentcount=0
+            )
+            
+            created_project = await project_repo.create(new_project)
+            
+            # 更新用户的projectid
+            user_repo = UserRepository(session)
+            await user_repo.update_projectid(userid, created_project.id)
+            
+            return {
+                "id": created_project.id,
+                "name": created_project.name,
+                "comment": created_project.comment,
+                "userid": created_project.userid,
+                "createtime": created_project.createtime,
+                "updatetime": created_project.updatetime,
+                "state": created_project.state
+            }
+            
+    except Exception as e:
+        # 事务会自动回滚
+        raise HTTPException(status_code=500, detail=f"创建博客失败: {str(e)}")

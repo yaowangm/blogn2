@@ -94,4 +94,32 @@ class UserRepository:
         except Exception as e:
             await self.session.rollback()
             print(f"更新密码失败: {e}")
+            return False
+    
+    async def update_projectid(self, user_id: int, project_id: int) -> bool:
+        """
+        更新用户的projectid
+        
+        Args:
+            user_id: 用户ID
+            project_id: 项目ID
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        try:
+            # 获取用户
+            user = await self.get_by_id(user_id)
+            if not user:
+                return False
+            
+            # 更新projectid
+            user.projectid = project_id
+            await self.session.commit()
+            
+            return True
+            
+        except Exception as e:
+            await self.session.rollback()
+            print(f"更新projectid失败: {e}")
             return False 
