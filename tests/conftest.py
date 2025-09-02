@@ -209,12 +209,12 @@ def setup_test_env():
         os.environ.pop("DATABASE_URL", None)
 
 
-@pytest.fixture(scope="session", autouse=True)
-async def clear_cache_before_tests():
-    """在所有测试开始前清理所有缓存"""
+@pytest.fixture(autouse=True)
+async def clear_cache_after_each_test():
+    """在每个测试后清理所有缓存"""
+    yield
     try:
         from src.utils.cache import cache_manager
-        await cache_manager.initialize()
         if cache_manager.is_available():
             # 清理所有缓存
             await cache_manager.clear_pattern("*")

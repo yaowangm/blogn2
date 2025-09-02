@@ -13,6 +13,7 @@ from functools import wraps
 from typing import Any, Callable, Optional, Union
 from datetime import datetime, timedelta
 
+from fastapi import HTTPException
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 from fastapi_cache.decorator import cache
@@ -27,12 +28,7 @@ logger = logging.getLogger(__name__)
 
 def _is_testing_environment() -> bool:
     """检查是否在测试环境中"""
-    return (
-        os.getenv("PYTEST_CURRENT_TEST") is not None or
-        os.getenv("PYTEST") is not None or
-        "pytest" in os.environ.get("_", "") or
-        any("pytest" in arg for arg in os.sys.argv if hasattr(os, 'sys'))
-    )
+    return os.getenv("PYTEST_CURRENT_TEST") is not None
 
 
 def _has_mock_objects(kwargs: dict) -> bool:
@@ -179,10 +175,6 @@ def cache_decorator(
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            # 测试环境检查 - 在测试环境中完全跳过缓存
-            if _is_testing_environment():
-                return await func(*args, **kwargs)
-            
             # 缓存启用检查
             if not enable_cache or not cache_settings.enable_cache:
                 return await func(*args, **kwargs)
@@ -221,10 +213,12 @@ def cache_decorator(
                 
                 return result
             except Exception as e:
-                logger.warning(f"缓存操作失败，直接执行函数: {e}")
-                # 在测试环境中，确保异常被正确传递
-                if _is_testing_environment():
+                # 对于HTTPException等业务异常，应该直接抛出
+                if isinstance(e, (HTTPException, ValueError, TypeError)):
                     raise e
+                
+                # 对于缓存相关的异常，记录日志并直接执行函数
+                logger.warning(f"缓存操作失败，直接执行函数: {e}")
                 return await func(*args, **kwargs)
         
         return wrapper
