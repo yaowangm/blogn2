@@ -124,13 +124,14 @@ class UserRepository:
             print(f"更新projectid失败: {e}")
             return False
     
-    async def get_users_paginated(self, page: int = 1, page_size: int = 20) -> tuple[List[User], int]:
+    async def get_users_paginated(self, page: int = 1, page_size: int = 20, search: str = None) -> tuple[List[User], int]:
         """
         分页获取用户列表
         
         Args:
             page: 页码，从1开始
             page_size: 每页大小
+            search: 搜索关键词，对用户名进行模糊匹配，可选
             
         Returns:
             tuple: (用户列表, 总数量)
@@ -138,14 +139,22 @@ class UserRepository:
         # 计算偏移量
         offset = (page - 1) * page_size
         
+        # 构建基础查询条件
+        base_condition = True
+        if search and search.strip():
+            # 对用户名进行模糊搜索
+            search_term = f"%{search.strip()}%"
+            base_condition = User.name.ilike(search_term)
+        
         # 获取总数
-        count_statement = select(func.count(User.id))
+        count_statement = select(func.count(User.id)).where(base_condition)
         count_result = await self.session.exec(count_statement)
         total_count = count_result.first() or 0
         
         # 获取分页数据
         statement = (
             select(User)
+            .where(base_condition)
             .order_by(User.regtime.desc())
             .offset(offset)
             .limit(page_size)

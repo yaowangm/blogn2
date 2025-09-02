@@ -58,18 +58,19 @@ class UserService:
             ]
         }
     
-    async def get_users_paginated(self, page: int = 1, page_size: int = 20) -> Dict[str, Any]:
+    async def get_users_paginated(self, page: int = 1, page_size: int = 20, search: str = None) -> Dict[str, Any]:
         """
         分页获取用户列表
         
         Args:
             page: 页码，从1开始
             page_size: 每页大小
+            search: 搜索关键词，对用户名进行模糊匹配，可选
             
         Returns:
             Dict[str, Any]: 包含用户列表和分页信息的字典
         """
-        users, total_count = await self.user_repo.get_users_paginated(page, page_size)
+        users, total_count = await self.user_repo.get_users_paginated(page, page_size, search)
         
         # 计算分页信息
         total_pages = (total_count + page_size - 1) // page_size

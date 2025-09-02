@@ -35,6 +35,66 @@
             font-size: var(--font-size-base);
         }
 
+        .search-container {
+            margin-bottom: var(--spacing-6);
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: var(--spacing-3) var(--spacing-4);
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-base);
+            background: var(--white);
+            transition: var(--transition-fast);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .search-button,
+        .clear-button {
+            position: absolute;
+            right: var(--spacing-2);
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            color: var(--gray-500);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            transition: var(--transition-fast);
+        }
+
+        .search-button:hover,
+        .clear-button:hover {
+            background: var(--gray-100);
+            color: var(--gray-700);
+        }
+
+        .clear-button {
+            right: var(--spacing-10);
+        }
+
+        .search-button svg,
+        .clear-button svg {
+            width: 16px;
+            height: 16px;
+        }
+
         .table-container {
             background: var(--white);
             border-radius: var(--radius-lg);
@@ -262,6 +322,24 @@
                 <p class="page-description">管理系统中的所有用户信息</p>
             </div>
 
+            <div class="search-container">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="搜索用户名..." class="search-input">
+                    <button id="searchButton" class="search-button">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                    </button>
+                    <button id="clearButton" class="clear-button" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
             <div class="table-container">
                 <div id="loadingContainer" class="loading-container">
                     <div class="loading-spinner"></div>
@@ -319,6 +397,7 @@
                 this.pageSize = 20;
                 this.totalPages = 0;
                 this.totalCount = 0;
+                this.searchQuery = '';
                 this.init();
             }
 
@@ -363,7 +442,17 @@
                 try {
                     this.showLoading();
                     
-                    const response = await fetch(`/api/users/list?page=${page}&page_size=${this.pageSize}`, {
+                    // 构建查询参数
+                    const params = new URLSearchParams({
+                        page: page.toString(),
+                        page_size: this.pageSize.toString()
+                    });
+                    
+                    if (this.searchQuery.trim()) {
+                        params.append('search', this.searchQuery.trim());
+                    }
+                    
+                    const response = await fetch(`/api/users/list?${params.toString()}`, {
                         headers: {
                             'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                         }
@@ -579,7 +668,68 @@
             }
 
             setupEventListeners() {
-                // 可以在这里添加其他事件监听器
+                // 搜索功能
+                const searchInput = document.getElementById('searchInput');
+                const searchButton = document.getElementById('searchButton');
+                const clearButton = document.getElementById('clearButton');
+                
+                if (searchInput) {
+                    // 搜索按钮点击事件
+                    searchButton.addEventListener('click', () => {
+                        this.performSearch();
+                    });
+                    
+                    // 回车键搜索
+                    searchInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            this.performSearch();
+                        }
+                    });
+                    
+                    // 输入变化时显示/隐藏清除按钮
+                    searchInput.addEventListener('input', () => {
+                        this.toggleClearButton();
+                    });
+                }
+                
+                if (clearButton) {
+                    // 清除搜索
+                    clearButton.addEventListener('click', () => {
+                        this.clearSearch();
+                    });
+                }
+            }
+
+            performSearch() {
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    this.searchQuery = searchInput.value;
+                    this.currentPage = 1; // 重置到第一页
+                    this.loadUsers(1);
+                }
+            }
+
+            clearSearch() {
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    searchInput.value = '';
+                    this.searchQuery = '';
+                    this.currentPage = 1; // 重置到第一页
+                    this.loadUsers(1);
+                }
+            }
+
+            toggleClearButton() {
+                const searchInput = document.getElementById('searchInput');
+                const clearButton = document.getElementById('clearButton');
+                
+                if (searchInput && clearButton) {
+                    if (searchInput.value.trim()) {
+                        clearButton.style.display = 'flex';
+                    } else {
+                        clearButton.style.display = 'none';
+                    }
+                }
             }
         }
 

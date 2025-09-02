@@ -75,13 +75,14 @@ async def get_user_count(
 async def get_users_list(
     page: int = 1,
     page_size: int = 20,
+    search: str = None,
     user_service: UserService = Depends(get_user_service),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
     获取用户列表（仅管理员可访问）
     
-    支持分页功能，返回用户的基本信息包括：
+    支持分页和搜索功能，返回用户的基本信息包括：
     - id: 用户ID
     - name: 用户名
     - state: 用户状态
@@ -93,6 +94,7 @@ async def get_users_list(
     Args:
         page: 页码，从1开始，默认1
         page_size: 每页大小，默认20
+        search: 搜索关键词，对用户名进行模糊匹配，可选
         user_service: 用户服务实例
         current_user: 当前登录用户信息（必须是管理员）
         
@@ -115,7 +117,7 @@ async def get_users_list(
     if page_size < 1 or page_size > 100:
         page_size = 20
     
-    return await user_service.get_users_paginated(page, page_size)
+    return await user_service.get_users_paginated(page, page_size, search)
 
 @router.get("/users/{user_id}", response_model=Dict[str, Any])
 @handle_api_errors("获取用户信息失败")
