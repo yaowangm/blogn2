@@ -47,26 +47,36 @@ class BlogInfoCard extends BaseComponent {
                 userId = currentUser.id;
             }
 
-            // 获取用户的博客信息
+            // 获取用户信息
             const token = localStorage.getItem('access_token');
             const headers = {};
             if (token) {
                 headers['Authorization'] = `Bearer ${token}`;
             }
             
-            const response = await fetch(`/api/projects/user/${userId}`, { headers });
+            const userResponse = await fetch(`/api/users/${userId}`, { headers });
+            if (!userResponse.ok) {
+                throw new Error(`获取用户信息失败: ${userResponse.status}`);
+            }
             
-            if (response.ok) {
-                this.blogData = await response.json();
-                this.render();
-            } else if (response.status === 404) {
+            const userData = await userResponse.json();
+            
+            // 检查用户是否有博客项目
+            if (userData.projectid) {
+                // 用户有博客，获取博客详细信息
+                const response = await fetch(`/api/projects/${userData.projectid}`, { headers });
+                if (response.ok) {
+                    this.blogData = await response.json();
+                } else {
+                    throw new Error(`获取博客信息失败: ${response.status}`);
+                }
+            } else {
                 // 用户没有博客，显示开通博客选项
                 this.blogData = null;
                 this.userId = userId;
-                this.render();
-            } else {
-                throw new Error(`获取博客信息失败: ${response.status}`);
             }
+            
+            this.render();
         } catch (error) {
             console.error('加载博客数据失败:', error);
             this.showError('加载博客数据失败');

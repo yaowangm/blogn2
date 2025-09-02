@@ -63,11 +63,16 @@ class UserProfileCard extends BaseComponent {
             
             this.userData = await userResponse.json();
 
-            // 获取用户的博客信息
-            const projectResponse = await fetch(`/api/projects/user/${userId}`, { headers });
-            
-            if (projectResponse.ok) {
-                this.projectData = await projectResponse.json();
+            // 检查用户是否有博客项目
+            if (this.userData.projectid) {
+                // 用户有博客，获取博客详细信息
+                const projectResponse = await fetch(`/api/projects/${this.userData.projectid}`, { headers });
+                if (projectResponse.ok) {
+                    this.projectData = await projectResponse.json();
+                }
+            } else {
+                // 用户没有博客
+                this.projectData = null;
             }
 
             this.render();

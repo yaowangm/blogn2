@@ -64,22 +64,29 @@ class BlogProfileCard extends BaseComponent {
                             headers['Authorization'] = `Bearer ${token}`;
                         }
                         
-                        const projectResponse = await fetch(`/api/projects/user/${userId}`, { headers });
-                        if (projectResponse.ok) {
-                            this.projectData = await projectResponse.json();
-                            this.projectId = this.projectData.id;
+                        // 获取用户信息
+                        const userResponse = await fetch(`/api/users/${userId}`, { headers });
+                        if (userResponse.ok) {
+                            this.userData = await userResponse.json();
                             
-                            // 获取用户信息
-                            const userResponse = await fetch(`/api/users/${userId}`, { headers });
-                            if (userResponse.ok) {
-                                this.userData = await userResponse.json();
+                            // 检查用户是否有博客项目
+                            if (this.userData.projectid) {
+                                // 用户有博客，获取博客详细信息
+                                const projectResponse = await fetch(`/api/projects/${this.userData.projectid}`, { headers });
+                                if (projectResponse.ok) {
+                                    this.projectData = await projectResponse.json();
+                                    this.projectId = this.projectData.id;
+                                }
+                            } else {
+                                // 用户没有博客
+                                this.projectData = null;
                             }
                             
                             this.loading = false;
                             this.render();
                             return;
                         } else {
-                            this.showError(`获取用户博客信息失败: ${projectResponse.status}`);
+                            this.showError(`获取用户信息失败: ${userResponse.status}`);
                             return;
                         }
                     } else {
@@ -309,7 +316,7 @@ class BlogProfileCard extends BaseComponent {
 
             <div class="card">
                 ${this.loading ? this.renderLoading() : 
-                  this.userData && this.projectData ? this.renderContent() : 
+                  this.userData ? this.renderContent() : 
                   this.renderError()}
             </div>
         `;
@@ -326,7 +333,7 @@ class BlogProfileCard extends BaseComponent {
     renderContent() {
         // 安全处理所有文本字段，防止HTML注入和XSS攻击
         const safeAvatarText = this.userData.name ? this.escapeHtml(this.userData.name.charAt(0).toUpperCase()) : '?';
-        const safeBlogName = this.escapeHtml(this.projectData.name || '未命名博客');
+        const safeBlogName = this.projectData ? this.escapeHtml(this.projectData.name || '未命名博客') : '暂无博客';
         const safeUserName = this.escapeHtml(this.userData.name || '未知用户');
         
         // 构建头像路径 - 用户资料卡片使用大头像格式
@@ -360,11 +367,11 @@ class BlogProfileCard extends BaseComponent {
                     </div>
                     <div class="blog-stats">
                         <div class="stat-item">
-                            <div class="stat-number">${this.projectData.recordcount || 0}</div>
+                            <div class="stat-number">${this.projectData ? (this.projectData.recordcount || 0) : 0}</div>
                             <div class="stat-label">文章</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-number">${this.projectData.commentcount || 0}</div>
+                            <div class="stat-number">${this.projectData ? (this.projectData.commentcount || 0) : 0}</div>
                             <div class="stat-label">评论</div>
                         </div>
                     </div>
