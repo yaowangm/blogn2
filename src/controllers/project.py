@@ -11,11 +11,17 @@ from src.repositories.folder_repository import FolderRepository
 from src.models.project import Project
 from src.models.project_item import ProjectItem
 from src.models.folder import Folder
+from src.utils.cache import (
+    cache_project_detail, cache_project_posts, cache_project_comments,
+    cache_project_categories, cache_project_external_links, cache_project_rss,
+    cache_project_stats, cache_user_projects
+)
 
 # 创建项目API路由器
 router = APIRouter()
 
 @router.get("/projects/{project_id}", response_model=Dict[str, Any])
+@cache_project_detail()  # 使用环境变量配置的缓存时间
 async def get_project(
     project_id: int,
     session: AsyncSession = Depends(get_async_session)
@@ -49,6 +55,7 @@ async def get_project(
     }
 
 @router.get("/projects/{project_id}/posts", response_model=Dict[str, Any])
+@cache_project_posts()  # 使用环境变量配置的缓存时间
 async def get_project_posts(
     project_id: int,
     page: int = 1,
@@ -151,6 +158,7 @@ async def get_project_posts(
         }
 
 @router.get("/projects/{project_id}/comments/recent", response_model=List[Dict[str, Any]])
+@cache_project_comments()  # 使用环境变量配置的缓存时间
 async def get_project_recent_comments(
     project_id: int,
     limit: int = 5,
@@ -195,6 +203,7 @@ async def get_project_recent_comments(
     return comments_data
 
 @router.get("/projects/{project_id}/categories", response_model=List[Dict[str, Any]])
+@cache_project_categories()  # 使用环境变量配置的缓存时间
 async def get_project_categories(
     project_id: int,
     session: AsyncSession = Depends(get_async_session)
@@ -232,6 +241,7 @@ async def get_project_categories(
         return []
 
 @router.get("/projects/{project_id}/external-links", response_model=List[Dict[str, Any]])
+@cache_project_external_links()  # 使用环境变量配置的缓存时间
 async def get_project_external_links(
     project_id: int,
     session: AsyncSession = Depends(get_async_session)
@@ -255,6 +265,7 @@ async def get_project_external_links(
     ]
 
 @router.get("/projects/{project_id}/rss")
+@cache_project_rss()  # 使用环境变量配置的缓存时间
 async def get_project_rss(
     project_id: int,
     session: AsyncSession = Depends(get_async_session)
@@ -291,6 +302,7 @@ async def get_project_rss(
     return Response(content=rss_content, media_type="application/xml")
 
 @router.get("/projects/{project_id}/stats", response_model=Dict[str, Any])
+@cache_project_stats()  # 使用环境变量配置的缓存时间
 async def get_project_stats(
     project_id: int,
     session: AsyncSession = Depends(get_async_session)
@@ -321,6 +333,7 @@ async def get_project_stats(
 
 
 @router.get("/projects/user/{user_id}", response_model=Dict[str, Any])
+@cache_user_projects()  # 使用环境变量配置的缓存时间
 async def get_user_project(
     user_id: int,
     session: AsyncSession = Depends(get_async_session)
