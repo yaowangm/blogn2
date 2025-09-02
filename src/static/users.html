@@ -4,14 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>用户列表 - BlogN</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/components.css">
-    <link rel="stylesheet" href="/static/css/pages.css">
     <style>
-        .users-container {
+        .main-content {
+            padding: var(--spacing-8) 0;
+            min-height: calc(100vh - 200px);
+        }
+        
+        .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: var(--spacing-6);
+            padding: 0 var(--spacing-4);
         }
 
         .page-header {
@@ -30,7 +35,7 @@
             font-size: var(--font-size-base);
         }
 
-        .users-table-container {
+        .table-container {
             background: var(--white);
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow-sm);
@@ -38,19 +43,19 @@
             overflow: hidden;
         }
 
-        .users-table {
+        .table {
             width: 100%;
             border-collapse: collapse;
         }
 
-        .users-table th,
-        .users-table td {
+        .table th,
+        .table td {
             padding: var(--spacing-4);
             text-align: left;
             border-bottom: 1px solid var(--gray-200);
         }
 
-        .users-table th {
+        .table th {
             background: var(--gray-50);
             font-weight: 600;
             color: var(--gray-900);
@@ -59,12 +64,12 @@
             letter-spacing: 0.05em;
         }
 
-        .users-table td {
+        .table td {
             color: var(--gray-700);
             font-size: var(--font-size-sm);
         }
 
-        .users-table tbody tr:hover {
+        .table tbody tr:hover {
             background: var(--gray-50);
         }
 
@@ -78,7 +83,7 @@
             color: var(--gray-900);
         }
 
-        .user-state {
+        .status-badge {
             display: inline-flex;
             align-items: center;
             padding: var(--spacing-1) var(--spacing-2);
@@ -87,17 +92,17 @@
             font-weight: 500;
         }
 
-        .user-state.active {
+        .status-badge.active {
             background: var(--green-100);
             color: var(--green-800);
         }
 
-        .user-state.admin {
+        .status-badge.admin {
             background: var(--blue-100);
             color: var(--blue-800);
         }
 
-        .user-state.frozen {
+        .status-badge.frozen {
             background: var(--red-100);
             color: var(--red-800);
         }
@@ -212,15 +217,15 @@
         }
 
         @media (max-width: 768px) {
-            .users-container {
-                padding: var(--spacing-4);
+            .container {
+                padding: 0 var(--spacing-4);
             }
 
-            .users-table-container {
+            .table-container {
                 overflow-x: auto;
             }
 
-            .users-table {
+            .table {
                 min-width: 600px;
             }
 
@@ -241,13 +246,13 @@
     <header-component></header-component>
     
     <main class="main-content">
-        <div class="users-container">
+        <div class="container">
             <div class="page-header">
                 <h1 class="page-title">用户列表</h1>
                 <p class="page-description">管理系统中的所有用户信息</p>
             </div>
 
-            <div class="users-table-container">
+            <div class="table-container">
                 <div id="loadingContainer" class="loading-container">
                     <div class="loading-spinner"></div>
                 </div>
@@ -268,7 +273,7 @@
                     <p>暂无用户数据</p>
                 </div>
 
-                <table id="usersTable" class="users-table" style="display: none;">
+                <table id="usersTable" class="table" style="display: none;">
                     <thead>
                         <tr>
                             <th>ID</th>
@@ -413,7 +418,7 @@
                         <td class="user-id">${user.id}</td>
                         <td class="user-name">${this.escapeHtml(user.name)}</td>
                         <td>
-                            <span class="user-state ${this.getStateClass(user.state)}">
+                            <span class="status-badge ${this.getStateClass(user.state)}">
                                 ${this.getStateText(user.state)}
                             </span>
                         </td>
