@@ -340,7 +340,7 @@ class HeaderComponent extends BaseComponent {
                                     ${searchIcon}
                                     搜索
                                 </a>
-                                <a href="/profile" class="dropdown-item" id="profileMenuItem">
+                                <a href="${this.userInfo && this.userInfo.id ? `/profile/${this.userInfo.id}` : '/profile'}" class="dropdown-item" id="profileMenuItem">
                                     ${userHomeIcon}
                                     个人资料
                                 </a>
@@ -406,14 +406,8 @@ class HeaderComponent extends BaseComponent {
         const profileMenuItem = this.shadowRoot.querySelector('#profileMenuItem');
         if (profileMenuItem) {
             profileMenuItem.addEventListener('click', (e) => {
-                e.preventDefault();
                 e.stopPropagation();
-                // 跳转到当前用户的个人资料页面
-                if (this.userInfo && this.userInfo.id) {
-                    window.location.href = `/profile/${this.userInfo.id}`;
-                } else {
-                    window.location.href = '/profile';
-                }
+                // 链接已经直接指向正确的URL，只需要关闭菜单
                 userMenu.classList.remove('active');
             });
         }

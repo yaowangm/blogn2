@@ -83,6 +83,16 @@
             color: var(--gray-900);
         }
 
+        .user-name-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .user-name-link:hover {
+            text-decoration: underline;
+        }
+
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -416,7 +426,11 @@
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td class="user-id">${user.id}</td>
-                        <td class="user-name">${this.escapeHtml(user.name)}</td>
+                        <td class="user-name">
+                            <a href="/profile/${user.id}" class="user-name-link" target="_blank">
+                                ${this.escapeHtml(user.name)}
+                            </a>
+                        </td>
                         <td>
                             <span class="status-badge ${this.getStateClass(user.state)}">
                                 ${this.getStateText(user.state)}
