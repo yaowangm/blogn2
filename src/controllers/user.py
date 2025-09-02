@@ -5,11 +5,9 @@ from src.services.user_service import UserService
 from src.database import User
 from src.utils.error_handlers import handle_api_errors
 from src.utils.dependencies import get_user_service
-from src.utils.auth_middleware import get_optional_current_user
+from src.utils.auth_middleware import get_optional_current_user, get_current_user
 from src.utils.cache import cache_user_profile, cache_user_blogs, cache_user_summary, cache_user_count, cache_new_users
 from src.utils.permission_manager import permission_manager
-from src.utils.permission_decorators import require_admin
-from src.utils.auth_middleware import get_current_user
 
 # 创建用户API路由器
 router = APIRouter()
@@ -75,7 +73,7 @@ async def get_user_count(
 async def get_users_list(
     page: int = 1,
     page_size: int = 20,
-    search: str = None,
+    search: Optional[str] = None,
     user_service: UserService = Depends(get_user_service),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
@@ -93,7 +91,7 @@ async def get_users_list(
     
     Args:
         page: 页码，从1开始，默认1
-        page_size: 每页大小，默认20
+        page_size: 每页大小，默认20，最大100
         search: 搜索关键词，对用户名进行模糊匹配，可选
         user_service: 用户服务实例
         current_user: 当前登录用户信息（必须是管理员）
@@ -111,11 +109,9 @@ async def get_users_list(
     if not permission_manager.can_manage_system(current_user):
         raise HTTPException(status_code=403, detail="需要管理员权限")
     
-    # 验证分页参数
-    if page < 1:
-        page = 1
-    if page_size < 1 or page_size > 100:
-        page_size = 20
+    # 验证和规范化分页参数
+    page = max(1, page)
+    page_size = max(1, min(100, page_size))
     
     return await user_service.get_users_paginated(page, page_size, search)
 
@@ -227,11 +223,6 @@ async def reset_user_password(
     if not new_password or len(new_password) < 6:
         raise HTTPException(status_code=400, detail="新密码长度至少6位")
     
-    try:
-        # 调用用户服务重置密码
-        await user_service.reset_user_password(user_id, new_password)
-        
-        return {"message": "密码重置成功"}
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"重置密码失败: {str(e)}")
+    # 调用用户服务重置密码
+    await user_service.reset_user_password(user_id, new_password)
+    return {"message": "密码重置成功"}

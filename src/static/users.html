@@ -391,6 +391,10 @@
     <script src="/static/js/components/icons.js"></script>
     <script src="/static/js/services/token-manager.js"></script>
     <script>
+        /**
+         * 用户列表页面管理类
+         * 提供用户列表的分页显示、搜索和管理功能
+         */
         class UsersListPage {
             constructor() {
                 this.currentPage = 1;
@@ -401,17 +405,18 @@
                 this.init();
             }
 
+            /**
+             * 初始化页面
+             */
             async init() {
-                // 检查用户权限
                 await this.checkAdminPermission();
-                
-                // 加载用户列表
                 await this.loadUsers();
-                
-                // 设置事件监听器
                 this.setupEventListeners();
             }
 
+            /**
+             * 检查管理员权限
+             */
             async checkAdminPermission() {
                 try {
                     const token = localStorage.getItem('access_token');
@@ -433,16 +438,23 @@
                 }
             }
 
+            /**
+             * 重定向到首页并显示消息
+             * @param {string} message - 提示消息
+             */
             redirectToHome(message) {
                 alert(message);
                 window.location.href = '/';
             }
 
+            /**
+             * 加载用户列表数据
+             * @param {number} page - 页码，默认为1
+             */
             async loadUsers(page = 1) {
                 try {
                     this.showLoading();
                     
-                    // 构建查询参数
                     const params = new URLSearchParams({
                         page: page.toString(),
                         page_size: this.pageSize.toString()
@@ -481,30 +493,55 @@
                 }
             }
 
+            /**
+             * 显示加载状态
+             */
             showLoading() {
-                document.getElementById('loadingContainer').style.display = 'flex';
-                document.getElementById('errorContainer').style.display = 'none';
-                document.getElementById('emptyContainer').style.display = 'none';
-                document.getElementById('usersTable').style.display = 'none';
-                document.getElementById('paginationContainer').style.display = 'none';
+                this.setElementVisibility('loadingContainer', 'flex');
+                this.setElementVisibility('errorContainer', 'none');
+                this.setElementVisibility('emptyContainer', 'none');
+                this.setElementVisibility('usersTable', 'none');
+                this.setElementVisibility('paginationContainer', 'none');
             }
 
+            /**
+             * 显示错误状态
+             */
             showError() {
-                document.getElementById('loadingContainer').style.display = 'none';
-                document.getElementById('errorContainer').style.display = 'block';
-                document.getElementById('emptyContainer').style.display = 'none';
-                document.getElementById('usersTable').style.display = 'none';
-                document.getElementById('paginationContainer').style.display = 'none';
+                this.setElementVisibility('loadingContainer', 'none');
+                this.setElementVisibility('errorContainer', 'block');
+                this.setElementVisibility('emptyContainer', 'none');
+                this.setElementVisibility('usersTable', 'none');
+                this.setElementVisibility('paginationContainer', 'none');
             }
 
+            /**
+             * 隐藏加载状态
+             */
             hideLoading() {
-                document.getElementById('loadingContainer').style.display = 'none';
+                this.setElementVisibility('loadingContainer', 'none');
             }
 
+            /**
+             * 设置元素显示状态
+             * @param {string} elementId - 元素ID
+             * @param {string} display - 显示状态
+             */
+            setElementVisibility(elementId, display) {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    element.style.display = display;
+                }
+            }
+
+            /**
+             * 渲染用户列表
+             * @param {Array} users - 用户数据数组
+             */
             renderUsers(users) {
                 if (users.length === 0) {
-                    document.getElementById('emptyContainer').style.display = 'block';
-                    document.getElementById('usersTable').style.display = 'none';
+                    this.setElementVisibility('emptyContainer', 'block');
+                    this.setElementVisibility('usersTable', 'none');
                     return;
                 }
 
@@ -538,12 +575,16 @@
                     tbody.appendChild(row);
                 });
 
-                document.getElementById('usersTable').style.display = 'table';
+                this.setElementVisibility('usersTable', 'table');
             }
 
+            /**
+             * 渲染分页组件
+             * @param {Object} pagination - 分页信息对象
+             */
             renderPagination(pagination) {
                 if (pagination.total_pages <= 1) {
-                    document.getElementById('paginationContainer').style.display = 'none';
+                    this.setElementVisibility('paginationContainer', 'none');
                     return;
                 }
 
@@ -604,9 +645,17 @@
                 info.textContent = `第 ${pagination.current_page} 页，共 ${pagination.total_pages} 页，总计 ${pagination.total_count} 个用户`;
                 container.appendChild(info);
 
-                container.style.display = 'flex';
+                this.setElementVisibility('paginationContainer', 'flex');
             }
 
+            /**
+             * 创建分页按钮
+             * @param {string} text - 按钮文本
+             * @param {boolean} enabled - 是否启用
+             * @param {Function} onClick - 点击回调
+             * @param {boolean} isActive - 是否为当前页
+             * @returns {HTMLElement} 按钮元素
+             */
             createPaginationButton(text, enabled, onClick, isActive = false) {
                 const button = document.createElement('a');
                 button.href = '#';
@@ -623,6 +672,11 @@
                 return button;
             }
 
+            /**
+             * 获取用户状态对应的CSS类名
+             * @param {number} state - 用户状态
+             * @returns {string} CSS类名
+             */
             getStateClass(state) {
                 switch (state) {
                     case 10: return 'admin';
@@ -632,6 +686,11 @@
                 }
             }
 
+            /**
+             * 获取用户状态对应的文本
+             * @param {number} state - 用户状态
+             * @returns {string} 状态文本
+             */
             getStateText(state) {
                 switch (state) {
                     case 10: return '管理员';
@@ -641,6 +700,11 @@
                 }
             }
 
+            /**
+             * 格式化日期字符串
+             * @param {string} dateString - 日期字符串
+             * @returns {string} 格式化后的日期
+             */
             formatDate(dateString) {
                 if (!dateString) return '-';
                 try {
@@ -657,6 +721,11 @@
                 }
             }
 
+            /**
+             * HTML转义函数，防止XSS攻击
+             * @param {string} text - 需要转义的文本
+             * @returns {string} 转义后的安全文本
+             */
             escapeHtml(text) {
                 if (typeof text !== 'string') return text;
                 return text
@@ -667,68 +736,63 @@
                     .replace(/'/g, '&#39;');
             }
 
+            /**
+             * 设置事件监听器
+             */
             setupEventListeners() {
-                // 搜索功能
                 const searchInput = document.getElementById('searchInput');
                 const searchButton = document.getElementById('searchButton');
                 const clearButton = document.getElementById('clearButton');
                 
                 if (searchInput) {
-                    // 搜索按钮点击事件
-                    searchButton.addEventListener('click', () => {
-                        this.performSearch();
-                    });
-                    
-                    // 回车键搜索
+                    searchButton.addEventListener('click', () => this.performSearch());
                     searchInput.addEventListener('keypress', (e) => {
                         if (e.key === 'Enter') {
                             this.performSearch();
                         }
                     });
-                    
-                    // 输入变化时显示/隐藏清除按钮
-                    searchInput.addEventListener('input', () => {
-                        this.toggleClearButton();
-                    });
+                    searchInput.addEventListener('input', () => this.toggleClearButton());
                 }
                 
                 if (clearButton) {
-                    // 清除搜索
-                    clearButton.addEventListener('click', () => {
-                        this.clearSearch();
-                    });
+                    clearButton.addEventListener('click', () => this.clearSearch());
                 }
             }
 
+            /**
+             * 执行搜索
+             */
             performSearch() {
                 const searchInput = document.getElementById('searchInput');
                 if (searchInput) {
                     this.searchQuery = searchInput.value;
-                    this.currentPage = 1; // 重置到第一页
+                    this.currentPage = 1;
                     this.loadUsers(1);
                 }
             }
 
+            /**
+             * 清除搜索
+             */
             clearSearch() {
                 const searchInput = document.getElementById('searchInput');
                 if (searchInput) {
                     searchInput.value = '';
                     this.searchQuery = '';
-                    this.currentPage = 1; // 重置到第一页
+                    this.currentPage = 1;
                     this.loadUsers(1);
                 }
             }
 
+            /**
+             * 切换清除按钮显示状态
+             */
             toggleClearButton() {
                 const searchInput = document.getElementById('searchInput');
                 const clearButton = document.getElementById('clearButton');
                 
                 if (searchInput && clearButton) {
-                    if (searchInput.value.trim()) {
-                        clearButton.style.display = 'flex';
-                    } else {
-                        clearButton.style.display = 'none';
-                    }
+                    this.setElementVisibility('clearButton', searchInput.value.trim() ? 'flex' : 'none');
                 }
             }
         }

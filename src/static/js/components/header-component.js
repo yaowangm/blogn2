@@ -633,6 +633,10 @@ class HeaderComponent extends BaseComponent {
         </svg>`;
     }
 
+    /**
+     * 获取默认用户列表图标
+     * @returns {string} SVG图标HTML
+     */
     getDefaultUsersListIcon() {
         return `<svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
