@@ -8,6 +8,8 @@ from src.utils.dependencies import get_user_service
 from src.utils.auth_middleware import get_optional_current_user
 from src.utils.cache import cache_user_profile, cache_user_blogs, cache_user_summary, cache_user_count, cache_new_users
 from src.utils.permission_manager import permission_manager
+from src.utils.permission_decorators import require_admin
+from src.utils.auth_middleware import get_current_user
 
 # 创建用户API路由器
 router = APIRouter()
@@ -67,6 +69,53 @@ async def get_user_count(
     """
     count = await user_service.get_user_count()
     return {"count": count}
+
+@router.get("/users/list", response_model=Dict[str, Any])
+@handle_api_errors("获取用户列表失败")
+async def get_users_list(
+    page: int = 1,
+    page_size: int = 20,
+    user_service: UserService = Depends(get_user_service),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    获取用户列表（仅管理员可访问）
+    
+    支持分页功能，返回用户的基本信息包括：
+    - id: 用户ID
+    - name: 用户名
+    - state: 用户状态
+    - regtime: 注册时间
+    - point: 积分
+    - projectid: 项目ID（博客链接）
+    - email: 邮箱
+    
+    Args:
+        page: 页码，从1开始，默认1
+        page_size: 每页大小，默认20
+        user_service: 用户服务实例
+        current_user: 当前登录用户信息（必须是管理员）
+        
+    Returns:
+        Dict[str, Any]: 包含用户列表和分页信息的字典
+        
+    Raises:
+        HTTPException: 当用户不是管理员时抛出403错误
+    """
+    # 检查管理员权限
+    if not current_user:
+        raise HTTPException(status_code=401, detail="需要登录才能访问")
+    
+    if not permission_manager.can_manage_system(current_user):
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    
+    # 验证分页参数
+    if page < 1:
+        page = 1
+    if page_size < 1 or page_size > 100:
+        page_size = 20
+    
+    return await user_service.get_users_paginated(page, page_size)
 
 @router.get("/users/{user_id}", response_model=Dict[str, Any])
 @handle_api_errors("获取用户信息失败")
@@ -183,4 +232,4 @@ async def reset_user_password(
         return {"message": "密码重置成功"}
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"重置密码失败: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"重置密码失败: {str(e)}")

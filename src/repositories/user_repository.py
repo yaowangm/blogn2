@@ -122,4 +122,35 @@ class UserRepository:
         except Exception as e:
             await self.session.rollback()
             print(f"更新projectid失败: {e}")
-            return False 
+            return False
+    
+    async def get_users_paginated(self, page: int = 1, page_size: int = 20) -> tuple[List[User], int]:
+        """
+        分页获取用户列表
+        
+        Args:
+            page: 页码，从1开始
+            page_size: 每页大小
+            
+        Returns:
+            tuple: (用户列表, 总数量)
+        """
+        # 计算偏移量
+        offset = (page - 1) * page_size
+        
+        # 获取总数
+        count_statement = select(func.count(User.id))
+        count_result = await self.session.exec(count_statement)
+        total_count = count_result.first() or 0
+        
+        # 获取分页数据
+        statement = (
+            select(User)
+            .order_by(User.regtime.desc())
+            .offset(offset)
+            .limit(page_size)
+        )
+        result = await self.session.exec(statement)
+        users = result.all()
+        
+        return users, total_count 

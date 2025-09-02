@@ -264,6 +264,20 @@ async def registration_code_page():
     return FileResponse("src/static/regkey.html")
 
 
+@app.get("/users")
+async def users_list_page():
+    """
+    用户列表页面路由
+    
+    注意：此页面需要管理员权限，前端会进行权限检查
+    如果非管理员用户访问，前端会重定向到首页
+    
+    Returns:
+        FileResponse: 用户列表页面HTML文件
+    """
+    return FileResponse("src/static/users.html")
+
+
 @app.get("/user_register")
 async def user_register_page():
     """

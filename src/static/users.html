@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户列表 - BlogN</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <link rel="stylesheet" href="/static/css/pages.css">
+    <style>
+        .users-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-6);
+        }
+
+        .page-header {
+            margin-bottom: var(--spacing-6);
+        }
+
+        .page-title {
+            font-size: var(--font-size-2xl);
+            font-weight: 700;
+            color: var(--gray-900);
+            margin: 0 0 var(--spacing-2) 0;
+        }
+
+        .page-description {
+            color: var(--gray-600);
+            font-size: var(--font-size-base);
+        }
+
+        .users-table-container {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--gray-200);
+            overflow: hidden;
+        }
+
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .users-table th,
+        .users-table td {
+            padding: var(--spacing-4);
+            text-align: left;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .users-table th {
+            background: var(--gray-50);
+            font-weight: 600;
+            color: var(--gray-900);
+            font-size: var(--font-size-sm);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .users-table td {
+            color: var(--gray-700);
+            font-size: var(--font-size-sm);
+        }
+
+        .users-table tbody tr:hover {
+            background: var(--gray-50);
+        }
+
+        .user-id {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .user-name {
+            font-weight: 500;
+            color: var(--gray-900);
+        }
+
+        .user-state {
+            display: inline-flex;
+            align-items: center;
+            padding: var(--spacing-1) var(--spacing-2);
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-xs);
+            font-weight: 500;
+        }
+
+        .user-state.active {
+            background: var(--green-100);
+            color: var(--green-800);
+        }
+
+        .user-state.admin {
+            background: var(--blue-100);
+            color: var(--blue-800);
+        }
+
+        .user-state.frozen {
+            background: var(--red-100);
+            color: var(--red-800);
+        }
+
+        .user-point {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .user-blog-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .user-blog-link:hover {
+            text-decoration: underline;
+        }
+
+        .user-email {
+            color: var(--gray-600);
+            font-family: monospace;
+            font-size: var(--font-size-xs);
+        }
+
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: var(--spacing-2);
+            margin-top: var(--spacing-6);
+            padding: var(--spacing-4);
+        }
+
+        .pagination-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--spacing-2) var(--spacing-3);
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            background: var(--white);
+            color: var(--gray-700);
+            text-decoration: none;
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            transition: var(--transition-fast);
+            min-width: 40px;
+        }
+
+        .pagination-btn:hover:not(.disabled) {
+            background: var(--gray-50);
+            border-color: var(--gray-400);
+            color: var(--gray-900);
+        }
+
+        .pagination-btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: var(--white);
+        }
+
+        .pagination-info {
+            color: var(--gray-600);
+            font-size: var(--font-size-sm);
+            margin: 0 var(--spacing-4);
+        }
+
+        .loading-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: var(--spacing-8);
+        }
+
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--gray-200);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-container {
+            text-align: center;
+            padding: var(--spacing-8);
+            color: var(--red-600);
+        }
+
+        .empty-container {
+            text-align: center;
+            padding: var(--spacing-8);
+            color: var(--gray-500);
+        }
+
+        .empty-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto var(--spacing-4);
+            opacity: 0.5;
+        }
+
+        @media (max-width: 768px) {
+            .users-container {
+                padding: var(--spacing-4);
+            }
+
+            .users-table-container {
+                overflow-x: auto;
+            }
+
+            .users-table {
+                min-width: 600px;
+            }
+
+            .pagination-container {
+                flex-wrap: wrap;
+                gap: var(--spacing-1);
+            }
+
+            .pagination-info {
+                margin: var(--spacing-2) 0;
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header-component></header-component>
+    
+    <main class="main-content">
+        <div class="users-container">
+            <div class="page-header">
+                <h1 class="page-title">用户列表</h1>
+                <p class="page-description">管理系统中的所有用户信息</p>
+            </div>
+
+            <div class="users-table-container">
+                <div id="loadingContainer" class="loading-container">
+                    <div class="loading-spinner"></div>
+                </div>
+
+                <div id="errorContainer" class="error-container" style="display: none;">
+                    <p>加载用户列表失败，请稍后重试</p>
+                </div>
+
+                <div id="emptyContainer" class="empty-container" style="display: none;">
+                    <div class="empty-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                    <p>暂无用户数据</p>
+                </div>
+
+                <table id="usersTable" class="users-table" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>用户名</th>
+                            <th>状态</th>
+                            <th>注册时间</th>
+                            <th>积分</th>
+                            <th>博客链接</th>
+                            <th>邮箱</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="paginationContainer" class="pagination-container" style="display: none;">
+            </div>
+        </div>
+    </main>
+
+    <footer-component></footer-component>
+
+    <script src="/static/js/components/base-component.js"></script>
+    <script src="/static/js/components/header-component.js"></script>
+    <script src="/static/js/components/footer-component.js"></script>
+    <script src="/static/js/components/icons.js"></script>
+    <script src="/static/js/services/token-manager.js"></script>
+    <script>
+        class UsersListPage {
+            constructor() {
+                this.currentPage = 1;
+                this.pageSize = 20;
+                this.totalPages = 0;
+                this.totalCount = 0;
+                this.init();
+            }
+
+            async init() {
+                // 检查用户权限
+                await this.checkAdminPermission();
+                
+                // 加载用户列表
+                await this.loadUsers();
+                
+                // 设置事件监听器
+                this.setupEventListeners();
+            }
+
+            async checkAdminPermission() {
+                try {
+                    const token = localStorage.getItem('access_token');
+                    const userInfo = localStorage.getItem('user_info');
+                    
+                    if (!token || !userInfo) {
+                        this.redirectToHome('请先登录');
+                        return;
+                    }
+
+                    const user = JSON.parse(userInfo);
+                    if (user.state !== 10) {
+                        this.redirectToHome('需要管理员权限');
+                        return;
+                    }
+                } catch (error) {
+                    console.error('权限检查失败:', error);
+                    this.redirectToHome('权限验证失败');
+                }
+            }
+
+            redirectToHome(message) {
+                alert(message);
+                window.location.href = '/';
+            }
+
+            async loadUsers(page = 1) {
+                try {
+                    this.showLoading();
+                    
+                    const response = await fetch(`/api/users/list?page=${page}&page_size=${this.pageSize}`, {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 403) {
+                            this.redirectToHome('需要管理员权限');
+                            return;
+                        }
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    this.currentPage = data.pagination.current_page;
+                    this.totalPages = data.pagination.total_pages;
+                    this.totalCount = data.pagination.total_count;
+
+                    this.renderUsers(data.users);
+                    this.renderPagination(data.pagination);
+                    this.hideLoading();
+
+                } catch (error) {
+                    console.error('加载用户列表失败:', error);
+                    this.showError();
+                }
+            }
+
+            showLoading() {
+                document.getElementById('loadingContainer').style.display = 'flex';
+                document.getElementById('errorContainer').style.display = 'none';
+                document.getElementById('emptyContainer').style.display = 'none';
+                document.getElementById('usersTable').style.display = 'none';
+                document.getElementById('paginationContainer').style.display = 'none';
+            }
+
+            showError() {
+                document.getElementById('loadingContainer').style.display = 'none';
+                document.getElementById('errorContainer').style.display = 'block';
+                document.getElementById('emptyContainer').style.display = 'none';
+                document.getElementById('usersTable').style.display = 'none';
+                document.getElementById('paginationContainer').style.display = 'none';
+            }
+
+            hideLoading() {
+                document.getElementById('loadingContainer').style.display = 'none';
+            }
+
+            renderUsers(users) {
+                if (users.length === 0) {
+                    document.getElementById('emptyContainer').style.display = 'block';
+                    document.getElementById('usersTable').style.display = 'none';
+                    return;
+                }
+
+                const tbody = document.getElementById('usersTableBody');
+                tbody.innerHTML = '';
+
+                users.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="user-id">${user.id}</td>
+                        <td class="user-name">${this.escapeHtml(user.name)}</td>
+                        <td>
+                            <span class="user-state ${this.getStateClass(user.state)}">
+                                ${this.getStateText(user.state)}
+                            </span>
+                        </td>
+                        <td>${this.formatDate(user.regtime)}</td>
+                        <td class="user-point">${user.point}</td>
+                        <td>
+                            ${user.projectid ? 
+                                `<a href="/blog/${user.projectid}" class="user-blog-link" target="_blank">博客链接</a>` : 
+                                '<span style="color: var(--gray-400);">-</span>'
+                            }
+                        </td>
+                        <td class="user-email">${this.escapeHtml(user.email)}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                document.getElementById('usersTable').style.display = 'table';
+            }
+
+            renderPagination(pagination) {
+                if (pagination.total_pages <= 1) {
+                    document.getElementById('paginationContainer').style.display = 'none';
+                    return;
+                }
+
+                const container = document.getElementById('paginationContainer');
+                container.innerHTML = '';
+
+                // 上一页按钮
+                const prevBtn = this.createPaginationButton(
+                    '上一页', 
+                    pagination.has_prev, 
+                    () => this.loadUsers(pagination.current_page - 1)
+                );
+                container.appendChild(prevBtn);
+
+                // 页码按钮
+                const startPage = Math.max(1, pagination.current_page - 2);
+                const endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
+
+                if (startPage > 1) {
+                    container.appendChild(this.createPaginationButton('1', true, () => this.loadUsers(1)));
+                    if (startPage > 2) {
+                        container.appendChild(this.createPaginationButton('...', false));
+                    }
+                }
+
+                for (let i = startPage; i <= endPage; i++) {
+                    const isActive = i === pagination.current_page;
+                    container.appendChild(this.createPaginationButton(
+                        i.toString(), 
+                        true, 
+                        () => this.loadUsers(i),
+                        isActive
+                    ));
+                }
+
+                if (endPage < pagination.total_pages) {
+                    if (endPage < pagination.total_pages - 1) {
+                        container.appendChild(this.createPaginationButton('...', false));
+                    }
+                    container.appendChild(this.createPaginationButton(
+                        pagination.total_pages.toString(), 
+                        true, 
+                        () => this.loadUsers(pagination.total_pages)
+                    ));
+                }
+
+                // 下一页按钮
+                const nextBtn = this.createPaginationButton(
+                    '下一页', 
+                    pagination.has_next, 
+                    () => this.loadUsers(pagination.current_page + 1)
+                );
+                container.appendChild(nextBtn);
+
+                // 分页信息
+                const info = document.createElement('div');
+                info.className = 'pagination-info';
+                info.textContent = `第 ${pagination.current_page} 页，共 ${pagination.total_pages} 页，总计 ${pagination.total_count} 个用户`;
+                container.appendChild(info);
+
+                container.style.display = 'flex';
+            }
+
+            createPaginationButton(text, enabled, onClick, isActive = false) {
+                const button = document.createElement('a');
+                button.href = '#';
+                button.className = `pagination-btn ${isActive ? 'active' : ''} ${!enabled ? 'disabled' : ''}`;
+                button.textContent = text;
+                
+                if (enabled) {
+                    button.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        onClick();
+                    });
+                }
+                
+                return button;
+            }
+
+            getStateClass(state) {
+                switch (state) {
+                    case 10: return 'admin';
+                    case 1: return 'active';
+                    case 0: return 'frozen';
+                    default: return 'frozen';
+                }
+            }
+
+            getStateText(state) {
+                switch (state) {
+                    case 10: return '管理员';
+                    case 1: return '正常';
+                    case 0: return '冻结';
+                    default: return '未知';
+                }
+            }
+
+            formatDate(dateString) {
+                if (!dateString) return '-';
+                try {
+                    const date = new Date(dateString);
+                    return date.toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                } catch (error) {
+                    return dateString;
+                }
+            }
+
+            escapeHtml(text) {
+                if (typeof text !== 'string') return text;
+                return text
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            setupEventListeners() {
+                // 可以在这里添加其他事件监听器
+            }
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            new UsersListPage();
+        });
+    </script>
+</body>
+</html>

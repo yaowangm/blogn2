@@ -56,6 +56,45 @@ class UserService:
                 }
                 for user in recent_users
             ]
+        }
+    
+    async def get_users_paginated(self, page: int = 1, page_size: int = 20) -> Dict[str, Any]:
+        """
+        分页获取用户列表
+        
+        Args:
+            page: 页码，从1开始
+            page_size: 每页大小
+            
+        Returns:
+            Dict[str, Any]: 包含用户列表和分页信息的字典
+        """
+        users, total_count = await self.user_repo.get_users_paginated(page, page_size)
+        
+        # 计算分页信息
+        total_pages = (total_count + page_size - 1) // page_size
+        
+        return {
+            "users": [
+                {
+                    "id": user.id,
+                    "name": user.name,
+                    "state": user.state,
+                    "regtime": user.regtime.isoformat() if user.regtime else None,
+                    "point": user.point or 0,
+                    "projectid": user.projectid,
+                    "email": user.email  # 管理员可以查看邮箱
+                }
+                for user in users
+            ],
+            "pagination": {
+                "current_page": page,
+                "page_size": page_size,
+                "total_count": total_count,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_prev": page > 1
+            }
         } 
     
     async def reset_user_password(self, user_id: int, new_password: str) -> bool:
