@@ -1,13 +1,45 @@
 class NavigationCard extends BaseComponent {
     constructor() {
         super();
+        this.mode = 'navigation'; // 'navigation' 或 'pagination'
+        this.pagination = null;
+        this.onPageChange = null;
+    }
+
+    static get observedAttributes() {
+        return ['mode', 'pagination', 'on-page-change'];
     }
 
     connectedCallback() {
         this.render();
     }
 
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (name === 'mode') {
+            this.mode = newValue || 'navigation';
+            this.render();
+        } else if (name === 'pagination' && newValue) {
+            this.pagination = JSON.parse(newValue);
+            this.render();
+        }
+    }
+
+    setPagination(pagination, onPageChange) {
+        this.mode = 'pagination';
+        this.pagination = pagination;
+        this.onPageChange = onPageChange;
+        this.render();
+    }
+
     render() {
+        if (this.mode === 'pagination') {
+            this.renderPagination();
+        } else {
+            this.renderNavigation();
+        }
+    }
+
+    renderNavigation() {
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
@@ -111,6 +143,199 @@ class NavigationCard extends BaseComponent {
                 </div>
             </div>
         `;
+    }
+
+    renderPagination() {
+        if (!this.pagination || this.pagination.total_pages <= 1) {
+            this.shadowRoot.innerHTML = '';
+            return;
+        }
+
+        this.shadowRoot.innerHTML = `
+            <style>
+                :host {
+                    display: block;
+                }
+
+                .pagination-container {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                    margin: var(--spacing-6) 0;
+                    padding: var(--spacing-4);
+                }
+
+                .pagination-btn {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: var(--spacing-2) var(--spacing-3);
+                    border: 1px solid var(--gray-300);
+                    border-radius: var(--radius-md);
+                    background: var(--white);
+                    color: var(--gray-700);
+                    text-decoration: none;
+                    font-size: var(--font-size-sm);
+                    font-weight: 500;
+                    transition: var(--transition-fast);
+                    cursor: pointer;
+                    min-width: 40px;
+                }
+
+                .pagination-btn:hover:not(.disabled) {
+                    background: var(--gray-50);
+                    border-color: var(--gray-400);
+                    color: var(--gray-900);
+                }
+
+                .pagination-btn.disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+
+                .pagination-btn.active {
+                    background: var(--primary-color);
+                    border-color: var(--primary-color);
+                    color: var(--white);
+                }
+
+                .pagination-info {
+                    color: var(--gray-600);
+                    font-size: var(--font-size-sm);
+                    margin: 0 var(--spacing-4);
+                }
+
+                @media (max-width: 768px) {
+                    .pagination-container {
+                        flex-wrap: wrap;
+                        gap: var(--spacing-1);
+                    }
+
+                    .pagination-info {
+                        margin: var(--spacing-2) 0;
+                        width: 100%;
+                        text-align: center;
+                    }
+                }
+            </style>
+
+            <div class="pagination-container">
+                ${this.renderPaginationButtons()}
+                ${this.renderPaginationInfo()}
+            </div>
+        `;
+
+        this.attachPaginationEventListeners();
+    }
+
+    renderPaginationButtons() {
+        const { current_page, total_pages, has_prev, has_next } = this.pagination;
+        
+        let buttons = '';
+
+        // 上一页按钮
+        buttons += this.createPaginationButton(
+            '上一页', 
+            has_prev, 
+            () => this.handlePageChange(current_page - 1)
+        );
+
+        // 页码按钮
+        const startPage = Math.max(1, current_page - 2);
+        const endPage = Math.min(total_pages, current_page + 2);
+
+        if (startPage > 1) {
+            buttons += this.createPaginationButton('1', true, () => this.handlePageChange(1));
+            if (startPage > 2) {
+                buttons += this.createPaginationButton('...', false);
+            }
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            const isActive = i === current_page;
+            buttons += this.createPaginationButton(
+                i.toString(), 
+                true, 
+                () => this.handlePageChange(i),
+                isActive
+            );
+        }
+
+        if (endPage < total_pages) {
+            if (endPage < total_pages - 1) {
+                buttons += this.createPaginationButton('...', false);
+            }
+            buttons += this.createPaginationButton(
+                total_pages.toString(), 
+                true, 
+                () => this.handlePageChange(total_pages)
+            );
+        }
+
+        // 下一页按钮
+        buttons += this.createPaginationButton(
+            '下一页', 
+            has_next, 
+            () => this.handlePageChange(current_page + 1)
+        );
+
+        return buttons;
+    }
+
+    renderPaginationInfo() {
+        const { current_page, total_pages, total_count } = this.pagination;
+        return `<div class="pagination-info">第 ${current_page} 页，共 ${total_pages} 页，总计 ${total_count} 个用户</div>`;
+    }
+
+    createPaginationButton(text, enabled, onClick, isActive = false) {
+        const classes = `pagination-btn ${isActive ? 'active' : ''} ${!enabled ? 'disabled' : ''}`;
+        const dataAction = enabled ? `data-action="${text}"` : '';
+        
+        return `<a href="#" class="${classes}" ${dataAction}>${text}</a>`;
+    }
+
+    attachPaginationEventListeners() {
+        const buttons = this.shadowRoot.querySelectorAll('.pagination-btn[data-action]');
+        buttons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                const action = button.getAttribute('data-action');
+                this.handleButtonClick(action);
+            });
+        });
+    }
+
+    handleButtonClick(action) {
+        const { current_page, total_pages } = this.pagination;
+        
+        switch (action) {
+            case '上一页':
+                this.handlePageChange(current_page - 1);
+                break;
+            case '下一页':
+                this.handlePageChange(current_page + 1);
+                break;
+            default:
+                // 页码按钮
+                const page = parseInt(action);
+                if (!isNaN(page) && page >= 1 && page <= total_pages) {
+                    this.handlePageChange(page);
+                }
+                break;
+        }
+    }
+
+    handlePageChange(page) {
+        if (this.onPageChange) {
+            this.onPageChange(page);
+        }
+        
+        // 触发自定义事件
+        this.dispatchEvent(new CustomEvent('page-change', {
+            detail: { page },
+            bubbles: true
+        }));
     }
 }
 

@@ -194,53 +194,7 @@
 
 
 
-        .pagination-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: var(--spacing-2);
-            margin-top: var(--spacing-6);
-            padding: var(--spacing-4);
-        }
 
-        .pagination-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: var(--spacing-2) var(--spacing-3);
-            border: 1px solid var(--gray-300);
-            border-radius: var(--radius-md);
-            background: var(--white);
-            color: var(--gray-700);
-            text-decoration: none;
-            font-size: var(--font-size-sm);
-            font-weight: 500;
-            transition: var(--transition-fast);
-            min-width: 40px;
-        }
-
-        .pagination-btn:hover:not(.disabled) {
-            background: var(--gray-50);
-            border-color: var(--gray-400);
-            color: var(--gray-900);
-        }
-
-        .pagination-btn.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .pagination-btn.active {
-            background: var(--primary-color);
-            border-color: var(--primary-color);
-            color: var(--white);
-        }
-
-        .pagination-info {
-            color: var(--gray-600);
-            font-size: var(--font-size-sm);
-            margin: 0 var(--spacing-4);
-        }
 
         .loading-container {
             display: flex;
@@ -295,16 +249,7 @@
                 min-width: 600px;
             }
 
-            .pagination-container {
-                flex-wrap: wrap;
-                gap: var(--spacing-1);
-            }
 
-            .pagination-info {
-                margin: var(--spacing-2) 0;
-                width: 100%;
-                text-align: center;
-            }
         }
     </style>
 </head>
@@ -373,8 +318,7 @@
                 </table>
             </div>
 
-            <div id="paginationContainer" class="pagination-container" style="display: none;">
-            </div>
+            <navigation-card id="paginationCard"></navigation-card>
         </div>
     </main>
 
@@ -383,6 +327,7 @@
     <script src="/static/js/components/base-component.js"></script>
     <script src="/static/js/components/header-component.js"></script>
     <script src="/static/js/components/footer-component.js"></script>
+    <script src="/static/js/components/navigation-card.js"></script>
     <script src="/static/js/components/icons.js"></script>
     <script src="/static/js/services/token-manager.js"></script>
     <script>
@@ -496,7 +441,7 @@
                 this.setElementVisibility('errorContainer', 'none');
                 this.setElementVisibility('emptyContainer', 'none');
                 this.setElementVisibility('usersTable', 'none');
-                this.setElementVisibility('paginationContainer', 'none');
+                document.getElementById('paginationCard').setPagination(null);
             }
 
             /**
@@ -507,7 +452,7 @@
                 this.setElementVisibility('errorContainer', 'block');
                 this.setElementVisibility('emptyContainer', 'none');
                 this.setElementVisibility('usersTable', 'none');
-                this.setElementVisibility('paginationContainer', 'none');
+                document.getElementById('paginationCard').setPagination(null);
             }
 
             /**
@@ -577,94 +522,13 @@
              * @param {Object} pagination - 分页信息对象
              */
             renderPagination(pagination) {
-                if (pagination.total_pages <= 1) {
-                    this.setElementVisibility('paginationContainer', 'none');
-                    return;
-                }
-
-                const container = document.getElementById('paginationContainer');
-                container.innerHTML = '';
-
-                // 上一页按钮
-                const prevBtn = this.createPaginationButton(
-                    '上一页', 
-                    pagination.has_prev, 
-                    () => this.loadUsers(pagination.current_page - 1)
-                );
-                container.appendChild(prevBtn);
-
-                // 页码按钮
-                const startPage = Math.max(1, pagination.current_page - 2);
-                const endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
-
-                if (startPage > 1) {
-                    container.appendChild(this.createPaginationButton('1', true, () => this.loadUsers(1)));
-                    if (startPage > 2) {
-                        container.appendChild(this.createPaginationButton('...', false));
-                    }
-                }
-
-                for (let i = startPage; i <= endPage; i++) {
-                    const isActive = i === pagination.current_page;
-                    container.appendChild(this.createPaginationButton(
-                        i.toString(), 
-                        true, 
-                        () => this.loadUsers(i),
-                        isActive
-                    ));
-                }
-
-                if (endPage < pagination.total_pages) {
-                    if (endPage < pagination.total_pages - 1) {
-                        container.appendChild(this.createPaginationButton('...', false));
-                    }
-                    container.appendChild(this.createPaginationButton(
-                        pagination.total_pages.toString(), 
-                        true, 
-                        () => this.loadUsers(pagination.total_pages)
-                    ));
-                }
-
-                // 下一页按钮
-                const nextBtn = this.createPaginationButton(
-                    '下一页', 
-                    pagination.has_next, 
-                    () => this.loadUsers(pagination.current_page + 1)
-                );
-                container.appendChild(nextBtn);
-
-                // 分页信息
-                const info = document.createElement('div');
-                info.className = 'pagination-info';
-                info.textContent = `第 ${pagination.current_page} 页，共 ${pagination.total_pages} 页，总计 ${pagination.total_count} 个用户`;
-                container.appendChild(info);
-
-                this.setElementVisibility('paginationContainer', 'flex');
+                const paginationCard = document.getElementById('paginationCard');
+                paginationCard.setPagination(pagination, (page) => {
+                    this.loadUsers(page);
+                });
             }
 
-            /**
-             * 创建分页按钮
-             * @param {string} text - 按钮文本
-             * @param {boolean} enabled - 是否启用
-             * @param {Function} onClick - 点击回调
-             * @param {boolean} isActive - 是否为当前页
-             * @returns {HTMLElement} 按钮元素
-             */
-            createPaginationButton(text, enabled, onClick, isActive = false) {
-                const button = document.createElement('a');
-                button.href = '#';
-                button.className = `pagination-btn ${isActive ? 'active' : ''} ${!enabled ? 'disabled' : ''}`;
-                button.textContent = text;
-                
-                if (enabled) {
-                    button.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        onClick();
-                    });
-                }
-                
-                return button;
-            }
+
 
             /**
              * 获取用户状态对应的CSS类名
