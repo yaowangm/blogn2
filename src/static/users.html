@@ -566,7 +566,7 @@
                         <td class="user-point">${user.point}</td>
                         <td>
                             ${user.projectid ? 
-                                `<a href="/blog/${user.projectid}" class="user-blog-link" target="_blank">博客链接</a>` : 
+                                `<a href="/blog/${user.projectid}" class="user-blog-link" target="_blank">${user.project_name || '博客链接'}</a>` : 
                                 '<span style="color: var(--gray-400);">-</span>'
                             }
                         </td>

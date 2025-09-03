@@ -25,6 +25,12 @@ class ProjectRepository:
         items = result.all()
         return [{"id": item[0], "name": item[1], "accesscount": item[2] or 0, "userid": item[3], "createtime": item[4], "author_name": item[5]} for item in items]
     
+    async def get_project_by_id(self, project_id: int) -> Optional[Project]:
+        """根据ID获取项目"""
+        statement = select(Project).where(Project.id == project_id)
+        result = await self.session.exec(statement)
+        return result.first()
+    
     async def get_recent_projects(self, limit: int = 10) -> List[dict]:
         """获取最新创建的项目（按创建时间倒序）"""
         statement = (

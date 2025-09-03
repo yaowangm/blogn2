@@ -50,7 +50,8 @@ get_metadata_service = create_service_dependency(
 
 get_user_service = create_service_dependency(
     UserService, 
-    UserRepository
+    UserRepository,
+    ProjectRepository
 )
 
 get_blog_service = create_service_dependency(

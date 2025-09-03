@@ -1,5 +1,6 @@
 from typing import List, Optional, Dict, Any
 from src.repositories.user_repository import UserRepository
+from src.repositories.project_repository import ProjectRepository
 from src.database import User
 from src.services.auth_service import AuthService
 
@@ -9,8 +10,9 @@ class UserService:
     提供用户相关的业务逻辑处理，包括用户查询、统计、分页等功能。
     """
     
-    def __init__(self, user_repo: UserRepository):
+    def __init__(self, user_repo: UserRepository, project_repo: Optional[ProjectRepository] = None):
         self.user_repo = user_repo
+        self.project_repo = project_repo
     
     async def get_user_count(self) -> int:
         """获取用户总数"""
@@ -75,8 +77,14 @@ class UserService:
         # 计算分页信息
         total_pages = (total_count + page_size - 1) // page_size
         
+        # 格式化用户数据
+        formatted_users = []
+        for user in users:
+            formatted_user = await self._format_user_for_list(user)
+            formatted_users.append(formatted_user)
+        
         return {
-            "users": [self._format_user_for_list(user) for user in users],
+            "users": formatted_users,
             "pagination": {
                 "current_page": page,
                 "page_size": page_size,
@@ -87,7 +95,7 @@ class UserService:
             }
         }
     
-    def _format_user_for_list(self, user: User) -> Dict[str, Any]:
+    async def _format_user_for_list(self, user: User) -> Dict[str, Any]:
         """
         格式化用户数据用于列表显示
         
@@ -97,6 +105,13 @@ class UserService:
         Returns:
             Dict[str, Any]: 格式化后的用户数据
         """
+        # 获取项目名称
+        project_name = None
+        if user.projectid and self.project_repo:
+            project = await self.project_repo.get_project_by_id(user.projectid)
+            if project:
+                project_name = project.name
+        
         return {
             "id": user.id,
             "name": user.name,
@@ -104,6 +119,7 @@ class UserService:
             "regtime": user.regtime.isoformat() if user.regtime else None,
             "point": user.point or 0,
             "projectid": user.projectid,
+            "project_name": project_name,
             "email": user.email  # 管理员可以查看邮箱
         } 
     
