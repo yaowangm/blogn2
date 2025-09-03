@@ -192,11 +192,7 @@
             text-decoration: underline;
         }
 
-        .user-email {
-            color: var(--gray-600);
-            font-family: monospace;
-            font-size: var(--font-size-xs);
-        }
+
 
         .pagination-container {
             display: flex;
@@ -370,7 +366,6 @@
                             <th>注册时间</th>
                             <th>积分</th>
                             <th>博客链接</th>
-                            <th>邮箱</th>
                         </tr>
                     </thead>
                     <tbody id="usersTableBody">
@@ -570,7 +565,6 @@
                                 '<span style="color: var(--gray-400);">-</span>'
                             }
                         </td>
-                        <td class="user-email">${this.escapeHtml(user.email)}</td>
                     `;
                     tbody.appendChild(row);
                 });

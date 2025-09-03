@@ -119,8 +119,7 @@ class UserService:
             "regtime": user.regtime.isoformat() if user.regtime else None,
             "point": user.point or 0,
             "projectid": user.projectid,
-            "project_name": project_name,
-            "email": user.email  # 管理员可以查看邮箱
+            "project_name": project_name
         } 
     
     async def reset_user_password(self, user_id: int, new_password: str) -> None:
