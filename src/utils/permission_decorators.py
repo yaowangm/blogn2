@@ -28,8 +28,17 @@ def require_auth(admin_only: bool = False):
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            # 这里可以根据需要添加认证逻辑
-            # 目前主要依赖FastAPI的依赖注入系统
+            # 获取当前用户
+            current_user = kwargs.get('current_user')
+            
+            if not current_user:
+                raise HTTPException(status_code=401, detail="需要登录才能访问")
+            
+            # 如果需要管理员权限
+            if admin_only:
+                if not permission_manager.can_manage_system(current_user):
+                    raise HTTPException(status_code=403, detail="需要管理员权限")
+            
             return await func(*args, **kwargs)
         return wrapper
     return decorator

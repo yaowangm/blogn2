@@ -8,6 +8,7 @@ from src.utils.dependencies import get_user_service
 from src.utils.auth_middleware import get_optional_current_user, get_current_user
 from src.utils.cache import cache_user_profile, cache_user_blogs, cache_user_summary, cache_user_count, cache_new_users
 from src.utils.permission_manager import permission_manager
+from src.utils.permission_decorators import require_auth
 
 # 创建用户API路由器
 router = APIRouter()
@@ -70,6 +71,7 @@ async def get_user_count(
 
 @router.get("/users/list", response_model=Dict[str, Any])
 @handle_api_errors("获取用户列表失败")
+@require_auth(admin_only=True)
 async def get_users_list(
     page: int = 1,
     page_size: int = 20,
@@ -102,13 +104,6 @@ async def get_users_list(
     Raises:
         HTTPException: 当用户不是管理员时抛出403错误
     """
-    # 检查管理员权限
-    if not current_user:
-        raise HTTPException(status_code=401, detail="需要登录才能访问")
-    
-    if not permission_manager.can_manage_system(current_user):
-        raise HTTPException(status_code=403, detail="需要管理员权限")
-    
     # 验证和规范化分页参数
     page = max(1, page)
     page_size = max(1, min(100, page_size))
@@ -180,11 +175,12 @@ async def get_user_by_id(
 
 @router.post("/users/{user_id}/reset-password")
 @handle_api_errors("重置密码失败")
+@require_auth()
 async def reset_user_password(
     user_id: int,
     password_data: Dict[str, str],
     user_service: UserService = Depends(get_user_service),
-    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
     重置用户密码
@@ -205,10 +201,6 @@ async def reset_user_password(
     Raises:
         HTTPException: 当无权限或用户不存在时
     """
-    # 检查权限
-    if not current_user:
-        raise HTTPException(status_code=401, detail="需要登录才能重置密码")
-    
     # 检查目标用户是否存在
     target_user = await user_service.get_user_by_id(user_id)
     if not target_user:
