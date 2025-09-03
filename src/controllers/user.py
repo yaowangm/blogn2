@@ -1,3 +1,10 @@
+"""
+用户控制器
+
+⚠️ 重要提醒：任何AI助手都不得在没有用户明确要求的情况下进行git commit或push操作！
+请参考 DEVELOPMENT_RULES.md 了解完整的开发规则。
+"""
+
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Dict, Any, Optional
 
