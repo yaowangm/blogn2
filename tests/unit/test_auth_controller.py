@@ -35,7 +35,7 @@ class TestAuthController:
     def mock_auth_service(self):
         """创建模拟认证服务"""
         service = AsyncMock(spec=AuthService)
-        service.access_token_expire_minutes = 30
+        service.access_token_expire_minutes = 15
         return service
     
     @pytest.fixture
@@ -80,7 +80,7 @@ class TestAuthController:
         assert result.access_token == "access_token"
         assert result.refresh_token == "refresh_token"
         assert result.token_type == "bearer"
-        assert result.expires_in == 1800  # 30分钟
+        assert result.expires_in == 900  # 15分钟
         assert result.user["id"] == 1
         assert result.user["name"] == "testuser"
         assert result.user["role"] == "admin"
@@ -132,7 +132,7 @@ class TestAuthController:
         assert result.access_token == "new_access_token"
         assert result.refresh_token == "new_refresh_token"
         assert result.token_type == "bearer"
-        assert result.expires_in == 1800  # 30分钟
+        assert result.expires_in == 900  # 15分钟
         
         # 验证服务调用
         mock_auth_service.refresh_access_token.assert_called_once_with("valid_refresh_token")
