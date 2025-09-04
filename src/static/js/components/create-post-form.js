@@ -86,8 +86,20 @@ class CreatePostForm extends BaseComponent {
             return;
         }
 
+        if (this.formData.name.length > 50) {
+            this.showError('文章标题不能超过50个字符');
+            return;
+        }
+
         if (!this.formData.comment.trim()) {
             this.showError('文章内容不能为空');
+            return;
+        }
+
+        // 检查文章内容大小（128KB = 131072字节）
+        const contentSize = new Blob([this.formData.comment]).size;
+        if (contentSize > 131072) {
+            this.showError('文章内容不能超过128KB');
             return;
         }
 
@@ -379,7 +391,7 @@ class CreatePostForm extends BaseComponent {
                                 onchange="this.getRootNode().host.handleInputChange('name', this.value)"
                                 required
                             >
-                            <div class="form-help">文章标题将显示在博客列表中，建议简洁明了</div>
+                            <div class="form-help">文章标题将显示在博客列表中，建议简洁明了（最多50个字符）</div>
                         </div>
 
                         <div class="form-group">
@@ -391,7 +403,7 @@ class CreatePostForm extends BaseComponent {
                                 onchange="this.getRootNode().host.handleInputChange('comment', this.value)"
                                 required
                             >${this.formData.comment}</textarea>
-                            <div class="form-help">支持Markdown格式，可以包含图片、链接等</div>
+                            <div class="form-help">支持Markdown格式，可以包含图片、链接等（最多128KB）</div>
                         </div>
 
                         <div class="form-group">

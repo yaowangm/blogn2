@@ -466,11 +466,16 @@ async def create_post(
     if not post_data.get("name"):
         raise HTTPException(status_code=400, detail="文章标题不能为空")
     
-    if len(post_data["name"]) > 100:
-        raise HTTPException(status_code=400, detail="文章标题不能超过100个字符")
+    if len(post_data["name"]) > 50:
+        raise HTTPException(status_code=400, detail="文章标题不能超过50个字符")
     
     if not post_data.get("comment"):
         raise HTTPException(status_code=400, detail="文章内容不能为空")
+    
+    # 检查文章内容大小（128KB = 131072字节）
+    comment_size = len(post_data["comment"].encode('utf-8'))
+    if comment_size > 131072:
+        raise HTTPException(status_code=400, detail="文章内容不能超过128KB")
     
     
     # 验证项目ID
