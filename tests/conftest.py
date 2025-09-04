@@ -63,8 +63,20 @@ def real_async_engine():
     try:
         loop = asyncio.get_running_loop()
         if loop.is_running():
-            # 如果事件循环正在运行，创建任务来关闭引擎
-            asyncio.create_task(engine.dispose())
+            # 如果事件循环正在运行，同步等待引擎释放完成
+            # 使用asyncio.run_coroutine_threadsafe确保在正确的线程中执行
+            import concurrent.futures
+            import threading
+            
+            # 创建Future来等待任务完成
+            future = asyncio.run_coroutine_threadsafe(engine.dispose(), loop)
+            try:
+                # 等待最多30秒完成，避免无限等待
+                future.result(timeout=30)
+            except concurrent.futures.TimeoutError:
+                # 如果超时，记录警告但不阻塞测试
+                import warnings
+                warnings.warn("Engine disposal timed out after 30 seconds")
         else:
             loop.run_until_complete(engine.dispose())
     except RuntimeError:
