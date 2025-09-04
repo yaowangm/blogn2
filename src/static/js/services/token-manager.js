@@ -267,7 +267,7 @@ class TokenManager {
                                     
                                     const newArgs = [...args];
                                     if (newArgs[1]) {
-                                        newArgs[1].headers = newHeaders;
+                                        newArgs[1] = { ...newArgs[1], headers: newHeaders };
                                     } else {
                                         newArgs[1] = { headers: newHeaders };
                                     }
@@ -292,7 +292,7 @@ class TokenManager {
                                         
                                         const newArgs = [...args];
                                         if (newArgs[1]) {
-                                            newArgs[1].headers = newHeaders;
+                                            newArgs[1] = { ...newArgs[1], headers: newHeaders };
                                         } else {
                                             newArgs[1] = { headers: newHeaders };
                                         }
