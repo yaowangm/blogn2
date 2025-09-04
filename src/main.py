@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -178,6 +178,59 @@ async def serve_avatar_file(file_path: str):
     """
     safe_path = validate_and_sanitize_path(AVATAR_BASE_PATH, file_path)
     return serve_file(safe_path)
+
+
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """
+    文件上传API
+    
+    Args:
+        file: 上传的文件
+        
+    Returns:
+        Dict: 包含文件信息的响应
+    """
+    import os
+    import uuid
+    from datetime import datetime
+    from fastapi import HTTPException
+    
+    # 检查文件类型
+    allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif']
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="只支持jpg、png、gif格式的图片")
+    
+    # 检查文件大小（1MB = 1048576字节）
+    file_content = await file.read()
+    if len(file_content) > 1048576:
+        raise HTTPException(status_code=400, detail="图片大小不能超过1MB")
+    
+    # 生成唯一文件名
+    file_extension = os.path.splitext(file.filename)[1].lower()
+    if file_extension not in ['.jpg', '.jpeg', '.png', '.gif']:
+        raise HTTPException(status_code=400, detail="不支持的文件扩展名")
+    
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    
+    # 确保上传目录存在
+    os.makedirs(UPLOAD_BASE_PATH, exist_ok=True)
+    
+    # 保存文件
+    file_path = os.path.join(UPLOAD_BASE_PATH, unique_filename)
+    try:
+        with open(file_path, "wb") as buffer:
+            buffer.write(file_content)
+        
+        return {
+            "success": True,
+            "filename": unique_filename,
+            "original_name": file.filename,
+            "size": len(file_content),
+            "url": f"/upload/{unique_filename}"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"文件保存失败: {str(e)}")
 
 
 # ==================== API路由注册 ====================

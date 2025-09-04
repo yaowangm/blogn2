@@ -477,6 +477,11 @@ async def create_post(
     if comment_size > 131072:
         raise HTTPException(status_code=400, detail="文章内容不能超过128KB")
     
+    # 验证附件字段（如果提供）
+    attachment = post_data.get("attachment")
+    if attachment and not isinstance(attachment, str):
+        raise HTTPException(status_code=400, detail="附件字段格式不正确")
+    
     
     # 验证项目ID
     project_id = post_data.get("projectid")
@@ -504,8 +509,8 @@ async def create_post(
                 comment=post_data["comment"],
                 itemtype=post_data.get("itemtype", 1),
                 itemsize=post_data.get("itemsize", 0),
-                attachment=None,  # 不再使用附件链接
-                linkstr=None,     # 不再使用相关链接
+                attachment=attachment,  # 使用上传的图片文件名
+                linkstr=None,          # 不再使用相关链接
                 userid=current_user["id"],
                 accesscount=0,
                 commentcount=0,

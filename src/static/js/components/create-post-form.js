@@ -15,8 +15,10 @@ class CreatePostForm extends BaseComponent {
             itemsize: 0,
             folderid: null,
             status: 1, // 默认为正常状态
-            allowpost: 1 // 默认为允许评论
+            allowpost: 1, // 默认为允许评论
+            attachment: null // 图片附件
         };
+        this.uploadedImage = null; // 上传的图片信息
     }
 
     async connectedCallback() {
@@ -69,10 +71,66 @@ class CreatePostForm extends BaseComponent {
             event.preventDefault();
             this.handleSubmit();
         });
+        
+        // 图片上传事件
+        this.addEventListener('change', (event) => {
+            if (event.target.type === 'file' && event.target.id === 'image-upload') {
+                this.handleImageUpload(event.target.files[0]);
+            }
+        });
     }
 
     handleInputChange(field, value) {
         this.formData[field] = value;
+    }
+
+    async handleImageUpload(file) {
+        if (!file) return;
+
+        // 验证文件类型
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        if (!allowedTypes.includes(file.type)) {
+            this.showError('只支持jpg、png、gif格式的图片');
+            return;
+        }
+
+        // 验证文件大小（1MB = 1048576字节）
+        if (file.size > 1048576) {
+            this.showError('图片大小不能超过1MB');
+            return;
+        }
+
+        try {
+            // 创建FormData
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // 上传文件
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                this.uploadedImage = result;
+                this.formData.attachment = result.filename;
+                this.showSuccess('图片上传成功！');
+                this.render(); // 重新渲染以显示上传的图片
+            } else {
+                const errorData = await response.json();
+                this.showError(errorData.detail || '图片上传失败');
+            }
+        } catch (error) {
+            console.error('图片上传失败:', error);
+            this.showError('网络错误，请稍后重试');
+        }
+    }
+
+    removeImage() {
+        this.uploadedImage = null;
+        this.formData.attachment = null;
+        this.render();
     }
 
     async handleSubmit() {
@@ -364,6 +422,72 @@ class CreatePostForm extends BaseComponent {
                     color: var(--gray-500);
                     margin-top: var(--spacing-1);
                 }
+                
+                .image-upload-container {
+                    display: flex;
+                    flex-direction: column;
+                    gap: var(--spacing-3);
+                }
+                
+                .uploaded-image-preview {
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-3);
+                    padding: var(--spacing-3);
+                    border: 1px solid var(--gray-200);
+                    border-radius: var(--radius-md);
+                    background: var(--gray-50);
+                }
+                
+                .preview-image {
+                    width: 60px;
+                    height: 60px;
+                    object-fit: cover;
+                    border-radius: var(--radius-sm);
+                    border: 1px solid var(--gray-200);
+                }
+                
+                .image-info {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    gap: var(--spacing-1);
+                }
+                
+                .image-name {
+                    font-size: var(--font-size-sm);
+                    font-weight: 500;
+                    color: var(--gray-700);
+                    word-break: break-all;
+                }
+                
+                .image-size {
+                    font-size: var(--font-size-xs);
+                    color: var(--gray-500);
+                }
+                
+                .btn-remove-image {
+                    position: absolute;
+                    top: var(--spacing-2);
+                    right: var(--spacing-2);
+                    width: 24px;
+                    height: 24px;
+                    border: none;
+                    background: var(--error-color);
+                    color: var(--white);
+                    border-radius: 50%;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: var(--transition-fast);
+                }
+                
+                .btn-remove-image:hover {
+                    background: #dc2626;
+                    transform: scale(1.1);
+                }
             </style>
 
             <div class="card">
@@ -404,6 +528,42 @@ class CreatePostForm extends BaseComponent {
                                 required
                             >${this.formData.comment}</textarea>
                             <div class="form-help">支持Markdown格式，可以包含图片、链接等（最多128KB）</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="image-upload">上传图片</label>
+                            <div class="image-upload-container">
+                                <input 
+                                    type="file" 
+                                    id="image-upload" 
+                                    accept="image/jpeg,image/jpg,image/png,image/gif"
+                                    style="display: none;"
+                                >
+                                <button type="button" class="btn btn-secondary" onclick="this.getRootNode().host.shadowRoot.querySelector('#image-upload').click()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="7,10 12,15 17,10"/>
+                                        <line x1="12" y1="15" x2="12" y2="3"/>
+                                    </svg>
+                                    选择图片
+                                </button>
+                                ${this.uploadedImage ? `
+                                    <div class="uploaded-image-preview">
+                                        <img src="${this.uploadedImage.url}" alt="上传的图片" class="preview-image">
+                                        <div class="image-info">
+                                            <span class="image-name">${this.uploadedImage.original_name}</span>
+                                            <span class="image-size">${(this.uploadedImage.size / 1024).toFixed(1)}KB</span>
+                                        </div>
+                                        <button type="button" class="btn-remove-image" onclick="this.getRootNode().host.removeImage()">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                                <line x1="6" y1="6" x2="18" y2="18"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="form-help">支持jpg、png、gif格式，大小不超过1MB</div>
                         </div>
 
                         <div class="form-group">
