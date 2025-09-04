@@ -86,13 +86,13 @@ class PermissionManager:
         Returns:
             bool: 是否可以查看
         """
-        # 目标用户被冻结，任何人都不能查看
-        if target_user_state == 0:
-            return False
-        
-        # 管理员可以查看任何用户资料
+        # 管理员可以查看任何用户资料（包括已冻结用户）
         if current_user and current_user.get("state") == 10:
             return True
+        
+        # 目标用户被冻结时，只有管理员可以查看
+        if target_user_state == 0:
+            return False
         
         # 普通用户可以查看自己的资料
         if current_user and current_user.get("id") == target_user_id:
