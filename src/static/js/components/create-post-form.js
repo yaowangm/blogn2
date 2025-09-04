@@ -413,7 +413,7 @@ class CreatePostForm extends BaseComponent {
                                 class="form-select"
                                 onchange="this.getRootNode().host.handleInputChange('folderid', this.value ? parseInt(this.value) : null)"
                             >
-                                <option value="">选择分类（可选）</option>
+                                <option value="">未分类</option>
                                 ${this.categories.map(category => `
                                     <option value="${category.id}" ${this.formData.folderid === category.id ? 'selected' : ''}>
                                         ${category.name.trim()} (${category.count})
