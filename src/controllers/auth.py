@@ -99,39 +99,6 @@ async def login(
         user=user_info
     )
 
-@router.post("/refresh", response_model=TokenRefreshResponse)
-@handle_api_errors("令牌刷新失败")
-async def refresh_token(
-    request: TokenRefreshRequest,
-    auth_service: AuthService = Depends(get_auth_service)
-):
-    """
-    刷新访问令牌
-    
-    Args:
-        request: 令牌刷新请求数据
-        auth_service: 认证服务实例
-        
-    Returns:
-        TokenRefreshResponse: 新的访问令牌
-        
-    Raises:
-        HTTPException: 当刷新令牌无效或过期时
-    """
-    new_access_token = auth_service.refresh_access_token(request.refresh_token)
-    
-    if not new_access_token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="刷新令牌无效或已过期"
-        )
-    
-    return TokenRefreshResponse(
-        access_token=new_access_token,
-        token_type="bearer",
-        expires_in=auth_service.access_token_expire_minutes * 60
-    )
-
 @router.post("/logout", response_model=LogoutResponse)
 @handle_api_errors("登出失败")
 async def logout(

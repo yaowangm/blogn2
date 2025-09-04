@@ -116,6 +116,12 @@ class TestAuthController:
         """测试令牌刷新成功"""
         # 设置模拟返回值
         mock_auth_service.refresh_access_token.return_value = "new_access_token"
+        mock_auth_service.get_user_from_token.return_value = {
+            "user_id": 1,
+            "username": "testuser",
+            "role": "admin"
+        }
+        mock_auth_service.create_refresh_token.return_value = "new_refresh_token"
         
         # 导入并测试刷新函数
         from src.controllers.auth import refresh_token
@@ -124,11 +130,14 @@ class TestAuthController:
         
         # 验证结果
         assert result.access_token == "new_access_token"
+        assert result.refresh_token == "new_refresh_token"
         assert result.token_type == "bearer"
         assert result.expires_in == 1800  # 30分钟
         
         # 验证服务调用
         mock_auth_service.refresh_access_token.assert_called_once_with("valid_refresh_token")
+        mock_auth_service.get_user_from_token.assert_called_once_with("new_access_token")
+        mock_auth_service.create_refresh_token.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_refresh_token_invalid(self, mock_auth_service, refresh_request):

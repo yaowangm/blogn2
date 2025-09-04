@@ -26,6 +26,7 @@ class TokenRefreshRequest(BaseModel):
 class TokenRefreshResponse(BaseModel):
     """令牌刷新响应模型"""
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
     expires_in: int
 
