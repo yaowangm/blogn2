@@ -16,6 +16,7 @@ from src.utils.cache import (
     cache_project_categories, cache_project_external_links, cache_project_rss,
     cache_project_stats, cache_user_projects
 )
+from src.utils.auth_middleware import get_current_user
 
 # 创建项目API路由器
 router = APIRouter()
@@ -443,3 +444,100 @@ async def create_project(
     except Exception as e:
         # 事务会自动回滚
         raise HTTPException(status_code=500, detail=f"创建博客失败: {str(e)}")
+
+@router.post("/projects/create-post", response_model=Dict[str, Any])
+async def create_post(
+    post_data: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    创建新的博客文章
+    
+    Args:
+        post_data: 包含文章信息的字典
+        current_user: 当前登录用户信息
+        session: 数据库会话
+        
+    Returns:
+        Dict[str, Any]: 新创建的文章信息
+    """
+    # 验证输入数据
+    if not post_data.get("name"):
+        raise HTTPException(status_code=400, detail="文章标题不能为空")
+    
+    if len(post_data["name"]) > 100:
+        raise HTTPException(status_code=400, detail="文章标题不能超过100个字符")
+    
+    if not post_data.get("comment"):
+        raise HTTPException(status_code=400, detail="文章内容不能为空")
+    
+    
+    # 验证项目ID
+    project_id = post_data.get("projectid")
+    if not project_id:
+        raise HTTPException(status_code=400, detail="项目ID不能为空")
+    
+    try:
+        # 验证用户是否有权限在该项目中创建文章
+        project_repo = ProjectRepository(session)
+        project = await project_repo.get_by_id(project_id)
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="项目不存在")
+        
+        if project.userid != current_user["id"]:
+            raise HTTPException(status_code=403, detail="没有权限在此项目中创建文章")
+        
+        # 开始事务
+        async with session.begin():
+            # 创建新文章
+            project_item_repo = ProjectItemRepository(session)
+            new_post = ProjectItem(
+                projectid=project_id,
+                name=post_data["name"],
+                comment=post_data["comment"],
+                itemtype=post_data.get("itemtype", 1),
+                itemsize=post_data.get("itemsize", 0),
+                attachment=None,  # 不再使用附件链接
+                linkstr=None,     # 不再使用相关链接
+                userid=current_user["id"],
+                accesscount=0,
+                commentcount=0,
+                folderid=post_data.get("folderid"),
+                status=post_data.get("status", 1),
+                allowpost=post_data.get("allowpost", 1),
+                createtime=datetime.now(),
+                updatetime=datetime.now(),
+                lastmodifytime=datetime.now()
+            )
+            
+            created_post = await project_item_repo.create(new_post)
+            
+            # 更新项目的记录数
+            await project_repo.increment_record_count(project_id)
+            
+            return {
+                "id": created_post.id,
+                "name": created_post.name,
+                "comment": created_post.comment,
+                "itemtype": created_post.itemtype,
+                "itemsize": created_post.itemsize,
+                "attachment": created_post.attachment,
+                "linkstr": created_post.linkstr,
+                "userid": created_post.userid,
+                "accesscount": created_post.accesscount,
+                "commentcount": created_post.commentcount,
+                "folderid": created_post.folderid,
+                "status": created_post.status,
+                "allowpost": created_post.allowpost,
+                "createtime": created_post.createtime,
+                "updatetime": created_post.updatetime,
+                "lastmodifytime": created_post.lastmodifytime
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        # 事务会自动回滚
+        raise HTTPException(status_code=500, detail=f"创建文章失败: {str(e)}")

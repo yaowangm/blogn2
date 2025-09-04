@@ -14,6 +14,8 @@ class BlogPostsListCard extends BaseComponent {
         this.loading = true;
         this.currentFolderId = null;
         this.currentCategoryName = '全部文章';
+        this.isOwner = false; // 是否为博客所有者
+        this.projectData = null; // 项目数据
         this.loadPageSizeConfig();
     }
 
@@ -21,6 +23,7 @@ class BlogPostsListCard extends BaseComponent {
         this.projectId = this.getProjectIdFromUrl();
         this.currentFolderId = this.getCurrentFolderId();
         this.render();
+        this.checkOwnership();
         this.loadData();
         this.addEventListeners();
     }
@@ -33,6 +36,29 @@ class BlogPostsListCard extends BaseComponent {
     getCurrentFolderId() {
         const url = new URL(window.location);
         return url.searchParams.get('folderid');
+    }
+
+    async checkOwnership() {
+        if (!this.projectId) {
+            return;
+        }
+
+        try {
+            // 获取项目信息
+            const projectResponse = await fetch(`/api/projects/${this.projectId}`);
+            if (projectResponse.ok) {
+                this.projectData = await projectResponse.json();
+                
+                // 检查当前用户是否为博客所有者
+                const userInfo = localStorage.getItem('user_info');
+                if (userInfo) {
+                    const currentUser = JSON.parse(userInfo);
+                    this.isOwner = currentUser.id === this.projectData.userid;
+                }
+            }
+        } catch (error) {
+            console.error('检查博客所有权失败:', error);
+        }
     }
 
     addEventListeners() {
@@ -152,9 +178,46 @@ class BlogPostsListCard extends BaseComponent {
                 .blog-list-container {
                     padding: 0;
                 }
+                
+                /* 发表博客文章按钮样式 */
+                .create-post-button {
+                    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+                    color: var(--white);
+                    border: none;
+                    padding: var(--spacing-4) var(--spacing-6);
+                    border-radius: var(--radius-lg);
+                    font-size: var(--font-size-lg);
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: var(--transition-fast);
+                    box-shadow: var(--shadow-md);
+                    margin: var(--spacing-4) var(--spacing-5) var(--spacing-3) var(--spacing-5);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: var(--spacing-2);
+                    width: calc(100% - var(--spacing-10));
+                }
+                
+                .create-post-button:hover {
+                    transform: translateY(-2px);
+                    box-shadow: var(--shadow-lg);
+                    background: linear-gradient(135deg, var(--primary-hover), var(--primary-color));
+                }
+                
+                .create-post-button:active {
+                    transform: translateY(0);
+                }
+                
+                .create-post-icon {
+                    width: 20px;
+                    height: 20px;
+                    fill: currentColor;
+                }
             </style>
 
             <div class="card">
+                ${this.isOwner ? this.renderCreatePostButton() : ''}
                 <div class="tabs">
                     <button class="tab ${this.activeTab === 'original' ? 'active' : ''}" onclick="this.getRootNode().host.switchTab('original')">原创文章</button>
                     <button class="tab ${this.activeTab === 'subscription' ? 'active' : ''}" onclick="this.getRootNode().host.switchTab('subscription')">订阅文章</button>
@@ -164,6 +227,22 @@ class BlogPostsListCard extends BaseComponent {
                   this.renderSubscriptionPosts()}
             </div>
         `;
+    }
+
+    renderCreatePostButton() {
+        return `
+            <button class="create-post-button" onclick="this.getRootNode().host.navigateToCreatePost()">
+                <svg class="create-post-icon" viewBox="0 0 24 24">
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                </svg>
+                发表博客文章
+            </button>
+        `;
+    }
+
+    navigateToCreatePost() {
+        // 导航到发表博客文章页面
+        window.location.href = `/blog/${this.projectId}/create-post`;
     }
 
     renderLoading() {

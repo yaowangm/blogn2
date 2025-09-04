@@ -231,6 +231,22 @@ async def blog_page(project_id: int):
     return FileResponse("src/static/blog.html")
 
 
+@app.get("/blog/{project_id}/create-post")
+async def create_post_page(project_id: int):
+    """
+    发表博客文章页面路由
+    
+    返回发表博客文章的页面HTML文件。
+    
+    Args:
+        project_id: 项目ID
+        
+    Returns:
+        FileResponse: 发表博客文章页面HTML文件
+    """
+    return FileResponse("src/static/create-post.html")
+
+
 @app.get("/profile")
 @app.get("/profile/{user_id}")
 async def profile_page(user_id: int = None):
