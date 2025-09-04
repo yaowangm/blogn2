@@ -10,6 +10,13 @@ from typing import List, Dict, Any, Optional
 
 from src.services.user_service import UserService
 from src.database import User
+from src.models.user_response import (
+    UserPublicResponse, UserPrivateResponse, UserListResponse, 
+    UserSummaryResponse, UserProfileResponse,
+    create_user_public_response, create_user_private_response,
+    create_user_list_response, create_user_summary_response,
+    create_user_profile_response
+)
 from src.utils.error_handlers import handle_api_errors
 from src.utils.dependencies import get_user_service
 from src.utils.auth_middleware import get_optional_current_user, get_current_user
@@ -29,7 +36,7 @@ async def get_user_summary(
     """
     获取用户统计摘要
     
-    返回用户总数和最近注册的用户列表。
+    返回用户总数和最近注册的用户列表（不包含敏感信息）。
     
     Args:
         user_service: 用户服务实例
@@ -37,9 +44,18 @@ async def get_user_summary(
     Returns:
         Dict[str, Any]: 包含用户统计信息的字典
     """
-    return await user_service.get_user_summary()
+    summary = await user_service.get_user_summary()
+    
+    # 使用安全的响应模型格式化最近用户数据
+    if "recent_users" in summary:
+        summary["recent_users"] = [
+            create_user_summary_response(user).dict() 
+            for user in summary["recent_users"]
+        ]
+    
+    return summary
 
-@router.get("/users/listnew", response_model=List[User])
+@router.get("/users/listnew", response_model=List[UserPublicResponse])
 @handle_api_errors("获取最新用户失败")
 @cache_new_users()  # 使用默认缓存时间
 async def get_new_users(
@@ -48,15 +64,29 @@ async def get_new_users(
     """
     获取最新注册的用户列表
     
-    返回最近注册的3个用户信息。
+    返回最近注册的3个用户信息（不包含敏感信息）。
     
     Args:
         user_service: 用户服务实例
         
     Returns:
-        List[User]: 最新用户列表
+        List[UserPublicResponse]: 最新用户列表（公开信息）
     """
-    return await user_service.get_top_users(3)
+    users = await user_service.get_top_users(3)
+    
+    # 使用安全的响应模型格式化用户数据
+    return [
+        create_user_public_response({
+            "id": user.id,
+            "name": user.name,
+            "state": user.state,
+            "regtime": user.regtime,
+            "projectid": user.projectid,
+            "intropiid": user.intropiid,
+            "lastupdate": user.lastupdate
+        })
+        for user in users
+    ]
 
 @router.get("/users/count")
 @handle_api_errors("获取用户总数失败")
@@ -96,7 +126,9 @@ async def get_users_list(
     - regtime: 注册时间
     - point: 积分
     - projectid: 项目ID（博客链接）
-    - email: 邮箱
+    - project_name: 项目名称
+    
+    注意：不包含密码等敏感信息
     
     Args:
         page: 页码，从1开始，默认1
@@ -117,7 +149,7 @@ async def get_users_list(
     
     return await user_service.get_users_paginated(page, page_size, search)
 
-@router.get("/users/{user_id}", response_model=Dict[str, Any])
+@router.get("/users/{user_id}", response_model=UserProfileResponse)
 @handle_api_errors("获取用户信息失败")
 # 注意：不缓存用户个人资料，因为包含敏感信息
 async def get_user_by_id(
@@ -129,11 +161,13 @@ async def get_user_by_id(
     根据用户ID获取用户信息
     
     权限控制：
-    - 如果查看自己的资料，返回完整信息
-    - 如果查看其他用户的资料，返回公开信息，敏感字段标记为"无权限查看"
-    - 管理员可查看任何用户的完整信息
+    - 如果查看自己的资料，返回完整信息（不包含密码）
+    - 如果查看其他用户的资料，返回公开信息
+    - 管理员可查看任何用户的完整信息（不包含密码）
     
-    安全说明：此API包含敏感信息，要求不缓存以防止信息泄露
+    安全说明：
+    - 密码字段永远不会包含在API响应中
+    - 此API包含敏感信息，要求不缓存以防止信息泄露
     
     Args:
         user_id: 用户ID
@@ -141,7 +175,7 @@ async def get_user_by_id(
         current_user: 当前登录用户信息（可选）
         
     Returns:
-        Dict[str, Any]: 包含用户信息和权限标记的字典
+        UserProfileResponse: 包含用户信息和权限标记的响应模型
         
     Raises:
         HTTPException: 当用户不存在时抛出404错误
@@ -157,28 +191,23 @@ async def get_user_by_id(
     # 获取权限配置
     permissions = permission_manager.get_profile_data_permissions(current_user, user_id)
     
-    # 使用权限管理器过滤数据
-    filtered_data = permission_manager.filter_profile_data(
-        {
-            "id": user.id,
-            "name": user.name,
-            "email": user.email,
-            "password": user.password,
-            "state": user.state,
-            "regtime": user.regtime,
-            "iplog": user.iplog,
-            "point": user.point,
-            "projectid": user.projectid,
-            "lastupdate": user.lastupdate,
-            "intropiid": user.intropiid
-        },
-        permissions
-    )
+    # 准备用户数据（不包含密码）
+    user_data = {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "state": user.state,
+        "regtime": user.regtime,
+        "iplog": user.iplog,
+        "point": user.point,
+        "projectid": user.projectid,
+        "lastupdate": user.lastupdate,
+        "intropiid": user.intropiid
+        # 注意：密码字段被故意排除
+    }
     
-    # 添加权限信息到返回数据
-    filtered_data["permissions"] = permissions
-    
-    return filtered_data
+    # 使用安全的响应模型创建响应
+    return create_user_profile_response(user_data, permissions)
 
 @router.post("/users/{user_id}/reset-password")
 @handle_api_errors("重置密码失败")

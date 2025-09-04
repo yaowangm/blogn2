@@ -13,6 +13,7 @@ from src.controllers.user import (
 )
 from src.services.user_service import UserService
 from src.database import User
+from src.models.user_response import UserPublicResponse, UserProfileResponse
 
 
 class TestUserController:
@@ -47,20 +48,29 @@ class TestUserController:
     async def test_get_new_users_success(self, mock_async_session):
         """测试获取最新用户成功"""
         # 准备测试数据
-        expected_users = [
-            User(id=1, name="user1", email="user1@example.com"),
-            User(id=2, name="user2", email="user2@example.com")
+        mock_users = [
+            User(id=1, name="user1", email="user1@example.com", state=1, regtime=None, projectid=None, intropiid=None, lastupdate=None),
+            User(id=2, name="user2", email="user2@example.com", state=1, regtime=None, projectid=None, intropiid=None, lastupdate=None)
         ]
         
         # 模拟服务方法
         mock_service = AsyncMock(spec=UserService)
-        mock_service.get_top_users.return_value = expected_users
+        mock_service.get_top_users.return_value = mock_users
         
         # 执行测试
         result = await get_new_users(user_service=mock_service)
         
-        # 验证结果
-        assert result == expected_users
+        # 验证结果 - 现在返回UserPublicResponse对象列表
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert all(isinstance(user, UserPublicResponse) for user in result)
+        assert result[0].id == 1
+        assert result[0].name == "user1"
+        assert result[1].id == 2
+        assert result[1].name == "user2"
+        # 验证不包含敏感字段
+        assert not hasattr(result[0], 'email')
+        assert not hasattr(result[0], 'password')
         mock_service.get_top_users.assert_called_once_with(3)
 
     @pytest.mark.unit
@@ -89,7 +99,14 @@ class TestUserController:
         mock_user = User(
             id=1,
             name="testuser",
-            email="test@example.com"
+            email="test@example.com",
+            state=1,
+            regtime=None,
+            iplog="127.0.0.1",
+            point=0,
+            projectid=None,
+            lastupdate=None,
+            intropiid=None
         )
         
         # 模拟服务方法
@@ -103,35 +120,27 @@ class TestUserController:
             mock_permission_manager.get_profile_data_permissions.return_value = {
                 "can_view_email": True,
                 "can_view_iplog": True,
-                "can_view_password": False
-            }
-            mock_permission_manager.filter_profile_data.return_value = {
-                "id": 1,
-                "name": "testuser",
-                "email": "test@example.com",
-                "state": 1,
-                "regtime": "2025-01-01T00:00:00",
-                "iplog": "127.0.0.1",
-                "point": 0,
-                "projectid": None,
-                "lastupdate": "2025-01-01T00:00:00",
-                "intropiid": None,
-                "permissions": {
-                    "can_view_email": True,
-                    "can_view_iplog": True,
-                    "can_view_password": False
-                }
+                "can_view_password": False,
+                "can_view_point": True,
+                "can_view_regtime": True,
+                "can_view_lastupdate": True,
+                "can_view_state": True
             }
             
             # 执行测试
             result = await get_user_by_id(user_id=1, user_service=mock_service, current_user={"id": 1, "state": 1})
             
-            # 验证结果
-            assert isinstance(result, dict)
-            assert result["id"] == 1
-            assert result["name"] == "testuser"
-            assert result["email"] == "test@example.com"
-            assert "permissions" in result
+            # 验证结果 - 现在返回UserProfileResponse对象
+            assert isinstance(result, UserProfileResponse)
+            assert result.id == 1
+            assert result.name == "testuser"
+            assert result.email == "test@example.com"
+            assert result.iplog == "127.0.0.1"
+            assert result.point == 0
+            assert result.state == 1
+            assert "permissions" in result.dict()
+            # 验证不包含密码字段
+            assert not hasattr(result, 'password')
             mock_service.get_user_by_id.assert_called_once_with(1)
 
     @pytest.mark.unit

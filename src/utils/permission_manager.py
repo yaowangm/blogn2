@@ -182,7 +182,7 @@ class PermissionManager:
         return {
             "can_view_email": can_view_sensitive,
             "can_view_iplog": can_view_sensitive,
-            "can_view_password": can_view_sensitive,
+            "can_view_password": False,  # 密码字段永远不包含在API响应中
             "can_view_point": can_view_sensitive,
             "can_view_regtime": True,  # 注册时间公开
             "can_view_lastupdate": True,  # 最后更新时间公开
@@ -197,12 +197,14 @@ class PermissionManager:
         """
         根据权限过滤个人资料数据
         
+        安全说明：密码字段永远不会包含在API响应中，即使有权限也不返回
+        
         Args:
             user_data: 原始用户数据
             permissions: 权限配置
             
         Returns:
-            Dict[str, Any]: 过滤后的用户数据
+            Dict[str, Any]: 过滤后的用户数据（不包含密码）
         """
         filtered_data = {
             "id": user_data.get("id"),
@@ -211,13 +213,12 @@ class PermissionManager:
             "intropiid": user_data.get("intropiid"),
         }
         
-        # 根据权限添加字段
+        # 根据权限添加字段（密码字段永远不包含）
         if permissions.get("can_view_email"):
             filtered_data["email"] = user_data.get("email")
         if permissions.get("can_view_iplog"):
             filtered_data["iplog"] = user_data.get("iplog")
-        if permissions.get("can_view_password"):
-            filtered_data["password"] = user_data.get("password")
+        # 注意：密码字段永远不包含在API响应中，即使有权限也不返回
         if permissions.get("can_view_point"):
             filtered_data["point"] = user_data.get("point")
         if permissions.get("can_view_regtime"):
