@@ -80,18 +80,27 @@ class CreatePostForm extends BaseComponent {
     }
 
     addEventListeners() {
-        // 表单提交事件
-        this.addEventListener('submit', (event) => {
-            event.preventDefault();
-            this.handleSubmit();
-        });
-        
-        // 图片上传事件
-        this.addEventListener('change', (event) => {
-            if (event.target.type === 'file' && event.target.id === 'image-upload') {
-                this.handleImageUpload(event.target.files[0]);
+        // 等待DOM渲染完成后再添加事件监听器
+        setTimeout(() => {
+            const form = this.shadowRoot.querySelector('form');
+            if (form) {
+                // 表单提交事件
+                form.addEventListener('submit', (event) => {
+                    console.log('表单提交事件触发');
+                    event.preventDefault();
+                    this.handleSubmit();
+                });
+            } else {
+                console.error('找不到表单元素');
             }
-        });
+            
+            // 图片上传事件
+            this.addEventListener('change', (event) => {
+                if (event.target.type === 'file' && event.target.id === 'image-upload') {
+                    this.handleImageUpload(event.target.files[0]);
+                }
+            });
+        }, 100);
     }
 
     handleInputChange(field, value) {
@@ -148,15 +157,22 @@ class CreatePostForm extends BaseComponent {
     }
 
     async handleSubmit() {
+        console.log('=== handleSubmit 开始 ===');
+        console.log('当前loading状态:', this.loading);
+        
         if (this.loading) {
+            console.log('正在加载中，忽略提交');
             return;
         }
 
         // 再次检查登录状态
         if (!this.checkLoginStatus()) {
+            console.log('登录状态检查失败');
             this.showError('请先登录后再发表文章');
             return;
         }
+        
+        console.log('登录状态检查通过');
 
         // 验证必填字段
         if (!this.formData.name.trim()) {
