@@ -82,7 +82,18 @@ class BaseComponent extends HTMLElement {
         const diffDays = Math.floor((nowOnly - dateOnly) / (1000 * 60 * 60 * 24));
         
         if (diffDays === 0) {
-            return '今天';
+            // 今天：显示小时和分钟
+            const diffTime = now - date;
+            const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+            const diffMinutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60));
+            
+            if (diffHours > 0) {
+                return `${diffHours}小时${diffMinutes}分钟前`;
+            } else if (diffMinutes > 0) {
+                return `${diffMinutes}分钟前`;
+            } else {
+                return '刚刚';
+            }
         } else if (diffDays === 1) {
             return '昨天';
         } else if (diffDays < 7) {
