@@ -12,7 +12,7 @@ class CreatePostForm extends BaseComponent {
             name: '',
             comment: '',
             itemtype: 1, // 默认为文章类型
-            itemsize: 0,
+            itemsize: 0, // 将在提交时计算
             folderid: null,
             status: 1, // 默认为正常状态
             allowpost: 1, // 默认为允许评论
@@ -191,7 +191,13 @@ class CreatePostForm extends BaseComponent {
 
             // 准备提交数据
             const submitData = {
-                ...this.formData,
+                name: this.formData.name,
+                comment: this.formData.comment,
+                itemtype: this.formData.itemtype,
+                folderid: this.formData.folderid,
+                status: this.formData.status,
+                allowpost: this.formData.allowpost,
+                attachment: this.formData.attachment,
                 projectid: this.projectId,
                 userid: this.getCurrentUserId(),
                 createtime: new Date().toISOString(),
