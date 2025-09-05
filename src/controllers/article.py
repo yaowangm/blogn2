@@ -65,6 +65,13 @@ async def get_article_detail(
         if article.projectid:
             project = await project_repo.get_by_id(article.projectid)
         
+        # 获取分类信息
+        category = None
+        if article.folderid:
+            from src.repositories.folder_repository import FolderRepository
+            folder_repo = FolderRepository(session)
+            category = await folder_repo.get_by_id(article.folderid)
+        
         # 获取文章评论
         comments = await post_repo.get_by_project_item_id(article_id)
         
@@ -93,7 +100,10 @@ async def get_article_detail(
                 "id": project.id if project else None,
                 "name": project.name if project else None
             } if project else None,
-            "category": article.folderid,
+            "category": {
+                "id": article.folderid,
+                "name": category.name if category else "未分类"
+            },
             "allowpost": article.allowpost,  # 评论设置
             "hits": article.accesscount or 0,
             "created_at": article.createtime,

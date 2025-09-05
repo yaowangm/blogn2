@@ -99,10 +99,10 @@ class ArticleHeaderCard extends BaseComponent {
                             </div>
                         ` : ''}
                         
-                        ${project?.name ? `
+                        ${category?.name ? `
                             <div class="meta-item">
-                                <span class="meta-label">博客:</span>
-                                <span class="meta-value">${project.name}</span>
+                                <span class="meta-label">分类:</span>
+                                <span class="meta-value">${category.name}</span>
                             </div>
                         ` : ''}
                         
