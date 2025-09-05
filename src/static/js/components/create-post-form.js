@@ -81,16 +81,7 @@ class CreatePostForm extends BaseComponent {
                 });
             }
             
-            // 图片上传事件 - 绑定到文件输入框
-            const fileInput = this.shadowRoot.querySelector('#image-upload');
-            if (fileInput) {
-                fileInput.addEventListener('change', (event) => {
-                    console.log('DEBUG: File selected:', event.target.files[0]);
-                    this.handleImageUpload(event.target.files[0]);
-                });
-            } else {
-                console.error('DEBUG: File input not found for event binding');
-            }
+            // 图片上传事件现在在render()方法中绑定
         }, 100);
     }
 
@@ -156,6 +147,24 @@ class CreatePostForm extends BaseComponent {
             fileInput.click();
         } else {
             console.error('DEBUG: File input not found');
+        }
+    }
+
+    bindImageUploadEvent() {
+        // 图片上传事件 - 绑定到文件输入框
+        const fileInput = this.shadowRoot.querySelector('#image-upload');
+        if (fileInput) {
+            // 先移除之前的事件监听器（如果有的话）
+            fileInput.removeEventListener('change', this.handleFileChange);
+            // 绑定新的事件监听器
+            this.handleFileChange = (event) => {
+                console.log('DEBUG: File selected:', event.target.files[0]);
+                this.handleImageUpload(event.target.files[0]);
+            };
+            fileInput.addEventListener('change', this.handleFileChange);
+            console.log('DEBUG: Image upload event bound successfully');
+        } else {
+            console.error('DEBUG: File input not found for event binding');
         }
     }
 
@@ -813,6 +822,9 @@ class CreatePostForm extends BaseComponent {
                 </div>
             </div>
         `;
+        
+        // 重新绑定事件监听器（因为innerHTML会清除之前的事件）
+        this.bindImageUploadEvent();
     }
 }
 
