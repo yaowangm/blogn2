@@ -501,12 +501,17 @@ async def create_post(
         
         # 创建新文章
         project_item_repo = ProjectItemRepository(session)
+        
+        # 计算文章内容的字节长度
+        comment_content = post_data["comment"]
+        itemsize = len(comment_content.encode('utf-8'))
+        
         new_post = ProjectItem(
             projectid=project_id,
             name=post_data["name"],
-            comment=post_data["comment"],
+            comment=comment_content,
             itemtype=post_data.get("itemtype", 1),
-            itemsize=post_data.get("itemsize", 0),
+            itemsize=itemsize,  # 使用实际的文章内容长度
             attachment=attachment,  # 使用上传的图片文件名
             linkstr=None,          # 不再使用相关链接
             userid=current_user["id"],
