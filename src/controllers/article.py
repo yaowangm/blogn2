@@ -106,6 +106,7 @@ async def get_article_detail(
             },
             "allowpost": article.allowpost,  # 评论设置
             "hits": article.accesscount or 0,
+            "itemsize": article.itemsize or 0,  # 文章长度（字节数）
             "created_at": article.createtime,
             "updated_at": article.updatetime,
             "comment_count": article.commentcount or 0,

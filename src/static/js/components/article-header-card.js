@@ -72,7 +72,7 @@ class ArticleHeaderCard extends BaseComponent {
             return;
         }
 
-        const { title, author, project, category, hits, created_at, updated_at, comment_count } = this.articleData;
+        const { title, author, project, category, hits, itemsize, created_at, updated_at, comment_count } = this.articleData;
 
         this.shadowRoot.innerHTML = `
             <div class="card article-header-card">
@@ -112,6 +112,11 @@ class ArticleHeaderCard extends BaseComponent {
                         </div>
                         
                         <div class="meta-item">
+                            <span class="meta-label">文章长度:</span>
+                            <span class="meta-value">${this.formatFileSize(itemsize || 0)}</span>
+                        </div>
+                        
+                        <div class="meta-item">
                             <span class="meta-label">评论数:</span>
                             <span class="meta-value">${comment_count || 0}</span>
                         </div>
@@ -130,6 +135,19 @@ class ArticleHeaderCard extends BaseComponent {
         if (this.articleData && this.articleData.title) {
             document.title = `${this.articleData.title} - BlogN`;
         }
+    }
+
+    /**
+     * 格式化文件大小显示
+     */
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 
     /**
