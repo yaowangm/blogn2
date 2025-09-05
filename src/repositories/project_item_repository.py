@@ -13,6 +13,13 @@ class ProjectItemRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
     
+    async def create(self, project_item: ProjectItem) -> ProjectItem:
+        """创建新的项目项"""
+        self.session.add(project_item)
+        await self.session.flush()  # 获取生成的ID
+        await self.session.refresh(project_item)  # 刷新对象以获取完整数据
+        return project_item
+    
     async def count(self) -> int:
         """获取项目项总数"""
         statement = select(func.count(ProjectItem.id))

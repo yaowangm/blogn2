@@ -499,52 +499,53 @@ async def create_post(
         if project.userid != current_user["id"]:
             raise HTTPException(status_code=403, detail="没有权限在此项目中创建文章")
         
-        # 开始事务
-        async with session.begin():
-            # 创建新文章
-            project_item_repo = ProjectItemRepository(session)
-            new_post = ProjectItem(
-                projectid=project_id,
-                name=post_data["name"],
-                comment=post_data["comment"],
-                itemtype=post_data.get("itemtype", 1),
-                itemsize=post_data.get("itemsize", 0),
-                attachment=attachment,  # 使用上传的图片文件名
-                linkstr=None,          # 不再使用相关链接
-                userid=current_user["id"],
-                accesscount=0,
-                commentcount=0,
-                folderid=post_data.get("folderid"),
-                status=post_data.get("status", 1),
-                allowpost=post_data.get("allowpost", 1),
-                createtime=datetime.now(),
-                updatetime=datetime.now(),
-                lastmodifytime=datetime.now()
-            )
-            
-            created_post = await project_item_repo.create(new_post)
-            
-            # 更新项目的记录数
-            await project_repo.increment_record_count(project_id)
-            
-            return {
-                "id": created_post.id,
-                "name": created_post.name,
-                "comment": created_post.comment,
-                "itemtype": created_post.itemtype,
-                "itemsize": created_post.itemsize,
-                "attachment": created_post.attachment,
-                "linkstr": created_post.linkstr,
-                "userid": created_post.userid,
-                "accesscount": created_post.accesscount,
-                "commentcount": created_post.commentcount,
-                "folderid": created_post.folderid,
-                "status": created_post.status,
-                "allowpost": created_post.allowpost,
-                "createtime": created_post.createtime,
-                "updatetime": created_post.updatetime,
-                "lastmodifytime": created_post.lastmodifytime
-            }
+        # 创建新文章
+        project_item_repo = ProjectItemRepository(session)
+        new_post = ProjectItem(
+            projectid=project_id,
+            name=post_data["name"],
+            comment=post_data["comment"],
+            itemtype=post_data.get("itemtype", 1),
+            itemsize=post_data.get("itemsize", 0),
+            attachment=attachment,  # 使用上传的图片文件名
+            linkstr=None,          # 不再使用相关链接
+            userid=current_user["id"],
+            accesscount=0,
+            commentcount=0,
+            folderid=post_data.get("folderid"),
+            status=post_data.get("status", 1),
+            allowpost=post_data.get("allowpost", 1),
+            createtime=datetime.now(),
+            updatetime=datetime.now(),
+            lastmodifytime=datetime.now()
+        )
+        
+        created_post = await project_item_repo.create(new_post)
+        
+        # 更新项目的记录数
+        await project_repo.increment_record_count(project_id)
+        
+        # 提交事务
+        await session.commit()
+        
+        return {
+            "id": created_post.id,
+            "name": created_post.name,
+            "comment": created_post.comment,
+            "itemtype": created_post.itemtype,
+            "itemsize": created_post.itemsize,
+            "attachment": created_post.attachment,
+            "linkstr": created_post.linkstr,
+            "userid": created_post.userid,
+            "accesscount": created_post.accesscount,
+            "commentcount": created_post.commentcount,
+            "folderid": created_post.folderid,
+            "status": created_post.status,
+            "allowpost": created_post.allowpost,
+            "createtime": created_post.createtime,
+            "updatetime": created_post.updatetime,
+            "lastmodifytime": created_post.lastmodifytime
+        }
             
     except HTTPException:
         raise

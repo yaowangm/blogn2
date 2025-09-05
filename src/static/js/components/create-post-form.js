@@ -23,6 +23,13 @@ class CreatePostForm extends BaseComponent {
 
     async connectedCallback() {
         this.projectId = this.getProjectIdFromUrl();
+        
+        // 检查用户登录状态
+        if (!this.checkLoginStatus()) {
+            this.showLoginRequired();
+            return;
+        }
+        
         this.render();
         await this.loadCategories();
         this.addEventListeners();
@@ -138,6 +145,12 @@ class CreatePostForm extends BaseComponent {
             return;
         }
 
+        // 再次检查登录状态
+        if (!this.checkLoginStatus()) {
+            this.showError('请先登录后再发表文章');
+            return;
+        }
+
         // 验证必填字段
         if (!this.formData.name.trim()) {
             this.showError('文章标题不能为空');
@@ -166,12 +179,15 @@ class CreatePostForm extends BaseComponent {
 
         try {
             const token = localStorage.getItem('access_token');
-            const headers = {
-                'Content-Type': 'application/json'
-            };
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
+            if (!token) {
+                this.showError('登录状态已过期，请重新登录');
+                return;
             }
+
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            };
 
             // 准备提交数据
             const submitData = {
@@ -185,14 +201,19 @@ class CreatePostForm extends BaseComponent {
                 commentcount: 0
             };
 
+            console.log('提交文章数据:', submitData);
+
             const response = await fetch('/api/projects/create-post', {
                 method: 'POST',
                 headers: headers,
                 body: JSON.stringify(submitData)
             });
 
+            console.log('API响应状态:', response.status);
+
             if (response.ok) {
                 const result = await response.json();
+                console.log('文章创建成功:', result);
                 this.showSuccess('文章发表成功！');
                 // 延迟跳转回博客页面
                 setTimeout(() => {
@@ -200,7 +221,19 @@ class CreatePostForm extends BaseComponent {
                 }, 2000);
             } else {
                 const errorData = await response.json();
-                this.showError(errorData.detail || '发表文章失败');
+                console.error('API错误:', errorData);
+                
+                if (response.status === 401) {
+                    this.showError('登录状态已过期，请重新登录');
+                    // 清除本地存储的认证信息
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('refresh_token');
+                    localStorage.removeItem('user_info');
+                } else if (response.status === 403) {
+                    this.showError('没有权限在此项目中创建文章');
+                } else {
+                    this.showError(errorData.detail || '发表文章失败');
+                }
             }
         } catch (error) {
             console.error('发表文章失败:', error);
@@ -209,6 +242,104 @@ class CreatePostForm extends BaseComponent {
             this.loading = false;
             this.render();
         }
+    }
+
+    checkLoginStatus() {
+        const token = localStorage.getItem('access_token');
+        const userInfo = localStorage.getItem('user_info');
+        return !!(token && userInfo);
+    }
+
+    showLoginRequired() {
+        this.shadowRoot.innerHTML = `
+            <style>
+                :host {
+                    display: block;
+                    font-family: var(--font-family);
+                }
+                
+                @import url('/static/css/common-components.css');
+                
+                .card {
+                    background: var(--white);
+                    border-radius: var(--radius-lg);
+                    box-shadow: var(--shadow-sm);
+                    border: 1px solid var(--gray-200);
+                    overflow: hidden;
+                    text-align: center;
+                    padding: var(--spacing-8);
+                }
+                
+                .login-required-icon {
+                    width: 64px;
+                    height: 64px;
+                    margin: 0 auto var(--spacing-4);
+                    color: var(--gray-400);
+                }
+                
+                .login-required-title {
+                    font-size: var(--font-size-xl);
+                    font-weight: 600;
+                    color: var(--gray-900);
+                    margin-bottom: var(--spacing-3);
+                }
+                
+                .login-required-message {
+                    color: var(--gray-600);
+                    margin-bottom: var(--spacing-6);
+                    line-height: 1.6;
+                }
+                
+                .btn {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: var(--spacing-3) var(--spacing-6);
+                    font-size: var(--font-size-sm);
+                    font-weight: 500;
+                    border-radius: var(--radius-md);
+                    border: 1px solid transparent;
+                    cursor: pointer;
+                    transition: var(--transition-fast);
+                    text-decoration: none;
+                    line-height: 1;
+                }
+                
+                .btn-primary {
+                    background-color: var(--primary-color);
+                    color: var(--white);
+                    border-color: var(--primary-color);
+                }
+                
+                .btn-primary:hover {
+                    background-color: var(--primary-hover);
+                    border-color: var(--primary-hover);
+                }
+            </style>
+
+            <div class="card">
+                <svg class="login-required-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+                <h2 class="login-required-title">需要登录</h2>
+                <p class="login-required-message">
+                    发表文章需要先登录您的账户。<br>
+                    请点击下方按钮登录后重试。
+                </p>
+                <button class="btn btn-primary" onclick="this.showLoginModal()">
+                    立即登录
+                </button>
+            </div>
+        `;
+    }
+
+    showLoginModal() {
+        // 触发登录模态框显示
+        const loginEvent = new CustomEvent('showLoginModal', {
+            bubbles: true,
+            detail: { returnUrl: window.location.href }
+        });
+        document.dispatchEvent(loginEvent);
     }
 
     getCurrentUserId() {
