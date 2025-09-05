@@ -201,7 +201,14 @@ class CreatePostForm extends BaseComponent {
         this.render();
 
         try {
-            const token = localStorage.getItem('access_token');
+            // 使用token-manager获取有效的访问令牌
+            const tokenManager = window.tokenManager;
+            if (!tokenManager) {
+                this.showError('Token管理器未初始化，请刷新页面重试');
+                return;
+            }
+
+            const token = await tokenManager.getValidAccessToken();
             if (!token) {
                 this.showError('登录状态已过期，请重新登录');
                 return;
