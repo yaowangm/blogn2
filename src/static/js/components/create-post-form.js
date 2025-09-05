@@ -72,16 +72,7 @@ class CreatePostForm extends BaseComponent {
     addEventListeners() {
         // 等待DOM渲染完成后再添加事件监听器
         setTimeout(() => {
-            const form = this.shadowRoot.querySelector('form');
-            if (form) {
-                // 表单提交事件
-                form.addEventListener('submit', (event) => {
-                    event.preventDefault();
-                    this.handleSubmit();
-                });
-            }
-            
-            // 图片上传事件现在在render()方法中绑定
+            this.bindAllEvents();
         }, 100);
     }
 
@@ -150,8 +141,24 @@ class CreatePostForm extends BaseComponent {
         }
     }
 
-    bindImageUploadEvent() {
-        // 图片上传事件 - 绑定到文件输入框
+    bindAllEvents() {
+        // 绑定表单提交事件
+        const form = this.shadowRoot.querySelector('form');
+        if (form) {
+            // 先移除之前的事件监听器（如果有的话）
+            form.removeEventListener('submit', this.handleFormSubmit);
+            // 绑定新的事件监听器
+            this.handleFormSubmit = (event) => {
+                event.preventDefault();
+                this.handleSubmit();
+            };
+            form.addEventListener('submit', this.handleFormSubmit);
+            console.log('DEBUG: Form submit event bound successfully');
+        } else {
+            console.error('DEBUG: Form not found for event binding');
+        }
+
+        // 绑定图片上传事件
         const fileInput = this.shadowRoot.querySelector('#image-upload');
         if (fileInput) {
             // 先移除之前的事件监听器（如果有的话）
@@ -824,7 +831,7 @@ class CreatePostForm extends BaseComponent {
         `;
         
         // 重新绑定事件监听器（因为innerHTML会清除之前的事件）
-        this.bindImageUploadEvent();
+        this.bindAllEvents();
     }
 }
 
