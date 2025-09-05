@@ -125,6 +125,7 @@ class CreatePostForm extends BaseComponent {
                 const result = await response.json();
                 this.uploadedImage = result;
                 this.formData.attachment = result.filename;
+                console.log('DEBUG: Image uploaded, attachment set to:', this.formData.attachment);
                 this.showSuccess('图片上传成功！');
                 this.render(); // 重新渲染以显示上传的图片
             } else {
@@ -138,6 +139,7 @@ class CreatePostForm extends BaseComponent {
     }
 
     removeImage() {
+        console.log('DEBUG: removeImage called, clearing attachment');
         this.uploadedImage = null;
         this.formData.attachment = null;
         this.render();
@@ -217,8 +219,8 @@ class CreatePostForm extends BaseComponent {
                 commentcount: 0
             };
             
-            console.log('DEBUG: Submitting form data:', submitData);
-            console.log('DEBUG: attachment field value:', submitData.attachment);
+            console.log('DEBUG: Frontend submitting data:', submitData);
+            console.log('DEBUG: Frontend attachment field:', submitData.attachment);
 
             const response = await fetch('/api/projects/create-post', {
                 method: 'POST',
