@@ -145,6 +145,16 @@ class CreatePostForm extends BaseComponent {
         this.render();
     }
 
+    triggerImageUpload() {
+        console.log('DEBUG: triggerImageUpload called');
+        const fileInput = this.shadowRoot.querySelector('#image-upload');
+        if (fileInput) {
+            fileInput.click();
+        } else {
+            console.error('DEBUG: File input not found');
+        }
+    }
+
     async handleSubmit() {
         if (this.loading) {
             return;
@@ -722,7 +732,7 @@ class CreatePostForm extends BaseComponent {
                                     accept="image/jpeg,image/jpg,image/png,image/gif"
                                     style="display: none;"
                                 >
-                                <button type="button" class="btn btn-secondary" onclick="this.getRootNode().host.shadowRoot.querySelector('#image-upload').click()">
+                                <button type="button" class="btn btn-secondary" onclick="this.getRootNode().host.triggerImageUpload()">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                         <polyline points="7,10 12,15 17,10"/>
