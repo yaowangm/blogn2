@@ -81,13 +81,16 @@ class CreatePostForm extends BaseComponent {
                 });
             }
             
-            // 图片上传事件
-            this.addEventListener('change', (event) => {
-                if (event.target.type === 'file' && event.target.id === 'image-upload') {
+            // 图片上传事件 - 绑定到文件输入框
+            const fileInput = this.shadowRoot.querySelector('#image-upload');
+            if (fileInput) {
+                fileInput.addEventListener('change', (event) => {
                     console.log('DEBUG: File selected:', event.target.files[0]);
                     this.handleImageUpload(event.target.files[0]);
-                }
-            });
+                });
+            } else {
+                console.error('DEBUG: File input not found for event binding');
+            }
         }, 100);
     }
 
