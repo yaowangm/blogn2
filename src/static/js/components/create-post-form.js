@@ -216,6 +216,9 @@ class CreatePostForm extends BaseComponent {
                 accesscount: 0,
                 commentcount: 0
             };
+            
+            console.log('DEBUG: Submitting form data:', submitData);
+            console.log('DEBUG: attachment field value:', submitData.attachment);
 
             const response = await fetch('/api/projects/create-post', {
                 method: 'POST',

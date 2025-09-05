@@ -506,6 +506,7 @@ async def create_post(
         comment_content = post_data["comment"]
         itemsize = len(comment_content.encode('utf-8'))
         
+        print(f"DEBUG: Creating ProjectItem with attachment: {attachment}")
         new_post = ProjectItem(
             projectid=project_id,
             name=post_data["name"],
