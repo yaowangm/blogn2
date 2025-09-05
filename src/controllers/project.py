@@ -479,11 +479,8 @@ async def create_post(
     
     # 验证附件字段（如果提供）
     attachment = post_data.get("attachment")
-    print(f"DEBUG: Received post_data: {post_data}")
-    print(f"DEBUG: Received attachment field: {attachment}")
     if attachment and not isinstance(attachment, str):
         raise HTTPException(status_code=400, detail="附件字段格式不正确")
-    
     
     # 验证项目ID
     project_id = post_data.get("projectid")

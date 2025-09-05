@@ -111,7 +111,6 @@ class CreatePostForm extends BaseComponent {
                 const result = await response.json();
                 this.uploadedImage = result;
                 this.formData.attachment = result.filename;
-                console.log('DEBUG: Image uploaded, attachment set to:', this.formData.attachment);
                 this.showSuccess('图片上传成功！');
                 this.render(); // 重新渲染以显示上传的图片
             } else {
@@ -132,12 +131,11 @@ class CreatePostForm extends BaseComponent {
     }
 
     triggerImageUpload() {
-        console.log('DEBUG: triggerImageUpload called');
         const fileInput = this.shadowRoot.querySelector('#image-upload');
         if (fileInput) {
             fileInput.click();
         } else {
-            console.error('DEBUG: File input not found');
+            console.error('File input not found');
         }
     }
 
@@ -153,9 +151,8 @@ class CreatePostForm extends BaseComponent {
                 this.handleSubmit();
             };
             form.addEventListener('submit', this.handleFormSubmit);
-            console.log('DEBUG: Form submit event bound successfully');
         } else {
-            console.error('DEBUG: Form not found for event binding');
+            console.error('Form not found for event binding');
         }
 
         // 绑定图片上传事件
@@ -165,13 +162,11 @@ class CreatePostForm extends BaseComponent {
             fileInput.removeEventListener('change', this.handleFileChange);
             // 绑定新的事件监听器
             this.handleFileChange = (event) => {
-                console.log('DEBUG: File selected:', event.target.files[0]);
                 this.handleImageUpload(event.target.files[0]);
             };
             fileInput.addEventListener('change', this.handleFileChange);
-            console.log('DEBUG: Image upload event bound successfully');
         } else {
-            console.error('DEBUG: File input not found for event binding');
+            console.error('File input not found for event binding');
         }
     }
 
@@ -248,9 +243,6 @@ class CreatePostForm extends BaseComponent {
                 accesscount: 0,
                 commentcount: 0
             };
-            
-            console.log('DEBUG: Frontend submitting data:', submitData);
-            console.log('DEBUG: Frontend attachment field:', submitData.attachment);
 
             const response = await fetch('/api/projects/create-post', {
                 method: 'POST',
@@ -260,12 +252,10 @@ class CreatePostForm extends BaseComponent {
 
             if (response.ok) {
                 const result = await response.json();
-                console.log('DEBUG: Article created successfully:', result);
-                this.showSuccess(`文章发表成功！文章ID: ${result.id}。请检查控制台查看调试信息。`);
-                // 暂时不跳转，让用户查看调试信息
-                // setTimeout(() => {
-                //     window.location.href = `/blog/${this.projectId}`;
-                // }, 2000);
+                this.showSuccess(`文章发表成功！文章ID: ${result.id}`);
+                setTimeout(() => {
+                    window.location.href = `/blog/${this.projectId}`;
+                }, 2000);
             } else {
                 let errorData;
                 try {
