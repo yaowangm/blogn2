@@ -22,14 +22,21 @@ class CreatePostForm extends BaseComponent {
     }
 
     async connectedCallback() {
+        console.log('=== CreatePostForm 初始化 ===');
         this.projectId = this.getProjectIdFromUrl();
+        console.log('项目ID:', this.projectId);
         
         // 检查用户登录状态
-        if (!this.checkLoginStatus()) {
+        const isLoggedIn = this.checkLoginStatus();
+        console.log('登录状态:', isLoggedIn);
+        
+        if (!isLoggedIn) {
+            console.log('用户未登录，显示登录提示');
             this.showLoginRequired();
             return;
         }
         
+        console.log('用户已登录，渲染表单');
         this.render();
         await this.loadCategories();
         this.addEventListeners();
@@ -207,7 +214,11 @@ class CreatePostForm extends BaseComponent {
                 commentcount: 0
             };
 
+            console.log('=== 发表文章调试信息 ===');
             console.log('提交文章数据:', submitData);
+            console.log('请求头:', headers);
+            console.log('项目ID:', this.projectId);
+            console.log('用户ID:', this.getCurrentUserId());
 
             const response = await fetch('/api/projects/create-post', {
                 method: 'POST',
@@ -216,30 +227,50 @@ class CreatePostForm extends BaseComponent {
             });
 
             console.log('API响应状态:', response.status);
+            console.log('响应头:', Object.fromEntries(response.headers.entries()));
 
             if (response.ok) {
                 const result = await response.json();
-                console.log('文章创建成功:', result);
-                this.showSuccess('文章发表成功！');
+                console.log('✅ 文章创建成功:', result);
+                this.showSuccess(`文章发表成功！文章ID: ${result.id}`);
                 // 延迟跳转回博客页面
                 setTimeout(() => {
                     window.location.href = `/blog/${this.projectId}`;
                 }, 2000);
             } else {
-                const errorData = await response.json();
-                console.error('API错误:', errorData);
+                let errorData;
+                try {
+                    errorData = await response.json();
+                } catch (e) {
+                    errorData = { detail: '无法解析错误响应' };
+                }
+                
+                console.error('❌ API错误详情:');
+                console.error('- 状态码:', response.status);
+                console.error('- 错误数据:', errorData);
+                console.error('- 响应文本:', await response.text());
+                
+                let errorMessage = '发表文章失败';
                 
                 if (response.status === 401) {
-                    this.showError('登录状态已过期，请重新登录');
+                    errorMessage = '登录状态已过期，请重新登录';
                     // 清除本地存储的认证信息
                     localStorage.removeItem('access_token');
                     localStorage.removeItem('refresh_token');
                     localStorage.removeItem('user_info');
                 } else if (response.status === 403) {
-                    this.showError('没有权限在此项目中创建文章');
+                    errorMessage = '没有权限在此项目中创建文章';
+                } else if (response.status === 400) {
+                    errorMessage = `请求参数错误: ${errorData.detail || '未知错误'}`;
+                } else if (response.status === 404) {
+                    errorMessage = `项目不存在: ${errorData.detail || '项目ID无效'}`;
+                } else if (response.status === 500) {
+                    errorMessage = `服务器内部错误: ${errorData.detail || '请联系管理员'}`;
                 } else {
-                    this.showError(errorData.detail || '发表文章失败');
+                    errorMessage = `请求失败 (${response.status}): ${errorData.detail || '未知错误'}`;
                 }
+                
+                this.showError(errorMessage);
             }
         } catch (error) {
             console.error('发表文章失败:', error);
@@ -253,7 +284,28 @@ class CreatePostForm extends BaseComponent {
     checkLoginStatus() {
         const token = localStorage.getItem('access_token');
         const userInfo = localStorage.getItem('user_info');
-        return !!(token && userInfo);
+        
+        console.log('检查登录状态:');
+        console.log('- Token存在:', !!token);
+        console.log('- 用户信息存在:', !!userInfo);
+        
+        if (token) {
+            console.log('- Token长度:', token.length);
+        }
+        
+        if (userInfo) {
+            try {
+                const user = JSON.parse(userInfo);
+                console.log('- 用户信息:', user);
+            } catch (e) {
+                console.error('- 用户信息解析失败:', e);
+            }
+        }
+        
+        const isLoggedIn = !!(token && userInfo);
+        console.log('- 登录状态:', isLoggedIn);
+        
+        return isLoggedIn;
     }
 
     showLoginRequired() {
@@ -364,20 +416,42 @@ class CreatePostForm extends BaseComponent {
     }
 
     showError(message) {
+        console.error('显示错误消息:', message);
         // 显示错误消息
         const errorElement = this.shadowRoot.querySelector('.error-message');
         if (errorElement) {
             errorElement.textContent = message;
             errorElement.style.display = 'block';
+            // 滚动到错误消息
+            errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            console.error('找不到错误消息元素');
+        }
+        
+        // 隐藏成功消息
+        const successElement = this.shadowRoot.querySelector('.success-message');
+        if (successElement) {
+            successElement.style.display = 'none';
         }
     }
 
     showSuccess(message) {
+        console.log('显示成功消息:', message);
         // 显示成功消息
         const successElement = this.shadowRoot.querySelector('.success-message');
         if (successElement) {
             successElement.textContent = message;
             successElement.style.display = 'block';
+            // 滚动到成功消息
+            successElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            console.error('找不到成功消息元素');
+        }
+        
+        // 隐藏错误消息
+        const errorElement = this.shadowRoot.querySelector('.error-message');
+        if (errorElement) {
+            errorElement.style.display = 'none';
         }
     }
 
