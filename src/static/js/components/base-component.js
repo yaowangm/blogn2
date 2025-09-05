@@ -75,10 +75,15 @@ class BaseComponent extends HTMLElement {
         
         const date = new Date(dateString);
         const now = new Date();
-        const diffTime = Math.abs(now - date);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
-        if (diffDays === 1) {
+        // 计算日期差（不考虑时间）
+        const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const nowOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const diffDays = Math.floor((nowOnly - dateOnly) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 0) {
+            return '今天';
+        } else if (diffDays === 1) {
             return '昨天';
         } else if (diffDays < 7) {
             return `${diffDays}天前`;
