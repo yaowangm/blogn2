@@ -97,8 +97,11 @@ class ArticleContentCard extends BaseComponent {
             return '<p class="no-content">暂无内容</p>';
         }
 
+        // 首先对内容进行HTML转义，防止XSS攻击
+        const escapedContent = this.escapeHtml(content);
+
         // 将换行符转换为HTML段落
-        const paragraphs = content.split(/\r?\n/).filter(p => p.trim());
+        const paragraphs = escapedContent.split(/\r?\n/).filter(p => p.trim());
         
         if (paragraphs.length === 0) {
             return '<p class="no-content">暂无内容</p>';
