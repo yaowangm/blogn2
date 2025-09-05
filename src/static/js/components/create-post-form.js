@@ -340,12 +340,18 @@ class CreatePostForm extends BaseComponent {
     }
 
     showLoginModal() {
-        // 触发登录模态框显示
-        const loginEvent = new CustomEvent('showLoginModal', {
-            bubbles: true,
-            detail: { returnUrl: window.location.href }
-        });
-        document.dispatchEvent(loginEvent);
+        // 直接调用header组件的showLoginModal方法
+        const headerComponent = document.querySelector('header-component');
+        if (headerComponent && headerComponent.showLoginModal) {
+            headerComponent.showLoginModal(window.location.href);
+        } else {
+            // 如果header组件不可用，触发事件
+            const loginEvent = new CustomEvent('showLoginModal', {
+                bubbles: true,
+                detail: { returnUrl: window.location.href }
+            });
+            document.dispatchEvent(loginEvent);
+        }
     }
 
     getCurrentUserId() {
