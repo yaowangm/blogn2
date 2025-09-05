@@ -94,6 +94,7 @@ async def get_article_detail(
                 "name": project.name if project else None
             } if project else None,
             "category": article.folderid,
+            "allowpost": article.allowpost,  # 评论设置
             "hits": article.accesscount or 0,
             "created_at": article.createtime,
             "updated_at": article.updatetime,

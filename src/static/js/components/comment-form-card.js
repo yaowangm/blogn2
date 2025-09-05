@@ -6,7 +6,9 @@ class CommentFormCard extends BaseComponent {
     constructor() {
         super();
         this.articleId = null;
+        this.articleData = null;
         this.isSubmitting = false;
+        this.isLoggedIn = false;
     }
 
     async connectedCallback() {
@@ -15,6 +17,16 @@ class CommentFormCard extends BaseComponent {
             this.showError('无法获取文章ID');
             return;
         }
+
+        // 加载文章数据并检查评论设置
+        await this.loadArticleData();
+        
+        // 检查是否可以发表评论
+        if (!this.canComment()) {
+            this.hide();
+            return;
+        }
+
         this.render();
         this.bindEvents();
     }
@@ -22,6 +34,57 @@ class CommentFormCard extends BaseComponent {
     getArticleIdFromUrl() {
         // 使用基类的统一方法
         return this.getArticleId();
+    }
+
+    /**
+     * 加载文章数据
+     */
+    async loadArticleData() {
+        try {
+            const response = await fetch(`/api/articles/${this.articleId}`);
+            if (response.ok) {
+                this.articleData = await response.json();
+            }
+        } catch (error) {
+            // 静默处理错误
+        }
+    }
+
+    /**
+     * 检查登录状态
+     */
+    checkLoginStatus() {
+        const token = localStorage.getItem('access_token');
+        const userInfo = localStorage.getItem('user_info');
+        return !!(token && userInfo);
+    }
+
+    /**
+     * 检查是否可以发表评论
+     */
+    canComment() {
+        if (!this.articleData) return false;
+        
+        const allowpost = this.articleData.allowpost || 1;
+        this.isLoggedIn = this.checkLoginStatus();
+        
+        switch (allowpost) {
+            case 1: // 允许匿名评论
+                return true;
+            case 2: // 只允许登录用户评论
+                return this.isLoggedIn;
+            case 3: // 不允许任何评论
+                return false;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * 隐藏组件
+     */
+    hide() {
+        this.style.display = 'none';
     }
 
     render() {
