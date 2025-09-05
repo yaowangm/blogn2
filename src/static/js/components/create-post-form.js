@@ -84,6 +84,7 @@ class CreatePostForm extends BaseComponent {
             // 图片上传事件
             this.addEventListener('change', (event) => {
                 if (event.target.type === 'file' && event.target.id === 'image-upload') {
+                    console.log('DEBUG: File selected:', event.target.files[0]);
                     this.handleImageUpload(event.target.files[0]);
                 }
             });
@@ -240,11 +241,12 @@ class CreatePostForm extends BaseComponent {
 
             if (response.ok) {
                 const result = await response.json();
-                this.showSuccess(`文章发表成功！文章ID: ${result.id}`);
-                // 延迟跳转回博客页面
-                setTimeout(() => {
-                    window.location.href = `/blog/${this.projectId}`;
-                }, 2000);
+                console.log('DEBUG: Article created successfully:', result);
+                this.showSuccess(`文章发表成功！文章ID: ${result.id}。请检查控制台查看调试信息。`);
+                // 暂时不跳转，让用户查看调试信息
+                // setTimeout(() => {
+                //     window.location.href = `/blog/${this.projectId}`;
+                // }, 2000);
             } else {
                 let errorData;
                 try {
