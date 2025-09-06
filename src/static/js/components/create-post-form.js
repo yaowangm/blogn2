@@ -8,6 +8,7 @@ class CreatePostForm extends BaseComponent {
         this.projectId = null;
         this.categories = [];
         this.loading = false;
+        this.submitting = false; // 添加提交锁
         this.formData = {
             name: '',
             comment: '',
@@ -58,14 +59,14 @@ class CreatePostForm extends BaseComponent {
                 const data = await response.json();
                 // API直接返回分类数组，不需要.categories字段
                 this.categories = data || [];
-                this.render();
+                this.updateCategories();
             } else {
                 this.categories = [];
-                this.render();
+                this.updateCategories();
             }
         } catch (error) {
             this.categories = [];
-            this.render();
+            this.updateCategories();
         }
     }
 
@@ -112,7 +113,7 @@ class CreatePostForm extends BaseComponent {
                 this.uploadedImage = result;
                 this.formData.attachment = result.filename;
                 this.showSuccess('图片上传成功！');
-                this.render(); // 重新渲染以显示上传的图片
+                this.updateImagePreview(); // 只更新图片预览部分
             } else {
                 const errorData = await response.json();
                 this.showError(errorData.detail || '图片上传失败');
@@ -127,7 +128,7 @@ class CreatePostForm extends BaseComponent {
         console.log('DEBUG: removeImage called, clearing attachment');
         this.uploadedImage = null;
         this.formData.attachment = null;
-        this.render();
+        this.updateImagePreview(); // 只更新图片预览部分
     }
 
     triggerImageUpload() {
@@ -142,12 +143,20 @@ class CreatePostForm extends BaseComponent {
     bindAllEvents() {
         // 绑定表单提交事件
         const form = this.shadowRoot.querySelector('form');
+        
         if (form) {
             // 先移除之前的事件监听器（如果有的话）
             form.removeEventListener('submit', this.handleFormSubmit);
+            
             // 绑定新的事件监听器
             this.handleFormSubmit = (event) => {
                 event.preventDefault();
+                
+                // 防止重复提交：检查提交锁和loading状态
+                if (this.submitting || this.loading) {
+                    return;
+                }
+                
                 this.handleSubmit();
             };
             form.addEventListener('submit', this.handleFormSubmit);
@@ -171,29 +180,38 @@ class CreatePostForm extends BaseComponent {
     }
 
     async handleSubmit() {
-        if (this.loading) {
+        // 立即检查提交锁，防止重复提交
+        if (this.submitting || this.loading) {
             return;
         }
+
+        // 立即设置提交锁和loading状态，防止重复点击
+        this.submitting = true;
+        this.updateLoadingState(true);
 
         // 再次检查登录状态
         if (!this.checkLoginStatus()) {
             this.showError('请先登录后再发表文章');
+            this.resetSubmitState();
             return;
         }
 
         // 验证必填字段
         if (!this.formData.name.trim()) {
             this.showError('文章标题不能为空');
+            this.resetSubmitState();
             return;
         }
 
         if (this.formData.name.length > 50) {
             this.showError('文章标题不能超过50个字符');
+            this.resetSubmitState();
             return;
         }
 
         if (!this.formData.comment.trim()) {
             this.showError('文章内容不能为空');
+            this.resetSubmitState();
             return;
         }
 
@@ -201,11 +219,9 @@ class CreatePostForm extends BaseComponent {
         const contentSize = new Blob([this.formData.comment]).size;
         if (contentSize > 131072) {
             this.showError('文章内容不能超过128KB');
+            this.resetSubmitState();
             return;
         }
-
-        this.loading = true;
-        this.render();
 
         try {
             // 使用token-manager获取有效的访问令牌
@@ -256,6 +272,8 @@ class CreatePostForm extends BaseComponent {
                 setTimeout(() => {
                     window.location.href = `/blog/${this.projectId}`;
                 }, 2000);
+                // 成功后不重置状态，保持按钮禁用状态
+                return; // 直接返回，不执行finally块
             } else {
                 let errorData;
                 try {
@@ -285,12 +303,94 @@ class CreatePostForm extends BaseComponent {
                 }
                 
                 this.showError(errorMessage);
+                this.resetSubmitState();
             }
         } catch (error) {
             this.showError('网络错误，请稍后重试');
-        } finally {
-            this.loading = false;
-            this.render();
+            this.resetSubmitState();
+        }
+    }
+
+    resetSubmitState() {
+        this.submitting = false;
+        this.loading = false;
+        this.updateButtonState();
+    }
+
+    updateButtonState() {
+        const submitBtn = this.shadowRoot.querySelector('button[type="submit"]');
+        
+        if (submitBtn) {
+            if (this.loading || this.submitting) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        发表中...
+                    </div>
+                `;
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '发表文章';
+            }
+        }
+    }
+
+    updateLoadingState(loading) {
+        this.loading = loading;
+        this.updateButtonState();
+    }
+
+    updateImagePreview() {
+        const imageContainer = this.shadowRoot.querySelector('.image-upload-container');
+        if (imageContainer) {
+            const existingPreview = imageContainer.querySelector('.uploaded-image-preview');
+            if (existingPreview) {
+                existingPreview.remove();
+            }
+            
+            if (this.uploadedImage) {
+                const previewHtml = `
+                    <div class="uploaded-image-preview">
+                        <img src="${this.uploadedImage.url}" alt="上传的图片" class="preview-image">
+                        <div class="image-info">
+                            <span class="image-name">${this.uploadedImage.original_name}</span>
+                            <span class="image-size">${(this.uploadedImage.size / 1024).toFixed(1)}KB</span>
+                        </div>
+                        <button type="button" class="btn-remove-image" onclick="this.getRootNode().host.removeImage()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                imageContainer.insertAdjacentHTML('beforeend', previewHtml);
+            }
+        }
+    }
+
+    updateCategories() {
+        const categorySelect = this.shadowRoot.querySelector('#folderid');
+        if (categorySelect) {
+            // 保存当前选中的值
+            const currentValue = categorySelect.value;
+            
+            // 更新选项
+            const optionsHtml = `
+                <option value="">未分类</option>
+                ${this.categories.map(category => `
+                    <option value="${category.id}" ${this.formData.folderid === category.id ? 'selected' : ''}>
+                        ${category.name.trim()} (${category.count})
+                    </option>
+                `).join('')}
+            `;
+            categorySelect.innerHTML = optionsHtml;
+            
+            // 恢复选中的值
+            if (currentValue) {
+                categorySelect.value = currentValue;
+            }
         }
     }
 
@@ -806,8 +906,8 @@ class CreatePostForm extends BaseComponent {
                             <button type="button" class="btn btn-secondary" onclick="window.history.back()">
                                 取消
                             </button>
-                            <button type="submit" class="btn btn-primary" ${this.loading ? 'disabled' : ''}>
-                                ${this.loading ? `
+                            <button type="submit" class="btn btn-primary" ${(this.loading || this.submitting) ? 'disabled' : ''}>
+                                ${(this.loading || this.submitting) ? `
                                     <div class="loading">
                                         <div class="loading-spinner"></div>
                                         发表中...
@@ -820,8 +920,11 @@ class CreatePostForm extends BaseComponent {
             </div>
         `;
         
-        // 重新绑定事件监听器（因为innerHTML会清除之前的事件）
-        this.bindAllEvents();
+        // 立即绑定事件监听器（因为innerHTML会清除之前的事件）
+        // 使用setTimeout确保DOM更新完成后再绑定事件
+        setTimeout(() => {
+            this.bindAllEvents();
+        }, 0);
     }
 }
 
