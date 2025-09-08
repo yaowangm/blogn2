@@ -123,6 +123,25 @@ class UserRepository:
             await self.session.rollback()
             print(f"更新projectid失败: {e}")
             return False
+
+    async def increment_point(self, user_id: int, points: int = 10) -> None:
+        """
+        增加用户积分
+        
+        Args:
+            user_id: 用户ID
+            points: 增加的积分数，默认为10
+        """
+        from sqlmodel import select
+        from datetime import datetime
+        
+        statement = select(User).where(User.id == user_id)
+        result = await self.session.exec(statement)
+        user = result.first()
+        
+        if user:
+            user.point = (user.point or 0) + points
+            self.session.add(user)
     
     async def get_users_paginated(self, page: int = 1, page_size: int = 20, search: Optional[str] = None) -> Tuple[List[User], int]:
         """

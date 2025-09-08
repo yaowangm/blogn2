@@ -526,10 +526,15 @@ async def create_post(
         
         created_post = await project_item_repo.create(new_post)
         
-        # 更新项目的记录数
+        # 更新项目的记录数和更新时间
         await project_repo.increment_record_count(project_id)
         
-        # 提交事务
+        # 更新用户积分（每发表一篇文章获得10积分）
+        from src.repositories.user_repository import UserRepository
+        user_repo = UserRepository(session)
+        await user_repo.increment_point(current_user["id"], 10)
+        
+        # 提交事务（所有操作在同一个事务中）
         await session.commit()
         
         return {
