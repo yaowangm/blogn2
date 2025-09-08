@@ -131,14 +131,6 @@ class CreatePostForm extends BaseComponent {
         this.updateImagePreview(); // 只更新图片预览部分
     }
 
-    triggerImageUpload() {
-        const fileInput = this.shadowRoot.querySelector('#image-upload');
-        if (fileInput) {
-            fileInput.click();
-        } else {
-            console.error('File input not found');
-        }
-    }
 
     bindAllEvents() {
         // 绑定表单提交事件
@@ -164,19 +156,7 @@ class CreatePostForm extends BaseComponent {
             console.error('Form not found for event binding');
         }
 
-        // 绑定图片上传事件
-        const fileInput = this.shadowRoot.querySelector('#image-upload');
-        if (fileInput) {
-            // 先移除之前的事件监听器（如果有的话）
-            fileInput.removeEventListener('change', this.handleFileChange);
-            // 绑定新的事件监听器
-            this.handleFileChange = (event) => {
-                this.handleImageUpload(event.target.files[0]);
-            };
-            fileInput.addEventListener('change', this.handleFileChange);
-        } else {
-            console.error('File input not found for event binding');
-        }
+        // 图片上传使用原生的onchange事件，无需复杂绑定
     }
 
     async handleSubmit() {
@@ -840,17 +820,11 @@ class CreatePostForm extends BaseComponent {
                                 <input 
                                     type="file" 
                                     id="image-upload" 
+                                    name="UserFile"
+                                    class="form-input"
                                     accept="image/jpeg,image/jpg,image/png,image/gif"
-                                    style="display: none;"
+                                    onchange="this.getRootNode().host.handleImageUpload(this.files[0])"
                                 >
-                                <button type="button" class="btn btn-secondary" onclick="this.getRootNode().host.triggerImageUpload()">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                        <polyline points="7,10 12,15 17,10"/>
-                                        <line x1="12" y1="15" x2="12" y2="3"/>
-                                    </svg>
-                                    选择图片
-                                </button>
                                 ${this.uploadedImage ? `
                                     <div class="uploaded-image-preview">
                                         <img src="${this.uploadedImage.url}" alt="上传的图片" class="preview-image">
