@@ -126,6 +126,9 @@ class EditPostForm extends BaseComponent {
                     }));
                 }
                 
+                // 将现有图片同步到formData.attachments
+                this.formData.attachments = [...this.existingImages];
+                
                 // 设置项目ID
                 this.projectId = this.originalArticleData.project?.id || null;
                 
@@ -217,6 +220,7 @@ class EditPostForm extends BaseComponent {
                 if (!this.uploadedImage && !this.existingImage) {
                     this.uploadedImage = {
                         ...result,
+                        name: result.filename || result.name || '新上传图片',
                         comment: '', // 用户可以添加图片描述
                         id: Date.now() + Math.random(), // 临时ID
                         is_temp: true // 标记为临时文件
@@ -226,6 +230,7 @@ class EditPostForm extends BaseComponent {
                     // 添加到多张图片列表（不包括主图）
                     this.uploadedImages.push({
                         ...result,
+                        name: result.filename || result.name || '新上传图片',
                         comment: '', // 用户可以添加图片描述
                         id: Date.now() + Math.random(), // 临时ID
                         is_temp: true // 标记为临时文件
@@ -296,6 +301,19 @@ class EditPostForm extends BaseComponent {
                     });
                 } catch (error) {
                     console.error('删除临时文件失败:', error);
+                }
+            }
+            
+            // 删除所有上传的临时图片
+            for (const image of this.uploadedImages) {
+                if (image.is_temp) {
+                    try {
+                        await fetch(`/api/temp-upload/${image.filename}`, {
+                            method: 'DELETE'
+                        });
+                    } catch (error) {
+                        console.error('删除临时文件失败:', error);
+                    }
                 }
             }
             
@@ -514,7 +532,8 @@ class EditPostForm extends BaseComponent {
             
             const allImages = [...this.existingImages, ...this.uploadedImages];
             
-            if (allImages.length > 0) {
+            // 如果有主图片或多张图片，就显示预览
+            if ((this.uploadedImage || this.existingImage) || allImages.length > 0) {
                 const previewHtml = `
                     <div class="uploaded-image-preview">
                         ${this.uploadedImage || this.existingImage ? `
@@ -532,11 +551,11 @@ class EditPostForm extends BaseComponent {
                                 </button>
                             </div>
                         ` : ''}
-                        ${this.existingImages.length > 0 ? `
+                        ${(this.existingImages.length > 0 || this.uploadedImages.length > 0) ? `
                             <div class="multiple-images-preview">
-                                <h4>其他图片 (${this.existingImages.length}张)</h4>
+                                <h4>其他图片 (${this.existingImages.length + this.uploadedImages.length}张)</h4>
                                 <div class="images-list">
-                                    ${this.existingImages.map(img => `
+                                    ${[...this.existingImages, ...this.uploadedImages].map(img => `
                                         <div class="image-item">
                                             <img src="${img.url}" alt="${img.name}" class="thumb-image">
                                             <div class="image-info">
