@@ -258,18 +258,29 @@ class EditPostForm extends BaseComponent {
             let isFromUploaded = false;
             let isFromExisting = false;
             
-            // 检查是否在新上传的图片中
-            const uploadedIndex = this.uploadedImages.findIndex(img => img.id == imageId);
-            if (uploadedIndex !== -1) {
-                imageToRemove = this.uploadedImages[uploadedIndex];
-                isFromUploaded = true;
-            }
-            
-            // 检查是否在现有图片中
-            const existingIndex = this.existingImages.findIndex(img => img.id == imageId);
-            if (existingIndex !== -1) {
-                imageToRemove = this.existingImages[existingIndex];
-                isFromExisting = true;
+            // 特殊处理主图删除
+            if (imageId === 'main') {
+                if (this.uploadedImage) {
+                    imageToRemove = this.uploadedImage;
+                    isFromUploaded = true;
+                } else if (this.existingImage) {
+                    imageToRemove = this.existingImage;
+                    isFromExisting = true;
+                }
+            } else {
+                // 检查是否在新上传的图片中
+                const uploadedIndex = this.uploadedImages.findIndex(img => img.id == imageId);
+                if (uploadedIndex !== -1) {
+                    imageToRemove = this.uploadedImages[uploadedIndex];
+                    isFromUploaded = true;
+                }
+                
+                // 检查是否在现有图片中
+                const existingIndex = this.existingImages.findIndex(img => img.id == imageId);
+                if (existingIndex !== -1) {
+                    imageToRemove = this.existingImages[existingIndex];
+                    isFromExisting = true;
+                }
             }
             
             if (imageToRemove) {
@@ -286,8 +297,11 @@ class EditPostForm extends BaseComponent {
                 
                 // 如果是现有图片，标记为删除（不真正删除文件）
                 if (isFromExisting) {
-                    // 将图片从现有图片列表移除，添加到删除列表
-                    this.existingImages.splice(existingIndex, 1);
+                    // 如果是主图，不需要从existingImages中移除（因为主图不在这个数组中）
+                    if (imageId !== 'main') {
+                        // 将图片从现有图片列表移除，添加到删除列表
+                        this.existingImages.splice(existingIndex, 1);
+                    }
                     if (!this.deletedImages) {
                         this.deletedImages = [];
                     }
@@ -299,8 +313,22 @@ class EditPostForm extends BaseComponent {
                     this.uploadedImages.splice(uploadedIndex, 1);
                 }
                 
-                // 如果删除的是主图片，设置第一张其他图片为主图片
-                if (this.uploadedImage && this.uploadedImage.id === imageId) {
+                // 如果删除的是主图片，清空主图相关变量
+                if (imageId === 'main') {
+                    if (isFromUploaded) {
+                        // 删除的是新上传的主图（临时文件），立即删除服务器文件
+                        this.uploadedImage = null;
+                        this.formData.attachment = null;
+                    } else if (isFromExisting) {
+                        // 删除的是现有主图，标记为删除（不删除服务器文件）
+                        if (!this.deletedImages) {
+                            this.deletedImages = [];
+                        }
+                        this.deletedImages.push(this.existingImage);
+                        this.existingImage = null;
+                        this.formData.attachment = null;
+                    }
+                } else if (this.uploadedImage && this.uploadedImage.id === imageId) {
                     if (this.uploadedImages.length > 0) {
                         // 将第一张其他图片设为主图
                         this.uploadedImage = this.uploadedImages[0];
