@@ -190,7 +190,7 @@ class ArticleContentCard extends BaseComponent {
         return `
             <div class="article-attachments">
                 <h3>更多图片 (${imageAttachments.length})</h3>
-                <div class="attachments-grid">
+                <div class="attachments-grid" data-count="${imageAttachments.length}">
                     ${imageAttachments.map(att => `
                         <div class="attachment-item">
                             <div class="attachment-image" style="cursor: pointer;">
@@ -458,9 +458,114 @@ class ArticleContentCard extends BaseComponent {
                 
                 .attachments-grid {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
                     gap: var(--spacing-4);
                     margin-bottom: var(--spacing-4);
+                }
+                
+                /* 根据图片数量设置不同的网格布局 */
+                .attachments-grid[data-count="1"] {
+                    grid-template-columns: 1fr;
+                    max-width: 400px;
+                    margin: 0 auto;
+                }
+                
+                .attachments-grid[data-count="2"] {
+                    grid-template-columns: 1fr 1fr;
+                    max-width: 600px;
+                    margin: 0 auto;
+                }
+                
+                .attachments-grid[data-count="3"] {
+                    grid-template-columns: 1fr 1fr 1fr;
+                }
+                
+                .attachments-grid[data-count="4"] {
+                    grid-template-columns: 1fr 1fr;
+                }
+                
+                .attachments-grid[data-count="5"] {
+                    grid-template-columns: 1fr 1fr 1fr;
+                }
+                
+                .attachments-grid[data-count="6"] {
+                    grid-template-columns: 1fr 1fr 1fr;
+                }
+                
+                .attachments-grid[data-count="7"] {
+                    grid-template-columns: 1fr 1fr 1fr 1fr;
+                }
+                
+                .attachments-grid[data-count="8"] {
+                    grid-template-columns: 1fr 1fr 1fr 1fr;
+                }
+                
+                .attachments-grid[data-count="9"] {
+                    grid-template-columns: 1fr 1fr 1fr;
+                }
+                
+                .attachments-grid[data-count="10"] {
+                    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+                }
+                
+                /* 超过10张图片时使用自适应布局 */
+                .attachments-grid[data-count]:not([data-count="1"]):not([data-count="2"]):not([data-count="3"]):not([data-count="4"]):not([data-count="5"]):not([data-count="6"]):not([data-count="7"]):not([data-count="8"]):not([data-count="9"]):not([data-count="10"]) {
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                }
+                
+                /* 响应式设计 */
+                @media (max-width: 768px) {
+                    .attachments-grid[data-count="1"] {
+                        max-width: 100%;
+                    }
+                    
+                    .attachments-grid[data-count="2"] {
+                        max-width: 100%;
+                    }
+                    
+                    .attachments-grid[data-count="3"] {
+                        grid-template-columns: 1fr 1fr;
+                    }
+                    
+                    .attachments-grid[data-count="4"] {
+                        grid-template-columns: 1fr 1fr;
+                    }
+                    
+                    .attachments-grid[data-count="5"] {
+                        grid-template-columns: 1fr 1fr;
+                    }
+                    
+                    .attachments-grid[data-count="6"] {
+                        grid-template-columns: 1fr 1fr;
+                    }
+                    
+                    .attachments-grid[data-count="7"] {
+                        grid-template-columns: 1fr 1fr;
+                    }
+                    
+                    .attachments-grid[data-count="8"] {
+                        grid-template-columns: 1fr 1fr;
+                    }
+                    
+                    .attachments-grid[data-count="9"] {
+                        grid-template-columns: 1fr 1fr;
+                    }
+                    
+                    .attachments-grid[data-count="10"] {
+                        grid-template-columns: 1fr 1fr;
+                    }
+                }
+                
+                @media (max-width: 480px) {
+                    .attachments-grid[data-count="3"],
+                    .attachments-grid[data-count="4"],
+                    .attachments-grid[data-count="5"],
+                    .attachments-grid[data-count="6"],
+                    .attachments-grid[data-count="7"],
+                    .attachments-grid[data-count="8"],
+                    .attachments-grid[data-count="9"],
+                    .attachments-grid[data-count="10"] {
+                        grid-template-columns: 1fr;
+                    }
                 }
                 
                 .attachment-item {
