@@ -111,7 +111,7 @@ class CreatePostForm extends BaseComponent {
             if (response.ok) {
                 const result = await response.json();
                 this.uploadedImage = result;
-                this.formData.attachment = result.filename;
+                this.formData.attachment = result.relative_path; // 保存相对路径（包含月份目录）
                 this.showSuccess('图片上传成功！');
                 this.updateImagePreview(); // 只更新图片预览部分
             } else {

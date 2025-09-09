@@ -213,11 +213,18 @@ async def upload_file(file: UploadFile = File(...)):
     
     unique_filename = f"{uuid.uuid4()}{file_extension}"
     
-    # 确保上传目录存在
-    os.makedirs(UPLOAD_BASE_PATH, exist_ok=True)
+    # 创建按月份命名的子目录（格式：YYYYMM）
+    current_time = datetime.now()
+    month_dir = current_time.strftime("%Y%m")
+    monthly_upload_path = os.path.join(UPLOAD_BASE_PATH, month_dir)
     
-    # 保存文件
-    file_path = os.path.join(UPLOAD_BASE_PATH, unique_filename)
+    # 确保上传目录和月份子目录存在
+    os.makedirs(monthly_upload_path, exist_ok=True)
+    
+    # 保存文件到月份子目录
+    file_path = os.path.join(monthly_upload_path, unique_filename)
+    # 生成相对路径（用于存储到数据库）
+    relative_path = f"{month_dir}/{unique_filename}"
     try:
         with open(file_path, "wb") as buffer:
             buffer.write(file_content)
@@ -227,7 +234,8 @@ async def upload_file(file: UploadFile = File(...)):
             "filename": unique_filename,
             "original_name": file.filename,
             "size": len(file_content),
-            "url": f"/upload/{unique_filename}"
+            "url": f"/upload/{relative_path}",
+            "relative_path": relative_path
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"文件保存失败: {str(e)}")

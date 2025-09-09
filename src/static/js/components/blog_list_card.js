@@ -178,7 +178,7 @@ class BlogListCard extends BaseComponent {
                 const time = post.time || post.createtime || '未知时间';
                 // 订阅文章使用 comment 字段，原创文章使用 excerpt 字段
                 const excerpt = post.comment || post.excerpt || '';
-                const image = post.image || post.attachment;
+                const image = post.image || (post.attachment ? `/upload/${post.attachment}` : null);
                 const avatar = post.avatar;
                 
                 // HTML转义函数，防止XSS攻击
