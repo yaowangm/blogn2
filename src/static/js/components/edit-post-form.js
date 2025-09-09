@@ -505,6 +505,7 @@ class EditPostForm extends BaseComponent {
 
     updateImagePreview() {
         const imageContainer = this.shadowRoot.querySelector('.image-upload-container');
+        
         if (imageContainer) {
             const existingPreview = imageContainer.querySelector('.uploaded-image-preview');
             if (existingPreview) {
@@ -512,6 +513,7 @@ class EditPostForm extends BaseComponent {
             }
             
             const allImages = [...this.existingImages, ...this.uploadedImages];
+            
             if (allImages.length > 0) {
                 const previewHtml = `
                     <div class="uploaded-image-preview">
@@ -530,11 +532,11 @@ class EditPostForm extends BaseComponent {
                                 </button>
                             </div>
                         ` : ''}
-                        ${this.uploadedImages.length > 0 ? `
+                        ${this.existingImages.length > 0 ? `
                             <div class="multiple-images-preview">
-                                <h4>其他图片 (${this.uploadedImages.length}张)</h4>
+                                <h4>其他图片 (${this.existingImages.length}张)</h4>
                                 <div class="images-list">
-                                    ${this.uploadedImages.map(img => `
+                                    ${this.existingImages.map(img => `
                                         <div class="image-item">
                                             <img src="${img.url}" alt="${img.name}" class="thumb-image">
                                             <div class="image-info">
@@ -1176,6 +1178,9 @@ class EditPostForm extends BaseComponent {
         setTimeout(() => {
             this.bindAllEvents();
         }, 0);
+        
+        // 更新图片预览
+        this.updateImagePreview();
     }
 
     /**
