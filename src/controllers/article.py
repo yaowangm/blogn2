@@ -347,6 +347,10 @@ async def update_article(
         # 更新文章数据
         from datetime import datetime
         
+        # 计算文章内容长度（字节数）
+        content = article_data.get("comment", "")
+        itemsize = len(content.encode('utf-8')) if content else 0
+        
         update_data = {
             "name": article_data.get("name"),
             "comment": article_data.get("comment"),
@@ -355,6 +359,7 @@ async def update_article(
             "status": article_data.get("status", 1),
             "allowpost": article_data.get("allowpost", 1),
             "attachment": article_data.get("attachment"),
+            "itemsize": itemsize,
             "updatetime": datetime.now(),
             "lastmodifytime": datetime.now()
         }
