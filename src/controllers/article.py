@@ -90,6 +90,7 @@ async def get_article_detail(
             "id": article.id,
             "title": article.name,
             "content": article.comment,
+            "itemtype": article.itemtype,  # 文章状态：0=未知，1=正常，2=已删除
             "attachment": article.attachment,  # 单张图片附件
             "attachments": [  # 多张图片附件
                 {

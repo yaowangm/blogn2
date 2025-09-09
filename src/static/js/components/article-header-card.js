@@ -126,7 +126,7 @@ class ArticleHeaderCard extends BaseComponent {
             return;
         }
 
-        const { title, author, project, category, hits, itemsize, created_at, updated_at, comment_count } = this.articleData;
+        const { title, author, project, category, hits, itemsize, created_at, updated_at, comment_count, itemtype } = this.articleData;
 
         // 检查是否显示工具栏
         const showToolbar = this.isAdmin || this.isAuthor;
@@ -176,6 +176,11 @@ class ArticleHeaderCard extends BaseComponent {
                         <div class="meta-item">
                             <span class="meta-label">评论数:</span>
                             <span class="meta-value">${comment_count || 0}</span>
+                        </div>
+                        
+                        <div class="meta-item">
+                            <span class="meta-label">文章状态:</span>
+                            <span class="meta-value status-${itemtype}">${this.getStatusText(itemtype)}</span>
                         </div>
                     </div>
                     
@@ -293,6 +298,22 @@ class ArticleHeaderCard extends BaseComponent {
     }
 
     /**
+     * 获取文章状态文本
+     */
+    getStatusText(itemtype) {
+        switch (itemtype) {
+            case 0:
+                return '未知';
+            case 1:
+                return '正常';
+            case 2:
+                return '已删除';
+            default:
+                return '未知';
+        }
+    }
+
+    /**
      * 显示错误信息
      */
     showError(message) {
@@ -394,6 +415,21 @@ class ArticleHeaderCard extends BaseComponent {
                 
                 .article-toolbar .btn i {
                     font-size: 14px;
+                }
+                
+                .status-0 {
+                    color: var(--gray-500);
+                    font-weight: 500;
+                }
+                
+                .status-1 {
+                    color: #059669;
+                    font-weight: 600;
+                }
+                
+                .status-2 {
+                    color: #dc2626;
+                    font-weight: 600;
                 }
             `;
             this.shadowRoot.appendChild(style);
