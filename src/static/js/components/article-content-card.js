@@ -464,47 +464,53 @@ class ArticleContentCard extends BaseComponent {
                 
                 /* 根据图片数量设置不同的网格布局 */
                 .attachments-grid[data-count="1"] {
-                    grid-template-columns: 1fr;
-                    max-width: 400px;
-                    margin: 0 auto;
+                    grid-template-columns: 200px;
+                    justify-content: center;
                 }
                 
                 .attachments-grid[data-count="2"] {
-                    grid-template-columns: 1fr 1fr;
-                    max-width: 600px;
-                    margin: 0 auto;
+                    grid-template-columns: 200px 200px;
+                    justify-content: center;
                 }
                 
                 .attachments-grid[data-count="3"] {
-                    grid-template-columns: 1fr 1fr 1fr;
+                    grid-template-columns: 200px 200px 200px;
+                    justify-content: center;
                 }
                 
                 .attachments-grid[data-count="4"] {
-                    grid-template-columns: 1fr 1fr;
+                    grid-template-columns: 200px 200px;
+                    justify-content: center;
                 }
                 
                 .attachments-grid[data-count="5"] {
-                    grid-template-columns: 1fr 1fr 1fr;
+                    grid-template-columns: 200px 200px 200px;
+                    justify-content: center;
                 }
                 
                 .attachments-grid[data-count="6"] {
-                    grid-template-columns: 1fr 1fr 1fr;
+                    grid-template-columns: 200px 200px 200px;
+                    justify-content: center;
                 }
                 
                 .attachments-grid[data-count="7"] {
-                    grid-template-columns: 1fr 1fr 1fr 1fr;
+                    grid-template-columns: 200px 200px 200px 200px;
+                    justify-content: center;
                 }
                 
                 .attachments-grid[data-count="8"] {
-                    grid-template-columns: 1fr 1fr 1fr 1fr;
+                    grid-template-columns: 200px 200px 200px 200px;
+                    justify-content: center;
                 }
                 
                 .attachments-grid[data-count="9"] {
-                    grid-template-columns: 1fr 1fr 1fr;
+                    grid-template-columns: 200px 200px 200px;
+                    justify-content: center;
                 }
                 
                 .attachments-grid[data-count="10"] {
-                    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+                    grid-template-columns: 200px 200px 200px 200px 200px;
+                    justify-content: center;
                 }
                 
                 /* 超过10张图片时使用自适应布局 */
@@ -515,47 +521,55 @@ class ArticleContentCard extends BaseComponent {
                 /* 响应式设计 */
                 @media (max-width: 768px) {
                     .attachments-grid[data-count="1"] {
-                        max-width: 100%;
+                        grid-template-columns: 200px;
                     }
                     
                     .attachments-grid[data-count="2"] {
-                        max-width: 100%;
+                        grid-template-columns: 200px 200px;
                     }
                     
                     .attachments-grid[data-count="3"] {
-                        grid-template-columns: 1fr 1fr;
+                        grid-template-columns: 200px 200px;
                     }
                     
                     .attachments-grid[data-count="4"] {
-                        grid-template-columns: 1fr 1fr;
+                        grid-template-columns: 200px 200px;
                     }
                     
                     .attachments-grid[data-count="5"] {
-                        grid-template-columns: 1fr 1fr;
+                        grid-template-columns: 200px 200px;
                     }
                     
                     .attachments-grid[data-count="6"] {
-                        grid-template-columns: 1fr 1fr;
+                        grid-template-columns: 200px 200px;
                     }
                     
                     .attachments-grid[data-count="7"] {
-                        grid-template-columns: 1fr 1fr;
+                        grid-template-columns: 200px 200px;
                     }
                     
                     .attachments-grid[data-count="8"] {
-                        grid-template-columns: 1fr 1fr;
+                        grid-template-columns: 200px 200px;
                     }
                     
                     .attachments-grid[data-count="9"] {
-                        grid-template-columns: 1fr 1fr;
+                        grid-template-columns: 200px 200px;
                     }
                     
                     .attachments-grid[data-count="10"] {
-                        grid-template-columns: 1fr 1fr;
+                        grid-template-columns: 200px 200px;
                     }
                 }
                 
                 @media (max-width: 480px) {
+                    .attachments-grid[data-count="1"] {
+                        grid-template-columns: 200px;
+                    }
+                    
+                    .attachments-grid[data-count="2"] {
+                        grid-template-columns: 200px;
+                    }
+                    
                     .attachments-grid[data-count="3"],
                     .attachments-grid[data-count="4"],
                     .attachments-grid[data-count="5"],
@@ -564,7 +578,7 @@ class ArticleContentCard extends BaseComponent {
                     .attachments-grid[data-count="8"],
                     .attachments-grid[data-count="9"],
                     .attachments-grid[data-count="10"] {
-                        grid-template-columns: 1fr;
+                        grid-template-columns: 200px;
                     }
                 }
                 
@@ -587,7 +601,7 @@ class ArticleContentCard extends BaseComponent {
                 }
                 
                 .attachment-item .attachment-image img {
-                    width: 100%;
+                    width: 200px;
                     height: 200px;
                     object-fit: cover;
                     display: block;
