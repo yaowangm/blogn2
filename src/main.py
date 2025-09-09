@@ -197,22 +197,30 @@ async def upload_file(file: UploadFile = File(...), temp: bool = False):
     from datetime import datetime
     from fastapi import HTTPException
     
+    print(f"Upload request - temp: {temp}, filename: {file.filename}, content_type: {file.content_type}")
+    
     # 检查文件类型
     allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif']
     if file.content_type not in allowed_types:
+        print(f"Invalid file type: {file.content_type}")
         raise HTTPException(status_code=400, detail="只支持jpg、png、gif格式的图片")
     
     # 检查文件大小（1MB = 1048576字节）
     file_content = await file.read()
+    print(f"File size: {len(file_content)} bytes")
     if len(file_content) > 1048576:
+        print(f"File too large: {len(file_content)} bytes")
         raise HTTPException(status_code=400, detail="图片大小不能超过1MB")
     
     # 生成唯一文件名
     file_extension = os.path.splitext(file.filename)[1].lower()
+    print(f"File extension: {file_extension}")
     if file_extension not in ['.jpg', '.jpeg', '.png', '.gif']:
+        print(f"Invalid file extension: {file_extension}")
         raise HTTPException(status_code=400, detail="不支持的文件扩展名")
     
     unique_filename = f"{uuid.uuid4()}{file_extension}"
+    print(f"Generated filename: {unique_filename}")
     
     if temp:
         # 临时文件：上传到/tmp目录
@@ -221,6 +229,7 @@ async def upload_file(file: UploadFile = File(...), temp: bool = False):
         file_path = os.path.join(temp_dir, unique_filename)
         relative_path = f"temp/{unique_filename}"
         url = f"/api/temp-upload/{unique_filename}"
+        print(f"Temp upload - file_path: {file_path}, relative_path: {relative_path}, url: {url}")
     else:
         # 正式文件：上传到正式目录
         current_time = datetime.now()
@@ -230,12 +239,21 @@ async def upload_file(file: UploadFile = File(...), temp: bool = False):
         file_path = os.path.join(monthly_upload_path, unique_filename)
         relative_path = f"{month_dir}/{unique_filename}"
         url = f"/upload/{relative_path}"
+        print(f"Regular upload - file_path: {file_path}, relative_path: {relative_path}, url: {url}")
     
     try:
         with open(file_path, "wb") as buffer:
             buffer.write(file_content)
         
-        return {
+        # 验证文件是否真的被保存
+        if os.path.exists(file_path):
+            file_size = os.path.getsize(file_path)
+            print(f"File saved successfully - path: {file_path}, size: {file_size} bytes")
+        else:
+            print(f"ERROR: File was not saved to {file_path}")
+            raise HTTPException(status_code=500, detail="文件保存失败")
+        
+        result = {
             "success": True,
             "filename": unique_filename,
             "original_name": file.filename,
@@ -244,7 +262,10 @@ async def upload_file(file: UploadFile = File(...), temp: bool = False):
             "relative_path": relative_path,
             "is_temp": temp
         }
+        print(f"Upload successful: {result}")
+        return result
     except Exception as e:
+        print(f"Upload error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"文件保存失败: {str(e)}")
 
 
@@ -265,7 +286,17 @@ async def serve_temp_file(filename: str):
     temp_dir = "/tmp/blogn2_uploads"
     file_path = os.path.join(temp_dir, filename)
     
+    print(f"Serving temp file - filename: {filename}, file_path: {file_path}")
+    print(f"Directory exists: {os.path.exists(temp_dir)}")
+    print(f"File exists: {os.path.exists(file_path)}")
+    
     if not os.path.exists(file_path):
+        # 列出目录中的所有文件
+        if os.path.exists(temp_dir):
+            files = os.listdir(temp_dir)
+            print(f"Files in temp directory: {files}")
+        else:
+            print(f"Temp directory does not exist: {temp_dir}")
         raise HTTPException(status_code=404, detail="文件不存在")
     
     return serve_file(file_path)
@@ -288,13 +319,18 @@ async def delete_temp_file(filename: str):
     temp_dir = "/tmp/blogn2_uploads"
     file_path = os.path.join(temp_dir, filename)
     
+    print(f"Delete temp file request - filename: {filename}, file_path: {file_path}")
+    
     try:
         if os.path.exists(file_path):
             os.remove(file_path)
+            print(f"File deleted successfully: {file_path}")
             return {"success": True, "message": "文件删除成功"}
         else:
+            print(f"File not found: {file_path}")
             return {"success": True, "message": "文件不存在"}
     except Exception as e:
+        print(f"Delete error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"文件删除失败: {str(e)}")
 
 

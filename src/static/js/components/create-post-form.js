@@ -17,9 +17,11 @@ class CreatePostForm extends BaseComponent {
             folderid: null,
             status: 1, // 默认为正常状态
             allowpost: 1, // 默认为允许评论
-            attachment: null // 图片附件
+            attachment: null, // 第一张图片附件
+            attachments: [] // 多张图片附件
         };
-        this.uploadedImage = null; // 上传的图片信息
+        this.uploadedImage = null; // 上传的第一张图片信息
+        this.uploadedImages = []; // 上传的多张图片信息
     }
 
     async connectedCallback() {
@@ -97,38 +99,91 @@ class CreatePostForm extends BaseComponent {
             return;
         }
 
+        // 检查是否已上传过多图片（最多10张）
+        if (this.uploadedImages.length >= 10) {
+            this.showError('最多只能上传10张图片');
+            return;
+        }
+
         try {
             // 创建FormData
             const formData = new FormData();
             formData.append('file', file);
 
-            // 上传文件
-            const response = await fetch('/api/upload', {
+            // 上传文件到临时目录
+            const response = await fetch('/api/upload?temp=true', {
                 method: 'POST',
                 body: formData
             });
 
             if (response.ok) {
                 const result = await response.json();
-                this.uploadedImage = result;
-                this.formData.attachment = result.relative_path; // 保存相对路径（包含月份目录）
-                this.showSuccess('图片上传成功！');
-                this.updateImagePreview(); // 只更新图片预览部分
+                
+                // 如果是第一张图片且没有主图，设置为主图片
+                if (!this.uploadedImage) {
+                    this.uploadedImage = {
+                        ...result,
+                        comment: '', // 用户可以添加图片描述
+                        id: Date.now() + Math.random(), // 临时ID
+                        is_temp: true // 标记为临时文件
+                    };
+                    this.formData.attachment = result.relative_path;
+                } else {
+                    // 添加到多张图片列表（不包括主图）
+                    this.uploadedImages.push({
+                        ...result,
+                        comment: '', // 用户可以添加图片描述
+                        id: Date.now() + Math.random(), // 临时ID
+                        is_temp: true // 标记为临时文件
+                    });
+                }
+                
+                this.formData.attachments = this.uploadedImages;
+                this.showSuccess(`图片已选择，将在保存时移动到正式目录 (${this.uploadedImages.length + (this.uploadedImage ? 1 : 0)}/10)`);
+                this.updateImagePreview();
             } else {
                 const errorData = await response.json();
+                console.error('Upload failed:', errorData);
                 this.showError(errorData.detail || '图片上传失败');
             }
         } catch (error) {
             console.error('图片上传失败:', error);
-            this.showError('网络错误，请稍后重试');
+            this.showError(`网络错误: ${error.message}`);
         }
     }
 
-    removeImage() {
-        console.log('DEBUG: removeImage called, clearing attachment');
-        this.uploadedImage = null;
-        this.formData.attachment = null;
-        this.updateImagePreview(); // 只更新图片预览部分
+    removeImage(imageId = null) {
+        if (imageId) {
+            // 删除指定的图片
+            const imageIndex = this.uploadedImages.findIndex(img => img.id === imageId);
+            if (imageIndex !== -1) {
+                this.uploadedImages.splice(imageIndex, 1);
+                
+                // 如果删除的是主图片，设置第一张其他图片为主图片
+                if (this.uploadedImage && this.uploadedImage.id === imageId) {
+                    if (this.uploadedImages.length > 0) {
+                        // 将第一张其他图片设为主图
+                        this.uploadedImage = this.uploadedImages[0];
+                        this.formData.attachment = this.uploadedImages[0].relative_path;
+                        // 从其他图片列表中移除
+                        this.uploadedImages.splice(0, 1);
+                    } else {
+                        this.uploadedImage = null;
+                        this.formData.attachment = null;
+                    }
+                }
+                
+                this.formData.attachments = this.uploadedImages;
+                this.updateImagePreview();
+            }
+        } else {
+            // 删除所有图片
+            this.uploadedImage = null;
+            this.uploadedImages = [];
+            this.formData.attachment = null;
+            this.formData.attachments = [];
+            this.updateImagePreview();
+        }
     }
 
 
@@ -231,6 +286,7 @@ class CreatePostForm extends BaseComponent {
                 status: this.formData.status,
                 allowpost: this.formData.allowpost,
                 attachment: this.formData.attachment,
+                attachments: this.formData.attachments,
                 projectid: this.projectId,
                 userid: this.getCurrentUserId(),
                 createtime: new Date().toISOString(),
@@ -297,6 +353,46 @@ class CreatePostForm extends BaseComponent {
         this.updateButtonState();
     }
 
+    async handleCancel() {
+        // 删除所有上传的临时图片
+        await this.cleanupTempImages();
+        
+        // 返回上一页
+        window.history.back();
+    }
+
+    async cleanupTempImages() {
+        // 删除主图的临时文件
+        if (this.uploadedImage && this.uploadedImage.is_temp) {
+            try {
+                await fetch(`/api/temp-upload/${this.uploadedImage.filename}`, {
+                    method: 'DELETE'
+                });
+            } catch (error) {
+                // 忽略删除失败的错误
+            }
+        }
+
+        // 删除其他图片的临时文件
+        for (const image of this.uploadedImages) {
+            if (image.is_temp) {
+                try {
+                    await fetch(`/api/temp-upload/${image.filename}`, {
+                        method: 'DELETE'
+                    });
+                } catch (error) {
+                    // 忽略删除失败的错误
+                }
+            }
+        }
+
+        // 清空图片数据
+        this.uploadedImage = null;
+        this.uploadedImages = [];
+        this.formData.attachment = null;
+        this.formData.attachments = [];
+    }
+
     updateButtonState() {
         const submitBtn = this.shadowRoot.querySelector('button[type="submit"]');
         
@@ -329,20 +425,41 @@ class CreatePostForm extends BaseComponent {
                 existingPreview.remove();
             }
             
-            if (this.uploadedImage) {
+            if (this.uploadedImages.length > 0 || this.uploadedImage) {
                 const previewHtml = `
                     <div class="uploaded-image-preview">
-                        <img src="${this.uploadedImage.url}" alt="上传的图片" class="preview-image">
-                        <div class="image-info">
-                            <span class="image-name">${this.uploadedImage.original_name}</span>
-                            <span class="image-size">${(this.uploadedImage.size / 1024).toFixed(1)}KB</span>
-                        </div>
-                        <button type="button" class="btn-remove-image" onclick="this.getRootNode().host.removeImage()">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="18" y1="6" x2="6" y2="18"/>
-                                <line x1="6" y1="6" x2="18" y2="18"/>
-                            </svg>
-                        </button>
+                        ${this.uploadedImage ? `
+                            <div class="main-image-preview">
+                                <img src="${this.uploadedImage.url}" alt="主图片" class="preview-image">
+                                <div class="image-info">
+                                    <span class="image-name">${this.uploadedImage.original_name} (主图)</span>
+                                    <span class="image-size">${(this.uploadedImage.size / 1024).toFixed(1)}KB</span>
+                                </div>
+                                <button type="button" class="btn-remove-image" onclick="this.getRootNode().host.removeImage('${this.uploadedImage.id}')" title="删除主图">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="18" y1="6" x2="6" y2="18"/>
+                                        <line x1="6" y1="6" x2="18" y2="18"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        ` : ''}
+                        ${this.uploadedImages.length > 0 ? `
+                            <div class="multiple-images-preview">
+                                <h4>其他图片 (${this.uploadedImages.length}张)</h4>
+                                <div class="images-list">
+                                    ${this.uploadedImages.map(img => `
+                                        <div class="image-item">
+                                            <img src="${img.url}" alt="${img.original_name}" class="thumb-image">
+                                            <div class="image-info">
+                                                <span class="image-name">${img.original_name}</span>
+                                                <span class="image-size">${(img.size / 1024).toFixed(1)}KB</span>
+                                            </div>
+                                            <button type="button" class="btn-remove-image" onclick="this.getRootNode().host.removeImage('${img.id}')" title="删除图片">×</button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
                 `;
                 imageContainer.insertAdjacentHTML('beforeend', previewHtml);
@@ -752,25 +869,123 @@ class CreatePostForm extends BaseComponent {
                 }
                 
                 .btn-remove-image {
-                    position: absolute;
-                    top: var(--spacing-2);
-                    right: var(--spacing-2);
-                    width: 24px;
-                    height: 24px;
-                    border: none;
-                    background: var(--error-color);
-                    color: var(--white);
-                    border-radius: 50%;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: var(--transition-fast);
+                    position: absolute !important;
+                    top: 8px !important;
+                    right: 8px !important;
+                    width: 24px !important;
+                    height: 24px !important;
+                    border: none !important;
+                    background: #dc2626 !important;
+                    color: white !important;
+                    border-radius: 50% !important;
+                    cursor: pointer !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    transition: all 0.2s ease !important;
+                    z-index: 10 !important;
+                    font-size: 12px !important;
+                    font-weight: bold !important;
                 }
                 
                 .btn-remove-image:hover {
-                    background: #dc2626;
-                    transform: scale(1.1);
+                    background: #b91c1c !important;
+                    transform: scale(1.1) !important;
+                }
+                
+                .main-image-preview {
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-3);
+                    padding: var(--spacing-3);
+                    border: 2px solid var(--primary-color);
+                    border-radius: var(--radius-md);
+                    background: var(--primary-50);
+                    margin-bottom: var(--spacing-3);
+                }
+                
+                .multiple-images-preview {
+                    margin-top: var(--spacing-3);
+                }
+                
+                .multiple-images-preview h4 {
+                    font-size: var(--font-size-sm);
+                    font-weight: 600;
+                    color: var(--gray-700);
+                    margin: 0 0 var(--spacing-2) 0;
+                }
+                
+                .images-list {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                    gap: var(--spacing-2);
+                }
+                
+                .image-item {
+                    position: relative;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    padding: var(--spacing-2);
+                    border: 1px solid var(--gray-200);
+                    border-radius: var(--radius-md);
+                    background: var(--white);
+                    transition: var(--transition-fast);
+                }
+                
+                .image-item:hover {
+                    border-color: var(--gray-300);
+                    box-shadow: var(--shadow-sm);
+                }
+                
+                .thumb-image {
+                    width: 60px;
+                    height: 60px;
+                    object-fit: cover;
+                    border-radius: var(--radius-sm);
+                    border: 1px solid var(--gray-200);
+                    margin-bottom: var(--spacing-1);
+                }
+                
+                .image-item .image-info {
+                    text-align: center;
+                    width: 100%;
+                }
+                
+                .image-item .image-name {
+                    font-size: var(--font-size-xs);
+                    font-weight: 500;
+                    color: var(--gray-700);
+                    word-break: break-all;
+                    display: block;
+                    margin-bottom: var(--spacing-1);
+                }
+                
+                .image-item .image-size {
+                    font-size: var(--font-size-xs);
+                    color: var(--gray-500);
+                    display: block;
+                }
+                
+                .image-item .btn-remove-image {
+                    position: absolute !important;
+                    top: 4px !important;
+                    right: 4px !important;
+                    width: 20px !important;
+                    height: 20px !important;
+                    font-size: 12px !important;
+                    padding: 0 !important;
+                    z-index: 10 !important;
+                    background: #dc2626 !important;
+                    color: white !important;
+                    border: none !important;
+                    border-radius: 50% !important;
+                    cursor: pointer !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    font-weight: bold !important;
                 }
             </style>
 
@@ -825,23 +1040,8 @@ class CreatePostForm extends BaseComponent {
                                     accept="image/jpeg,image/jpg,image/png,image/gif"
                                     onchange="this.getRootNode().host.handleImageUpload(this.files[0])"
                                 >
-                                ${this.uploadedImage ? `
-                                    <div class="uploaded-image-preview">
-                                        <img src="${this.uploadedImage.url}" alt="上传的图片" class="preview-image">
-                                        <div class="image-info">
-                                            <span class="image-name">${this.uploadedImage.original_name}</span>
-                                            <span class="image-size">${(this.uploadedImage.size / 1024).toFixed(1)}KB</span>
-                                        </div>
-                                        <button type="button" class="btn-remove-image" onclick="this.getRootNode().host.removeImage()">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <line x1="18" y1="6" x2="6" y2="18"/>
-                                                <line x1="6" y1="6" x2="18" y2="18"/>
-                                            </svg>
-                                        </button>
-                                    </div>
-                                ` : ''}
                             </div>
-                            <div class="form-help">支持jpg、png、gif格式，大小不超过1MB</div>
+                            <div class="form-help">支持jpg、png、gif格式，大小不超过1MB，最多上传10张图片。第一张图片将作为文章主图。</div>
                         </div>
 
                         <div class="form-group">
@@ -877,7 +1077,7 @@ class CreatePostForm extends BaseComponent {
                         </div>
 
                         <div class="form-actions">
-                            <button type="button" class="btn btn-secondary" onclick="window.history.back()">
+                            <button type="button" class="btn btn-secondary" onclick="this.getRootNode().host.handleCancel()">
                                 取消
                             </button>
                             <button type="submit" class="btn btn-primary" ${(this.loading || this.submitting) ? 'disabled' : ''}>

@@ -531,7 +531,89 @@ async def create_post(
             lastmodifytime=datetime.now()
         )
         
+        # 处理临时文件移动
+        import os
+        from src.config.app import validate_app_config
+        
+        # 获取上传目录配置
+        config = validate_app_config()
+        upload_dir = config["upload_dir"]
+        
+        # 处理主图片的临时文件移动
+        if new_post.attachment and new_post.attachment.startswith("temp/"):
+            try:
+                # 从临时目录移动到正式目录
+                temp_filename = new_post.attachment.replace("temp/", "")
+                temp_path = os.path.join("/tmp/blogn2_uploads", temp_filename)
+                
+                if os.path.exists(temp_path):
+                    # 创建按月份命名的子目录
+                    current_time = datetime.now()
+                    month_dir = current_time.strftime("%Y%m")
+                    monthly_upload_path = os.path.join(upload_dir, month_dir)
+                    os.makedirs(monthly_upload_path, exist_ok=True)
+                    
+                    # 移动到正式目录
+                    final_filename = temp_filename
+                    final_path = os.path.join(monthly_upload_path, final_filename)
+                    os.rename(temp_path, final_path)
+                    
+                    # 更新attachment路径
+                    new_post.attachment = f"{month_dir}/{final_filename}"
+                    
+                else:
+                    pass  # 临时文件不存在，继续处理
+            except Exception as e:
+                raise HTTPException(status_code=500, detail="临时文件移动失败")
+        
         created_post = await project_item_repo.create(new_post)
+        
+        # 处理多张图片附件
+        attachments_data = post_data.get("attachments", [])
+        if attachments_data:
+            from src.repositories.attachment_repository import AttachmentRepository
+            from src.models.attachment import Attachment
+            attachment_repo = AttachmentRepository(session)
+            
+            for attachment_data in attachments_data:
+                # 处理临时文件移动
+                relative_path = attachment_data.get("relative_path", "")
+                if relative_path.startswith("temp/"):
+                    try:
+                        # 从临时目录移动到正式目录
+                        temp_filename = relative_path.replace("temp/", "")
+                        temp_path = os.path.join("/tmp/blogn2_uploads", temp_filename)
+                        
+                        if os.path.exists(temp_path):
+                            # 创建按月份命名的子目录
+                            current_time = datetime.now()
+                            month_dir = current_time.strftime("%Y%m")
+                            monthly_upload_path = os.path.join(upload_dir, month_dir)
+                            os.makedirs(monthly_upload_path, exist_ok=True)
+                            
+                            # 移动到正式目录
+                            final_filename = temp_filename
+                            final_path = os.path.join(monthly_upload_path, final_filename)
+                            os.rename(temp_path, final_path)
+                            
+                            # 更新路径
+                            relative_path = f"{month_dir}/{final_filename}"
+                            
+                        else:
+                            pass  # 临时文件不存在，继续处理
+                    except Exception as e:
+                        raise HTTPException(status_code=500, detail="临时文件移动失败")
+                
+                # 创建附件记录
+                attachment = Attachment(
+                    parentid=created_post.id,
+                    amtype=1,  # 默认为正常类型
+                    comment=attachment_data.get("comment", ""),
+                    linkstr=relative_path,
+                    createtime=datetime.now(),
+                    updatetime=datetime.now()
+                )
+                await attachment_repo.create(attachment)
         
         # 更新项目的记录数和更新时间
         await project_repo.increment_record_count(project_id)

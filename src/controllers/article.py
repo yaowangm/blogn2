@@ -393,11 +393,9 @@ async def update_article(
                     new_attachment = f"{month_dir}/{final_filename}"
                     article_data["attachment"] = new_attachment
                     
-                    print(f"Moved temp file from {temp_path} to {final_path}")
                 else:
-                    print(f"Temp file not found: {temp_path}")
+                    pass  # 临时文件不存在，继续处理
             except Exception as e:
-                print(f"Failed to move temp file: {e}")
                 raise HTTPException(status_code=500, detail="临时文件移动失败")
         
         # 如果旧图片存在且与新图片不同，删除旧图片
@@ -408,7 +406,7 @@ async def update_article(
                 if os.path.exists(old_image_path):
                     os.remove(old_image_path)
             except Exception as e:
-                print(f"Failed to delete old image {old_attachment}: {e}")
+                pass  # 删除旧图片失败，继续处理
         
         update_data = {
             "name": article_data.get("name"),
@@ -429,6 +427,58 @@ async def update_article(
         updated_article = await project_item_repo.update(article_id, **update_data)
         if not updated_article:
             raise HTTPException(status_code=500, detail="更新文章失败")
+        
+        # 处理多张图片附件更新
+        attachments_data = article_data.get("attachments", [])
+        if attachments_data is not None:  # 只有当attachments字段存在时才处理
+            from src.repositories.attachment_repository import AttachmentRepository
+            from src.models.attachment import Attachment
+            attachment_repo = AttachmentRepository(session)
+            
+            # 删除现有的附件记录
+            await attachment_repo.delete_by_project_item_id(article_id)
+            
+            # 创建新的附件记录
+            for attachment_data in attachments_data:
+                relative_path = attachment_data.get("relative_path", "")
+                
+                # 处理临时文件移动
+                if relative_path.startswith("temp/"):
+                    try:
+                        # 从临时目录移动到正式目录
+                        temp_filename = relative_path.replace("temp/", "")
+                        temp_path = os.path.join("/tmp/blogn2_uploads", temp_filename)
+                        
+                        if os.path.exists(temp_path):
+                            # 创建按月份命名的子目录
+                            current_time = datetime.now()
+                            month_dir = current_time.strftime("%Y%m")
+                            monthly_upload_path = os.path.join(upload_dir, month_dir)
+                            os.makedirs(monthly_upload_path, exist_ok=True)
+                            
+                            # 移动到正式目录
+                            final_filename = temp_filename
+                            final_path = os.path.join(monthly_upload_path, final_filename)
+                            os.rename(temp_path, final_path)
+                            
+                            # 更新relative_path
+                            relative_path = f"{month_dir}/{final_filename}"
+                            
+                        else:
+                            pass  # 临时文件不存在，继续处理
+                    except Exception as e:
+                        # 继续处理，不中断整个流程
+                        pass
+                
+                attachment = Attachment(
+                    parentid=article_id,
+                    amtype=1,  # 默认为正常类型
+                    comment=attachment_data.get("comment", ""),
+                    linkstr=relative_path,
+                    createtime=datetime.now(),
+                    updatetime=datetime.now()
+                )
+                await attachment_repo.create(attachment)
         
         # 失效相关缓存
         await clear_article_detail_cache(article_id)

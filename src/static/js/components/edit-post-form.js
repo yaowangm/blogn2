@@ -19,10 +19,13 @@ class EditPostForm extends BaseComponent {
             folderid: null,
             status: 1, // 默认为正常状态
             allowpost: 1, // 默认为允许评论
-            attachment: null // 图片附件
+            attachment: null, // 第一张图片附件
+            attachments: [] // 多张图片附件
         };
-        this.uploadedImage = null; // 上传的图片信息
+        this.uploadedImage = null; // 上传的第一张图片信息
+        this.uploadedImages = []; // 上传的多张图片信息
         this.existingImage = null; // 现有图片信息
+        this.existingImages = []; // 现有多张图片信息
         this.imageDeleted = false; // 图片是否被删除
     }
 
@@ -80,6 +83,7 @@ class EditPostForm extends BaseComponent {
                 // 重置图片状态
                 this.imageDeleted = false;
                 this.uploadedImage = null;
+                this.uploadedImages = [];
                 
                 // 填充表单数据
                 this.formData = {
@@ -90,10 +94,11 @@ class EditPostForm extends BaseComponent {
                     folderid: this.originalArticleData.category?.id || null,
                     status: 1,
                     allowpost: this.originalArticleData.allowpost || 1,
-                    attachment: this.originalArticleData.attachment || null
+                    attachment: this.originalArticleData.attachment || null,
+                    attachments: []
                 };
                 
-                // 设置现有图片
+                // 设置现有主图片
                 if (this.originalArticleData.attachment) {
                     // 构建完整的图片URL
                     const imageUrl = this.originalArticleData.attachment.startsWith('http') 
@@ -102,10 +107,23 @@ class EditPostForm extends BaseComponent {
                     
                     this.existingImage = {
                         url: imageUrl,
-                        name: '现有图片'
+                        name: '现有主图片',
+                        relative_path: this.originalArticleData.attachment
                     };
                 } else {
                     this.existingImage = null;
+                }
+                
+                // 设置现有多张图片
+                this.existingImages = [];
+                if (this.originalArticleData.attachments && this.originalArticleData.attachments.length > 0) {
+                    this.existingImages = this.originalArticleData.attachments.map(att => ({
+                        id: att.id,
+                        url: att.linkstr.startsWith('http') ? att.linkstr : `/upload/${att.linkstr}`,
+                        name: att.comment || '图片附件',
+                        relative_path: att.linkstr,
+                        comment: att.comment || ''
+                    }));
                 }
                 
                 // 设置项目ID
@@ -173,6 +191,13 @@ class EditPostForm extends BaseComponent {
             return;
         }
 
+        // 检查是否已上传过多图片（最多10张）
+        const totalImages = this.uploadedImages.length + this.existingImages.length;
+        if (totalImages >= 10) {
+            this.showError('最多只能上传10张图片');
+            return;
+        }
+
         try {
             // 创建FormData，添加temp参数
             const formData = new FormData();
@@ -187,9 +212,28 @@ class EditPostForm extends BaseComponent {
 
             if (response.ok) {
                 const result = await response.json();
-                this.uploadedImage = result;
-                this.formData.attachment = result.relative_path; // 保存临时文件路径
-                this.showSuccess('图片已选择，将在保存时移动到正式目录');
+                
+                // 如果没有主图（包括现有主图和新上传的主图），设置为主图片
+                if (!this.uploadedImage && !this.existingImage) {
+                    this.uploadedImage = {
+                        ...result,
+                        comment: '', // 用户可以添加图片描述
+                        id: Date.now() + Math.random(), // 临时ID
+                        is_temp: true // 标记为临时文件
+                    };
+                    this.formData.attachment = result.relative_path;
+                } else {
+                    // 添加到多张图片列表（不包括主图）
+                    this.uploadedImages.push({
+                        ...result,
+                        comment: '', // 用户可以添加图片描述
+                        id: Date.now() + Math.random(), // 临时ID
+                        is_temp: true // 标记为临时文件
+                    });
+                }
+                
+                this.formData.attachments = [...this.existingImages, ...this.uploadedImages];
+                this.showSuccess(`图片已选择，将在保存时移动到正式目录 (${totalImages + 1}/10)`);
                 this.updateImagePreview();
             } else {
                 const errorData = await response.json();
@@ -201,22 +245,67 @@ class EditPostForm extends BaseComponent {
         }
     }
 
-    async removeImage() {
-        // 如果是临时文件，先删除服务器上的临时文件
-        if (this.uploadedImage && this.uploadedImage.is_temp) {
-            try {
-                const filename = this.uploadedImage.filename;
-                await fetch(`/api/temp-upload/${filename}`, {
-                    method: 'DELETE'
-                });
-            } catch (error) {
-                console.error('删除临时文件失败:', error);
+    async removeImage(imageId = null) {
+        if (imageId) {
+            // 删除指定的图片
+            const imageIndex = this.uploadedImages.findIndex(img => img.id === imageId);
+            if (imageIndex !== -1) {
+                // 如果是临时文件，先删除服务器上的临时文件
+                const image = this.uploadedImages[imageIndex];
+                if (image.is_temp) {
+                    try {
+                        await fetch(`/api/temp-upload/${image.filename}`, {
+                            method: 'DELETE'
+                        });
+                    } catch (error) {
+                        console.error('删除临时文件失败:', error);
+                    }
+                }
+                
+                this.uploadedImages.splice(imageIndex, 1);
+                
+                // 如果删除的是主图片，设置第一张其他图片为主图片
+                if (this.uploadedImage && this.uploadedImage.id === imageId) {
+                    if (this.uploadedImages.length > 0) {
+                        // 将第一张其他图片设为主图
+                        this.uploadedImage = this.uploadedImages[0];
+                        this.formData.attachment = this.uploadedImages[0].relative_path;
+                        // 从其他图片列表中移除
+                        this.uploadedImages.splice(0, 1);
+                    } else if (this.existingImage) {
+                        // 恢复现有主图
+                        this.uploadedImage = null;
+                        this.formData.attachment = this.existingImage.relative_path;
+                    } else {
+                        this.uploadedImage = null;
+                        this.formData.attachment = null;
+                    }
+                }
+                
+                this.formData.attachments = [...this.existingImages, ...this.uploadedImages];
+                this.updateImagePreview();
             }
+        } else {
+            // 删除所有图片
+            // 如果是临时文件，先删除服务器上的临时文件
+            if (this.uploadedImage && this.uploadedImage.is_temp) {
+                try {
+                    const filename = this.uploadedImage.filename;
+                    await fetch(`/api/temp-upload/${filename}`, {
+                        method: 'DELETE'
+                    });
+                } catch (error) {
+                    console.error('删除临时文件失败:', error);
+                }
+            }
+            
+            this.uploadedImage = null;
+            this.uploadedImages = [];
+            this.formData.attachment = null;
+            this.formData.attachments = [];
+            this.imageDeleted = true;
+            this.updateImagePreview();
         }
-        
-        this.uploadedImage = null;
-        this.formData.attachment = null;
-        this.updateImagePreview();
     }
 
     async handleCancel() {
@@ -327,6 +416,7 @@ class EditPostForm extends BaseComponent {
                 status: this.formData.status,
                 allowpost: this.formData.allowpost,
                 attachment: this.uploadedImage ? this.uploadedImage.relative_path : (this.imageDeleted ? null : this.formData.attachment),
+                attachments: this.formData.attachments,
                 projectid: this.projectId,
                 userid: this.getCurrentUserId()
             };
@@ -421,20 +511,42 @@ class EditPostForm extends BaseComponent {
                 existingPreview.remove();
             }
             
-            if (this.uploadedImage) {
+            const allImages = [...this.existingImages, ...this.uploadedImages];
+            if (allImages.length > 0) {
                 const previewHtml = `
                     <div class="uploaded-image-preview">
-                        <img src="${this.uploadedImage.url}" alt="上传的图片" class="preview-image">
-                        <div class="image-info">
-                            <span class="image-name">${this.uploadedImage.original_name}</span>
-                            <span class="image-size">${(this.uploadedImage.size / 1024).toFixed(1)}KB</span>
-                        </div>
-                        <button type="button" class="btn-remove-image" onclick="this.getRootNode().host.removeImage()">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="18" y1="6" x2="6" y2="18"/>
-                                <line x1="6" y1="6" x2="18" y2="18"/>
-                            </svg>
-                        </button>
+                        ${this.uploadedImage || this.existingImage ? `
+                            <div class="main-image-preview">
+                                <img src="${(this.uploadedImage || this.existingImage).url}" alt="主图片" class="preview-image">
+                                <div class="image-info">
+                                    <span class="image-name">${(this.uploadedImage || this.existingImage).name} (主图)</span>
+                                    <span class="image-size">${this.uploadedImage ? (this.uploadedImage.size / 1024).toFixed(1) + 'KB' : '现有图片'}</span>
+                                </div>
+                                <button type="button" class="btn-remove-image" onclick="this.getRootNode().host.removeImage('${(this.uploadedImage || this.existingImage).id || 'main'}')" title="删除主图">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="18" y1="6" x2="6" y2="18"/>
+                                        <line x1="6" y1="6" x2="18" y2="18"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        ` : ''}
+                        ${this.uploadedImages.length > 0 ? `
+                            <div class="multiple-images-preview">
+                                <h4>其他图片 (${this.uploadedImages.length}张)</h4>
+                                <div class="images-list">
+                                    ${this.uploadedImages.map(img => `
+                                        <div class="image-item">
+                                            <img src="${img.url}" alt="${img.name}" class="thumb-image">
+                                            <div class="image-info">
+                                                <span class="image-name">${img.name}</span>
+                                                <span class="image-size">${img.size ? (img.size / 1024).toFixed(1) + 'KB' : '现有图片'}</span>
+                                            </div>
+                                            <button type="button" class="btn-remove-image" onclick="this.getRootNode().host.removeImage('${img.id}')" title="删除图片">×</button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
                 `;
                 imageContainer.insertAdjacentHTML('beforeend', previewHtml);
@@ -865,6 +977,92 @@ class EditPostForm extends BaseComponent {
                     background: #b91c1c !important;
                     transform: scale(1.1) !important;
                 }
+                
+                .main-image-preview {
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-3);
+                    padding: var(--spacing-3);
+                    border: 2px solid var(--primary-color);
+                    border-radius: var(--radius-md);
+                    background: var(--primary-50);
+                    margin-bottom: var(--spacing-3);
+                }
+                
+                .multiple-images-preview {
+                    margin-top: var(--spacing-3);
+                }
+                
+                .multiple-images-preview h4 {
+                    font-size: var(--font-size-sm);
+                    font-weight: 600;
+                    color: var(--gray-700);
+                    margin: 0 0 var(--spacing-2) 0;
+                }
+                
+                .images-list {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                    gap: var(--spacing-2);
+                }
+                
+                .image-item {
+                    position: relative;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    padding: var(--spacing-2);
+                    border: 1px solid var(--gray-200);
+                    border-radius: var(--radius-md);
+                    background: var(--white);
+                    transition: var(--transition-fast);
+                }
+                
+                .image-item:hover {
+                    border-color: var(--gray-300);
+                    box-shadow: var(--shadow-sm);
+                }
+                
+                .thumb-image {
+                    width: 60px;
+                    height: 60px;
+                    object-fit: cover;
+                    border-radius: var(--radius-sm);
+                    border: 1px solid var(--gray-200);
+                    margin-bottom: var(--spacing-1);
+                }
+                
+                .image-item .image-info {
+                    text-align: center;
+                    width: 100%;
+                }
+                
+                .image-item .image-name {
+                    font-size: var(--font-size-xs);
+                    font-weight: 500;
+                    color: var(--gray-700);
+                    word-break: break-all;
+                    display: block;
+                    margin-bottom: var(--spacing-1);
+                }
+                
+                .image-item .image-size {
+                    font-size: var(--font-size-xs);
+                    color: var(--gray-500);
+                    display: block;
+                }
+                
+                .image-item .btn-remove-image {
+                    position: absolute;
+                    top: var(--spacing-1);
+                    right: var(--spacing-1);
+                    width: 20px;
+                    height: 20px;
+                    font-size: 12px;
+                    padding: 0;
+                    z-index: 10;
+                }
             </style>
 
             <div class="card">
@@ -911,50 +1109,16 @@ class EditPostForm extends BaseComponent {
                         <div class="form-group">
                             <label class="form-label" for="image-upload">文章图片</label>
                             <div class="image-upload-container">
-                                ${this.existingImage && !this.imageDeleted ? `
-                                    <div class="uploaded-image-preview">
-                                        <img src="${this.existingImage.url}" alt="现有图片" class="preview-image">
-                                        <div class="image-info">
-                                            <span class="image-name">${this.existingImage.name}</span>
-                                            <span class="image-size">现有图片</span>
-                                        </div>
-                                        <button type="button" class="btn-remove-image" onclick="this.getRootNode().host.removeExistingImage()">
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <line x1="18" y1="6" x2="6" y2="18"/>
-                                                <line x1="6" y1="6" x2="18" y2="18"/>
-                                            </svg>
-                                        </button>
-                                    </div>
-                                ` : '<!-- No existing image or image deleted -->'}
-                                
-                                ${!this.existingImage || this.imageDeleted ? `
-                                    <input 
-                                        type="file" 
-                                        id="image-upload" 
-                                        name="UserFile"
-                                        class="form-input"
-                                        accept="image/jpeg,image/jpg,image/png,image/gif"
-                                        onchange="this.getRootNode().host.handleImageUpload(this.files[0])"
-                                    >
-                                ` : ''}
-                                
-                                ${this.uploadedImage ? `
-                                    <div class="uploaded-image-preview">
-                                        <img src="${this.uploadedImage.url}" alt="新上传的图片" class="preview-image">
-                                        <div class="image-info">
-                                            <span class="image-name">${this.uploadedImage.original_name}</span>
-                                            <span class="image-size">${(this.uploadedImage.size / 1024).toFixed(1)}KB</span>
-                                        </div>
-                                        <button type="button" class="btn-remove-image" onclick="this.getRootNode().host.removeImage()">
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <line x1="18" y1="6" x2="6" y2="18"/>
-                                                <line x1="6" y1="6" x2="18" y2="18"/>
-                                            </svg>
-                                        </button>
-                                    </div>
-                                ` : ''}
+                                <input 
+                                    type="file" 
+                                    id="image-upload" 
+                                    name="UserFile"
+                                    class="form-input"
+                                    accept="image/jpeg,image/jpg,image/png,image/gif"
+                                    onchange="this.getRootNode().host.handleImageUpload(this.files[0])"
+                                >
                             </div>
-                            <div class="form-help">支持JPG、PNG、GIF格式，建议尺寸不超过2MB。现有图片只能删除，删除后可以上传新图片。</div>
+                            <div class="form-help">支持jpg、png、gif格式，大小不超过1MB，最多上传10张图片。第一张图片将作为文章主图。</div>
                         </div>
 
                         <div class="form-group">
