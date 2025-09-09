@@ -664,9 +664,8 @@ async def delete_article_images(attachment_path: str, article_id: int, session: 
                     os.remove(full_path)
                     print(f"Deleted attachment: {full_path}")
         
-        # 删除附件记录
-        if attachments:
-            await attachment_repo.delete_by_project_item_id(article_id)
+        # 删除附件记录（无论是否有附件都要执行删除操作）
+        await attachment_repo.delete_by_project_item_id(article_id)
             
     except Exception as e:
         print(f"Error deleting article images: {e}")
