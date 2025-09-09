@@ -28,6 +28,7 @@ class EditPostForm extends BaseComponent {
         this.existingImages = []; // 现有多张图片信息
         this.deletedImages = []; // 标记为删除的现有图片
         this.imageDeleted = false; // 图片是否被删除
+        this.maxAttachments = 10; // 最大附件数量，默认10
     }
 
     async connectedCallback() {
@@ -46,10 +47,25 @@ class EditPostForm extends BaseComponent {
             return;
         }
         
+        // 加载应用配置
+        await this.loadAppConfig();
+        
         await this.loadArticleData();
         await this.loadCategories();
         this.render();
         this.addEventListeners();
+    }
+
+    async loadAppConfig() {
+        try {
+            const response = await fetch('/api/config/app');
+            if (response.ok) {
+                const config = await response.json();
+                this.maxAttachments = config.max_attachments_per_article || 10;
+            }
+        } catch (error) {
+            console.warn('加载应用配置失败，使用默认值:', error);
+        }
     }
 
     getArticleIdFromUrl() {
@@ -195,10 +211,10 @@ class EditPostForm extends BaseComponent {
             return;
         }
 
-        // 检查是否已上传过多图片（最多10张）
+        // 检查是否已上传过多图片
         const totalImages = this.uploadedImages.length + this.existingImages.length;
-        if (totalImages >= 10) {
-            this.showError('最多只能上传10张图片');
+        if (totalImages >= this.maxAttachments) {
+            this.showError(`最多只能上传${this.maxAttachments}张图片`);
             return;
         }
 
@@ -239,7 +255,7 @@ class EditPostForm extends BaseComponent {
                 }
                 
                 this.formData.attachments = [...this.existingImages, ...this.uploadedImages];
-                this.showSuccess(`图片已选择，将在保存时移动到正式目录 (${totalImages + 1}/10)`);
+                this.showSuccess(`图片已选择，将在保存时移动到正式目录 (${totalImages + 1}/${this.maxAttachments})`);
                 this.updateImagePreview();
             } else {
                 const errorData = await response.json();
@@ -1252,7 +1268,7 @@ class EditPostForm extends BaseComponent {
                                     onchange="this.getRootNode().host.handleImageUpload(this.files[0])"
                                 >
                             </div>
-                            <div class="form-help">支持jpg、png、gif格式，大小不超过1MB，最多上传10张图片。第一张图片将作为文章主图。</div>
+                            <div class="form-help">支持jpg、png、gif格式，大小不超过1MB，最多上传${this.maxAttachments}张图片。第一张图片将作为文章主图。</div>
                         </div>
 
                         <div class="form-group">

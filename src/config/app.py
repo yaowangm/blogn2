@@ -74,6 +74,19 @@ def get_blog_posts_page_size() -> int:
         return 10
 
 
+def get_max_attachments_per_article() -> int:
+    """
+    获取每篇文章最大附件数量
+    
+    Returns:
+        int: 每篇文章最大附件数量，从环境变量MAX_ATTACHMENTS_PER_ARTICLE读取，默认为10
+    """
+    try:
+        return int(os.getenv('MAX_ATTACHMENTS_PER_ARTICLE', '10'))
+    except (ValueError, TypeError):
+        return 10
+
+
 
 
 
@@ -90,6 +103,7 @@ def validate_app_config() -> dict:
         "log_level": os.getenv('LOG_LEVEL', 'INFO'),
         "base_url": get_base_url(),
         "blog_posts_page_size": get_blog_posts_page_size(),
+        "max_attachments_per_article": get_max_attachments_per_article(),
         "max_file_size": int(os.getenv('MAX_FILE_SIZE', '10485760')),
         "allowed_file_types": os.getenv('ALLOWED_FILE_TYPES', 'image/jpeg,image/png,image/gif'),
         "upload_dir": os.getenv('UPLOAD_DIR', '../pic/blogn_img/upload'),

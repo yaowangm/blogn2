@@ -465,12 +465,12 @@ class ArticleContentCard extends BaseComponent {
                 /* 根据图片数量设置不同的网格布局 */
                 .attachments-grid[data-count="1"] {
                     grid-template-columns: 200px;
-                    justify-content: center;
+                    justify-content: start;
                 }
                 
                 .attachments-grid[data-count="2"] {
                     grid-template-columns: 200px 200px;
-                    justify-content: center;
+                    justify-content: start;
                 }
                 
                 .attachments-grid[data-count="3"] {
