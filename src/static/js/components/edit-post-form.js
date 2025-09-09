@@ -297,9 +297,7 @@ class EditPostForm extends BaseComponent {
                 allowpost: this.formData.allowpost,
                 attachment: this.imageDeleted ? null : (this.uploadedImage ? this.uploadedImage.url : this.formData.attachment),
                 projectid: this.projectId,
-                userid: this.getCurrentUserId(),
-                updatetime: new Date().toISOString(),
-                lastmodifytime: new Date().toISOString()
+                userid: this.getCurrentUserId()
             };
 
             const response = await fetch(`/api/articles/${this.articleId}`, {
