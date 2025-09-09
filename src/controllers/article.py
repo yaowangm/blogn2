@@ -16,8 +16,8 @@ from src.repositories.post_repository import PostRepository
 from src.repositories.attachment_repository import AttachmentRepository
 from src.models.post import Post
 from src.utils.cache import cache_article_detail, cache_article_comments, cache_article_attachments, clear_article_detail_cache, clear_article_comments_cache
-from src.utils.auth_middleware import get_current_user
-from src.controllers.auth import get_optional_user
+from src.utils.auth_middleware import get_current_user, get_optional_current_user
+from src.utils.permission_manager import permission_manager
 
 # 创建文章API路由器
 router = APIRouter(tags=["文章管理"])
@@ -28,7 +28,7 @@ router = APIRouter(tags=["文章管理"])
 async def get_article_detail(
     article_id: int,
     session: AsyncSession = Depends(get_async_session),
-    current_user: Optional[Dict[str, Any]] = Depends(get_optional_user)
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
     """
     获取指定文章的详细信息
@@ -60,7 +60,7 @@ async def get_article_detail(
         
         # 检查文章是否已被删除（itemtype=2）
         # 只有管理员可以访问已删除的文章
-        if article.itemtype == 2 and (not current_user or current_user.state != 10):
+        if article.itemtype == 2 and not permission_manager.can_manage_system(current_user):
             raise HTTPException(status_code=404, detail="文章已被删除")
         
         # 获取作者信息
@@ -348,7 +348,7 @@ async def update_article(
             raise HTTPException(status_code=404, detail="文章不存在")
         
         # 权限检查：管理员可以更新任何文章，普通用户只能更新自己的文章
-        if current_user.get("state") != 10 and current_user.get("id") != article.userid:
+        if not permission_manager.can_manage_system(current_user) and current_user.get("id") != article.userid:
             raise HTTPException(status_code=403, detail="无权限修改该文章")
         
         # 更新文章数据
@@ -474,7 +474,7 @@ async def delete_article(
             raise HTTPException(status_code=404, detail="文章不存在")
         
         # 权限检查：管理员可以删除任何文章，普通用户只能删除自己的文章
-        if current_user.get("state") != 10 and current_user.get("id") != article.userid:
+        if not permission_manager.can_manage_system(current_user) and current_user.get("id") != article.userid:
             raise HTTPException(status_code=403, detail="无权限删除该文章")
         
         # 软删除文章：将itemtype设置为2

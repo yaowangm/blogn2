@@ -16,8 +16,8 @@ from src.utils.cache import (
     cache_project_categories, cache_project_external_links, cache_project_rss,
     cache_project_stats, cache_user_projects
 )
-from src.utils.auth_middleware import get_current_user
-from src.controllers.auth import get_optional_user
+from src.utils.auth_middleware import get_current_user, get_optional_current_user
+from src.utils.permission_manager import permission_manager
 
 # 创建项目API路由器
 router = APIRouter()
@@ -67,7 +67,7 @@ async def get_project_posts(
     folderid: Optional[int] = None,
     include_deleted: bool = False,
     session: AsyncSession = Depends(get_async_session),
-    current_user: Optional[Dict[str, Any]] = Depends(get_optional_user)
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
     """
     获取指定项目的文章列表
@@ -97,7 +97,7 @@ async def get_project_posts(
         offset = (page - 1) * limit
         
         # 检查是否为管理员，决定是否包含已删除的文章
-        is_admin = current_user and current_user.state == 10
+        is_admin = permission_manager.can_manage_system(current_user)
         should_include_deleted = include_deleted and is_admin
         
         # 获取文章列表
