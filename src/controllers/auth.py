@@ -5,7 +5,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import timedelta
 
 from src.models.auth import (
@@ -274,3 +274,48 @@ async def validate_token(
         )
     
     return {"valid": True}
+
+
+async def get_optional_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False)),
+    auth_service: AuthService = Depends(get_auth_service),
+    user_service: UserService = Depends(get_user_service)
+) -> Optional[UserInfo]:
+    """
+    获取当前登录用户信息（可选）
+    如果用户未登录或令牌无效，返回None而不是抛出异常
+    
+    Args:
+        credentials: HTTP认证凭据（可选）
+        auth_service: 认证服务实例
+        user_service: 用户服务实例
+        
+    Returns:
+        Optional[UserInfo]: 当前用户信息，如果未登录则返回None
+    """
+    if not credentials:
+        return None
+    
+    try:
+        # 验证令牌
+        user_data = auth_service.get_user_from_token(credentials.credentials)
+        if not user_data:
+            return None
+        
+        # 获取用户详细信息
+        user = await user_service.get_user_by_id(user_data["user_id"])
+        if not user:
+            return None
+        
+        return UserInfo(
+            id=user.id,
+            name=user.name,
+            email=user.email or "",  # 处理None值
+            state=user.state,
+            role="user",  # 默认角色
+            lastupdate=user.lastupdate,
+            iplog=user.iplog,
+            avatar_url=f"/avatar/1/s_{user.id}.jpg"  # 默认头像路径
+        )
+    except Exception:
+        return None

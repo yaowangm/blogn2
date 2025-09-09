@@ -17,6 +17,7 @@ from src.repositories.attachment_repository import AttachmentRepository
 from src.models.post import Post
 from src.utils.cache import cache_article_detail, cache_article_comments, cache_article_attachments, clear_article_detail_cache, clear_article_comments_cache
 from src.utils.auth_middleware import get_current_user
+from src.controllers.auth import get_optional_user
 
 # 创建文章API路由器
 router = APIRouter(tags=["文章管理"])
@@ -26,7 +27,8 @@ router = APIRouter(tags=["文章管理"])
 @cache_article_detail(ttl=1800)  # 缓存30分钟
 async def get_article_detail(
     article_id: int,
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_user)
 ):
     """
     获取指定文章的详细信息
@@ -55,6 +57,11 @@ async def get_article_detail(
         article = await project_item_repo.get_by_id(article_id)
         if not article:
             raise HTTPException(status_code=404, detail="文章不存在")
+        
+        # 检查文章是否已被删除（itemtype=2）
+        # 只有管理员可以访问已删除的文章
+        if article.itemtype == 2 and (not current_user or current_user.state != 10):
+            raise HTTPException(status_code=404, detail="文章已被删除")
         
         # 获取作者信息
         author = None
@@ -470,10 +477,22 @@ async def delete_article(
         if current_user.get("state") != 10 and current_user.get("id") != article.userid:
             raise HTTPException(status_code=403, detail="无权限删除该文章")
         
-        # 删除文章
-        success = await project_item_repo.delete(article_id)
-        if not success:
-            raise HTTPException(status_code=500, detail="删除文章失败")
+        # 软删除文章：将itemtype设置为2
+        article.itemtype = 2
+        session.add(article)
+        
+        # 更新project表：减少recordcount，更新updatetime
+        from src.repositories.project_repository import ProjectRepository
+        project_repo = ProjectRepository(session)
+        await project_repo.decrement_record_count(article.projectid)
+        
+        # 更新users表：减少10积分
+        from src.repositories.user_repository import UserRepository
+        user_repo = UserRepository(session)
+        await user_repo.decrement_point(article.userid, 10)
+        
+        # 提交事务
+        await session.commit()
         
         # 失效相关缓存
         await clear_article_detail_cache(article_id)

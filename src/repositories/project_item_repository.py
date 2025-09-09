@@ -125,7 +125,7 @@ class ProjectItemRepository:
         
         return posts
 
-    async def get_by_project_id_and_folder(self, project_id: int, folder_id: Optional[int] = None, limit: int = None, offset: int = 0) -> List[dict]:
+    async def get_by_project_id_and_folder(self, project_id: int, folder_id: Optional[int] = None, limit: int = None, offset: int = 0, include_deleted: bool = False) -> List[dict]:
         """根据项目ID和文件夹ID获取项目项，包含用户信息"""
         from src.models.user import User
         
@@ -135,6 +135,10 @@ class ProjectItemRepository:
             .where(ProjectItem.projectid == project_id)
             .where(ProjectItem.status == 1)  # 只获取正常状态的文章
         )
+        
+        # 根据include_deleted参数决定是否包含已删除的文章
+        if not include_deleted:
+            query = query.where(ProjectItem.itemtype != 2)  # 排除已删除的文章（itemtype=2）
         
         if folder_id is not None:
             # 如果指定了文件夹，只获取该文件夹下的文章
@@ -171,6 +175,8 @@ class ProjectItemRepository:
     async def count_by_project_id_and_folder(self, project_id: int, folder_id: Optional[int] = None) -> int:
         """根据项目ID和文件夹ID统计项目项总数"""
         statement = select(func.count(ProjectItem.id)).where(ProjectItem.projectid == project_id)
+        statement = statement.where(ProjectItem.status == 1)  # 只统计正常状态的文章
+        statement = statement.where(ProjectItem.itemtype != 2)  # 排除已删除的文章（itemtype=2）
         
         if folder_id is not None:
             statement = statement.where(ProjectItem.folderid == folder_id)

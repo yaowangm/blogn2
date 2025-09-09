@@ -143,6 +143,25 @@ class UserRepository:
             user.point = (user.point or 0) + points
             self.session.add(user)
     
+    async def decrement_point(self, user_id: int, points: int = 10) -> None:
+        """
+        减少用户积分
+        
+        Args:
+            user_id: 用户ID
+            points: 减少的积分数，默认为10
+        """
+        from sqlmodel import select
+        from datetime import datetime
+        
+        statement = select(User).where(User.id == user_id)
+        result = await self.session.exec(statement)
+        user = result.first()
+        
+        if user:
+            user.point = max((user.point or 0) - points, 0)
+            self.session.add(user)
+    
     async def get_users_paginated(self, page: int = 1, page_size: int = 20, search: Optional[str] = None) -> Tuple[List[User], int]:
         """
         分页获取用户列表

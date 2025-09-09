@@ -85,4 +85,15 @@ class ProjectRepository:
         if project:
             project.recordcount = (project.recordcount or 0) + 1
             project.updatetime = datetime.now()
+            self.session.add(project)
+    
+    async def decrement_record_count(self, project_id: int) -> None:
+        """减少项目的记录数"""
+        statement = select(Project).where(Project.id == project_id)
+        result = await self.session.exec(statement)
+        project = result.first()
+        
+        if project:
+            project.recordcount = max((project.recordcount or 0) - 1, 0)
+            project.updatetime = datetime.now()
             self.session.add(project) 
