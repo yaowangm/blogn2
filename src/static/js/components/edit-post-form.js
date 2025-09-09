@@ -257,6 +257,8 @@ class EditPostForm extends BaseComponent {
             let imageToRemove = null;
             let isFromUploaded = false;
             let isFromExisting = false;
+            let uploadedIndex = -1;
+            let existingIndex = -1;
             
             // 特殊处理主图删除
             if (imageId === 'main') {
@@ -269,14 +271,14 @@ class EditPostForm extends BaseComponent {
                 }
             } else {
                 // 检查是否在新上传的图片中
-                const uploadedIndex = this.uploadedImages.findIndex(img => img.id == imageId);
+                uploadedIndex = this.uploadedImages.findIndex(img => img.id == imageId);
                 if (uploadedIndex !== -1) {
                     imageToRemove = this.uploadedImages[uploadedIndex];
                     isFromUploaded = true;
                 }
                 
                 // 检查是否在现有图片中
-                const existingIndex = this.existingImages.findIndex(img => img.id == imageId);
+                existingIndex = this.existingImages.findIndex(img => img.id == imageId);
                 if (existingIndex !== -1) {
                     imageToRemove = this.existingImages[existingIndex];
                     isFromExisting = true;
