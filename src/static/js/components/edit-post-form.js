@@ -42,9 +42,9 @@ class EditPostForm extends BaseComponent {
             return;
         }
         
-        this.render();
         await this.loadArticleData();
         await this.loadCategories();
+        this.render();
         this.addEventListeners();
     }
 
@@ -77,6 +77,10 @@ class EditPostForm extends BaseComponent {
             if (response.ok) {
                 this.originalArticleData = await response.json();
                 
+                // 重置图片状态
+                this.imageDeleted = false;
+                this.uploadedImage = null;
+                
                 // 填充表单数据
                 this.formData = {
                     name: this.originalArticleData.title || '',
@@ -91,10 +95,17 @@ class EditPostForm extends BaseComponent {
                 
                 // 设置现有图片
                 if (this.originalArticleData.attachment) {
+                    // 构建完整的图片URL
+                    const imageUrl = this.originalArticleData.attachment.startsWith('http') 
+                        ? this.originalArticleData.attachment 
+                        : `/upload/${this.originalArticleData.attachment}`;
+                    
                     this.existingImage = {
-                        url: this.originalArticleData.attachment,
+                        url: imageUrl,
                         name: '现有图片'
                     };
+                } else {
+                    this.existingImage = null;
                 }
                 
                 // 设置项目ID
@@ -295,10 +306,11 @@ class EditPostForm extends BaseComponent {
                 folderid: this.formData.folderid,
                 status: this.formData.status,
                 allowpost: this.formData.allowpost,
-                attachment: this.imageDeleted ? null : (this.uploadedImage ? this.uploadedImage.url : this.formData.attachment),
+                attachment: this.uploadedImage ? this.uploadedImage.relative_path : (this.imageDeleted ? null : this.formData.attachment),
                 projectid: this.projectId,
                 userid: this.getCurrentUserId()
             };
+            
 
             const response = await fetch(`/api/articles/${this.articleId}`, {
                 method: 'PUT',
@@ -812,25 +824,26 @@ class EditPostForm extends BaseComponent {
                 }
                 
                 .btn-remove-image {
-                    position: absolute;
-                    top: var(--spacing-2);
-                    right: var(--spacing-2);
-                    width: 24px;
-                    height: 24px;
-                    border: none;
-                    background: var(--error-color);
-                    color: var(--white);
-                    border-radius: 50%;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: var(--transition-fast);
+                    position: absolute !important;
+                    top: 8px !important;
+                    right: 8px !important;
+                    width: 24px !important;
+                    height: 24px !important;
+                    border: none !important;
+                    background: #dc2626 !important;
+                    color: white !important;
+                    border-radius: 50% !important;
+                    cursor: pointer !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    transition: all 0.2s ease !important;
+                    z-index: 10 !important;
                 }
                 
                 .btn-remove-image:hover {
-                    background: #dc2626;
-                    transform: scale(1.1);
+                    background: #b91c1c !important;
+                    transform: scale(1.1) !important;
                 }
             </style>
 
@@ -892,7 +905,7 @@ class EditPostForm extends BaseComponent {
                                             </svg>
                                         </button>
                                     </div>
-                                ` : ''}
+                                ` : '<!-- No existing image or image deleted -->'}
                                 
                                 ${!this.existingImage || this.imageDeleted ? `
                                     <input 

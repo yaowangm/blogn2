@@ -346,10 +346,30 @@ async def update_article(
         
         # 更新文章数据
         from datetime import datetime
+        import os
+        from src.config.app import validate_app_config
         
         # 计算文章内容长度（字节数）
         content = article_data.get("comment", "")
         itemsize = len(content.encode('utf-8')) if content else 0
+        
+        # 检查是否需要删除旧图片
+        old_attachment = article.attachment
+        new_attachment = article_data.get("attachment")
+        
+        # 获取上传目录配置
+        config = validate_app_config()
+        upload_dir = config["upload_dir"]
+        
+        # 如果旧图片存在且与新图片不同，删除旧图片
+        if old_attachment and old_attachment != new_attachment:
+            try:
+                # 构建旧图片的完整路径
+                old_image_path = os.path.join(upload_dir, old_attachment)
+                if os.path.exists(old_image_path):
+                    os.remove(old_image_path)
+            except Exception as e:
+                print(f"Failed to delete old image {old_attachment}: {e}")
         
         update_data = {
             "name": article_data.get("name"),
