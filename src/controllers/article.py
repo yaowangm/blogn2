@@ -361,6 +361,37 @@ async def update_article(
         config = validate_app_config()
         upload_dir = config["upload_dir"]
         
+        # 处理临时文件移动
+        if new_attachment and new_attachment.startswith("temp/"):
+            try:
+                # 从临时目录移动到正式目录
+                temp_filename = new_attachment.replace("temp/", "")
+                temp_path = os.path.join("/tmp/blogn2_uploads", temp_filename)
+                
+                if os.path.exists(temp_path):
+                    # 创建按月份命名的子目录
+                    from datetime import datetime
+                    current_time = datetime.now()
+                    month_dir = current_time.strftime("%Y%m")
+                    monthly_upload_path = os.path.join(upload_dir, month_dir)
+                    os.makedirs(monthly_upload_path, exist_ok=True)
+                    
+                    # 移动到正式目录
+                    final_filename = temp_filename
+                    final_path = os.path.join(monthly_upload_path, final_filename)
+                    os.rename(temp_path, final_path)
+                    
+                    # 更新attachment路径
+                    new_attachment = f"{month_dir}/{final_filename}"
+                    article_data["attachment"] = new_attachment
+                    
+                    print(f"Moved temp file from {temp_path} to {final_path}")
+                else:
+                    print(f"Temp file not found: {temp_path}")
+            except Exception as e:
+                print(f"Failed to move temp file: {e}")
+                raise HTTPException(status_code=500, detail="临时文件移动失败")
+        
         # 如果旧图片存在且与新图片不同，删除旧图片
         if old_attachment and old_attachment != new_attachment:
             try:

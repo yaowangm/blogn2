@@ -181,12 +181,13 @@ async def serve_avatar_file(file_path: str):
 
 
 @app.post("/api/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(file: UploadFile = File(...), temp: bool = False):
     """
     文件上传API
     
     Args:
         file: 上传的文件
+        temp: 是否为临时文件（True=上传到/tmp，False=上传到正式目录）
         
     Returns:
         Dict: 包含文件信息的响应
@@ -213,18 +214,23 @@ async def upload_file(file: UploadFile = File(...)):
     
     unique_filename = f"{uuid.uuid4()}{file_extension}"
     
-    # 创建按月份命名的子目录（格式：YYYYMM）
-    current_time = datetime.now()
-    month_dir = current_time.strftime("%Y%m")
-    monthly_upload_path = os.path.join(UPLOAD_BASE_PATH, month_dir)
+    if temp:
+        # 临时文件：上传到/tmp目录
+        temp_dir = "/tmp/blogn2_uploads"
+        os.makedirs(temp_dir, exist_ok=True)
+        file_path = os.path.join(temp_dir, unique_filename)
+        relative_path = f"temp/{unique_filename}"
+        url = f"/api/temp-upload/{unique_filename}"
+    else:
+        # 正式文件：上传到正式目录
+        current_time = datetime.now()
+        month_dir = current_time.strftime("%Y%m")
+        monthly_upload_path = os.path.join(UPLOAD_BASE_PATH, month_dir)
+        os.makedirs(monthly_upload_path, exist_ok=True)
+        file_path = os.path.join(monthly_upload_path, unique_filename)
+        relative_path = f"{month_dir}/{unique_filename}"
+        url = f"/upload/{relative_path}"
     
-    # 确保上传目录和月份子目录存在
-    os.makedirs(monthly_upload_path, exist_ok=True)
-    
-    # 保存文件到月份子目录
-    file_path = os.path.join(monthly_upload_path, unique_filename)
-    # 生成相对路径（用于存储到数据库）
-    relative_path = f"{month_dir}/{unique_filename}"
     try:
         with open(file_path, "wb") as buffer:
             buffer.write(file_content)
@@ -234,11 +240,62 @@ async def upload_file(file: UploadFile = File(...)):
             "filename": unique_filename,
             "original_name": file.filename,
             "size": len(file_content),
-            "url": f"/upload/{relative_path}",
-            "relative_path": relative_path
+            "url": url,
+            "relative_path": relative_path,
+            "is_temp": temp
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"文件保存失败: {str(e)}")
+
+
+@app.get("/api/temp-upload/{filename}")
+async def serve_temp_file(filename: str):
+    """
+    提供临时文件服务
+    
+    Args:
+        filename: 文件名
+        
+    Returns:
+        FileResponse: 文件响应
+    """
+    import os
+    from fastapi import HTTPException
+    
+    temp_dir = "/tmp/blogn2_uploads"
+    file_path = os.path.join(temp_dir, filename)
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="文件不存在")
+    
+    return serve_file(file_path)
+
+
+@app.delete("/api/temp-upload/{filename}")
+async def delete_temp_file(filename: str):
+    """
+    删除临时文件
+    
+    Args:
+        filename: 文件名
+        
+    Returns:
+        Dict: 删除结果
+    """
+    import os
+    from fastapi import HTTPException
+    
+    temp_dir = "/tmp/blogn2_uploads"
+    file_path = os.path.join(temp_dir, filename)
+    
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            return {"success": True, "message": "文件删除成功"}
+        else:
+            return {"success": True, "message": "文件不存在"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"文件删除失败: {str(e)}")
 
 
 # ==================== API路由注册 ====================

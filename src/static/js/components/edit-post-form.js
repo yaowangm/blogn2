@@ -174,12 +174,13 @@ class EditPostForm extends BaseComponent {
         }
 
         try {
-            // 创建FormData
+            // 创建FormData，添加temp参数
             const formData = new FormData();
             formData.append('file', file);
+            formData.append('temp', 'true'); // 标记为临时文件
 
-            // 上传文件
-            const response = await fetch('/api/upload', {
+            // 上传文件到临时目录
+            const response = await fetch('/api/upload?temp=true', {
                 method: 'POST',
                 body: formData
             });
@@ -187,9 +188,9 @@ class EditPostForm extends BaseComponent {
             if (response.ok) {
                 const result = await response.json();
                 this.uploadedImage = result;
-                this.formData.attachment = result.relative_path; // 保存相对路径（包含月份目录）
-                this.showSuccess('图片上传成功！');
-                this.updateImagePreview(); // 只更新图片预览部分
+                this.formData.attachment = result.relative_path; // 保存临时文件路径
+                this.showSuccess('图片已选择，将在保存时移动到正式目录');
+                this.updateImagePreview();
             } else {
                 const errorData = await response.json();
                 this.showError(errorData.detail || '图片上传失败');
@@ -200,11 +201,30 @@ class EditPostForm extends BaseComponent {
         }
     }
 
-    removeImage() {
-        console.log('DEBUG: removeImage called, clearing attachment');
+    async removeImage() {
+        // 如果是临时文件，先删除服务器上的临时文件
+        if (this.uploadedImage && this.uploadedImage.is_temp) {
+            try {
+                const filename = this.uploadedImage.filename;
+                await fetch(`/api/temp-upload/${filename}`, {
+                    method: 'DELETE'
+                });
+            } catch (error) {
+                console.error('删除临时文件失败:', error);
+            }
+        }
+        
         this.uploadedImage = null;
         this.formData.attachment = null;
-        this.updateImagePreview(); // 只更新图片预览部分
+        this.updateImagePreview();
+    }
+
+    async handleCancel() {
+        // 删除临时图片
+        await this.removeImage();
+        
+        // 返回上一页
+        window.history.back();
     }
 
 
@@ -970,7 +990,7 @@ class EditPostForm extends BaseComponent {
                         </div>
 
                         <div class="form-actions">
-                            <button type="button" class="btn btn-secondary" onclick="window.history.back()">
+                            <button type="button" class="btn btn-secondary" onclick="this.getRootNode().host.handleCancel()">
                                 取消
                             </button>
                             <button type="submit" class="btn btn-primary" ${(this.loading || this.submitting) ? 'disabled' : ''}>
