@@ -505,3 +505,119 @@ async def delete_article(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"删除文章失败: {str(e)}")
+
+
+@router.delete("/articles/{article_id}/permanent", response_model=Dict[str, Any])
+async def permanently_delete_article(
+    article_id: int,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    彻底删除文章（仅管理员）
+    
+    彻底删除文章，包括：
+    1. 删除文件系统中的图片
+    2. 从projectitem表中删除记录
+    3. 如果文章不是已删除状态，更新相关统计信息
+    
+    Args:
+        article_id: 文章ID
+        current_user: 当前登录用户
+        session: 数据库会话
+        
+    Returns:
+        Dict: 删除结果
+    """
+    # 权限检查：只有管理员可以彻底删除文章
+    if not permission_manager.can_manage_system(current_user):
+        raise HTTPException(status_code=403, detail="需要管理员权限才能彻底删除文章")
+    
+    try:
+        # 初始化仓库
+        project_item_repo = ProjectItemRepository(session)
+        
+        # 获取文章信息
+        article = await project_item_repo.get_by_id(article_id)
+        if not article:
+            raise HTTPException(status_code=404, detail="文章不存在")
+        
+        # 记录文章状态，用于后续统计更新
+        was_deleted = article.itemtype == 2
+        
+        # 删除文件系统中的图片
+        if article.attachment:
+            await delete_article_images(article.attachment, article_id, session)
+        
+        # 从projectitem表中删除记录
+        await project_item_repo.delete(article_id)
+        
+        # 如果文章不是已删除状态，需要更新相关统计信息
+        if not was_deleted:
+            # 更新project表：减少recordcount，更新updatetime
+            from src.repositories.project_repository import ProjectRepository
+            project_repo = ProjectRepository(session)
+            await project_repo.decrement_record_count(article.projectid)
+            
+            # 更新users表：减少10积分
+            from src.repositories.user_repository import UserRepository
+            user_repo = UserRepository(session)
+            await user_repo.decrement_point(article.userid, 10)
+        
+        # 提交事务
+        await session.commit()
+        
+        # 失效相关缓存
+        await clear_article_detail_cache(article_id)
+        await clear_article_comments_cache(article_id)
+        
+        return {"message": "文章已彻底删除"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=f"彻底删除文章失败: {str(e)}")
+
+
+async def delete_article_images(attachment_path: str, article_id: int, session: AsyncSession) -> None:
+    """
+    删除文章相关的图片文件
+    
+    Args:
+        attachment_path: 附件路径
+        article_id: 文章ID
+        session: 数据库会话
+    """
+    import os
+    
+    try:
+        # 获取上传目录
+        upload_dir = os.getenv('UPLOAD_DIR', '../pic/blogn_img/upload')
+        
+        # 删除主附件图片
+        if attachment_path:
+            full_path = os.path.join(upload_dir, attachment_path)
+            if os.path.exists(full_path):
+                os.remove(full_path)
+                print(f"Deleted main attachment: {full_path}")
+        
+        # 删除其他附件图片
+        from src.repositories.attachment_repository import AttachmentRepository
+        attachment_repo = AttachmentRepository(session)
+        attachments = await attachment_repo.get_by_project_item_id(article_id)
+        
+        for attachment in attachments:
+            if attachment.linkstr:
+                full_path = os.path.join(upload_dir, attachment.linkstr)
+                if os.path.exists(full_path):
+                    os.remove(full_path)
+                    print(f"Deleted attachment: {full_path}")
+        
+        # 删除附件记录
+        if attachments:
+            await attachment_repo.delete_by_project_item_id(article_id)
+            
+    except Exception as e:
+        print(f"Error deleting article images: {e}")
+        # 不抛出异常，因为文件删除失败不应该阻止数据库删除

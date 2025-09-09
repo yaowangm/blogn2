@@ -98,3 +98,20 @@ class AttachmentRepository:
             await self.session.refresh(attachment)
             return attachment
         return None
+    
+    async def delete_by_project_item_id(self, project_item_id: int) -> int:
+        """
+        根据文章ID删除所有相关附件
+        
+        Args:
+            project_item_id: 文章ID
+            
+        Returns:
+            int: 删除的附件数量
+        """
+        from sqlalchemy import delete
+        
+        stmt = delete(Attachment).where(Attachment.parentid == project_item_id)
+        result = await self.session.execute(stmt)
+        await self.session.commit()
+        return result.rowcount

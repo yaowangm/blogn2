@@ -194,6 +194,12 @@ class ArticleHeaderCard extends BaseComponent {
                                 <i class="icon-trash"></i>
                                 删除文章
                             </button>
+                            ${this.isAdmin ? `
+                                <button class="btn btn-warning btn-sm" id="permanent-delete-article-btn">
+                                    <i class="icon-delete"></i>
+                                    彻底删除
+                                </button>
+                            ` : ''}
                         </div>
                     ` : ''}
                 </div>
@@ -223,6 +229,7 @@ class ArticleHeaderCard extends BaseComponent {
     bindToolbarEvents() {
         const editBtn = this.shadowRoot.getElementById('edit-article-btn');
         const deleteBtn = this.shadowRoot.getElementById('delete-article-btn');
+        const permanentDeleteBtn = this.shadowRoot.getElementById('permanent-delete-article-btn');
         
         if (editBtn) {
             editBtn.addEventListener('click', () => this.handleEditArticle());
@@ -230,6 +237,10 @@ class ArticleHeaderCard extends BaseComponent {
         
         if (deleteBtn) {
             deleteBtn.addEventListener('click', () => this.handleDeleteArticle());
+        }
+        
+        if (permanentDeleteBtn) {
+            permanentDeleteBtn.addEventListener('click', () => this.handlePermanentDeleteArticle());
         }
     }
 
@@ -281,6 +292,49 @@ class ArticleHeaderCard extends BaseComponent {
         } catch (error) {
             this.logError('Failed to delete article', error);
             alert('删除文章失败: ' + error.message);
+        }
+    }
+
+    /**
+     * 处理彻底删除文章
+     */
+    async handlePermanentDeleteArticle() {
+        if (!this.articleId) {
+            this.showError('无法获取文章ID');
+            return;
+        }
+        
+        // 确认彻底删除
+        if (!confirm('确定要彻底删除这篇文章吗？\n\n此操作将：\n1. 永久删除文章的所有图片文件\n2. 从数据库中完全删除文章记录\n3. 更新相关统计信息\n\n此操作不可撤销！')) {
+            return;
+        }
+        
+        // 二次确认
+        if (!confirm('最后确认：您真的要彻底删除这篇文章吗？\n\n一旦执行，文章及其所有相关数据将永久消失！')) {
+            return;
+        }
+        
+        try {
+            const token = localStorage.getItem('access_token');
+            const response = await fetch(`/api/articles/${this.articleId}/permanent`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                // 彻底删除成功，跳转到首页
+                alert('文章已彻底删除');
+                window.location.href = '/';
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || '彻底删除失败');
+            }
+        } catch (error) {
+            this.logError('Failed to permanently delete article', error);
+            alert('彻底删除文章失败: ' + error.message);
         }
     }
 
@@ -411,6 +465,15 @@ class ArticleHeaderCard extends BaseComponent {
                 
                 .article-toolbar .btn-danger:hover {
                     background-color: #b91c1c !important;
+                }
+                
+                .article-toolbar .btn-warning {
+                    background-color: #f59e0b !important;
+                    color: white !important;
+                }
+                
+                .article-toolbar .btn-warning:hover {
+                    background-color: #d97706 !important;
                 }
                 
                 .article-toolbar .btn i {
