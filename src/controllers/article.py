@@ -16,6 +16,7 @@ from src.repositories.post_repository import PostRepository
 from src.repositories.attachment_repository import AttachmentRepository
 from src.models.post import Post
 from src.utils.cache import cache_article_detail, cache_article_comments, cache_article_attachments, clear_article_detail_cache, clear_article_comments_cache
+from src.utils.auth_middleware import get_current_user
 
 # 创建文章API路由器
 router = APIRouter(tags=["文章管理"])
@@ -303,3 +304,56 @@ async def get_article_attachments(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取附件列表失败: {str(e)}")
+
+
+@router.delete("/articles/{article_id}")
+async def delete_article(
+    article_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    删除指定文章
+    
+    权限控制：
+    - 管理员可以删除任何文章
+    - 普通用户只能删除自己的文章
+    
+    Args:
+        article_id: 文章ID
+        session: 数据库会话
+        current_user: 当前登录用户信息
+        
+    Returns:
+        Dict[str, str]: 删除结果
+        
+    Raises:
+        HTTPException: 当文章不存在或无权限时
+    """
+    project_item_repo = ProjectItemRepository(session)
+    
+    try:
+        # 获取文章信息
+        article = await project_item_repo.get_by_id(article_id)
+        if not article:
+            raise HTTPException(status_code=404, detail="文章不存在")
+        
+        # 权限检查：管理员可以删除任何文章，普通用户只能删除自己的文章
+        if current_user.get("state") != 10 and current_user.get("id") != article.userid:
+            raise HTTPException(status_code=403, detail="无权限删除该文章")
+        
+        # 删除文章
+        success = await project_item_repo.delete(article_id)
+        if not success:
+            raise HTTPException(status_code=500, detail="删除文章失败")
+        
+        # 失效相关缓存
+        await clear_article_detail_cache(article_id)
+        await clear_article_comments_cache(article_id)
+        
+        return {"message": "文章删除成功"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"删除文章失败: {str(e)}")

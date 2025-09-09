@@ -7,6 +7,9 @@ class ArticleHeaderCard extends BaseComponent {
         super();
         this.articleId = null;
         this.articleData = null;
+        this.currentUser = null;
+        this.isAdmin = false;
+        this.isAuthor = false;
     }
 
     async connectedCallback() {
@@ -16,6 +19,9 @@ class ArticleHeaderCard extends BaseComponent {
             this.showError('无法获取文章ID');
             return;
         }
+
+        // 检查当前用户权限
+        await this.checkUserPermissions();
 
         // 加载文章数据
         await this.loadArticleData();
@@ -36,6 +42,40 @@ class ArticleHeaderCard extends BaseComponent {
     }
 
     /**
+     * 检查当前用户权限
+     */
+    async checkUserPermissions() {
+        try {
+            // 从localStorage获取当前用户信息
+            const userInfo = localStorage.getItem('user_info');
+            const token = localStorage.getItem('access_token');
+            
+            if (!userInfo || !token) {
+                // 用户未登录
+                this.currentUser = null;
+                this.isAdmin = false;
+                this.isAuthor = false;
+                return;
+            }
+
+            this.currentUser = JSON.parse(userInfo);
+            
+            // 检查是否为管理员（state为10表示管理员）
+            this.isAdmin = this.currentUser.state === 10;
+            
+            // 检查是否为文章作者（需要等待文章数据加载后才能确定）
+            // 这里先设置为false，在loadArticleData后再次检查
+            this.isAuthor = false;
+            
+        } catch (error) {
+            this.logError('Failed to check user permissions', error);
+            this.currentUser = null;
+            this.isAdmin = false;
+            this.isAuthor = false;
+        }
+    }
+
+    /**
      * 加载文章数据
      */
     async loadArticleData() {
@@ -43,6 +83,11 @@ class ArticleHeaderCard extends BaseComponent {
             const response = await fetch(`/api/articles/${this.articleId}`);
             if (response.ok) {
                 this.articleData = await response.json();
+                
+                // 检查是否为文章作者
+                if (this.currentUser && this.articleData.author) {
+                    this.isAuthor = this.currentUser.id === this.articleData.author.id;
+                }
             } else if (response.status === 404) {
                 // 文章不存在，跳转到错误页面
                 window.location.href = '/static/error.html';
@@ -74,6 +119,9 @@ class ArticleHeaderCard extends BaseComponent {
 
         const { title, author, project, category, hits, itemsize, created_at, updated_at, comment_count } = this.articleData;
 
+        // 检查是否显示工具栏
+        const showToolbar = this.isAdmin || this.isAuthor;
+        
         this.shadowRoot.innerHTML = `
             <div class="card article-header-card">
                 <div class="card-body">
@@ -121,11 +169,29 @@ class ArticleHeaderCard extends BaseComponent {
                             <span class="meta-value">${comment_count || 0}</span>
                         </div>
                     </div>
+                    
+                    ${showToolbar ? `
+                        <div class="article-toolbar">
+                            <button class="btn btn-primary btn-sm" id="edit-article-btn">
+                                <i class="icon-edit"></i>
+                                修改文章
+                            </button>
+                            <button class="btn btn-danger btn-sm" id="delete-article-btn">
+                                <i class="icon-trash"></i>
+                                删除文章
+                            </button>
+                        </div>
+                    ` : ''}
                 </div>
             </div>
         `;
 
         this.addStyles();
+        
+        // 绑定工具栏事件
+        if (showToolbar) {
+            this.bindToolbarEvents();
+        }
     }
 
     /**
@@ -134,6 +200,73 @@ class ArticleHeaderCard extends BaseComponent {
     updatePageTitle() {
         if (this.articleData && this.articleData.title) {
             document.title = `${this.articleData.title} - BlogN`;
+        }
+    }
+
+    /**
+     * 绑定工具栏事件
+     */
+    bindToolbarEvents() {
+        const editBtn = this.shadowRoot.getElementById('edit-article-btn');
+        const deleteBtn = this.shadowRoot.getElementById('delete-article-btn');
+        
+        if (editBtn) {
+            editBtn.addEventListener('click', () => this.handleEditArticle());
+        }
+        
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', () => this.handleDeleteArticle());
+        }
+    }
+
+    /**
+     * 处理修改文章
+     */
+    handleEditArticle() {
+        if (!this.articleId) {
+            this.showError('无法获取文章ID');
+            return;
+        }
+        
+        // 跳转到文章编辑页面
+        window.location.href = `/edit-article/${this.articleId}`;
+    }
+
+    /**
+     * 处理删除文章
+     */
+    async handleDeleteArticle() {
+        if (!this.articleId) {
+            this.showError('无法获取文章ID');
+            return;
+        }
+        
+        // 确认删除
+        if (!confirm('确定要删除这篇文章吗？此操作不可撤销。')) {
+            return;
+        }
+        
+        try {
+            const token = localStorage.getItem('access_token');
+            const response = await fetch(`/api/articles/${this.articleId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                // 删除成功，跳转到首页
+                alert('文章删除成功');
+                window.location.href = '/';
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || '删除失败');
+            }
+        } catch (error) {
+            this.logError('Failed to delete article', error);
+            alert('删除文章失败: ' + error.message);
         }
     }
 
@@ -205,6 +338,53 @@ class ArticleHeaderCard extends BaseComponent {
                 
                 .meta-value {
                     color: var(--gray-800);
+                }
+                
+                .article-toolbar {
+                    margin-top: 24px;
+                    padding-top: 16px;
+                    border-top: 1px solid #e5e7eb;
+                    display: flex !important;
+                    gap: 12px;
+                    justify-content: flex-end;
+                    width: 100%;
+                }
+                
+                .article-toolbar .btn {
+                    display: inline-flex !important;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 8px 16px;
+                    border: none;
+                    border-radius: 6px;
+                    font-size: 14px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    text-decoration: none;
+                    margin-left: 8px;
+                }
+                
+                .article-toolbar .btn-primary {
+                    background-color: #2563eb !important;
+                    color: white !important;
+                }
+                
+                .article-toolbar .btn-primary:hover {
+                    background-color: #1d4ed8 !important;
+                }
+                
+                .article-toolbar .btn-danger {
+                    background-color: #dc2626 !important;
+                    color: white !important;
+                }
+                
+                .article-toolbar .btn-danger:hover {
+                    background-color: #b91c1c !important;
+                }
+                
+                .article-toolbar .btn i {
+                    font-size: 14px;
                 }
             `;
             this.shadowRoot.appendChild(style);

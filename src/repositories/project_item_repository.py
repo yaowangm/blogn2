@@ -276,3 +276,20 @@ class ProjectItemRepository:
             })
         
         return articles
+    
+    async def delete(self, project_item_id: int) -> bool:
+        """
+        删除项目项
+        
+        Args:
+            project_item_id: 项目项ID
+            
+        Returns:
+            bool: 删除是否成功
+        """
+        project_item = await self.get_by_id(project_item_id)
+        if project_item:
+            await self.session.delete(project_item)
+            await self.session.commit()
+            return True
+        return False
