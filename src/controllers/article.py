@@ -306,6 +306,76 @@ async def get_article_attachments(
         raise HTTPException(status_code=500, detail=f"获取附件列表失败: {str(e)}")
 
 
+@router.put("/articles/{article_id}")
+async def update_article(
+    article_id: int,
+    article_data: Dict[str, Any],
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    更新指定文章
+    
+    权限控制：
+    - 管理员可以更新任何文章
+    - 普通用户只能更新自己的文章
+    
+    Args:
+        article_id: 文章ID
+        article_data: 文章更新数据
+        session: 数据库会话
+        current_user: 当前登录用户信息
+        
+    Returns:
+        Dict[str, str]: 更新结果
+        
+    Raises:
+        HTTPException: 当文章不存在或无权限时
+    """
+    project_item_repo = ProjectItemRepository(session)
+    
+    try:
+        # 获取文章信息
+        article = await project_item_repo.get_by_id(article_id)
+        if not article:
+            raise HTTPException(status_code=404, detail="文章不存在")
+        
+        # 权限检查：管理员可以更新任何文章，普通用户只能更新自己的文章
+        if current_user.get("state") != 10 and current_user.get("id") != article.userid:
+            raise HTTPException(status_code=403, detail="无权限修改该文章")
+        
+        # 更新文章数据
+        update_data = {
+            "name": article_data.get("name"),
+            "comment": article_data.get("comment"),
+            "itemtype": article_data.get("itemtype", 1),
+            "folderid": article_data.get("folderid"),
+            "status": article_data.get("status", 1),
+            "allowpost": article_data.get("allowpost", 1),
+            "attachment": article_data.get("attachment"),
+            "updatetime": article_data.get("updatetime"),
+            "lastmodifytime": article_data.get("lastmodifytime")
+        }
+        
+        # 移除None值
+        update_data = {k: v for k, v in update_data.items() if v is not None}
+        
+        updated_article = await project_item_repo.update(article_id, **update_data)
+        if not updated_article:
+            raise HTTPException(status_code=500, detail="更新文章失败")
+        
+        # 失效相关缓存
+        await clear_article_detail_cache(article_id)
+        await clear_article_comments_cache(article_id)
+        
+        return {"message": "文章更新成功"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"更新文章失败: {str(e)}")
+
+
 @router.delete("/articles/{article_id}")
 async def delete_article(
     article_id: int,

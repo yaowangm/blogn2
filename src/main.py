@@ -308,6 +308,22 @@ async def create_post_page(project_id: int):
     return FileResponse("src/static/create-post.html")
 
 
+@app.get("/edit-article/{article_id}")
+async def edit_article_page(article_id: int):
+    """
+    编辑博客文章页面路由
+    
+    返回编辑博客文章的页面HTML文件。
+    
+    Args:
+        article_id: 文章ID
+        
+    Returns:
+        FileResponse: 编辑博客文章页面HTML文件
+    """
+    return FileResponse("src/static/edit-article.html")
+
+
 @app.get("/profile")
 @app.get("/profile/{user_id}")
 async def profile_page(user_id: int = None):

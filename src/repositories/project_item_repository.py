@@ -277,6 +277,27 @@ class ProjectItemRepository:
         
         return articles
     
+    async def update(self, project_item_id: int, **kwargs) -> Optional[ProjectItem]:
+        """
+        更新项目项
+        
+        Args:
+            project_item_id: 项目项ID
+            **kwargs: 要更新的字段
+            
+        Returns:
+            Optional[ProjectItem]: 更新后的项目项对象或None
+        """
+        project_item = await self.get_by_id(project_item_id)
+        if project_item:
+            for key, value in kwargs.items():
+                if hasattr(project_item, key):
+                    setattr(project_item, key, value)
+            await self.session.commit()
+            await self.session.refresh(project_item)
+            return project_item
+        return None
+
     async def delete(self, project_item_id: int) -> bool:
         """
         删除项目项
