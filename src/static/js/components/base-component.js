@@ -188,7 +188,7 @@ class BaseComponent extends HTMLElement {
     /**
      * 获取项目ID
      * 统一处理博客页面和文章页面的项目ID获取
-     * 支持 /blog/{project_id} 和 /article/{article_id} 两种URL格式
+     * 支持 /blog/{project_id}、/article/{article_id} 和 /edit-article/{article_id} 三种URL格式
      */
     getProjectId() {
         const path = window.location.pathname;
@@ -207,24 +207,47 @@ class BaseComponent extends HTMLElement {
             return null;
         }
         
+        // 尝试从编辑文章页面URL获取文章ID
+        const editArticleMatch = path.match(/\/edit-article\/(\d+)/);
+        if (editArticleMatch) {
+            // 在编辑文章页面，我们需要从文章ID获取项目ID
+            // 这里返回null，让组件知道当前在编辑文章页面
+            return null;
+        }
+        
         return null;
     }
 
     /**
      * 获取文章ID
      * 从URL中获取文章ID
+     * 支持 /article/{article_id} 和 /edit-article/{article_id} 两种URL格式
      */
     getArticleId() {
         const path = window.location.pathname;
+        
+        // 尝试从文章页面URL获取文章ID
         const articleMatch = path.match(/\/article\/(\d+)/);
-        return articleMatch ? parseInt(articleMatch[1]) : null;
+        if (articleMatch) {
+            return parseInt(articleMatch[1]);
+        }
+        
+        // 尝试从编辑文章页面URL获取文章ID
+        const editArticleMatch = path.match(/\/edit-article\/(\d+)/);
+        if (editArticleMatch) {
+            return parseInt(editArticleMatch[1]);
+        }
+        
+        return null;
     }
 
     /**
      * 检查当前是否在文章页面
+     * 包括文章详情页面和编辑文章页面
      */
     isArticlePage() {
-        return window.location.pathname.includes('/article/');
+        const path = window.location.pathname;
+        return path.includes('/article/') || path.includes('/edit-article/');
     }
 }
 
