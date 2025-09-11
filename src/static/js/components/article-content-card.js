@@ -648,8 +648,9 @@ class ArticleContentCard extends BaseComponent {
                 }
 
                 .article-content pre {
-                    background-color: var(--gray-900);
-                    color: var(--gray-100);
+                    background-color: #ffffff;
+                    color: #333333;
+                    border: 1px solid #e0e0e0;
                     padding: var(--spacing-4);
                     border-radius: var(--radius-md);
                     overflow-x: auto;
