@@ -1223,7 +1223,7 @@ class CreatePostForm extends BaseComponent {
                     color: var(--gray-800);
                     padding: 2px 4px;
                     border-radius: var(--radius-sm);
-                    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                    font-family: 'Consolas', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
                     font-size: 0.9em;
                 }
 
@@ -1235,7 +1235,7 @@ class CreatePostForm extends BaseComponent {
                     border-radius: var(--radius-md);
                     overflow-x: auto;
                     margin: var(--spacing-4) 0;
-                    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                    font-family: 'Consolas', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
                     font-size: 0.9em;
                     line-height: 1.5;
                 }
