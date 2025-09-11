@@ -1018,6 +1018,7 @@ class EditPostForm extends BaseComponent {
                 }
                 
                 @import url('/static/css/common-components.css');
+                @import url('/static/css/components.css');
                 
                 .card {
                     background: var(--white);
@@ -1159,6 +1160,7 @@ class EditPostForm extends BaseComponent {
                 }
                 
                 @import url('/static/css/common-components.css');
+                @import url('/static/css/components.css');
                 
                 .card {
                     background: var(--white);

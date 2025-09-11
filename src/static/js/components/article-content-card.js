@@ -553,6 +553,7 @@ class ArticleContentCard extends BaseComponent {
             const style = document.createElement('style');
             style.textContent = `
                 @import url('/static/css/common-components.css');
+                @import url('/static/css/components.css');
                 
                 .article-content {
                     line-height: 1.8;
