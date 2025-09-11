@@ -195,7 +195,8 @@ class BlogListCard extends BaseComponent {
                 // 安全处理所有文本字段，防止HTML注入和XSS攻击
                 const safeTitle = escapeHtml(title);
                 const safeAuthor = escapeHtml(author);
-                const safeExcerpt = escapeHtml(excerpt);
+                // 移除Markdown标记，显示纯文本摘要
+                const safeExcerpt = escapeHtml(this.stripMarkdown(excerpt));
                 const safeBlogName = post.blog_name ? escapeHtml(post.blog_name) : '';
                 const safeTime = escapeHtml(time || '未知时间');
                 

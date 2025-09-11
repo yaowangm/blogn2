@@ -392,6 +392,49 @@ class BaseComponent extends HTMLElement {
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
     }
+
+    /**
+     * 移除Markdown标记，返回纯文本
+     * 用于在摘要列表中显示纯文本内容
+     */
+    stripMarkdown(text) {
+        if (typeof text !== 'string') {
+            return '';
+        }
+        
+        return text
+            // 移除标题标记
+            .replace(/^#{1,6}\s+/gm, '')
+            // 移除粗体和斜体标记
+            .replace(/\*\*([^*]+)\*\*/g, '$1')
+            .replace(/\*([^*]+)\*/g, '$1')
+            .replace(/__([^_]+)__/g, '$1')
+            .replace(/_([^_]+)_/g, '$1')
+            // 移除删除线标记
+            .replace(/~~([^~]+)~~/g, '$1')
+            // 移除行内代码标记
+            .replace(/`([^`]+)`/g, '$1')
+            // 移除代码块标记
+            .replace(/```[\s\S]*?```/g, '')
+            .replace(/~~~[\s\S]*?~~~/g, '')
+            // 移除链接标记，保留链接文本
+            .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+            // 移除图片标记
+            .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+            // 移除引用标记
+            .replace(/^>\s*/gm, '')
+            // 移除列表标记
+            .replace(/^[\s]*[-*+]\s+/gm, '')
+            .replace(/^[\s]*\d+\.\s+/gm, '')
+            // 移除水平线
+            .replace(/^[-*_]{3,}$/gm, '')
+            // 移除表格标记
+            .replace(/\|/g, ' ')
+            // 移除多余的空白字符
+            .replace(/\n\s*\n/g, '\n')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
 }
 
 // 注册基础组件（不直接使用，仅作为基类）
