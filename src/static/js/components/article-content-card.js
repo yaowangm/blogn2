@@ -107,8 +107,22 @@ class ArticleContentCard extends BaseComponent {
         }
 
         try {
+            // 检查marked.js是否可用
+            const markedParser = typeof marked !== 'undefined' ? marked : window.marked;
+            if (!markedParser) {
+                console.warn('marked.js not available, using fallback formatting');
+                return this.formatContentFallback(content);
+            }
+
+            // 配置marked.js选项（与预览功能保持一致）
+            const options = {
+                breaks: true,  // 支持换行符
+                gfm: true,     // 启用GitHub风格的Markdown
+                pedantic: false
+            };
+            
             // 使用marked.js解析Markdown
-            const html = marked.parse(content);
+            const html = markedParser.parse(content, options);
             
             // 对解析后的HTML进行安全过滤
             const safeHtml = this.sanitizeHtml(html);
