@@ -1388,6 +1388,152 @@ class EditPostForm extends BaseComponent {
                     min-height: 350px;
                 }
 
+                /* 确保预览内容使用Markdown样式 */
+                .preview-content.markdown-content {
+                    line-height: 1.6;
+                    color: var(--gray-800);
+                }
+
+                .preview-content.markdown-content h1,
+                .preview-content.markdown-content h2,
+                .preview-content.markdown-content h3,
+                .preview-content.markdown-content h4,
+                .preview-content.markdown-content h5,
+                .preview-content.markdown-content h6 {
+                    margin: var(--spacing-6) 0 var(--spacing-4) 0;
+                    font-weight: 600;
+                    line-height: 1.3;
+                    color: var(--gray-900);
+                }
+
+                .preview-content.markdown-content h1 {
+                    font-size: 1.875rem;
+                    border-bottom: 2px solid var(--gray-200);
+                    padding-bottom: var(--spacing-2);
+                }
+
+                .preview-content.markdown-content h2 {
+                    font-size: 1.5rem;
+                    border-bottom: 1px solid var(--gray-200);
+                    padding-bottom: var(--spacing-1);
+                }
+
+                .preview-content.markdown-content h3 {
+                    font-size: 1.25rem;
+                }
+
+                .preview-content.markdown-content h4 {
+                    font-size: 1.125rem;
+                }
+
+                .preview-content.markdown-content h5 {
+                    font-size: 1rem;
+                }
+
+                .preview-content.markdown-content h6 {
+                    font-size: 0.875rem;
+                    color: var(--gray-600);
+                }
+
+                .preview-content.markdown-content p {
+                    margin: var(--spacing-4) 0;
+                }
+
+                .preview-content.markdown-content ul,
+                .preview-content.markdown-content ol {
+                    margin: var(--spacing-4) 0;
+                    padding-left: var(--spacing-6);
+                }
+
+                .preview-content.markdown-content li {
+                    margin: var(--spacing-2) 0;
+                }
+
+                .preview-content.markdown-content blockquote {
+                    margin: var(--spacing-4) 0;
+                    padding: var(--spacing-4);
+                    border-left: 4px solid var(--gray-300);
+                    background-color: var(--gray-50);
+                    color: var(--gray-700);
+                    font-style: italic;
+                }
+
+                .preview-content.markdown-content blockquote p {
+                    margin-bottom: 0;
+                }
+
+                .preview-content.markdown-content code {
+                    background-color: var(--gray-100);
+                    color: var(--gray-800);
+                    padding: 2px 4px;
+                    border-radius: var(--radius-sm);
+                    font-family: 'Consolas', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+                    font-size: 0.9em;
+                }
+
+                .preview-content.markdown-content pre {
+                    background-color: #ffffff;
+                    color: #333333;
+                    border: 1px solid #e0e0e0;
+                    padding: var(--spacing-4);
+                    border-radius: var(--radius-md);
+                    overflow-x: auto;
+                    margin: var(--spacing-4) 0;
+                    font-family: 'Consolas', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+                    font-size: 0.9em;
+                    line-height: 1.5;
+                }
+
+                .preview-content.markdown-content pre code {
+                    background-color: transparent;
+                    color: inherit;
+                    padding: 0;
+                    border-radius: 0;
+                    font-family: inherit;
+                }
+
+                .preview-content.markdown-content table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: var(--spacing-4) 0;
+                }
+
+                .preview-content.markdown-content th,
+                .preview-content.markdown-content td {
+                    border: 1px solid var(--gray-300);
+                    padding: var(--spacing-3);
+                    text-align: left;
+                }
+
+                .preview-content.markdown-content th {
+                    background-color: var(--gray-100);
+                    font-weight: 600;
+                }
+
+                .preview-content.markdown-content a {
+                    color: var(--primary-600);
+                    text-decoration: none;
+                }
+
+                .preview-content.markdown-content a:hover {
+                    color: var(--primary-700);
+                    text-decoration: underline;
+                }
+
+                .preview-content.markdown-content img {
+                    max-width: 100%;
+                    height: auto;
+                    border-radius: var(--radius-md);
+                    margin: var(--spacing-4) 0;
+                }
+
+                .preview-content.markdown-content hr {
+                    border: none;
+                    height: 1px;
+                    background-color: var(--gray-300);
+                    margin: var(--spacing-6) 0;
+                }
+
 
                 .preview-content .no-content {
                     color: var(--gray-500);
