@@ -160,11 +160,19 @@ class ArticleContentCard extends BaseComponent {
             return '';
         }
 
-        // 创建临时DOM元素进行过滤
+        // 使用更简单的方法：先清理危险内容，再过滤标签
+        let cleanHtml = html;
+        
+        // 移除危险的脚本和事件
+        cleanHtml = cleanHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+        cleanHtml = cleanHtml.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '');
+        cleanHtml = cleanHtml.replace(/javascript:/gi, '');
+        
+        // 创建临时DOM元素
         const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = html;
-
-        // 允许的HTML标签和属性
+        tempDiv.innerHTML = cleanHtml;
+        
+        // 允许的HTML标签
         const allowedTags = [
             'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'del', 'strike',
             'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
@@ -175,22 +183,10 @@ class ArticleContentCard extends BaseComponent {
             'hr', 'div', 'span'
         ];
 
-        const allowedAttributes = {
-            'a': ['href', 'title', 'target', 'rel'],
-            'img': ['src', 'alt', 'title', 'width', 'height'],
-            'table': ['class'],
-            'th': ['class', 'colspan', 'rowspan'],
-            'td': ['class', 'colspan', 'rowspan'],
-            'div': ['class'],
-            'span': ['class'],
-            'pre': ['class'],
-            'code': ['class']
-        };
-
         // 递归过滤节点
         const filterNode = (node) => {
             if (node.nodeType === Node.TEXT_NODE) {
-                return node;
+                return node.cloneNode(true);
             }
 
             if (node.nodeType === Node.ELEMENT_NODE) {
@@ -198,37 +194,33 @@ class ArticleContentCard extends BaseComponent {
                 
                 // 检查标签是否被允许
                 if (!allowedTags.includes(tagName)) {
-                    // 如果不允许，替换为文本内容
-                    const textNode = document.createTextNode(node.textContent);
-                    return textNode;
+                    // 如果不允许，返回文本内容
+                    return document.createTextNode(node.textContent);
                 }
 
                 // 创建新的元素
                 const newElement = document.createElement(tagName);
 
-                // 复制允许的属性
-                const allowedAttrs = allowedAttributes[tagName] || [];
+                // 复制安全的属性
                 for (const attr of node.attributes) {
-                    if (allowedAttrs.includes(attr.name)) {
-                        // 对href属性进行特殊处理
-                        if (attr.name === 'href') {
+                    const attrName = attr.name.toLowerCase();
+                    if (['href', 'src', 'alt', 'title', 'class', 'id'].includes(attrName)) {
+                        if (attrName === 'href') {
                             const href = attr.value;
                             if (this.isValidUrl(href)) {
                                 newElement.setAttribute('href', href);
-                                // 确保外部链接有安全属性
                                 if (href.startsWith('http') && !href.includes(window.location.hostname)) {
                                     newElement.setAttribute('target', '_blank');
                                     newElement.setAttribute('rel', 'noopener noreferrer');
                                 }
                             }
-                        } else if (attr.name === 'src' && tagName === 'img') {
-                            // 对图片src进行安全处理
+                        } else if (attrName === 'src') {
                             const src = attr.value;
                             if (this.isValidImageSrc(src)) {
                                 newElement.setAttribute('src', src);
                             }
                         } else {
-                            newElement.setAttribute(attr.name, this.escapeHtml(attr.value));
+                            newElement.setAttribute(attrName, this.escapeHtml(attr.value));
                         }
                     }
                 }
