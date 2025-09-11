@@ -106,6 +106,25 @@ class ArticleContentCard extends BaseComponent {
             return '<p class="no-content">暂无内容</p>';
         }
 
+        try {
+            // 使用marked.js解析Markdown
+            const html = marked.parse(content);
+            
+            // 对解析后的HTML进行安全过滤
+            const safeHtml = this.sanitizeHtml(html);
+            
+            return safeHtml;
+        } catch (error) {
+            this.logError('Markdown parsing failed', error);
+            // 如果Markdown解析失败，回退到原始文本处理
+            return this.formatContentFallback(content);
+        }
+    }
+
+    /**
+     * 回退的内容格式化方法（当Markdown解析失败时使用）
+     */
+    formatContentFallback(content) {
         // 首先对内容进行HTML转义，防止XSS攻击
         const escapedContent = this.escapeHtml(content);
 
@@ -117,6 +136,148 @@ class ArticleContentCard extends BaseComponent {
         }
 
         return paragraphs.map(p => `<p>${this.processTextWithLinks(p)}</p>`).join('');
+    }
+
+    /**
+     * 安全的HTML过滤，防止XSS攻击
+     */
+    sanitizeHtml(html) {
+        if (!html || typeof html !== 'string') {
+            return '';
+        }
+
+        // 创建临时DOM元素进行过滤
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+
+        // 允许的HTML标签和属性
+        const allowedTags = [
+            'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'del', 'strike',
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            'ul', 'ol', 'li',
+            'blockquote', 'pre', 'code',
+            'a', 'img',
+            'table', 'thead', 'tbody', 'tr', 'th', 'td',
+            'hr', 'div', 'span'
+        ];
+
+        const allowedAttributes = {
+            'a': ['href', 'title', 'target', 'rel'],
+            'img': ['src', 'alt', 'title', 'width', 'height'],
+            'table': ['class'],
+            'th': ['class', 'colspan', 'rowspan'],
+            'td': ['class', 'colspan', 'rowspan'],
+            'div': ['class'],
+            'span': ['class'],
+            'pre': ['class'],
+            'code': ['class']
+        };
+
+        // 递归过滤节点
+        const filterNode = (node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                return node;
+            }
+
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                const tagName = node.tagName.toLowerCase();
+                
+                // 检查标签是否被允许
+                if (!allowedTags.includes(tagName)) {
+                    // 如果不允许，替换为文本内容
+                    const textNode = document.createTextNode(node.textContent);
+                    return textNode;
+                }
+
+                // 创建新的元素
+                const newElement = document.createElement(tagName);
+
+                // 复制允许的属性
+                const allowedAttrs = allowedAttributes[tagName] || [];
+                for (const attr of node.attributes) {
+                    if (allowedAttrs.includes(attr.name)) {
+                        // 对href属性进行特殊处理
+                        if (attr.name === 'href') {
+                            const href = attr.value;
+                            if (this.isValidUrl(href)) {
+                                newElement.setAttribute('href', href);
+                                // 确保外部链接有安全属性
+                                if (href.startsWith('http') && !href.includes(window.location.hostname)) {
+                                    newElement.setAttribute('target', '_blank');
+                                    newElement.setAttribute('rel', 'noopener noreferrer');
+                                }
+                            }
+                        } else if (attr.name === 'src' && tagName === 'img') {
+                            // 对图片src进行安全处理
+                            const src = attr.value;
+                            if (this.isValidImageSrc(src)) {
+                                newElement.setAttribute('src', src);
+                            }
+                        } else {
+                            newElement.setAttribute(attr.name, this.escapeHtml(attr.value));
+                        }
+                    }
+                }
+
+                // 递归处理子节点
+                for (const child of node.childNodes) {
+                    const filteredChild = filterNode(child);
+                    if (filteredChild) {
+                        newElement.appendChild(filteredChild);
+                    }
+                }
+
+                return newElement;
+            }
+
+            return null;
+        };
+
+        // 过滤所有子节点
+        const filteredNodes = [];
+        for (const child of tempDiv.childNodes) {
+            const filteredChild = filterNode(child);
+            if (filteredChild) {
+                filteredNodes.push(filteredChild);
+            }
+        }
+
+        // 创建新的容器
+        const newContainer = document.createElement('div');
+        filteredNodes.forEach(node => newContainer.appendChild(node));
+
+        return newContainer.innerHTML;
+    }
+
+    /**
+     * 验证图片src是否安全
+     */
+    isValidImageSrc(src) {
+        if (!src || typeof src !== 'string') {
+            return false;
+        }
+
+        // 允许相对路径和绝对路径
+        if (src.startsWith('/') || src.startsWith('./') || src.startsWith('../')) {
+            return true;
+        }
+
+        // 允许http/https链接
+        if (src.startsWith('http://') || src.startsWith('https://')) {
+            try {
+                const url = new URL(src);
+                return url.protocol === 'http:' || url.protocol === 'https:';
+            } catch {
+                return false;
+            }
+        }
+
+        // 允许data URL（base64图片）
+        if (src.startsWith('data:image/')) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -399,6 +560,172 @@ class ArticleContentCard extends BaseComponent {
                 
                 .article-content p:last-child {
                     margin-bottom: 0;
+                }
+
+                /* Markdown样式 */
+                .article-content h1,
+                .article-content h2,
+                .article-content h3,
+                .article-content h4,
+                .article-content h5,
+                .article-content h6 {
+                    margin-top: var(--spacing-6);
+                    margin-bottom: var(--spacing-4);
+                    font-weight: 600;
+                    line-height: 1.3;
+                    color: var(--gray-900);
+                }
+
+                .article-content h1 {
+                    font-size: var(--font-size-2xl);
+                    border-bottom: 2px solid var(--gray-200);
+                    padding-bottom: var(--spacing-2);
+                }
+
+                .article-content h2 {
+                    font-size: var(--font-size-xl);
+                    border-bottom: 1px solid var(--gray-200);
+                    padding-bottom: var(--spacing-1);
+                }
+
+                .article-content h3 {
+                    font-size: var(--font-size-lg);
+                }
+
+                .article-content h4 {
+                    font-size: var(--font-size-base);
+                }
+
+                .article-content h5,
+                .article-content h6 {
+                    font-size: var(--font-size-sm);
+                }
+
+                .article-content ul,
+                .article-content ol {
+                    margin: var(--spacing-4) 0;
+                    padding-left: var(--spacing-6);
+                }
+
+                .article-content li {
+                    margin-bottom: var(--spacing-2);
+                }
+
+                .article-content ul li {
+                    list-style-type: disc;
+                }
+
+                .article-content ol li {
+                    list-style-type: decimal;
+                }
+
+                .article-content blockquote {
+                    margin: var(--spacing-4) 0;
+                    padding: var(--spacing-4) var(--spacing-5);
+                    border-left: 4px solid var(--primary-color);
+                    background-color: var(--gray-50);
+                    color: var(--gray-700);
+                    font-style: italic;
+                }
+
+                .article-content blockquote p {
+                    margin-bottom: 0;
+                }
+
+                .article-content code {
+                    background-color: var(--gray-100);
+                    color: var(--gray-800);
+                    padding: 2px 4px;
+                    border-radius: var(--radius-sm);
+                    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                    font-size: 0.9em;
+                }
+
+                .article-content pre {
+                    background-color: var(--gray-900);
+                    color: var(--gray-100);
+                    padding: var(--spacing-4);
+                    border-radius: var(--radius-md);
+                    overflow-x: auto;
+                    margin: var(--spacing-4) 0;
+                    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                    font-size: 0.9em;
+                    line-height: 1.5;
+                }
+
+                .article-content pre code {
+                    background-color: transparent;
+                    color: inherit;
+                    padding: 0;
+                    border-radius: 0;
+                }
+
+                .article-content table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: var(--spacing-4) 0;
+                    border: 1px solid var(--gray-200);
+                    border-radius: var(--radius-md);
+                    overflow: hidden;
+                }
+
+                .article-content th,
+                .article-content td {
+                    padding: var(--spacing-3);
+                    text-align: left;
+                    border-bottom: 1px solid var(--gray-200);
+                }
+
+                .article-content th {
+                    background-color: var(--gray-50);
+                    font-weight: 600;
+                    color: var(--gray-900);
+                }
+
+                .article-content tr:last-child td {
+                    border-bottom: none;
+                }
+
+                .article-content hr {
+                    border: none;
+                    height: 1px;
+                    background-color: var(--gray-200);
+                    margin: var(--spacing-6) 0;
+                }
+
+                .article-content a {
+                    color: var(--primary-color);
+                    text-decoration: none;
+                    transition: color var(--transition-fast);
+                }
+
+                .article-content a:hover {
+                    color: var(--primary-hover);
+                    text-decoration: underline;
+                }
+
+                .article-content img {
+                    max-width: 100%;
+                    height: auto;
+                    border-radius: var(--radius-md);
+                    margin: var(--spacing-4) 0;
+                    box-shadow: var(--shadow-sm);
+                }
+
+                .article-content strong,
+                .article-content b {
+                    font-weight: 600;
+                }
+
+                .article-content em,
+                .article-content i {
+                    font-style: italic;
+                }
+
+                .article-content del,
+                .article-content s {
+                    text-decoration: line-through;
+                    color: var(--gray-500);
                 }
                 
                 .article-attachment {

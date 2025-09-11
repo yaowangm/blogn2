@@ -22,6 +22,7 @@ class CreatePostForm extends BaseComponent {
         };
         this.uploadedImage = null; // 上传的第一张图片信息
         this.uploadedImages = []; // 上传的多张图片信息
+        this.previewMode = false; // 预览模式状态
     }
 
     async connectedCallback() {
@@ -81,6 +82,279 @@ class CreatePostForm extends BaseComponent {
 
     handleInputChange(field, value) {
         this.formData[field] = value;
+        
+        // 如果正在预览模式且内容发生变化，更新预览
+        if (field === 'comment' && this.previewMode) {
+            this.updatePreview();
+        }
+    }
+
+    /**
+     * 切换预览模式
+     */
+    togglePreview() {
+        this.previewMode = !this.previewMode;
+        
+        const editor = this.shadowRoot.querySelector('.content-editor');
+        const preview = this.shadowRoot.querySelector('.content-preview');
+        const previewText = this.shadowRoot.querySelector('.preview-text');
+        const editText = this.shadowRoot.querySelector('.edit-text');
+        
+        if (this.previewMode) {
+            // 切换到预览模式
+            editor.style.display = 'none';
+            preview.style.display = 'block';
+            previewText.style.display = 'none';
+            editText.style.display = 'inline';
+            this.updatePreview();
+        } else {
+            // 切换到编辑模式
+            editor.style.display = 'block';
+            preview.style.display = 'none';
+            previewText.style.display = 'inline';
+            editText.style.display = 'none';
+        }
+    }
+
+    /**
+     * 更新预览内容
+     */
+    updatePreview() {
+        const previewContent = this.shadowRoot.querySelector('.preview-content');
+        const content = this.formData.comment || '';
+        
+        if (!previewContent) {
+            console.error('preview-content element not found!');
+            return;
+        }
+        
+        if (!content.trim()) {
+            previewContent.innerHTML = '<p class="no-content">暂无内容</p>';
+            return;
+        }
+        
+        // 检查marked.js是否可用
+        if (typeof marked === 'undefined' && typeof window.marked === 'undefined') {
+            console.error('marked.js is not available');
+            previewContent.innerHTML = '<p style="color: red;">错误：Markdown解析库未加载，请刷新页面重试</p>';
+            return;
+        }
+        
+        try {
+            // 使用marked.js解析Markdown，优先使用全局的marked对象
+            const markedParser = typeof marked !== 'undefined' ? marked : window.marked;
+            
+            // 配置marked.js选项
+            const options = {
+                breaks: true,  // 支持换行符
+                gfm: true,     // 启用GitHub风格的Markdown
+                pedantic: false
+            };
+            
+            const html = markedParser.parse(content, options);
+            
+            // 对解析后的HTML进行安全过滤
+            const safeHtml = this.sanitizeHtml(html);
+            
+            previewContent.innerHTML = safeHtml;
+        } catch (error) {
+            console.error('Markdown parsing failed in preview', error);
+            this.logError('Markdown parsing failed in preview', error);
+            // 如果Markdown解析失败，显示原始文本
+            previewContent.innerHTML = `<pre>${this.escapeHtml(content)}</pre>`;
+        }
+    }
+
+    /**
+     * 安全的HTML过滤，防止XSS攻击
+     */
+    sanitizeHtml(html) {
+        if (!html || typeof html !== 'string') {
+            return '';
+        }
+
+        // 使用更简单的方法：先清理危险内容，再过滤标签
+        let cleanHtml = html;
+        
+        // 移除危险的脚本和事件
+        cleanHtml = cleanHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+        cleanHtml = cleanHtml.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '');
+        cleanHtml = cleanHtml.replace(/javascript:/gi, '');
+        
+        // 创建临时DOM元素
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = cleanHtml;
+        
+        // 允许的HTML标签
+        const allowedTags = [
+            'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'del', 'strike',
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            'ul', 'ol', 'li',
+            'blockquote', 'pre', 'code',
+            'a', 'img',
+            'table', 'thead', 'tbody', 'tr', 'th', 'td',
+            'hr', 'div', 'span'
+        ];
+
+        // 递归过滤节点
+        const filterNode = (node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                return node.cloneNode(true);
+            }
+
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                const tagName = node.tagName.toLowerCase();
+                
+                // 检查标签是否被允许
+                if (!allowedTags.includes(tagName)) {
+                    // 如果不允许，返回文本内容
+                    return document.createTextNode(node.textContent);
+                }
+
+                // 创建新的元素
+                const newElement = document.createElement(tagName);
+
+                // 复制安全的属性
+                for (const attr of node.attributes) {
+                    const attrName = attr.name.toLowerCase();
+                    if (['href', 'src', 'alt', 'title', 'class', 'id'].includes(attrName)) {
+                        if (attrName === 'href') {
+                            const href = attr.value;
+                            if (this.isValidUrl(href)) {
+                                newElement.setAttribute('href', href);
+                                if (href.startsWith('http') && !href.includes(window.location.hostname)) {
+                                    newElement.setAttribute('target', '_blank');
+                                    newElement.setAttribute('rel', 'noopener noreferrer');
+                                }
+                            }
+                        } else if (attrName === 'src') {
+                            const src = attr.value;
+                            if (this.isValidImageSrc(src)) {
+                                newElement.setAttribute('src', src);
+                            }
+                        } else {
+                            newElement.setAttribute(attrName, this.escapeHtml(attr.value));
+                        }
+                    }
+                }
+
+                // 递归处理子节点
+                for (const child of node.childNodes) {
+                    const filteredChild = filterNode(child);
+                    if (filteredChild) {
+                        newElement.appendChild(filteredChild);
+                    }
+                }
+
+                return newElement;
+            }
+
+            return null;
+        };
+
+        // 过滤所有子节点
+        const filteredNodes = [];
+        for (const child of tempDiv.childNodes) {
+            const filteredChild = filterNode(child);
+            if (filteredChild) {
+                filteredNodes.push(filteredChild);
+            }
+        }
+
+        // 创建新的容器
+        const newContainer = document.createElement('div');
+        filteredNodes.forEach(node => newContainer.appendChild(node));
+
+        return newContainer.innerHTML;
+    }
+
+    /**
+     * 验证URL是否安全
+     */
+    isValidUrl(url) {
+        try {
+            const urlObj = new URL(url);
+            
+            // 只允许http和https协议
+            if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+                return false;
+            }
+            
+            // 检查域名是否包含危险字符
+            const hostname = urlObj.hostname;
+            if (!hostname || /[<>\"'&]/.test(hostname)) {
+                return false;
+            }
+            
+            // 检查端口号是否在安全范围内
+            if (urlObj.port) {
+                const port = parseInt(urlObj.port);
+                if (port < 1 || port > 65535) {
+                    return false;
+                }
+            }
+            
+            // 检查URL长度是否合理
+            if (url.length > 2048) {
+                return false;
+            }
+            
+            // 检查是否包含可疑的JavaScript代码
+            if (/javascript:|data:|vbscript:|file:/i.test(url)) {
+                return false;
+            }
+            
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    /**
+     * 验证图片src是否安全
+     */
+    isValidImageSrc(src) {
+        if (!src || typeof src !== 'string') {
+            return false;
+        }
+
+        // 允许相对路径和绝对路径
+        if (src.startsWith('/') || src.startsWith('./') || src.startsWith('../')) {
+            return true;
+        }
+
+        // 允许http/https链接
+        if (src.startsWith('http://') || src.startsWith('https://')) {
+            try {
+                const url = new URL(src);
+                return url.protocol === 'http:' || url.protocol === 'https:';
+            } catch {
+                return false;
+            }
+        }
+
+        // 允许data URL（base64图片）
+        if (src.startsWith('data:image/')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * HTML转义
+     */
+    escapeHtml(text) {
+        if (!text || typeof text !== 'string') {
+            return '';
+        }
+        
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     async handleImageUpload(file) {
@@ -823,6 +1097,229 @@ class CreatePostForm extends BaseComponent {
                     color: var(--gray-500);
                     margin-top: var(--spacing-1);
                 }
+
+                /* 预览功能样式 */
+                .form-label-container {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: var(--spacing-2);
+                }
+
+                .preview-toggle {
+                    display: flex;
+                    align-items: center;
+                }
+
+                .btn-preview {
+                    display: inline-flex;
+                    align-items: center;
+                    padding: var(--spacing-2) var(--spacing-3);
+                    font-size: var(--font-size-xs);
+                    font-weight: 500;
+                    color: var(--primary-color);
+                    background-color: var(--white);
+                    border: 1px solid var(--primary-color);
+                    border-radius: var(--radius-sm);
+                    cursor: pointer;
+                    transition: var(--transition-fast);
+                }
+
+                .btn-preview:hover {
+                    background-color: var(--primary-color);
+                    color: var(--white);
+                }
+
+                .content-container {
+                    position: relative;
+                }
+
+                .content-preview {
+                    min-height: 400px;
+                    padding: var(--spacing-4);
+                    border: 1px solid var(--gray-300);
+                    border-radius: var(--radius-md);
+                    background-color: var(--white);
+                    font-family: inherit;
+                    line-height: 1.8;
+                    color: var(--gray-800);
+                }
+
+                .preview-content {
+                    min-height: 350px;
+                }
+
+                .preview-content h1,
+                .preview-content h2,
+                .preview-content h3,
+                .preview-content h4,
+                .preview-content h5,
+                .preview-content h6 {
+                    margin-top: var(--spacing-6);
+                    margin-bottom: var(--spacing-4);
+                    font-weight: 600;
+                    line-height: 1.3;
+                    color: var(--gray-900);
+                }
+
+                .preview-content h1 {
+                    font-size: var(--font-size-2xl);
+                    border-bottom: 2px solid var(--gray-200);
+                    padding-bottom: var(--spacing-2);
+                }
+
+                .preview-content h2 {
+                    font-size: var(--font-size-xl);
+                    border-bottom: 1px solid var(--gray-200);
+                    padding-bottom: var(--spacing-1);
+                }
+
+                .preview-content h3 {
+                    font-size: var(--font-size-lg);
+                }
+
+                .preview-content h4 {
+                    font-size: var(--font-size-base);
+                }
+
+                .preview-content h5,
+                .preview-content h6 {
+                    font-size: var(--font-size-sm);
+                }
+
+                .preview-content ul,
+                .preview-content ol {
+                    margin: var(--spacing-4) 0;
+                    padding-left: var(--spacing-6);
+                }
+
+                .preview-content li {
+                    margin-bottom: var(--spacing-2);
+                }
+
+                .preview-content ul li {
+                    list-style-type: disc;
+                }
+
+                .preview-content ol li {
+                    list-style-type: decimal;
+                }
+
+                .preview-content blockquote {
+                    margin: var(--spacing-4) 0;
+                    padding: var(--spacing-4) var(--spacing-5);
+                    border-left: 4px solid var(--primary-color);
+                    background-color: var(--gray-50);
+                    color: var(--gray-700);
+                    font-style: italic;
+                }
+
+                .preview-content blockquote p {
+                    margin-bottom: 0;
+                }
+
+                .preview-content code {
+                    background-color: var(--gray-100);
+                    color: var(--gray-800);
+                    padding: 2px 4px;
+                    border-radius: var(--radius-sm);
+                    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                    font-size: 0.9em;
+                }
+
+                .preview-content pre {
+                    background-color: var(--gray-900);
+                    color: var(--gray-100);
+                    padding: var(--spacing-4);
+                    border-radius: var(--radius-md);
+                    overflow-x: auto;
+                    margin: var(--spacing-4) 0;
+                    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                    font-size: 0.9em;
+                    line-height: 1.5;
+                }
+
+                .preview-content pre code {
+                    background-color: transparent;
+                    color: inherit;
+                    padding: 0;
+                    border-radius: 0;
+                }
+
+                .preview-content table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: var(--spacing-4) 0;
+                    border: 1px solid var(--gray-200);
+                    border-radius: var(--radius-md);
+                    overflow: hidden;
+                }
+
+                .preview-content th,
+                .preview-content td {
+                    padding: var(--spacing-3);
+                    text-align: left;
+                    border-bottom: 1px solid var(--gray-200);
+                }
+
+                .preview-content th {
+                    background-color: var(--gray-50);
+                    font-weight: 600;
+                    color: var(--gray-900);
+                }
+
+                .preview-content tr:last-child td {
+                    border-bottom: none;
+                }
+
+                .preview-content hr {
+                    border: none;
+                    height: 1px;
+                    background-color: var(--gray-200);
+                    margin: var(--spacing-6) 0;
+                }
+
+                .preview-content a {
+                    color: var(--primary-color);
+                    text-decoration: none;
+                    transition: color var(--transition-fast);
+                }
+
+                .preview-content a:hover {
+                    color: var(--primary-hover);
+                    text-decoration: underline;
+                }
+
+                .preview-content img {
+                    max-width: 100%;
+                    height: auto;
+                    border-radius: var(--radius-md);
+                    margin: var(--spacing-4) 0;
+                    box-shadow: var(--shadow-sm);
+                }
+
+                .preview-content strong,
+                .preview-content b {
+                    font-weight: 600;
+                }
+
+                .preview-content em,
+                .preview-content i {
+                    font-style: italic;
+                }
+
+                .preview-content del,
+                .preview-content s {
+                    text-decoration: line-through;
+                    color: var(--gray-500);
+                }
+
+                .preview-content .no-content {
+                    color: var(--gray-500);
+                    font-style: italic;
+                    text-align: center;
+                    padding: var(--spacing-8);
+                }
                 
                 .image-upload-container {
                     display: flex;
@@ -1018,15 +1515,28 @@ class CreatePostForm extends BaseComponent {
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label required" for="comment">文章内容</label>
-                            <textarea 
-                                id="comment" 
-                                class="form-textarea large" 
-                                placeholder="请输入文章内容..."
-                                onchange="this.getRootNode().host.handleInputChange('comment', this.value)"
-                                required
-                            >${this.formData.comment}</textarea>
-                            <div class="form-help">支持Markdown格式，可以包含图片、链接等（最多128KB）</div>
+                            <div class="form-label-container">
+                                <label class="form-label required" for="comment">文章内容</label>
+                                <div class="preview-toggle">
+                                    <button type="button" class="btn-preview" onclick="this.getRootNode().host.togglePreview()">
+                                        <span class="preview-text">预览</span>
+                                        <span class="edit-text" style="display: none;">编辑</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="content-container">
+                                <textarea 
+                                    id="comment" 
+                                    class="form-textarea large content-editor" 
+                                    placeholder="请输入文章内容..."
+                                    oninput="this.getRootNode().host.handleInputChange('comment', this.value)"
+                                    required
+                                >${this.formData.comment}</textarea>
+                                <div class="content-preview" style="display: none;">
+                                    <div class="preview-content"></div>
+                                </div>
+                            </div>
+                            <div class="form-help">支持Markdown格式，包括标题、列表、代码块、表格、链接等（最多128KB）</div>
                         </div>
 
                         <div class="form-group">
