@@ -77,6 +77,10 @@ class BaseComponent extends HTMLElement {
     /**
      * 格式化日期
      * 将ISO日期字符串格式化为可读格式
+     * 支持过去和未来日期的正确显示
+     * 
+     * @param {string} dateString - ISO日期字符串
+     * @returns {string} 格式化后的日期字符串
      */
     formatDate(dateString) {
         if (!dateString) return '';
@@ -84,7 +88,36 @@ class BaseComponent extends HTMLElement {
         const date = new Date(dateString);
         const now = new Date();
         
-        // 计算日期差（不考虑时间）
+        // 检查是否为未来日期
+        if (date > now) {
+            // 计算日期差（不考虑时间）
+            const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            const nowOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const diffDays = Math.floor((dateOnly - nowOnly) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) {
+                // 今天：显示小时和分钟
+                const diffTime = date - now;
+                const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+                const diffMinutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60));
+                
+                if (diffHours > 0) {
+                    return `${diffHours}小时后`;
+                } else if (diffMinutes > 0) {
+                    return `${diffMinutes}分钟后`;
+                } else {
+                    return '即将到来';
+                }
+            } else if (diffDays === 1) {
+                return '明天';
+            } else if (diffDays < 7) {
+                return `${diffDays}天后`;
+            } else {
+                return date.toLocaleDateString('zh-CN');
+            }
+        }
+        
+        // 过去日期的处理
         const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
         const nowOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const diffDays = Math.floor((nowOnly - dateOnly) / (1000 * 60 * 60 * 24));
