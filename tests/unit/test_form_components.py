@@ -13,6 +13,14 @@ import pytest
 from unittest.mock import patch, MagicMock
 import json
 import os
+from pathlib import Path
+
+
+def get_css_file_path():
+    """获取CSS文件路径的辅助函数"""
+    test_dir = Path(__file__).parent
+    project_root = test_dir.parent.parent
+    return project_root / "src" / "static" / "css" / "form-components.css"
 
 
 class TestFormComponentsCSS:
@@ -20,12 +28,12 @@ class TestFormComponentsCSS:
     
     def test_form_components_css_exists(self):
         """测试form-components.css文件存在"""
-        css_file = "/home/wy/blogn2/src/static/css/form-components.css"
-        assert os.path.exists(css_file), "form-components.css文件不存在"
+        css_file = get_css_file_path()
+        assert css_file.exists(), "form-components.css文件不存在"
     
     def test_form_components_css_content(self):
         """测试form-components.css文件内容"""
-        css_file = "/home/wy/blogn2/src/static/css/form-components.css"
+        css_file = get_css_file_path()
         
         with open(css_file, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -63,7 +71,7 @@ class TestFormComponentsCSS:
     
     def test_form_components_css_variables(self):
         """测试CSS变量使用"""
-        css_file = "/home/wy/blogn2/src/static/css/form-components.css"
+        css_file = get_css_file_path()
         
         with open(css_file, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -80,7 +88,7 @@ class TestFormComponentsCSS:
     
     def test_form_components_css_responsive(self):
         """测试响应式设计"""
-        css_file = "/home/wy/blogn2/src/static/css/form-components.css"
+        css_file = get_css_file_path()
         
         with open(css_file, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -94,7 +102,7 @@ class TestFormComponentsCSS:
     
     def test_form_components_css_animations(self):
         """测试动画效果"""
-        css_file = "/home/wy/blogn2/src/static/css/form-components.css"
+        css_file = get_css_file_path()
         
         with open(css_file, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -107,7 +115,7 @@ class TestFormComponentsCSS:
     
     def test_form_components_css_accessibility(self):
         """测试无障碍设计"""
-        css_file = "/home/wy/blogn2/src/static/css/form-components.css"
+        css_file = get_css_file_path()
         
         with open(css_file, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -130,7 +138,7 @@ class TestFormComponentsIntegration:
             ".error-message"
         ]
         
-        css_file = "/home/wy/blogn2/src/static/css/form-components.css"
+        css_file = get_css_file_path()
         with open(css_file, 'r', encoding='utf-8') as f:
             content = f.read()
         
@@ -144,7 +152,7 @@ class TestFormComponentsIntegration:
             ".success-message"
         ]
         
-        css_file = "/home/wy/blogn2/src/static/css/form-components.css"
+        css_file = get_css_file_path()
         with open(css_file, 'r', encoding='utf-8') as f:
             content = f.read()
         
@@ -160,7 +168,7 @@ class TestFormComponentsIntegration:
             "@keyframes spin"
         ]
         
-        css_file = "/home/wy/blogn2/src/static/css/form-components.css"
+        css_file = get_css_file_path()
         with open(css_file, 'r', encoding='utf-8') as f:
             content = f.read()
         
@@ -178,7 +186,7 @@ class TestFormComponentsIntegration:
             ".preview-content"
         ]
         
-        css_file = "/home/wy/blogn2/src/static/css/form-components.css"
+        css_file = get_css_file_path()
         with open(css_file, 'r', encoding='utf-8') as f:
             content = f.read()
         
@@ -202,7 +210,7 @@ class TestFormComponentsIntegration:
             ".btn-remove-image"
         ]
         
-        css_file = "/home/wy/blogn2/src/static/css/form-components.css"
+        css_file = get_css_file_path()
         with open(css_file, 'r', encoding='utf-8') as f:
             content = f.read()
         
@@ -235,7 +243,7 @@ class TestFormComponentsIntegration:
             ".preview-content.markdown-content hr"
         ]
         
-        css_file = "/home/wy/blogn2/src/static/css/form-components.css"
+        css_file = get_css_file_path()
         with open(css_file, 'r', encoding='utf-8') as f:
             content = f.read()
         
@@ -253,7 +261,7 @@ class TestFormComponentsIntegration:
             ".btn-preview"
         ]
         
-        css_file = "/home/wy/blogn2/src/static/css/form-components.css"
+        css_file = get_css_file_path()
         with open(css_file, 'r', encoding='utf-8') as f:
             content = f.read()
         
@@ -270,7 +278,7 @@ class TestFormComponentsIntegration:
             ".content-container"
         ]
         
-        css_file = "/home/wy/blogn2/src/static/css/form-components.css"
+        css_file = get_css_file_path()
         with open(css_file, 'r', encoding='utf-8') as f:
             content = f.read()
         

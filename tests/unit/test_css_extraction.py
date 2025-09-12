@@ -20,7 +20,10 @@ class TestCSSExtraction:
     
     def setup_method(self):
         """每个测试方法前的设置"""
-        self.css_dir = Path("/home/wy/blogn2/src/static/css")
+        # 使用相对路径，从测试文件位置计算项目根目录
+        test_dir = Path(__file__).parent
+        project_root = test_dir.parent.parent
+        self.css_dir = project_root / "src" / "static" / "css"
         self.form_components_css = self.css_dir / "form-components.css"
         self.components_css = self.css_dir / "components.css"
     
@@ -273,7 +276,10 @@ class TestCSSIntegration:
     
     def setup_method(self):
         """每个测试方法前的设置"""
-        self.css_dir = Path("/home/wy/blogn2/src/static/css")
+        # 使用相对路径，从测试文件位置计算项目根目录
+        test_dir = Path(__file__).parent
+        project_root = test_dir.parent.parent
+        self.css_dir = project_root / "src" / "static" / "css"
         self.form_components_css = self.css_dir / "form-components.css"
         self.components_css = self.css_dir / "components.css"
     
