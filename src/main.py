@@ -6,6 +6,7 @@ BlogN2 FastAPI 主应用
 
 import sys
 import os
+import tempfile
 from pathlib import Path
 from contextlib import asynccontextmanager
 
@@ -26,6 +27,11 @@ from src.routes import regkey
 # 导入缓存相关模块
 from src.utils.cache import cache_manager, cache_stats
 from src.config.cache import cache_settings, validate_cache_config
+
+
+def get_temp_dir():
+    """获取临时目录路径，兼容不同操作系统"""
+    return os.path.join(tempfile.gettempdir(), "blogn2_uploads")
 
 
 @asynccontextmanager
@@ -187,7 +193,7 @@ async def upload_file(file: UploadFile = File(...), temp: bool = False):
     
     Args:
         file: 上传的文件
-        temp: 是否为临时文件（True=上传到/tmp，False=上传到正式目录）
+        temp: 是否为临时文件（True=上传到临时目录，False=上传到正式目录）
         
     Returns:
         Dict: 包含文件信息的响应
@@ -223,8 +229,8 @@ async def upload_file(file: UploadFile = File(...), temp: bool = False):
     print(f"Generated filename: {unique_filename}")
     
     if temp:
-        # 临时文件：上传到/tmp目录
-        temp_dir = "/tmp/blogn2_uploads"
+        # 临时文件：上传到临时目录
+        temp_dir = get_temp_dir()
         os.makedirs(temp_dir, exist_ok=True)
         file_path = os.path.join(temp_dir, unique_filename)
         relative_path = f"temp/{unique_filename}"
@@ -283,7 +289,7 @@ async def serve_temp_file(filename: str):
     import os
     from fastapi import HTTPException
     
-    temp_dir = "/tmp/blogn2_uploads"
+    temp_dir = get_temp_dir()
     file_path = os.path.join(temp_dir, filename)
     
     print(f"Serving temp file - filename: {filename}, file_path: {file_path}")
@@ -316,7 +322,7 @@ async def delete_temp_file(filename: str):
     import os
     from fastapi import HTTPException
     
-    temp_dir = "/tmp/blogn2_uploads"
+    temp_dir = get_temp_dir()
     file_path = os.path.join(temp_dir, filename)
     
     print(f"Delete temp file request - filename: {filename}, file_path: {file_path}")
