@@ -288,16 +288,7 @@ class CreatePostForm extends BaseComponent {
             form.removeEventListener('submit', this.handleFormSubmit);
             
             // 绑定新的事件监听器
-            this.handleFormSubmit = (event) => {
-                event.preventDefault();
-                
-                // 防止重复提交：检查提交锁和loading状态
-                if (this.submitting || this.loading) {
-                    return;
-                }
-                
-                this.handleSubmit();
-            };
+            this.handleFormSubmit = this.createSubmitHandler(this.handleSubmit);
             form.addEventListener('submit', this.handleFormSubmit);
         } else {
             console.error('Form not found for event binding');
@@ -308,7 +299,7 @@ class CreatePostForm extends BaseComponent {
 
     async handleSubmit() {
         // 立即检查提交锁，防止重复提交
-        if (this.submitting || this.loading) {
+        if (!this.canSubmit()) {
             return;
         }
 
@@ -486,22 +477,7 @@ class CreatePostForm extends BaseComponent {
     }
 
     updateButtonState() {
-        const submitBtn = this.shadowRoot.querySelector('button[type="submit"]');
-        
-        if (submitBtn) {
-            if (this.loading || this.submitting) {
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = `
-                    <div class="loading">
-                        <div class="loading-spinner"></div>
-                        发表中...
-                    </div>
-                `;
-            } else {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '发表文章';
-            }
-        }
+        this.updateSubmitButtonState('发表中...', '发表文章');
     }
 
     updateLoadingState(loading) {
@@ -879,8 +855,8 @@ class CreatePostForm extends BaseComponent {
                             <button type="button" class="btn btn-secondary" onclick="this.getRootNode().host.handleCancel()">
                                 取消
                             </button>
-                            <button type="submit" class="btn btn-primary" ${(this.loading || this.submitting) ? 'disabled' : ''}>
-                                ${(this.loading || this.submitting) ? `
+                            <button type="submit" class="btn btn-primary" ${!this.canSubmit() ? 'disabled' : ''}>
+                                ${!this.canSubmit() ? `
                                     <div class="loading">
                                         <div class="loading-spinner"></div>
                                         发表中...

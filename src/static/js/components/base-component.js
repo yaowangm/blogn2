@@ -158,6 +158,62 @@ class BaseComponent extends HTMLElement {
     }
 
     /**
+     * 检查是否可以提交（防重复提交）
+     * 检查submitting和loading状态，防止重复提交
+     * 
+     * @returns {boolean} 是否可以提交
+     */
+    canSubmit() {
+        return !(this.submitting || this.loading);
+    }
+
+    /**
+     * 创建防重复提交的表单提交处理器
+     * 自动检查提交状态，防止重复提交
+     * 
+     * @param {Function} submitHandler - 实际的提交处理函数
+     * @returns {Function} 包装后的提交处理器
+     */
+    createSubmitHandler(submitHandler) {
+        return (event) => {
+            event.preventDefault();
+            
+            // 防止重复提交：检查提交锁和loading状态
+            if (!this.canSubmit()) {
+                return;
+            }
+            
+            submitHandler.call(this);
+        };
+    }
+
+    /**
+     * 更新提交按钮状态
+     * 根据loading和submitting状态更新按钮的禁用状态和显示内容
+     * 
+     * @param {string} loadingText - 加载时显示的文本
+     * @param {string} normalText - 正常状态显示的文本
+     */
+    updateSubmitButtonState(loadingText = '处理中...', normalText = '提交') {
+        const submitBtn = this.shadowRoot.querySelector('button[type="submit"]');
+        
+        if (submitBtn) {
+            if (this.loading || this.submitting) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        ${loadingText}
+                    </div>
+                `;
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = normalText;
+            }
+        }
+    }
+
+    /**
      * HTML转义函数，防止XSS攻击
      * @param {string} text - 需要转义的文本
      * @returns {string} 转义后的安全文本
