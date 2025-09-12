@@ -493,44 +493,55 @@ class BaseComponent extends HTMLElement {
     /**
      * 移除Markdown标记，返回纯文本
      * 用于在摘要列表中显示纯文本内容
+     * 高性能版本：使用预编译正则表达式和优化的处理流程
      */
     stripMarkdown(text) {
         if (typeof text !== 'string') {
             return '';
         }
         
-        return text
-            // 移除标题标记
-            .replace(/^#{1,6}\s+/gm, '')
-            // 移除粗体和斜体标记
-            .replace(/\*\*([^*]+)\*\*/g, '$1')
-            .replace(/\*([^*]+)\*/g, '$1')
-            .replace(/__([^_]+)__/g, '$1')
-            .replace(/_([^_]+)_/g, '$1')
-            // 移除删除线标记
-            .replace(/~~([^~]+)~~/g, '$1')
-            // 移除行内代码标记
-            .replace(/`([^`]+)`/g, '$1')
-            // 移除代码块标记
-            .replace(/```[\s\S]*?```/g, '')
-            .replace(/~~~[\s\S]*?~~~/g, '')
-            // 移除链接标记，保留链接文本
-            .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-            // 移除图片标记
-            .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
-            // 移除引用标记
-            .replace(/^>\s*/gm, '')
-            // 移除列表标记
-            .replace(/^[\s]*[-*+]\s+/gm, '')
-            .replace(/^[\s]*\d+\.\s+/gm, '')
-            // 移除水平线
-            .replace(/^[-*_]{3,}$/gm, '')
-            // 移除表格标记
-            .replace(/\|/g, ' ')
-            // 移除多余的空白字符
-            .replace(/\n\s*\n/g, '\n')
-            .replace(/\s+/g, ' ')
+        // 预编译正则表达式（避免重复编译）
+        const patterns = {
+            // 代码块（优先处理，避免处理代码块内的Markdown）
+            codeBlocks: /```[\s\S]*?```|~~~[\s\S]*?~~~/g,
+            // 行首标记（标题、引用、列表、水平线）
+            lineStart: /^(#{1,6}\s+|>\s*|[\s]*[-*+]\s+|[\s]*\d+\.\s+|[-*_]{3,}$)/gm,
+            // 内联格式（粗体、斜体、删除线、行内代码）
+            inline: /(\*\*([^*]+)\*\*|\*([^*]+)\*|__([^_]+)__|_([^_]+)_|~~([^~]+)~~|`([^`]+)`)/g,
+            // 链接和图片
+            links: /!?\[([^\]]*)\]\([^)]+\)/g,
+            // 表格分隔符
+            table: /\|/g,
+            // 空白字符清理
+            whitespace: /\n\s*\n/g,
+            spaces: /\s+/g
+        };
+        
+        // 分步处理，减少字符串操作次数
+        let result = text;
+        
+        // 1. 移除代码块（避免处理代码块内的Markdown语法）
+        result = result.replace(patterns.codeBlocks, '');
+        
+        // 2. 处理行首标记
+        result = result.replace(patterns.lineStart, '');
+        
+        // 3. 处理内联格式（使用回调函数提取内容）
+        result = result.replace(patterns.inline, (match, p1, p2, p3, p4, p5, p6, p7) => {
+            return p2 || p3 || p4 || p5 || p6 || p7 || '';
+        });
+        
+        // 4. 处理链接和图片
+        result = result.replace(patterns.links, '$1');
+        
+        // 5. 清理表格和空白字符
+        result = result
+            .replace(patterns.table, ' ')
+            .replace(patterns.whitespace, '\n')
+            .replace(patterns.spaces, ' ')
             .trim();
+        
+        return result;
     }
 }
 
