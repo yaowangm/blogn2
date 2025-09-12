@@ -651,7 +651,8 @@ async def delete_article_images(attachment_path: str, article_id: int, session: 
     
     try:
         # 获取上传目录
-        upload_dir = os.getenv('UPLOAD_DIR', '../pic/blogn_img/upload')
+        from src.config.app import get_upload_dir
+        upload_dir = get_upload_dir()
         
         # 删除主附件图片
         if attachment_path:

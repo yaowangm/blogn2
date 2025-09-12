@@ -91,7 +91,8 @@ async def add_cache_control_headers(request, call_next):
     return response
 
 # 静态文件服务配置
-UPLOAD_BASE_PATH = "../pic/blogn_img/upload"
+from src.config.app import get_upload_dir
+UPLOAD_BASE_PATH = get_upload_dir()
 AVATAR_BASE_PATH = "../pic/blogn_img/userlogo"
 
 # 挂载静态文件目录
@@ -203,7 +204,6 @@ async def upload_file(file: UploadFile = File(...), temp: bool = False):
     from datetime import datetime
     from fastapi import HTTPException
     
-    print(f"Upload request - temp: {temp}, filename: {file.filename}, content_type: {file.content_type}")
     
     # 检查文件类型
     allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif']
