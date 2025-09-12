@@ -34,6 +34,42 @@ def get_temp_dir():
     return os.path.join(tempfile.gettempdir(), "blogn2_uploads")
 
 
+def sanitize_filename(filename):
+    """
+    清理文件名，防止路径遍历攻击
+    
+    Args:
+        filename: 原始文件名
+        
+    Returns:
+        str: 清理后的安全文件名
+        
+    Raises:
+        HTTPException: 如果文件名包含危险字符
+    """
+    if not filename:
+        raise HTTPException(status_code=400, detail="文件名不能为空")
+    
+    # 移除路径分隔符和危险字符
+    dangerous_chars = ['..', '/', '\\', ':', '*', '?', '"', '<', '>', '|']
+    for char in dangerous_chars:
+        if char in filename:
+            raise HTTPException(status_code=400, detail=f"文件名包含非法字符: {char}")
+    
+    # 移除前后空格
+    filename = filename.strip()
+    
+    # 检查文件名长度
+    if len(filename) > 255:
+        raise HTTPException(status_code=400, detail="文件名过长")
+    
+    # 检查是否为空或只包含空格
+    if not filename:
+        raise HTTPException(status_code=400, detail="文件名不能为空")
+    
+    return filename
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -205,6 +241,13 @@ async def upload_file(file: UploadFile = File(...), temp: bool = False):
     from fastapi import HTTPException
     
     
+    # 验证和清理文件名
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="文件名不能为空")
+    
+    # 清理原始文件名，防止路径遍历攻击
+    safe_filename = sanitize_filename(file.filename)
+    
     # 检查文件类型
     allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif']
     if file.content_type not in allowed_types:
@@ -219,7 +262,7 @@ async def upload_file(file: UploadFile = File(...), temp: bool = False):
         raise HTTPException(status_code=400, detail="图片大小不能超过1MB")
     
     # 生成唯一文件名
-    file_extension = os.path.splitext(file.filename)[1].lower()
+    file_extension = os.path.splitext(safe_filename)[1].lower()
     print(f"File extension: {file_extension}")
     if file_extension not in ['.jpg', '.jpeg', '.png', '.gif']:
         print(f"Invalid file extension: {file_extension}")
@@ -289,8 +332,11 @@ async def serve_temp_file(filename: str):
     import os
     from fastapi import HTTPException
     
+    # 验证文件名，防止路径遍历攻击
+    safe_filename = sanitize_filename(filename)
+    
     temp_dir = get_temp_dir()
-    file_path = os.path.join(temp_dir, filename)
+    file_path = os.path.join(temp_dir, safe_filename)
     
     print(f"Serving temp file - filename: {filename}, file_path: {file_path}")
     print(f"Directory exists: {os.path.exists(temp_dir)}")
@@ -322,8 +368,11 @@ async def delete_temp_file(filename: str):
     import os
     from fastapi import HTTPException
     
+    # 验证文件名，防止路径遍历攻击
+    safe_filename = sanitize_filename(filename)
+    
     temp_dir = get_temp_dir()
-    file_path = os.path.join(temp_dir, filename)
+    file_path = os.path.join(temp_dir, safe_filename)
     
     print(f"Delete temp file request - filename: {filename}, file_path: {file_path}")
     
