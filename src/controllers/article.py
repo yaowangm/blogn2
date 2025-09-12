@@ -1,6 +1,14 @@
 """
-文章控制器
-提供文章相关的API端点，包括文章详情、评论管理等
+文章控制器 (Article Controller)
+
+提供文章相关的API端点，包括：
+- 文章详情获取和缓存
+- 文章评论的增删改查
+- 文章附件的管理
+- 文章访问统计更新
+- 权限验证和错误处理
+
+所有接口都支持缓存以提高性能。
 """
 
 from fastapi import APIRouter, Depends, HTTPException

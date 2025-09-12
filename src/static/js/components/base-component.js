@@ -1,6 +1,14 @@
 /**
- * 基础组件类
- * 提供所有Web组件共用的基础功能
+ * 基础组件类 (BaseComponent)
+ * 
+ * 提供所有Web组件共用的基础功能，包括：
+ * - 统一的错误处理和日志记录
+ * - 通用的工具方法（HTML转义、日期格式化等）
+ * - 安全的内容过滤和验证
+ * - 统一的加载和错误状态显示
+ * - 项目ID和文章ID的获取逻辑
+ * 
+ * 所有自定义Web组件都应该继承此类以获得基础功能。
  */
 class BaseComponent extends HTMLElement {
     constructor() {

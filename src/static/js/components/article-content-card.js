@@ -1,6 +1,14 @@
 /**
- * 文章内容卡片组件
- * 显示文章的完整内容和可能的图片
+ * 文章内容卡片组件 (ArticleContentCard)
+ * 
+ * 负责显示文章的完整内容，包括：
+ * - Markdown内容的解析和渲染
+ * - 单张图片附件的显示
+ * - 多张图片附件的网格布局和模态框预览
+ * - 安全的HTML内容过滤
+ * - 响应式图片布局
+ * 
+ * 继承自BaseComponent，使用统一的工具方法。
  */
 class ArticleContentCard extends BaseComponent {
     constructor() {
@@ -153,36 +161,6 @@ class ArticleContentCard extends BaseComponent {
     }
 
 
-    /**
-     * 验证图片src是否安全
-     */
-    isValidImageSrc(src) {
-        if (!src || typeof src !== 'string') {
-            return false;
-        }
-
-        // 允许相对路径和绝对路径
-        if (src.startsWith('/') || src.startsWith('./') || src.startsWith('../')) {
-            return true;
-        }
-
-        // 允许http/https链接
-        if (src.startsWith('http://') || src.startsWith('https://')) {
-            try {
-                const url = new URL(src);
-                return url.protocol === 'http:' || url.protocol === 'https:';
-            } catch {
-                return false;
-            }
-        }
-
-        // 允许data URL（base64图片）
-        if (src.startsWith('data:image/')) {
-            return true;
-        }
-
-        return false;
-    }
 
     /**
      * 渲染所有附件（单张图片 + 多张图片）
@@ -351,63 +329,10 @@ class ArticleContentCard extends BaseComponent {
         document.body.style.overflow = ''; // 恢复背景滚动
     }
 
-    /**
-     * HTML转义
-     */
-    escapeHtml(text) {
-        if (!text || typeof text !== 'string') {
-            return '';
-        }
-        
-        return text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
 
     /**
      * 处理文本中的链接，安全地转换为可点击的链接
      */
-    isValidUrl(url) {
-        try {
-            const urlObj = new URL(url);
-            
-            // 只允许http和https协议
-            if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-                return false;
-            }
-            
-            // 检查域名是否包含危险字符
-            const hostname = urlObj.hostname;
-            if (!hostname || /[<>\"'&]/.test(hostname)) {
-                return false;
-            }
-            
-            // 检查端口号是否在安全范围内
-            if (urlObj.port) {
-                const port = parseInt(urlObj.port);
-                if (port < 1 || port > 65535) {
-                    return false;
-                }
-            }
-            
-            // 检查URL长度是否合理
-            if (url.length > 2048) {
-                return false;
-            }
-            
-            // 检查是否包含可疑的JavaScript代码
-            if (/javascript:|data:|vbscript:|file:/i.test(url)) {
-                return false;
-            }
-            
-            return true;
-        } catch (error) {
-            return false;
-        }
-    }
 
     processTextWithLinks(text) {
         if (!text || typeof text !== 'string') {
