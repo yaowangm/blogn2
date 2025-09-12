@@ -119,8 +119,9 @@ class TestArticleControllerEnhanced:
         # 执行测试
         result = await get_article_comments(
             article_id=1,
-            session=self.mock_session,
-            current_user=self.mock_user
+            page=1,
+            limit=20,
+            session=self.mock_session
         )
         
         # 验证结果
@@ -150,9 +151,8 @@ class TestArticleControllerEnhanced:
         # 执行测试
         result = await create_article_comment(
             article_id=1,
-            content="新评论",
-            session=self.mock_session,
-            current_user=self.mock_user
+            comment_data={"content": "新评论"},
+            session=self.mock_session
         )
         
         # 验证结果
@@ -174,9 +174,8 @@ class TestArticleControllerEnhanced:
         with pytest.raises(HTTPException) as exc_info:
             await create_article_comment(
                 article_id=999,
-                content="新评论",
-                session=self.mock_session,
-                current_user=self.mock_user
+                comment_data={"content": "新评论"},
+                session=self.mock_session
             )
         
         assert exc_info.value.status_code == 404
@@ -194,8 +193,7 @@ class TestArticleControllerEnhanced:
         # 执行测试
         result = await update_article(
             article_id=1,
-            title="更新后的标题",
-            content="更新后的内容",
+            article_data={"title": "更新后的标题", "content": "更新后的内容"},
             session=self.mock_session,
             current_user=self.mock_user
         )
@@ -219,8 +217,7 @@ class TestArticleControllerEnhanced:
         with pytest.raises(HTTPException) as exc_info:
             await update_article(
                 article_id=999,
-                title="更新后的标题",
-                content="更新后的内容",
+                article_data={"title": "更新后的标题", "content": "更新后的内容"},
                 session=self.mock_session,
                 current_user=self.mock_user
             )
@@ -281,8 +278,7 @@ class TestArticleControllerEnhanced:
         # 执行测试
         result = await get_article_attachments(
             article_id=1,
-            session=self.mock_session,
-            current_user=self.mock_user
+            session=self.mock_session
         )
         
         # 验证结果
@@ -391,8 +387,9 @@ class TestArticleControllerCache:
         # 执行测试
         await get_article_comments(
             article_id=1,
-            session=self.mock_session,
-            current_user=self.mock_user
+            page=1,
+            limit=20,
+            session=self.mock_session
         )
         
         # 验证缓存被调用
@@ -410,8 +407,7 @@ class TestArticleControllerCache:
         # 执行测试
         await get_article_attachments(
             article_id=1,
-            session=self.mock_session,
-            current_user=self.mock_user
+            session=self.mock_session
         )
         
         # 验证缓存被调用
@@ -481,9 +477,8 @@ class TestArticleControllerPermissions:
         with pytest.raises(HTTPException) as exc_info:
             await create_article_comment(
                 article_id=1,
-                content="新评论",
-                session=self.mock_session,
-                current_user=self.mock_anonymous_user
+                comment_data={"content": "新评论"},
+                session=self.mock_session
             )
         
         assert exc_info.value.status_code == 401

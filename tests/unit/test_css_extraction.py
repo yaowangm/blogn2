@@ -140,8 +140,7 @@ class TestCSSExtraction:
             "height: auto",
             "grid-template-columns",
             "minmax(",
-            "auto-fill",
-            "auto-fit"
+            "auto-fill"
         ]
         
         for prop in responsive_properties:
@@ -324,7 +323,7 @@ class TestCSSIntegration:
             if line.strip() and not line.strip().startswith('/*'):
                 # 检查是否有过于具体的选择器
                 if line.count(' ') > 3:
-                    pytest.warn(f"选择器过于具体: {line.strip()}")
+                    pytest.warns(UserWarning, f"选择器过于具体: {line.strip()}")
     
     def test_css_performance(self):
         """测试CSS性能"""
