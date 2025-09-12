@@ -27,6 +27,7 @@ from src.utils.cache import cache_article_detail, cache_article_comments, cache_
 from src.utils.auth_middleware import get_current_user, get_optional_current_user
 from src.utils.permission_manager import permission_manager
 from src.constants import ArticleStatus, ErrorMessages
+from src.utils.file_utils import get_temp_dir
 
 # 创建文章API路由器
 router = APIRouter(tags=["文章管理"])
@@ -383,7 +384,7 @@ async def update_article(
             try:
                 # 从临时目录移动到正式目录
                 temp_filename = new_attachment.replace("temp/", "")
-                temp_path = os.path.join("/tmp/blogn2_uploads", temp_filename)
+                temp_path = os.path.join(get_temp_dir(), temp_filename)
                 
                 if os.path.exists(temp_path):
                     # 创建按月份命名的子目录
@@ -456,7 +457,7 @@ async def update_article(
                     try:
                         # 从临时目录移动到正式目录
                         temp_filename = relative_path.replace("temp/", "")
-                        temp_path = os.path.join("/tmp/blogn2_uploads", temp_filename)
+                        temp_path = os.path.join(get_temp_dir(), temp_filename)
                         
                         if os.path.exists(temp_path):
                             # 创建按月份命名的子目录

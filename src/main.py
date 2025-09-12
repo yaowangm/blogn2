@@ -29,9 +29,7 @@ from src.utils.cache import cache_manager, cache_stats
 from src.config.cache import cache_settings, validate_cache_config
 
 
-def get_temp_dir():
-    """获取临时目录路径，兼容不同操作系统"""
-    return os.path.join(tempfile.gettempdir(), "blogn2_uploads")
+from src.utils.file_utils import get_temp_dir, validate_and_sanitize_path
 
 
 def sanitize_filename(filename):
@@ -157,38 +155,6 @@ def serve_file(file_path: str, media_type: str = None):
         raise HTTPException(status_code=404, detail="File not found")
 
 
-def validate_and_sanitize_path(base_path: str, user_path: str) -> str:
-    """
-    验证和清理路径，防止路径遍历攻击
-    
-    Args:
-        base_path: 基础路径
-        user_path: 用户提供的路径
-        
-    Returns:
-        str: 清理后的安全路径
-        
-    Raises:
-        HTTPException: 当路径不安全时抛出400错误
-    """
-    import os
-    from fastapi import HTTPException
-    
-    # 规范化路径
-    normalized_path = os.path.normpath(user_path)
-    
-    # 检查路径是否包含路径遍历攻击
-    if normalized_path.startswith('..') or normalized_path.startswith('/'):
-        raise HTTPException(status_code=400, detail="Invalid path")
-    
-    # 构建完整路径
-    full_path = os.path.join(base_path, normalized_path)
-    
-    # 确保最终路径在基础路径内
-    if not os.path.abspath(full_path).startswith(os.path.abspath(base_path)):
-        raise HTTPException(status_code=400, detail="Path traversal detected")
-    
-    return full_path
 
 
 # ==================== 文件服务路由 ====================

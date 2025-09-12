@@ -19,6 +19,7 @@ from src.utils.cache import (
 from src.utils.auth_middleware import get_current_user, get_optional_current_user
 from src.utils.permission_manager import permission_manager
 from src.constants import ArticleStatus
+from src.utils.file_utils import get_temp_dir
 
 # 创建项目API路由器
 router = APIRouter()
@@ -545,7 +546,7 @@ async def create_post(
             try:
                 # 从临时目录移动到正式目录
                 temp_filename = new_post.attachment.replace("temp/", "")
-                temp_path = os.path.join("/tmp/blogn2_uploads", temp_filename)
+                temp_path = os.path.join(get_temp_dir(), temp_filename)
                 
                 if os.path.exists(temp_path):
                     # 创建按月份命名的子目录
@@ -583,7 +584,7 @@ async def create_post(
                     try:
                         # 从临时目录移动到正式目录
                         temp_filename = relative_path.replace("temp/", "")
-                        temp_path = os.path.join("/tmp/blogn2_uploads", temp_filename)
+                        temp_path = os.path.join(get_temp_dir(), temp_filename)
                         
                         if os.path.exists(temp_path):
                             # 创建按月份命名的子目录
