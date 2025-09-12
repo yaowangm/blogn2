@@ -26,6 +26,7 @@ from src.models.post import Post
 from src.utils.cache import cache_article_detail, cache_article_comments, cache_article_attachments, clear_article_detail_cache, clear_article_comments_cache
 from src.utils.auth_middleware import get_current_user, get_optional_current_user
 from src.utils.permission_manager import permission_manager
+from src.constants import ArticleStatus, ErrorMessages
 
 # 创建文章API路由器
 router = APIRouter(tags=["文章管理"])
@@ -66,10 +67,10 @@ async def get_article_detail(
         if not article:
             raise HTTPException(status_code=404, detail="文章不存在")
         
-        # 检查文章是否已被删除（itemtype=2）
+        # 检查文章是否已被删除
         # 只有管理员可以访问已删除的文章
-        if article.itemtype == 2 and not permission_manager.can_manage_system(current_user):
-            raise HTTPException(status_code=404, detail="文章已被删除")
+        if article.itemtype == ArticleStatus.DELETED and not permission_manager.can_manage_system(current_user):
+            raise HTTPException(status_code=404, detail=ErrorMessages.ARTICLE_DELETED)
         
         # 获取作者信息
         author = None
@@ -98,7 +99,7 @@ async def get_article_detail(
             "id": article.id,
             "title": article.name,
             "content": article.comment,
-            "itemtype": article.itemtype,  # 文章状态：0=未知，1=正常，2=已删除
+            "itemtype": article.itemtype,  # 文章状态：ArticleStatus.UNKNOWN=0, ArticleStatus.NORMAL=1, ArticleStatus.DELETED=2
             "attachment": article.attachment,  # 单张图片附件
             "attachments": [  # 多张图片附件
                 {
@@ -419,7 +420,7 @@ async def update_article(
         update_data = {
             "name": article_data.get("name"),
             "comment": article_data.get("comment"),
-            "itemtype": article_data.get("itemtype", 1),
+            "itemtype": article_data.get("itemtype", ArticleStatus.NORMAL),
             "folderid": article_data.get("folderid"),
             "status": article_data.get("status", 1),
             "allowpost": article_data.get("allowpost", 1),
@@ -536,8 +537,8 @@ async def delete_article(
         if not permission_manager.can_manage_system(current_user) and current_user.get("id") != article.userid:
             raise HTTPException(status_code=403, detail="无权限删除该文章")
         
-        # 软删除文章：将itemtype设置为2
-        article.itemtype = 2
+        # 软删除文章：将itemtype设置为已删除状态
+        article.itemtype = ArticleStatus.DELETED
         session.add(article)
         
         # 更新project表：减少recordcount，更新updatetime
@@ -601,7 +602,7 @@ async def permanently_delete_article(
             raise HTTPException(status_code=404, detail="文章不存在")
         
         # 记录文章状态，用于后续统计更新
-        was_deleted = article.itemtype == 2
+        was_deleted = article.itemtype == ArticleStatus.DELETED
         
         # 删除文件系统中的图片
         if article.attachment:

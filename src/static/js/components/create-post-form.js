@@ -20,7 +20,7 @@ class CreatePostForm extends BaseComponent {
         this.formData = {
             name: '',
             comment: '',
-            itemtype: 1, // 默认为文章类型
+            itemtype: 1, // 默认为文章类型 (ArticleStatus.NORMAL)
             itemsize: 0, // 将在提交时计算
             folderid: null,
             status: 1, // 默认为正常状态

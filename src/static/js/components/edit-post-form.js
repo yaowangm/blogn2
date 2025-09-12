@@ -23,7 +23,7 @@ class EditPostForm extends BaseComponent {
         this.formData = {
             name: '',
             comment: '',
-            itemtype: 1, // 默认为文章类型
+            itemtype: 1, // 默认为文章类型 (ArticleStatus.NORMAL)
             itemsize: 0, // 将在提交时计算
             folderid: null,
             status: 1, // 默认为正常状态
@@ -116,7 +116,7 @@ class EditPostForm extends BaseComponent {
                 this.formData = {
                     name: this.originalArticleData.title || '',
                     comment: this.originalArticleData.content || '',
-                    itemtype: 1,
+                    itemtype: 1, // ArticleStatus.NORMAL
                     itemsize: this.originalArticleData.itemsize || 0,
                     folderid: this.originalArticleData.category?.id || null,
                     status: 1,

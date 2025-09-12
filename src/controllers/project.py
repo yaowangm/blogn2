@@ -18,6 +18,7 @@ from src.utils.cache import (
 )
 from src.utils.auth_middleware import get_current_user, get_optional_current_user
 from src.utils.permission_manager import permission_manager
+from src.constants import ArticleStatus
 
 # 创建项目API路由器
 router = APIRouter()
@@ -516,7 +517,7 @@ async def create_post(
             projectid=project_id,
             name=post_data["name"],
             comment=comment_content,
-            itemtype=post_data.get("itemtype", 1),
+            itemtype=post_data.get("itemtype", ArticleStatus.NORMAL),
             itemsize=itemsize,  # 使用实际的文章内容长度
             attachment=attachment,  # 使用上传的图片文件名
             linkstr=None,          # 不再使用相关链接
