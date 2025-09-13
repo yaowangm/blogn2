@@ -5,7 +5,7 @@ from src.services.metadata_service import MetadataService
 from src.utils.error_handlers import handle_api_errors
 from src.utils.dependencies import get_metadata_service
 from src.utils.cache import cache_metadata
-from src.config.app import get_blog_posts_page_size
+from src.config.app import get_blog_posts_page_size, get_max_attachments_per_article
 
 # 创建元数据API路由器
 router = APIRouter()
@@ -41,5 +41,6 @@ async def get_app_config():
         Dict[str, Any]: 包含应用配置的字典
     """
     return {
-        "blog_posts_page_size": get_blog_posts_page_size()
+        "blog_posts_page_size": get_blog_posts_page_size(),
+        "max_attachments_per_article": get_max_attachments_per_article()
     } 

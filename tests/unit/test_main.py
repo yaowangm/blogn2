@@ -6,7 +6,8 @@ import os
 from pathlib import Path
 
 # 导入main模块
-from src.main import app, serve_file, validate_and_sanitize_path, UPLOAD_BASE_PATH, AVATAR_BASE_PATH
+from src.main import app, serve_file, UPLOAD_BASE_PATH, AVATAR_BASE_PATH
+from src.utils.file_utils import validate_and_sanitize_path
 
 
 class TestMain:

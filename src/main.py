@@ -6,6 +6,7 @@ BlogN2 FastAPI 主应用
 
 import sys
 import os
+import tempfile
 from pathlib import Path
 from contextlib import asynccontextmanager
 
@@ -13,7 +14,7 @@ from contextlib import asynccontextmanager
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -26,6 +27,45 @@ from src.routes import regkey
 # 导入缓存相关模块
 from src.utils.cache import cache_manager, cache_stats
 from src.config.cache import cache_settings, validate_cache_config
+
+
+from src.utils.file_utils import get_temp_dir, validate_and_sanitize_path
+
+
+def sanitize_filename(filename):
+    """
+    清理文件名，防止路径遍历攻击
+    
+    Args:
+        filename: 原始文件名
+        
+    Returns:
+        str: 清理后的安全文件名
+        
+    Raises:
+        HTTPException: 如果文件名包含危险字符
+    """
+    if not filename:
+        raise HTTPException(status_code=400, detail="文件名不能为空")
+    
+    # 移除路径分隔符和危险字符
+    dangerous_chars = ['..', '/', '\\', ':', '*', '?', '"', '<', '>', '|']
+    for char in dangerous_chars:
+        if char in filename:
+            raise HTTPException(status_code=400, detail=f"文件名包含非法字符: {char}")
+    
+    # 移除前后空格
+    filename = filename.strip()
+    
+    # 检查文件名长度
+    if len(filename) > 255:
+        raise HTTPException(status_code=400, detail="文件名过长")
+    
+    # 检查是否为空或只包含空格
+    if not filename:
+        raise HTTPException(status_code=400, detail="文件名不能为空")
+    
+    return filename
 
 
 @asynccontextmanager
@@ -85,7 +125,8 @@ async def add_cache_control_headers(request, call_next):
     return response
 
 # 静态文件服务配置
-UPLOAD_BASE_PATH = "../pic/blogn_img/upload"
+from src.config.app import get_upload_dir
+UPLOAD_BASE_PATH = get_upload_dir()
 AVATAR_BASE_PATH = "../pic/blogn_img/userlogo"
 
 # 挂载静态文件目录
@@ -114,38 +155,6 @@ def serve_file(file_path: str, media_type: str = None):
         raise HTTPException(status_code=404, detail="File not found")
 
 
-def validate_and_sanitize_path(base_path: str, user_path: str) -> str:
-    """
-    验证和清理路径，防止路径遍历攻击
-    
-    Args:
-        base_path: 基础路径
-        user_path: 用户提供的路径
-        
-    Returns:
-        str: 清理后的安全路径
-        
-    Raises:
-        HTTPException: 当路径不安全时抛出400错误
-    """
-    import os
-    from fastapi import HTTPException
-    
-    # 规范化路径
-    normalized_path = os.path.normpath(user_path)
-    
-    # 检查路径是否包含路径遍历攻击
-    if normalized_path.startswith('..') or normalized_path.startswith('/'):
-        raise HTTPException(status_code=400, detail="Invalid path")
-    
-    # 构建完整路径
-    full_path = os.path.join(base_path, normalized_path)
-    
-    # 确保最终路径在基础路径内
-    if not os.path.abspath(full_path).startswith(os.path.abspath(base_path)):
-        raise HTTPException(status_code=400, detail="Path traversal detected")
-    
-    return full_path
 
 
 # ==================== 文件服务路由 ====================
@@ -178,6 +187,172 @@ async def serve_avatar_file(file_path: str):
     """
     safe_path = validate_and_sanitize_path(AVATAR_BASE_PATH, file_path)
     return serve_file(safe_path)
+
+
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...), temp: bool = False):
+    """
+    文件上传API
+    
+    Args:
+        file: 上传的文件
+        temp: 是否为临时文件（True=上传到临时目录，False=上传到正式目录）
+        
+    Returns:
+        Dict: 包含文件信息的响应
+    """
+    import os
+    import uuid
+    from datetime import datetime
+    from fastapi import HTTPException
+    
+    
+    # 验证和清理文件名
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="文件名不能为空")
+    
+    # 清理原始文件名，防止路径遍历攻击
+    safe_filename = sanitize_filename(file.filename)
+    
+    # 检查文件类型
+    allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif']
+    if file.content_type not in allowed_types:
+        print(f"Invalid file type: {file.content_type}")
+        raise HTTPException(status_code=400, detail="只支持jpg、png、gif格式的图片")
+    
+    # 检查文件大小（1MB = 1048576字节）
+    file_content = await file.read()
+    print(f"File size: {len(file_content)} bytes")
+    if len(file_content) > 1048576:
+        print(f"File too large: {len(file_content)} bytes")
+        raise HTTPException(status_code=400, detail="图片大小不能超过1MB")
+    
+    # 生成唯一文件名
+    file_extension = os.path.splitext(safe_filename)[1].lower()
+    print(f"File extension: {file_extension}")
+    if file_extension not in ['.jpg', '.jpeg', '.png', '.gif']:
+        print(f"Invalid file extension: {file_extension}")
+        raise HTTPException(status_code=400, detail="不支持的文件扩展名")
+    
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    print(f"Generated filename: {unique_filename}")
+    
+    if temp:
+        # 临时文件：上传到临时目录
+        temp_dir = get_temp_dir()
+        os.makedirs(temp_dir, exist_ok=True)
+        file_path = os.path.join(temp_dir, unique_filename)
+        relative_path = f"temp/{unique_filename}"
+        url = f"/api/temp-upload/{unique_filename}"
+        print(f"Temp upload - file_path: {file_path}, relative_path: {relative_path}, url: {url}")
+    else:
+        # 正式文件：上传到正式目录
+        current_time = datetime.now()
+        month_dir = current_time.strftime("%Y%m")
+        monthly_upload_path = os.path.join(UPLOAD_BASE_PATH, month_dir)
+        os.makedirs(monthly_upload_path, exist_ok=True)
+        file_path = os.path.join(monthly_upload_path, unique_filename)
+        relative_path = f"{month_dir}/{unique_filename}"
+        url = f"/upload/{relative_path}"
+        print(f"Regular upload - file_path: {file_path}, relative_path: {relative_path}, url: {url}")
+    
+    try:
+        with open(file_path, "wb") as buffer:
+            buffer.write(file_content)
+        
+        # 验证文件是否真的被保存
+        if os.path.exists(file_path):
+            file_size = os.path.getsize(file_path)
+            print(f"File saved successfully - path: {file_path}, size: {file_size} bytes")
+        else:
+            print(f"ERROR: File was not saved to {file_path}")
+            raise HTTPException(status_code=500, detail="文件保存失败")
+        
+        result = {
+            "success": True,
+            "filename": unique_filename,
+            "original_name": file.filename,
+            "size": len(file_content),
+            "url": url,
+            "relative_path": relative_path,
+            "is_temp": temp
+        }
+        print(f"Upload successful: {result}")
+        return result
+    except Exception as e:
+        print(f"Upload error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"文件保存失败: {str(e)}")
+
+
+@app.get("/api/temp-upload/{filename}")
+async def serve_temp_file(filename: str):
+    """
+    提供临时文件服务
+    
+    Args:
+        filename: 文件名
+        
+    Returns:
+        FileResponse: 文件响应
+    """
+    import os
+    from fastapi import HTTPException
+    
+    # 验证文件名，防止路径遍历攻击
+    safe_filename = sanitize_filename(filename)
+    
+    temp_dir = get_temp_dir()
+    file_path = os.path.join(temp_dir, safe_filename)
+    
+    print(f"Serving temp file - filename: {filename}, file_path: {file_path}")
+    print(f"Directory exists: {os.path.exists(temp_dir)}")
+    print(f"File exists: {os.path.exists(file_path)}")
+    
+    if not os.path.exists(file_path):
+        # 列出目录中的所有文件
+        if os.path.exists(temp_dir):
+            files = os.listdir(temp_dir)
+            print(f"Files in temp directory: {files}")
+        else:
+            print(f"Temp directory does not exist: {temp_dir}")
+        raise HTTPException(status_code=404, detail="文件不存在")
+    
+    return serve_file(file_path)
+
+
+@app.delete("/api/temp-upload/{filename}")
+async def delete_temp_file(filename: str):
+    """
+    删除临时文件
+    
+    Args:
+        filename: 文件名
+        
+    Returns:
+        Dict: 删除结果
+    """
+    import os
+    from fastapi import HTTPException
+    
+    # 验证文件名，防止路径遍历攻击
+    safe_filename = sanitize_filename(filename)
+    
+    temp_dir = get_temp_dir()
+    file_path = os.path.join(temp_dir, safe_filename)
+    
+    print(f"Delete temp file request - filename: {filename}, file_path: {file_path}")
+    
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"File deleted successfully: {file_path}")
+            return {"success": True, "message": "文件删除成功"}
+        else:
+            print(f"File not found: {file_path}")
+            return {"success": True, "message": "文件不存在"}
+    except Exception as e:
+        print(f"Delete error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"文件删除失败: {str(e)}")
 
 
 # ==================== API路由注册 ====================
@@ -229,6 +404,38 @@ async def blog_page(project_id: int):
         FileResponse: 博客页面HTML文件
     """
     return FileResponse("src/static/blog.html")
+
+
+@app.get("/blog/{project_id}/create-post")
+async def create_post_page(project_id: int):
+    """
+    发表博客文章页面路由
+    
+    返回发表博客文章的页面HTML文件。
+    
+    Args:
+        project_id: 项目ID
+        
+    Returns:
+        FileResponse: 发表博客文章页面HTML文件
+    """
+    return FileResponse("src/static/create-post.html")
+
+
+@app.get("/edit-article/{article_id}")
+async def edit_article_page(article_id: int):
+    """
+    编辑博客文章页面路由
+    
+    返回编辑博客文章的页面HTML文件。
+    
+    Args:
+        article_id: 文章ID
+        
+    Returns:
+        FileResponse: 编辑博客文章页面HTML文件
+    """
+    return FileResponse("src/static/edit-article.html")
 
 
 @app.get("/profile")

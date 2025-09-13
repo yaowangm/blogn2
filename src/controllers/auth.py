@@ -5,7 +5,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import timedelta
 
 from src.models.auth import (
@@ -274,3 +274,5 @@ async def validate_token(
         )
     
     return {"valid": True}
+
+

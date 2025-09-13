@@ -3,6 +3,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional
 from src.models.project_item import ProjectItem
 from src.models.user import User
+from src.constants import ArticleStatus
 
 class ProjectItemRepository:
     """项目项数据访问层
@@ -12,6 +13,13 @@ class ProjectItemRepository:
     
     def __init__(self, session: AsyncSession):
         self.session = session
+    
+    async def create(self, project_item: ProjectItem) -> ProjectItem:
+        """创建新的项目项"""
+        self.session.add(project_item)
+        await self.session.flush()  # 获取生成的ID
+        await self.session.refresh(project_item)  # 刷新对象以获取完整数据
+        return project_item
     
     async def count(self) -> int:
         """获取项目项总数"""
@@ -118,7 +126,7 @@ class ProjectItemRepository:
         
         return posts
 
-    async def get_by_project_id_and_folder(self, project_id: int, folder_id: Optional[int] = None, limit: int = None, offset: int = 0) -> List[dict]:
+    async def get_by_project_id_and_folder(self, project_id: int, folder_id: Optional[int] = None, limit: int = None, offset: int = 0, include_deleted: bool = False) -> List[dict]:
         """根据项目ID和文件夹ID获取项目项，包含用户信息"""
         from src.models.user import User
         
@@ -128,6 +136,10 @@ class ProjectItemRepository:
             .where(ProjectItem.projectid == project_id)
             .where(ProjectItem.status == 1)  # 只获取正常状态的文章
         )
+        
+        # 根据include_deleted参数决定是否包含已删除的文章
+        if not include_deleted:
+            query = query.where(ProjectItem.itemtype != ArticleStatus.DELETED)  # 排除已删除的文章
         
         if folder_id is not None:
             # 如果指定了文件夹，只获取该文件夹下的文章
@@ -164,6 +176,8 @@ class ProjectItemRepository:
     async def count_by_project_id_and_folder(self, project_id: int, folder_id: Optional[int] = None) -> int:
         """根据项目ID和文件夹ID统计项目项总数"""
         statement = select(func.count(ProjectItem.id)).where(ProjectItem.projectid == project_id)
+        statement = statement.where(ProjectItem.status == 1)  # 只统计正常状态的文章
+        statement = statement.where(ProjectItem.itemtype != ArticleStatus.DELETED)  # 排除已删除的文章
         
         if folder_id is not None:
             statement = statement.where(ProjectItem.folderid == folder_id)
@@ -269,3 +283,41 @@ class ProjectItemRepository:
             })
         
         return articles
+    
+    async def update(self, project_item_id: int, **kwargs) -> Optional[ProjectItem]:
+        """
+        更新项目项
+        
+        Args:
+            project_item_id: 项目项ID
+            **kwargs: 要更新的字段
+            
+        Returns:
+            Optional[ProjectItem]: 更新后的项目项对象或None
+        """
+        project_item = await self.get_by_id(project_item_id)
+        if project_item:
+            for key, value in kwargs.items():
+                if hasattr(project_item, key):
+                    setattr(project_item, key, value)
+            await self.session.commit()
+            await self.session.refresh(project_item)
+            return project_item
+        return None
+
+    async def delete(self, project_item_id: int) -> bool:
+        """
+        删除项目项
+        
+        Args:
+            project_item_id: 项目项ID
+            
+        Returns:
+            bool: 删除是否成功
+        """
+        project_item = await self.get_by_id(project_item_id)
+        if project_item:
+            await self.session.delete(project_item)
+            await self.session.commit()
+            return True
+        return False

@@ -16,6 +16,10 @@ from src.utils.cache import (
     cache_project_categories, cache_project_external_links, cache_project_rss,
     cache_project_stats, cache_user_projects
 )
+from src.utils.auth_middleware import get_current_user, get_optional_current_user
+from src.utils.permission_manager import permission_manager
+from src.constants import ArticleStatus
+from src.utils.file_utils import get_temp_dir
 
 # 创建项目API路由器
 router = APIRouter()
@@ -63,7 +67,9 @@ async def get_project_posts(
     type: str = "original",
     category: Optional[str] = None,
     folderid: Optional[int] = None,
-    session: AsyncSession = Depends(get_async_session)
+    include_deleted: bool = False,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
     """
     获取指定项目的文章列表
@@ -92,8 +98,12 @@ async def get_project_posts(
         # 计算偏移量
         offset = (page - 1) * limit
         
+        # 检查是否为管理员，决定是否包含已删除的文章
+        is_admin = permission_manager.can_manage_system(current_user)
+        should_include_deleted = include_deleted and is_admin
+        
         # 获取文章列表
-        posts = await project_item_repo.get_by_project_id_and_folder(project_id, folderid, limit, offset)
+        posts = await project_item_repo.get_by_project_id_and_folder(project_id, folderid, limit, offset, should_include_deleted)
         
         # 获取总数 - 使用预存储的recordcount字段，避免实时查询
         if folderid:
@@ -443,3 +453,202 @@ async def create_project(
     except Exception as e:
         # 事务会自动回滚
         raise HTTPException(status_code=500, detail=f"创建博客失败: {str(e)}")
+
+@router.post("/projects/create-post", response_model=Dict[str, Any])
+async def create_post(
+    post_data: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    创建新的博客文章
+    
+    Args:
+        post_data: 包含文章信息的字典
+        current_user: 当前登录用户信息
+        session: 数据库会话
+        
+    Returns:
+        Dict[str, Any]: 新创建的文章信息
+    """
+    # 验证输入数据
+    if not post_data.get("name"):
+        raise HTTPException(status_code=400, detail="文章标题不能为空")
+    
+    if len(post_data["name"]) > 50:
+        raise HTTPException(status_code=400, detail="文章标题不能超过50个字符")
+    
+    if not post_data.get("comment"):
+        raise HTTPException(status_code=400, detail="文章内容不能为空")
+    
+    # 检查文章内容大小（128KB = 131072字节）
+    comment_size = len(post_data["comment"].encode('utf-8'))
+    if comment_size > 131072:
+        raise HTTPException(status_code=400, detail="文章内容不能超过128KB")
+    
+    # 验证附件字段（如果提供）
+    attachment = post_data.get("attachment")
+    if attachment and not isinstance(attachment, str):
+        raise HTTPException(status_code=400, detail="附件字段格式不正确")
+    
+    # 验证项目ID
+    project_id = post_data.get("projectid")
+    if not project_id:
+        raise HTTPException(status_code=400, detail="项目ID不能为空")
+    
+    try:
+        # 验证用户是否有权限在该项目中创建文章
+        project_repo = ProjectRepository(session)
+        project = await project_repo.get_by_id(project_id)
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="项目不存在")
+        
+        if project.userid != current_user["id"]:
+            raise HTTPException(status_code=403, detail="没有权限在此项目中创建文章")
+        
+        # 创建新文章
+        project_item_repo = ProjectItemRepository(session)
+        
+        # 计算文章内容的字节长度
+        comment_content = post_data["comment"]
+        itemsize = len(comment_content.encode('utf-8'))
+        
+        new_post = ProjectItem(
+            projectid=project_id,
+            name=post_data["name"],
+            comment=comment_content,
+            itemtype=post_data.get("itemtype", ArticleStatus.NORMAL),
+            itemsize=itemsize,  # 使用实际的文章内容长度
+            attachment=attachment,  # 使用上传的图片文件名
+            linkstr=None,          # 不再使用相关链接
+            userid=current_user["id"],
+            accesscount=0,
+            commentcount=0,
+            folderid=post_data.get("folderid"),
+            status=post_data.get("status", 1),
+            allowpost=post_data.get("allowpost", 1),
+            createtime=datetime.now(),
+            updatetime=datetime.now(),
+            lastmodifytime=datetime.now()
+        )
+        
+        # 处理临时文件移动
+        import os
+        from src.config.app import validate_app_config
+        
+        # 获取上传目录配置
+        config = validate_app_config()
+        upload_dir = config["upload_dir"]
+        
+        # 处理主图片的临时文件移动
+        if new_post.attachment and new_post.attachment.startswith("temp/"):
+            try:
+                # 从临时目录移动到正式目录
+                temp_filename = new_post.attachment.replace("temp/", "")
+                temp_path = os.path.join(get_temp_dir(), temp_filename)
+                
+                if os.path.exists(temp_path):
+                    # 创建按月份命名的子目录
+                    current_time = datetime.now()
+                    month_dir = current_time.strftime("%Y%m")
+                    monthly_upload_path = os.path.join(upload_dir, month_dir)
+                    os.makedirs(monthly_upload_path, exist_ok=True)
+                    
+                    # 移动到正式目录
+                    final_filename = temp_filename
+                    final_path = os.path.join(monthly_upload_path, final_filename)
+                    os.rename(temp_path, final_path)
+                    
+                    # 更新attachment路径
+                    new_post.attachment = f"{month_dir}/{final_filename}"
+                    
+                else:
+                    pass  # 临时文件不存在，继续处理
+            except Exception as e:
+                raise HTTPException(status_code=500, detail="临时文件移动失败")
+        
+        created_post = await project_item_repo.create(new_post)
+        
+        # 处理多张图片附件
+        attachments_data = post_data.get("attachments", [])
+        if attachments_data:
+            from src.repositories.attachment_repository import AttachmentRepository
+            from src.models.attachment import Attachment
+            attachment_repo = AttachmentRepository(session)
+            
+            for attachment_data in attachments_data:
+                # 处理临时文件移动
+                relative_path = attachment_data.get("relative_path", "")
+                if relative_path.startswith("temp/"):
+                    try:
+                        # 从临时目录移动到正式目录
+                        temp_filename = relative_path.replace("temp/", "")
+                        temp_path = os.path.join(get_temp_dir(), temp_filename)
+                        
+                        if os.path.exists(temp_path):
+                            # 创建按月份命名的子目录
+                            current_time = datetime.now()
+                            month_dir = current_time.strftime("%Y%m")
+                            monthly_upload_path = os.path.join(upload_dir, month_dir)
+                            os.makedirs(monthly_upload_path, exist_ok=True)
+                            
+                            # 移动到正式目录
+                            final_filename = temp_filename
+                            final_path = os.path.join(monthly_upload_path, final_filename)
+                            os.rename(temp_path, final_path)
+                            
+                            # 更新路径
+                            relative_path = f"{month_dir}/{final_filename}"
+                            
+                        else:
+                            pass  # 临时文件不存在，继续处理
+                    except Exception as e:
+                        raise HTTPException(status_code=500, detail="临时文件移动失败")
+                
+                # 创建附件记录
+                attachment = Attachment(
+                    parentid=created_post.id,
+                    amtype=1,  # 默认为正常类型
+                    comment=attachment_data.get("comment", ""),
+                    linkstr=relative_path,
+                    createtime=datetime.now(),
+                    updatetime=datetime.now()
+                )
+                await attachment_repo.create(attachment)
+        
+        # 更新项目的记录数和更新时间
+        await project_repo.increment_record_count(project_id)
+        
+        # 更新用户积分（每发表一篇文章获得10积分）
+        from src.repositories.user_repository import UserRepository
+        user_repo = UserRepository(session)
+        await user_repo.increment_point(current_user["id"], 10)
+        
+        # 提交事务（所有操作在同一个事务中）
+        await session.commit()
+        
+        return {
+            "id": created_post.id,
+            "name": created_post.name,
+            "comment": created_post.comment,
+            "itemtype": created_post.itemtype,
+            "itemsize": created_post.itemsize,
+            "attachment": created_post.attachment,
+            "linkstr": created_post.linkstr,
+            "userid": created_post.userid,
+            "accesscount": created_post.accesscount,
+            "commentcount": created_post.commentcount,
+            "folderid": created_post.folderid,
+            "status": created_post.status,
+            "allowpost": created_post.allowpost,
+            "createtime": created_post.createtime,
+            "updatetime": created_post.updatetime,
+            "lastmodifytime": created_post.lastmodifytime
+        }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        # 事务会自动回滚
+        raise HTTPException(status_code=500, detail=f"创建文章失败: {str(e)}")

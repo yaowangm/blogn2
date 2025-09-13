@@ -7,6 +7,9 @@ class ArticleHeaderCard extends BaseComponent {
         super();
         this.articleId = null;
         this.articleData = null;
+        this.currentUser = null;
+        this.isAdmin = false;
+        this.isAuthor = false;
     }
 
     async connectedCallback() {
@@ -16,6 +19,9 @@ class ArticleHeaderCard extends BaseComponent {
             this.showError('无法获取文章ID');
             return;
         }
+
+        // 检查当前用户权限
+        await this.checkUserPermissions();
 
         // 加载文章数据
         await this.loadArticleData();
@@ -36,13 +42,61 @@ class ArticleHeaderCard extends BaseComponent {
     }
 
     /**
+     * 检查当前用户权限
+     */
+    async checkUserPermissions() {
+        try {
+            // 从localStorage获取当前用户信息
+            const userInfo = localStorage.getItem('user_info');
+            const token = localStorage.getItem('access_token');
+            
+            if (!userInfo || !token) {
+                // 用户未登录
+                this.currentUser = null;
+                this.isAdmin = false;
+                this.isAuthor = false;
+                return;
+            }
+
+            this.currentUser = JSON.parse(userInfo);
+            
+            // 检查是否为管理员（state为10表示管理员）
+            this.isAdmin = this.currentUser.state === 10;
+            
+            // 检查是否为文章作者（需要等待文章数据加载后才能确定）
+            // 这里先设置为false，在loadArticleData后再次检查
+            this.isAuthor = false;
+            
+        } catch (error) {
+            this.logError('Failed to check user permissions', error);
+            this.currentUser = null;
+            this.isAdmin = false;
+            this.isAuthor = false;
+        }
+    }
+
+    /**
      * 加载文章数据
      */
     async loadArticleData() {
         try {
-            const response = await fetch(`/api/articles/${this.articleId}`);
+            // 获取认证token
+            const token = localStorage.getItem('access_token');
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            const response = await fetch(`/api/articles/${this.articleId}`, {
+                headers: headers
+            });
             if (response.ok) {
                 this.articleData = await response.json();
+                
+                // 检查是否为文章作者
+                if (this.currentUser && this.articleData.author) {
+                    this.isAuthor = this.currentUser.id === this.articleData.author.id;
+                }
             } else if (response.status === 404) {
                 // 文章不存在，跳转到错误页面
                 window.location.href = '/static/error.html';
@@ -72,8 +126,11 @@ class ArticleHeaderCard extends BaseComponent {
             return;
         }
 
-        const { title, author, project, category, hits, created_at, updated_at, comment_count } = this.articleData;
+        const { title, author, project, category, hits, itemsize, created_at, updated_at, comment_count, itemtype } = this.articleData;
 
+        // 检查是否显示工具栏
+        const showToolbar = this.isAdmin || this.isAuthor;
+        
         this.shadowRoot.innerHTML = `
             <div class="card article-header-card">
                 <div class="card-body">
@@ -99,10 +156,10 @@ class ArticleHeaderCard extends BaseComponent {
                             </div>
                         ` : ''}
                         
-                        ${project?.name ? `
+                        ${category?.name ? `
                             <div class="meta-item">
-                                <span class="meta-label">博客:</span>
-                                <span class="meta-value">${project.name}</span>
+                                <span class="meta-label">分类:</span>
+                                <span class="meta-value">${category.name}</span>
                             </div>
                         ` : ''}
                         
@@ -112,15 +169,49 @@ class ArticleHeaderCard extends BaseComponent {
                         </div>
                         
                         <div class="meta-item">
+                            <span class="meta-label">文章长度:</span>
+                            <span class="meta-value">${this.formatFileSize(itemsize || 0)}</span>
+                        </div>
+                        
+                        <div class="meta-item">
                             <span class="meta-label">评论数:</span>
                             <span class="meta-value">${comment_count || 0}</span>
                         </div>
+                        
+                        <div class="meta-item">
+                            <span class="meta-label">文章状态:</span>
+                            <span class="meta-value status-${itemtype}">${this.getStatusText(itemtype)}</span>
+                        </div>
                     </div>
+                    
+                    ${showToolbar ? `
+                        <div class="article-toolbar">
+                            <button class="btn btn-primary btn-sm" id="edit-article-btn">
+                                <i class="icon-edit"></i>
+                                修改文章
+                            </button>
+                            <button class="btn btn-danger btn-sm" id="delete-article-btn">
+                                <i class="icon-trash"></i>
+                                删除文章
+                            </button>
+                            ${this.isAdmin ? `
+                                <button class="btn btn-warning btn-sm" id="permanent-delete-article-btn">
+                                    <i class="icon-delete"></i>
+                                    彻底删除
+                                </button>
+                            ` : ''}
+                        </div>
+                    ` : ''}
                 </div>
             </div>
         `;
 
         this.addStyles();
+        
+        // 绑定工具栏事件
+        if (showToolbar) {
+            this.bindToolbarEvents();
+        }
     }
 
     /**
@@ -129,6 +220,150 @@ class ArticleHeaderCard extends BaseComponent {
     updatePageTitle() {
         if (this.articleData && this.articleData.title) {
             document.title = `${this.articleData.title} - BlogN`;
+        }
+    }
+
+    /**
+     * 绑定工具栏事件
+     */
+    bindToolbarEvents() {
+        const editBtn = this.shadowRoot.getElementById('edit-article-btn');
+        const deleteBtn = this.shadowRoot.getElementById('delete-article-btn');
+        const permanentDeleteBtn = this.shadowRoot.getElementById('permanent-delete-article-btn');
+        
+        if (editBtn) {
+            editBtn.addEventListener('click', () => this.handleEditArticle());
+        }
+        
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', () => this.handleDeleteArticle());
+        }
+        
+        if (permanentDeleteBtn) {
+            permanentDeleteBtn.addEventListener('click', () => this.handlePermanentDeleteArticle());
+        }
+    }
+
+    /**
+     * 处理修改文章
+     */
+    handleEditArticle() {
+        if (!this.articleId) {
+            this.showError('无法获取文章ID');
+            return;
+        }
+        
+        // 跳转到文章编辑页面
+        window.location.href = `/edit-article/${this.articleId}`;
+    }
+
+    /**
+     * 处理删除文章
+     */
+    async handleDeleteArticle() {
+        if (!this.articleId) {
+            this.showError('无法获取文章ID');
+            return;
+        }
+        
+        // 确认删除
+        if (!confirm('确定要删除这篇文章吗？此操作不可撤销。')) {
+            return;
+        }
+        
+        try {
+            const token = localStorage.getItem('access_token');
+            const response = await fetch(`/api/articles/${this.articleId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                // 删除成功，跳转到首页
+                alert('文章删除成功');
+                window.location.href = '/';
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || '删除失败');
+            }
+        } catch (error) {
+            this.logError('Failed to delete article', error);
+            alert('删除文章失败: ' + error.message);
+        }
+    }
+
+    /**
+     * 处理彻底删除文章
+     */
+    async handlePermanentDeleteArticle() {
+        if (!this.articleId) {
+            this.showError('无法获取文章ID');
+            return;
+        }
+        
+        // 确认彻底删除
+        if (!confirm('确定要彻底删除这篇文章吗？\n\n此操作将：\n1. 永久删除文章的所有图片文件\n2. 从数据库中完全删除文章记录\n3. 更新相关统计信息\n\n此操作不可撤销！')) {
+            return;
+        }
+        
+        // 二次确认
+        if (!confirm('最后确认：您真的要彻底删除这篇文章吗？\n\n一旦执行，文章及其所有相关数据将永久消失！')) {
+            return;
+        }
+        
+        try {
+            const token = localStorage.getItem('access_token');
+            const response = await fetch(`/api/articles/${this.articleId}/permanent`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                // 彻底删除成功，跳转到首页
+                alert('文章已彻底删除');
+                window.location.href = '/';
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || '彻底删除失败');
+            }
+        } catch (error) {
+            this.logError('Failed to permanently delete article', error);
+            alert('彻底删除文章失败: ' + error.message);
+        }
+    }
+
+    /**
+     * 格式化文件大小显示
+     */
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    /**
+     * 获取文章状态文本
+     */
+    getStatusText(itemtype) {
+        switch (itemtype) {
+            case 0:
+                return '未知';
+            case 1:
+                return '正常';
+            case 2:
+                return '已删除';
+            default:
+                return '未知';
         }
     }
 
@@ -187,6 +422,77 @@ class ArticleHeaderCard extends BaseComponent {
                 
                 .meta-value {
                     color: var(--gray-800);
+                }
+                
+                .article-toolbar {
+                    margin-top: 24px;
+                    padding-top: 16px;
+                    border-top: 1px solid #e5e7eb;
+                    display: flex !important;
+                    gap: 12px;
+                    justify-content: flex-end;
+                    width: 100%;
+                }
+                
+                .article-toolbar .btn {
+                    display: inline-flex !important;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 8px 16px;
+                    border: none;
+                    border-radius: 6px;
+                    font-size: 14px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    text-decoration: none;
+                    margin-left: 8px;
+                }
+                
+                .article-toolbar .btn-primary {
+                    background-color: #2563eb !important;
+                    color: white !important;
+                }
+                
+                .article-toolbar .btn-primary:hover {
+                    background-color: #1d4ed8 !important;
+                }
+                
+                .article-toolbar .btn-danger {
+                    background-color: #dc2626 !important;
+                    color: white !important;
+                }
+                
+                .article-toolbar .btn-danger:hover {
+                    background-color: #b91c1c !important;
+                }
+                
+                .article-toolbar .btn-warning {
+                    background-color: #f59e0b !important;
+                    color: white !important;
+                }
+                
+                .article-toolbar .btn-warning:hover {
+                    background-color: #d97706 !important;
+                }
+                
+                .article-toolbar .btn i {
+                    font-size: 14px;
+                }
+                
+                .status-0 {
+                    color: var(--gray-500);
+                    font-weight: 500;
+                }
+                
+                .status-1 {
+                    color: #059669;
+                    font-weight: 600;
+                }
+                
+                .status-2 {
+                    color: #dc2626;
+                    font-weight: 600;
                 }
             `;
             this.shadowRoot.appendChild(style);

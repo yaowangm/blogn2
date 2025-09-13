@@ -74,4 +74,26 @@ class ProjectRepository:
         self.session.add(project)
         # 不在这里commit，由外层事务管理器控制
         await self.session.flush()  # 刷新以获取生成的ID
-        return project 
+        return project
+    
+    async def increment_record_count(self, project_id: int) -> None:
+        """增加项目的记录数"""
+        statement = select(Project).where(Project.id == project_id)
+        result = await self.session.exec(statement)
+        project = result.first()
+        
+        if project:
+            project.recordcount = (project.recordcount or 0) + 1
+            project.updatetime = datetime.now()
+            self.session.add(project)
+    
+    async def decrement_record_count(self, project_id: int) -> None:
+        """减少项目的记录数"""
+        statement = select(Project).where(Project.id == project_id)
+        result = await self.session.exec(statement)
+        project = result.first()
+        
+        if project:
+            project.recordcount = max((project.recordcount or 0) - 1, 0)
+            project.updatetime = datetime.now()
+            self.session.add(project) 

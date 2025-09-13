@@ -178,7 +178,7 @@ class BlogListCard extends BaseComponent {
                 const time = post.time || post.createtime || '未知时间';
                 // 订阅文章使用 comment 字段，原创文章使用 excerpt 字段
                 const excerpt = post.comment || post.excerpt || '';
-                const image = post.image || post.attachment;
+                const image = post.image || (post.attachment ? `/upload/${post.attachment}` : null);
                 const avatar = post.avatar;
                 
                 // HTML转义函数，防止XSS攻击
@@ -195,7 +195,8 @@ class BlogListCard extends BaseComponent {
                 // 安全处理所有文本字段，防止HTML注入和XSS攻击
                 const safeTitle = escapeHtml(title);
                 const safeAuthor = escapeHtml(author);
-                const safeExcerpt = escapeHtml(excerpt);
+                // 移除Markdown标记，显示纯文本摘要
+                const safeExcerpt = escapeHtml(this.stripMarkdown(excerpt));
                 const safeBlogName = post.blog_name ? escapeHtml(post.blog_name) : '';
                 const safeTime = escapeHtml(time || '未知时间');
                 

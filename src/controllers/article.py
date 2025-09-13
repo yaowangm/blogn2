@@ -1,6 +1,14 @@
 """
-文章控制器
-提供文章相关的API端点，包括文章详情、评论管理等
+文章控制器 (Article Controller)
+
+提供文章相关的API端点，包括：
+- 文章详情获取和缓存
+- 文章评论的增删改查
+- 文章附件的管理
+- 文章访问统计更新
+- 权限验证和错误处理
+
+所有接口都支持缓存以提高性能。
 """
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -16,6 +24,10 @@ from src.repositories.post_repository import PostRepository
 from src.repositories.attachment_repository import AttachmentRepository
 from src.models.post import Post
 from src.utils.cache import cache_article_detail, cache_article_comments, cache_article_attachments, clear_article_detail_cache, clear_article_comments_cache
+from src.utils.auth_middleware import get_current_user, get_optional_current_user
+from src.utils.permission_manager import permission_manager
+from src.constants import ArticleStatus, ErrorMessages
+from src.utils.file_utils import get_temp_dir
 
 # 创建文章API路由器
 router = APIRouter(tags=["文章管理"])
@@ -25,7 +37,8 @@ router = APIRouter(tags=["文章管理"])
 @cache_article_detail(ttl=1800)  # 缓存30分钟
 async def get_article_detail(
     article_id: int,
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
     """
     获取指定文章的详细信息
@@ -55,6 +68,11 @@ async def get_article_detail(
         if not article:
             raise HTTPException(status_code=404, detail="文章不存在")
         
+        # 检查文章是否已被删除
+        # 只有管理员可以访问已删除的文章
+        if article.itemtype == ArticleStatus.DELETED and not permission_manager.can_manage_system(current_user):
+            raise HTTPException(status_code=404, detail=ErrorMessages.ARTICLE_DELETED)
+        
         # 获取作者信息
         author = None
         if article.userid:
@@ -64,6 +82,13 @@ async def get_article_detail(
         project = None
         if article.projectid:
             project = await project_repo.get_by_id(article.projectid)
+        
+        # 获取分类信息
+        category = None
+        if article.folderid:
+            from src.repositories.folder_repository import FolderRepository
+            folder_repo = FolderRepository(session)
+            category = await folder_repo.get_by_id(article.folderid)
         
         # 获取文章评论
         comments = await post_repo.get_by_project_item_id(article_id)
@@ -75,6 +100,7 @@ async def get_article_detail(
             "id": article.id,
             "title": article.name,
             "content": article.comment,
+            "itemtype": article.itemtype,  # 文章状态：ArticleStatus.UNKNOWN=0, ArticleStatus.NORMAL=1, ArticleStatus.DELETED=2
             "attachment": article.attachment,  # 单张图片附件
             "attachments": [  # 多张图片附件
                 {
@@ -93,8 +119,13 @@ async def get_article_detail(
                 "id": project.id if project else None,
                 "name": project.name if project else None
             } if project else None,
-            "category": article.folderid,
+            "category": {
+                "id": article.folderid,
+                "name": category.name if category else "未分类"
+            },
+            "allowpost": article.allowpost,  # 评论设置
             "hits": article.accesscount or 0,
+            "itemsize": article.itemsize or 0,  # 文章长度（字节数）
             "created_at": article.createtime,
             "updated_at": article.updatetime,
             "comment_count": article.commentcount or 0,
@@ -291,3 +322,362 @@ async def get_article_attachments(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取附件列表失败: {str(e)}")
+
+
+@router.put("/articles/{article_id}")
+async def update_article(
+    article_id: int,
+    article_data: Dict[str, Any],
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    更新指定文章
+    
+    权限控制：
+    - 管理员可以更新任何文章
+    - 普通用户只能更新自己的文章
+    
+    Args:
+        article_id: 文章ID
+        article_data: 文章更新数据
+        session: 数据库会话
+        current_user: 当前登录用户信息
+        
+    Returns:
+        Dict[str, str]: 更新结果
+        
+    Raises:
+        HTTPException: 当文章不存在或无权限时
+    """
+    project_item_repo = ProjectItemRepository(session)
+    
+    try:
+        # 获取文章信息
+        article = await project_item_repo.get_by_id(article_id)
+        if not article:
+            raise HTTPException(status_code=404, detail="文章不存在")
+        
+        # 权限检查：管理员可以更新任何文章，普通用户只能更新自己的文章
+        if not permission_manager.can_manage_system(current_user) and current_user.get("id") != article.userid:
+            raise HTTPException(status_code=403, detail="无权限修改该文章")
+        
+        # 更新文章数据
+        from datetime import datetime
+        import os
+        from src.config.app import validate_app_config
+        
+        # 计算文章内容长度（字节数）
+        content = article_data.get("comment", "")
+        itemsize = len(content.encode('utf-8')) if content else 0
+        
+        # 检查是否需要删除旧图片
+        old_attachment = article.attachment
+        new_attachment = article_data.get("attachment")
+        
+        # 获取上传目录配置
+        config = validate_app_config()
+        upload_dir = config["upload_dir"]
+        
+        # 处理临时文件移动
+        if new_attachment and new_attachment.startswith("temp/"):
+            try:
+                # 从临时目录移动到正式目录
+                temp_filename = new_attachment.replace("temp/", "")
+                temp_path = os.path.join(get_temp_dir(), temp_filename)
+                
+                if os.path.exists(temp_path):
+                    # 创建按月份命名的子目录
+                    from datetime import datetime
+                    current_time = datetime.now()
+                    month_dir = current_time.strftime("%Y%m")
+                    monthly_upload_path = os.path.join(upload_dir, month_dir)
+                    os.makedirs(monthly_upload_path, exist_ok=True)
+                    
+                    # 移动到正式目录
+                    final_filename = temp_filename
+                    final_path = os.path.join(monthly_upload_path, final_filename)
+                    os.rename(temp_path, final_path)
+                    
+                    # 更新attachment路径
+                    new_attachment = f"{month_dir}/{final_filename}"
+                    article_data["attachment"] = new_attachment
+                    
+                else:
+                    pass  # 临时文件不存在，继续处理
+            except Exception as e:
+                raise HTTPException(status_code=500, detail="临时文件移动失败")
+        
+        # 如果旧图片存在且与新图片不同，删除旧图片
+        if old_attachment and old_attachment != new_attachment:
+            try:
+                # 构建旧图片的完整路径
+                old_image_path = os.path.join(upload_dir, old_attachment)
+                if os.path.exists(old_image_path):
+                    os.remove(old_image_path)
+            except Exception as e:
+                pass  # 删除旧图片失败，继续处理
+        
+        update_data = {
+            "name": article_data.get("name"),
+            "comment": article_data.get("comment"),
+            "itemtype": article_data.get("itemtype", ArticleStatus.NORMAL),
+            "folderid": article_data.get("folderid"),
+            "status": article_data.get("status", 1),
+            "allowpost": article_data.get("allowpost", 1),
+            "attachment": article_data.get("attachment"),
+            "itemsize": itemsize,
+            "updatetime": datetime.now(),
+            "lastmodifytime": datetime.now()
+        }
+        
+        # 移除None值
+        update_data = {k: v for k, v in update_data.items() if v is not None}
+        
+        updated_article = await project_item_repo.update(article_id, **update_data)
+        if not updated_article:
+            raise HTTPException(status_code=500, detail="更新文章失败")
+        
+        # 处理多张图片附件更新
+        attachments_data = article_data.get("attachments", [])
+        if attachments_data is not None:  # 只有当attachments字段存在时才处理
+            from src.repositories.attachment_repository import AttachmentRepository
+            from src.models.attachment import Attachment
+            attachment_repo = AttachmentRepository(session)
+            
+            # 删除现有的附件记录
+            await attachment_repo.delete_by_project_item_id(article_id)
+            
+            # 创建新的附件记录
+            for attachment_data in attachments_data:
+                relative_path = attachment_data.get("relative_path", "")
+                
+                # 处理临时文件移动
+                if relative_path.startswith("temp/"):
+                    try:
+                        # 从临时目录移动到正式目录
+                        temp_filename = relative_path.replace("temp/", "")
+                        temp_path = os.path.join(get_temp_dir(), temp_filename)
+                        
+                        if os.path.exists(temp_path):
+                            # 创建按月份命名的子目录
+                            current_time = datetime.now()
+                            month_dir = current_time.strftime("%Y%m")
+                            monthly_upload_path = os.path.join(upload_dir, month_dir)
+                            os.makedirs(monthly_upload_path, exist_ok=True)
+                            
+                            # 移动到正式目录
+                            final_filename = temp_filename
+                            final_path = os.path.join(monthly_upload_path, final_filename)
+                            os.rename(temp_path, final_path)
+                            
+                            # 更新relative_path
+                            relative_path = f"{month_dir}/{final_filename}"
+                            
+                        else:
+                            pass  # 临时文件不存在，继续处理
+                    except Exception as e:
+                        # 继续处理，不中断整个流程
+                        pass
+                
+                attachment = Attachment(
+                    parentid=article_id,
+                    amtype=1,  # 默认为正常类型
+                    comment=attachment_data.get("comment", ""),
+                    linkstr=relative_path,
+                    createtime=datetime.now(),
+                    updatetime=datetime.now()
+                )
+                await attachment_repo.create(attachment)
+        
+        # 失效相关缓存
+        await clear_article_detail_cache(article_id)
+        await clear_article_comments_cache(article_id)
+        
+        return {"message": "文章更新成功"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"更新文章失败: {str(e)}")
+
+
+@router.delete("/articles/{article_id}")
+async def delete_article(
+    article_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    删除指定文章
+    
+    权限控制：
+    - 管理员可以删除任何文章
+    - 普通用户只能删除自己的文章
+    
+    Args:
+        article_id: 文章ID
+        session: 数据库会话
+        current_user: 当前登录用户信息
+        
+    Returns:
+        Dict[str, str]: 删除结果
+        
+    Raises:
+        HTTPException: 当文章不存在或无权限时
+    """
+    project_item_repo = ProjectItemRepository(session)
+    
+    try:
+        # 获取文章信息
+        article = await project_item_repo.get_by_id(article_id)
+        if not article:
+            raise HTTPException(status_code=404, detail="文章不存在")
+        
+        # 权限检查：管理员可以删除任何文章，普通用户只能删除自己的文章
+        if not permission_manager.can_manage_system(current_user) and current_user.get("id") != article.userid:
+            raise HTTPException(status_code=403, detail="无权限删除该文章")
+        
+        # 软删除文章：将itemtype设置为已删除状态
+        article.itemtype = ArticleStatus.DELETED
+        session.add(article)
+        
+        # 更新project表：减少recordcount，更新updatetime
+        from src.repositories.project_repository import ProjectRepository
+        project_repo = ProjectRepository(session)
+        await project_repo.decrement_record_count(article.projectid)
+        
+        # 更新users表：减少10积分
+        from src.repositories.user_repository import UserRepository
+        user_repo = UserRepository(session)
+        await user_repo.decrement_point(article.userid, 10)
+        
+        # 提交事务
+        await session.commit()
+        
+        # 失效相关缓存
+        await clear_article_detail_cache(article_id)
+        await clear_article_comments_cache(article_id)
+        
+        return {"message": "文章删除成功"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"删除文章失败: {str(e)}")
+
+
+@router.delete("/articles/{article_id}/permanent", response_model=Dict[str, Any])
+async def permanently_delete_article(
+    article_id: int,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    彻底删除文章（仅管理员）
+    
+    彻底删除文章，包括：
+    1. 删除文件系统中的图片
+    2. 从projectitem表中删除记录
+    3. 如果文章不是已删除状态，更新相关统计信息
+    
+    Args:
+        article_id: 文章ID
+        current_user: 当前登录用户
+        session: 数据库会话
+        
+    Returns:
+        Dict: 删除结果
+    """
+    # 权限检查：只有管理员可以彻底删除文章
+    if not permission_manager.can_manage_system(current_user):
+        raise HTTPException(status_code=403, detail="需要管理员权限才能彻底删除文章")
+    
+    try:
+        # 初始化仓库
+        project_item_repo = ProjectItemRepository(session)
+        
+        # 获取文章信息
+        article = await project_item_repo.get_by_id(article_id)
+        if not article:
+            raise HTTPException(status_code=404, detail="文章不存在")
+        
+        # 记录文章状态，用于后续统计更新
+        was_deleted = article.itemtype == ArticleStatus.DELETED
+        
+        # 删除文件系统中的图片
+        if article.attachment:
+            await delete_article_images(article.attachment, article_id, session)
+        
+        # 从projectitem表中删除记录
+        await project_item_repo.delete(article_id)
+        
+        # 如果文章不是已删除状态，需要更新相关统计信息
+        if not was_deleted:
+            # 更新project表：减少recordcount，更新updatetime
+            from src.repositories.project_repository import ProjectRepository
+            project_repo = ProjectRepository(session)
+            await project_repo.decrement_record_count(article.projectid)
+            
+            # 更新users表：减少10积分
+            from src.repositories.user_repository import UserRepository
+            user_repo = UserRepository(session)
+            await user_repo.decrement_point(article.userid, 10)
+        
+        # 提交事务
+        await session.commit()
+        
+        # 失效相关缓存
+        await clear_article_detail_cache(article_id)
+        await clear_article_comments_cache(article_id)
+        
+        return {"message": "文章已彻底删除"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=f"彻底删除文章失败: {str(e)}")
+
+
+async def delete_article_images(attachment_path: str, article_id: int, session: AsyncSession) -> None:
+    """
+    删除文章相关的图片文件
+    
+    Args:
+        attachment_path: 附件路径
+        article_id: 文章ID
+        session: 数据库会话
+    """
+    import os
+    
+    try:
+        # 获取上传目录
+        from src.config.app import get_upload_dir
+        upload_dir = get_upload_dir()
+        
+        # 删除主附件图片
+        if attachment_path:
+            full_path = os.path.join(upload_dir, attachment_path)
+            if os.path.exists(full_path):
+                os.remove(full_path)
+                print(f"Deleted main attachment: {full_path}")
+        
+        # 删除其他附件图片
+        from src.repositories.attachment_repository import AttachmentRepository
+        attachment_repo = AttachmentRepository(session)
+        attachments = await attachment_repo.get_by_project_item_id(article_id)
+        
+        for attachment in attachments:
+            if attachment.linkstr:
+                full_path = os.path.join(upload_dir, attachment.linkstr)
+                if os.path.exists(full_path):
+                    os.remove(full_path)
+                    print(f"Deleted attachment: {full_path}")
+        
+        # 删除附件记录（无论是否有附件都要执行删除操作）
+        await attachment_repo.delete_by_project_item_id(article_id)
+            
+    except Exception as e:
+        print(f"Error deleting article images: {e}")
+        # 不抛出异常，因为文件删除失败不应该阻止数据库删除

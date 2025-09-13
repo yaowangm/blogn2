@@ -74,12 +74,26 @@ class TestProjectController:
             mock_repo.get_count_from_folder_recordcount = AsyncMock(return_value=0)
             mock_repo_class.return_value = mock_repo
 
-            # 执行测试
-            result = await get_project_posts(1, 1, 10, "original", None, None, mock_session)
+            # 模拟权限管理器
+            with patch('src.controllers.project.permission_manager') as mock_permission:
+                mock_permission.can_manage_system.return_value = False
 
-            # 验证结果
-            assert "posts" in result
-            assert "total" in result
+                # 执行测试 - 需要提供所有参数，包括Depends对象
+                result = await get_project_posts(
+                    project_id=1,
+                    page=1,
+                    limit=10,
+                    type="original",
+                    category=None,
+                    folderid=None,
+                    include_deleted=False,
+                    session=mock_session,
+                    current_user=None
+                )
+
+                # 验证结果
+                assert "posts" in result
+                assert "total" in result
 
     @pytest.mark.asyncio
     async def test_get_project_posts_subscription_success(self, mock_session):
@@ -93,8 +107,18 @@ class TestProjectController:
             })
             mock_repo_class.return_value = mock_repo
 
-            # 执行测试
-            result = await get_project_posts(1, 1, 10, "subscription", None, None, mock_session)
+            # 执行测试 - 需要提供所有参数
+            result = await get_project_posts(
+                project_id=1,
+                page=1,
+                limit=10,
+                type="subscription",
+                category=None,
+                folderid=None,
+                include_deleted=False,
+                session=mock_session,
+                current_user=None
+            )
 
             # 验证结果
             assert "posts" in result
@@ -110,12 +134,26 @@ class TestProjectController:
             mock_repo.get_count_from_folder_recordcount = AsyncMock(return_value=0)
             mock_repo_class.return_value = mock_repo
 
-            # 执行测试 - invalid类型应该当作original处理
-            result = await get_project_posts(1, 1, 10, "invalid", None, None, mock_session)
+            # 模拟权限管理器
+            with patch('src.controllers.project.permission_manager') as mock_permission:
+                mock_permission.can_manage_system.return_value = False
 
-            # 验证结果
-            assert "posts" in result
-            assert "total" in result
+                # 执行测试 - invalid类型应该当作original处理
+                result = await get_project_posts(
+                    project_id=1,
+                    page=1,
+                    limit=10,
+                    type="invalid",
+                    category=None,
+                    folderid=None,
+                    include_deleted=False,
+                    session=mock_session,
+                    current_user=None
+                )
+
+                # 验证结果
+                assert "posts" in result
+                assert "total" in result
 
     @pytest.mark.asyncio
     async def test_get_project_recent_comments_success(self, mock_session):

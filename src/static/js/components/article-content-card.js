@@ -1,6 +1,14 @@
 /**
- * 文章内容卡片组件
- * 显示文章的完整内容和可能的图片
+ * 文章内容卡片组件 (ArticleContentCard)
+ * 
+ * 负责显示文章的完整内容，包括：
+ * - Markdown内容的解析和渲染
+ * - 单张图片附件的显示
+ * - 多张图片附件的网格布局和模态框预览
+ * - 安全的HTML内容过滤
+ * - 响应式图片布局
+ * 
+ * 继承自BaseComponent，使用统一的工具方法。
  */
 class ArticleContentCard extends BaseComponent {
     constructor() {
@@ -37,7 +45,16 @@ class ArticleContentCard extends BaseComponent {
      */
     async loadArticleData() {
         try {
-            const response = await fetch(`/api/articles/${this.articleId}`);
+            // 获取认证token
+            const token = localStorage.getItem('access_token');
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            const response = await fetch(`/api/articles/${this.articleId}`, {
+                headers: headers
+            });
             if (response.ok) {
                 this.articleData = await response.json();
             } else if (response.status === 404) {
@@ -74,7 +91,7 @@ class ArticleContentCard extends BaseComponent {
         this.shadowRoot.innerHTML = `
             <div class="card article-content-card">
                 <div class="card-body">
-                    <div class="article-content">
+                    <div class="article-content markdown-content">
                         ${this.formatContent(content)}
                     </div>
                     
@@ -97,8 +114,44 @@ class ArticleContentCard extends BaseComponent {
             return '<p class="no-content">暂无内容</p>';
         }
 
+        try {
+            // 检查marked.js是否可用
+            const markedParser = typeof marked !== 'undefined' ? marked : window.marked;
+            if (!markedParser) {
+                console.warn('marked.js not available, using fallback formatting');
+                return this.formatContentFallback(content);
+            }
+
+            // 配置marked.js选项（与预览功能保持一致）
+            const options = {
+                breaks: true,  // 支持换行符
+                gfm: true,     // 启用GitHub风格的Markdown
+                pedantic: false
+            };
+            
+            // 使用marked.js解析Markdown
+            const html = markedParser.parse(content, options);
+            
+            // 对解析后的HTML进行安全过滤
+            const safeHtml = this.sanitizeHtml(html);
+            
+            return safeHtml;
+        } catch (error) {
+            this.logError('Markdown parsing failed', error);
+            // 如果Markdown解析失败，回退到原始文本处理
+            return this.formatContentFallback(content);
+        }
+    }
+
+    /**
+     * 回退的内容格式化方法（当Markdown解析失败时使用）
+     */
+    formatContentFallback(content) {
+        // 首先对内容进行HTML转义，防止XSS攻击
+        const escapedContent = this.escapeHtml(content);
+
         // 将换行符转换为HTML段落
-        const paragraphs = content.split(/\r?\n/).filter(p => p.trim());
+        const paragraphs = escapedContent.split(/\r?\n/).filter(p => p.trim());
         
         if (paragraphs.length === 0) {
             return '<p class="no-content">暂无内容</p>';
@@ -106,6 +159,8 @@ class ArticleContentCard extends BaseComponent {
 
         return paragraphs.map(p => `<p>${this.processTextWithLinks(p)}</p>`).join('');
     }
+
+
 
     /**
      * 渲染所有附件（单张图片 + 多张图片）
@@ -178,7 +233,7 @@ class ArticleContentCard extends BaseComponent {
         return `
             <div class="article-attachments">
                 <h3>更多图片 (${imageAttachments.length})</h3>
-                <div class="attachments-grid">
+                <div class="attachments-grid" data-count="${imageAttachments.length}">
                     ${imageAttachments.map(att => `
                         <div class="attachment-item">
                             <div class="attachment-image" style="cursor: pointer;">
@@ -274,63 +329,10 @@ class ArticleContentCard extends BaseComponent {
         document.body.style.overflow = ''; // 恢复背景滚动
     }
 
-    /**
-     * HTML转义
-     */
-    escapeHtml(text) {
-        if (!text || typeof text !== 'string') {
-            return '';
-        }
-        
-        return text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
 
     /**
      * 处理文本中的链接，安全地转换为可点击的链接
      */
-    isValidUrl(url) {
-        try {
-            const urlObj = new URL(url);
-            
-            // 只允许http和https协议
-            if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-                return false;
-            }
-            
-            // 检查域名是否包含危险字符
-            const hostname = urlObj.hostname;
-            if (!hostname || /[<>\"'&]/.test(hostname)) {
-                return false;
-            }
-            
-            // 检查端口号是否在安全范围内
-            if (urlObj.port) {
-                const port = parseInt(urlObj.port);
-                if (port < 1 || port > 65535) {
-                    return false;
-                }
-            }
-            
-            // 检查URL长度是否合理
-            if (url.length > 2048) {
-                return false;
-            }
-            
-            // 检查是否包含可疑的JavaScript代码
-            if (/javascript:|data:|vbscript:|file:/i.test(url)) {
-                return false;
-            }
-            
-            return true;
-        } catch (error) {
-            return false;
-        }
-    }
 
     processTextWithLinks(text) {
         if (!text || typeof text !== 'string') {
@@ -374,19 +376,14 @@ class ArticleContentCard extends BaseComponent {
             const style = document.createElement('style');
             style.textContent = `
                 @import url('/static/css/common-components.css');
+                @import url('/static/css/components.css');
                 
                 .article-content {
                     line-height: 1.8;
-                    color: var(--gray-800);
                 }
                 
                 .article-content p {
-                    margin-bottom: var(--spacing-4);
                     text-align: justify;
-                }
-                
-                .article-content p:last-child {
-                    margin-bottom: 0;
                 }
                 
                 .article-attachment {
@@ -446,9 +443,128 @@ class ArticleContentCard extends BaseComponent {
                 
                 .attachments-grid {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
                     gap: var(--spacing-4);
                     margin-bottom: var(--spacing-4);
+                }
+                
+                /* 根据图片数量设置不同的网格布局 */
+                .attachments-grid[data-count="1"] {
+                    grid-template-columns: 200px;
+                    justify-content: start;
+                }
+                
+                .attachments-grid[data-count="2"] {
+                    grid-template-columns: 200px 200px;
+                    justify-content: start;
+                }
+                
+                .attachments-grid[data-count="3"] {
+                    grid-template-columns: 200px 200px 200px;
+                    justify-content: center;
+                }
+                
+                .attachments-grid[data-count="4"] {
+                    grid-template-columns: 200px 200px;
+                    justify-content: center;
+                }
+                
+                .attachments-grid[data-count="5"] {
+                    grid-template-columns: 200px 200px 200px;
+                    justify-content: center;
+                }
+                
+                .attachments-grid[data-count="6"] {
+                    grid-template-columns: 200px 200px 200px;
+                    justify-content: center;
+                }
+                
+                .attachments-grid[data-count="7"] {
+                    grid-template-columns: 200px 200px 200px 200px;
+                    justify-content: center;
+                }
+                
+                .attachments-grid[data-count="8"] {
+                    grid-template-columns: 200px 200px 200px 200px;
+                    justify-content: center;
+                }
+                
+                .attachments-grid[data-count="9"] {
+                    grid-template-columns: 200px 200px 200px;
+                    justify-content: center;
+                }
+                
+                .attachments-grid[data-count="10"] {
+                    grid-template-columns: 200px 200px 200px 200px 200px;
+                    justify-content: center;
+                }
+                
+                /* 超过10张图片时使用自适应布局 */
+                .attachments-grid[data-count]:not([data-count="1"]):not([data-count="2"]):not([data-count="3"]):not([data-count="4"]):not([data-count="5"]):not([data-count="6"]):not([data-count="7"]):not([data-count="8"]):not([data-count="9"]):not([data-count="10"]) {
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                }
+                
+                /* 响应式设计 */
+                @media (max-width: 768px) {
+                    .attachments-grid[data-count="1"] {
+                        grid-template-columns: 200px;
+                    }
+                    
+                    .attachments-grid[data-count="2"] {
+                        grid-template-columns: 200px 200px;
+                    }
+                    
+                    .attachments-grid[data-count="3"] {
+                        grid-template-columns: 200px 200px;
+                    }
+                    
+                    .attachments-grid[data-count="4"] {
+                        grid-template-columns: 200px 200px;
+                    }
+                    
+                    .attachments-grid[data-count="5"] {
+                        grid-template-columns: 200px 200px;
+                    }
+                    
+                    .attachments-grid[data-count="6"] {
+                        grid-template-columns: 200px 200px;
+                    }
+                    
+                    .attachments-grid[data-count="7"] {
+                        grid-template-columns: 200px 200px;
+                    }
+                    
+                    .attachments-grid[data-count="8"] {
+                        grid-template-columns: 200px 200px;
+                    }
+                    
+                    .attachments-grid[data-count="9"] {
+                        grid-template-columns: 200px 200px;
+                    }
+                    
+                    .attachments-grid[data-count="10"] {
+                        grid-template-columns: 200px 200px;
+                    }
+                }
+                
+                @media (max-width: 480px) {
+                    .attachments-grid[data-count="1"] {
+                        grid-template-columns: 200px;
+                    }
+                    
+                    .attachments-grid[data-count="2"] {
+                        grid-template-columns: 200px;
+                    }
+                    
+                    .attachments-grid[data-count="3"],
+                    .attachments-grid[data-count="4"],
+                    .attachments-grid[data-count="5"],
+                    .attachments-grid[data-count="6"],
+                    .attachments-grid[data-count="7"],
+                    .attachments-grid[data-count="8"],
+                    .attachments-grid[data-count="9"],
+                    .attachments-grid[data-count="10"] {
+                        grid-template-columns: 200px;
+                    }
                 }
                 
                 .attachment-item {
@@ -470,7 +586,7 @@ class ArticleContentCard extends BaseComponent {
                 }
                 
                 .attachment-item .attachment-image img {
-                    width: 100%;
+                    width: 200px;
                     height: 200px;
                     object-fit: cover;
                     display: block;

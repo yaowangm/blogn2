@@ -1,6 +1,14 @@
 /**
- * 基础组件类
- * 提供所有Web组件共用的基础功能
+ * 基础组件类 (BaseComponent)
+ * 
+ * 提供所有Web组件共用的基础功能，包括：
+ * - 统一的错误处理和日志记录
+ * - 通用的工具方法（HTML转义、日期格式化等）
+ * - 安全的内容过滤和验证
+ * - 统一的加载和错误状态显示
+ * - 项目ID和文章ID的获取逻辑
+ * 
+ * 所有自定义Web组件都应该继承此类以获得基础功能。
  */
 class BaseComponent extends HTMLElement {
     constructor() {
@@ -69,16 +77,65 @@ class BaseComponent extends HTMLElement {
     /**
      * 格式化日期
      * 将ISO日期字符串格式化为可读格式
+     * 支持过去和未来日期的正确显示
+     * 
+     * @param {string} dateString - ISO日期字符串
+     * @returns {string} 格式化后的日期字符串
      */
     formatDate(dateString) {
         if (!dateString) return '';
         
         const date = new Date(dateString);
         const now = new Date();
-        const diffTime = Math.abs(now - date);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
-        if (diffDays === 1) {
+        // 检查是否为未来日期
+        if (date > now) {
+            // 计算日期差（不考虑时间）
+            const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            const nowOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const diffDays = Math.floor((dateOnly - nowOnly) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) {
+                // 今天：显示小时和分钟
+                const diffTime = date - now;
+                const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+                const diffMinutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60));
+                
+                if (diffHours > 0) {
+                    return `${diffHours}小时后`;
+                } else if (diffMinutes > 0) {
+                    return `${diffMinutes}分钟后`;
+                } else {
+                    return '即将到来';
+                }
+            } else if (diffDays === 1) {
+                return '明天';
+            } else if (diffDays < 7) {
+                return `${diffDays}天后`;
+            } else {
+                return date.toLocaleDateString('zh-CN');
+            }
+        }
+        
+        // 过去日期的处理
+        const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const nowOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const diffDays = Math.floor((nowOnly - dateOnly) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 0) {
+            // 今天：显示小时和分钟
+            const diffTime = now - date;
+            const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+            const diffMinutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60));
+            
+            if (diffHours > 0) {
+                return `${diffHours}小时${diffMinutes}分钟前`;
+            } else if (diffMinutes > 0) {
+                return `${diffMinutes}分钟前`;
+            } else {
+                return '刚刚';
+            }
+        } else if (diffDays === 1) {
             return '昨天';
         } else if (diffDays < 7) {
             return `${diffDays}天前`;
@@ -98,6 +155,62 @@ class BaseComponent extends HTMLElement {
         return cleanText.length > maxLength 
             ? cleanText.substring(0, maxLength) + '...' 
             : cleanText;
+    }
+
+    /**
+     * 检查是否可以提交（防重复提交）
+     * 检查submitting和loading状态，防止重复提交
+     * 
+     * @returns {boolean} 是否可以提交
+     */
+    canSubmit() {
+        return !(this.submitting || this.loading);
+    }
+
+    /**
+     * 创建防重复提交的表单提交处理器
+     * 自动检查提交状态，防止重复提交
+     * 
+     * @param {Function} submitHandler - 实际的提交处理函数
+     * @returns {Function} 包装后的提交处理器
+     */
+    createSubmitHandler(submitHandler) {
+        return (event) => {
+            event.preventDefault();
+            
+            // 防止重复提交：检查提交锁和loading状态
+            if (!this.canSubmit()) {
+                return;
+            }
+            
+            submitHandler.call(this);
+        };
+    }
+
+    /**
+     * 更新提交按钮状态
+     * 根据loading和submitting状态更新按钮的禁用状态和显示内容
+     * 
+     * @param {string} loadingText - 加载时显示的文本
+     * @param {string} normalText - 正常状态显示的文本
+     */
+    updateSubmitButtonState(loadingText = '处理中...', normalText = '提交') {
+        const submitBtn = this.shadowRoot.querySelector('button[type="submit"]');
+        
+        if (submitBtn) {
+            if (this.loading || this.submitting) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        ${loadingText}
+                    </div>
+                `;
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = normalText;
+            }
+        }
     }
 
     /**
@@ -172,7 +285,7 @@ class BaseComponent extends HTMLElement {
     /**
      * 获取项目ID
      * 统一处理博客页面和文章页面的项目ID获取
-     * 支持 /blog/{project_id} 和 /article/{article_id} 两种URL格式
+     * 支持 /blog/{project_id}、/article/{article_id} 和 /edit-article/{article_id} 三种URL格式
      */
     getProjectId() {
         const path = window.location.pathname;
@@ -191,24 +304,244 @@ class BaseComponent extends HTMLElement {
             return null;
         }
         
+        // 尝试从编辑文章页面URL获取文章ID
+        const editArticleMatch = path.match(/\/edit-article\/(\d+)/);
+        if (editArticleMatch) {
+            // 在编辑文章页面，我们需要从文章ID获取项目ID
+            // 这里返回null，让组件知道当前在编辑文章页面
+            return null;
+        }
+        
         return null;
     }
 
     /**
      * 获取文章ID
      * 从URL中获取文章ID
+     * 支持 /article/{article_id} 和 /edit-article/{article_id} 两种URL格式
      */
     getArticleId() {
         const path = window.location.pathname;
+        
+        // 尝试从文章页面URL获取文章ID
         const articleMatch = path.match(/\/article\/(\d+)/);
-        return articleMatch ? parseInt(articleMatch[1]) : null;
+        if (articleMatch) {
+            return parseInt(articleMatch[1]);
+        }
+        
+        // 尝试从编辑文章页面URL获取文章ID
+        const editArticleMatch = path.match(/\/edit-article\/(\d+)/);
+        if (editArticleMatch) {
+            return parseInt(editArticleMatch[1]);
+        }
+        
+        return null;
     }
 
     /**
      * 检查当前是否在文章页面
+     * 包括文章详情页面和编辑文章页面
      */
     isArticlePage() {
-        return window.location.pathname.includes('/article/');
+        const path = window.location.pathname;
+        return path.includes('/article/') || path.includes('/edit-article/');
+    }
+
+    /**
+     * 安全的HTML过滤，防止XSS攻击
+     * 所有组件共享的HTML安全过滤方法
+     */
+    sanitizeHtml(html) {
+        if (!html || typeof html !== 'string') {
+            return '';
+        }
+
+        // 使用更简单的方法：先清理危险内容，再过滤标签
+        let cleanHtml = html;
+        
+        // 移除危险的脚本和事件
+        cleanHtml = cleanHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+        cleanHtml = cleanHtml.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '');
+        cleanHtml = cleanHtml.replace(/javascript:/gi, '');
+        
+        // 创建临时DOM元素
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = cleanHtml;
+        
+        // 允许的HTML标签
+        const allowedTags = [
+            'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'del', 'strike',
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            'ul', 'ol', 'li',
+            'blockquote', 'pre', 'code',
+            'a', 'img',
+            'table', 'thead', 'tbody', 'tr', 'th', 'td',
+            'hr', 'div', 'span'
+        ];
+
+        // 递归过滤节点
+        const filterNode = (node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                return node.cloneNode(true);
+            }
+
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                const tagName = node.tagName.toLowerCase();
+                
+                // 检查标签是否被允许
+                if (!allowedTags.includes(tagName)) {
+                    // 如果不允许，返回文本内容
+                    return document.createTextNode(node.textContent);
+                }
+
+                // 创建新的元素
+                const newElement = document.createElement(tagName);
+
+                // 复制安全的属性
+                for (const attr of node.attributes) {
+                    const attrName = attr.name.toLowerCase();
+                    if (['href', 'src', 'alt', 'title', 'class', 'id'].includes(attrName)) {
+                        if (attrName === 'href') {
+                            const href = attr.value;
+                            if (this.isValidUrl(href)) {
+                                newElement.setAttribute('href', href);
+                                if (href.startsWith('http') && !href.includes(window.location.hostname)) {
+                                    newElement.setAttribute('target', '_blank');
+                                    newElement.setAttribute('rel', 'noopener noreferrer');
+                                }
+                            }
+                        } else if (attrName === 'src') {
+                            const src = attr.value;
+                            if (this.isValidImageSrc(src)) {
+                                newElement.setAttribute('src', src);
+                            }
+                        } else {
+                            newElement.setAttribute(attrName, this.escapeHtml(attr.value));
+                        }
+                    }
+                }
+
+                // 递归处理子节点
+                for (const child of node.childNodes) {
+                    const filteredChild = filterNode(child);
+                    if (filteredChild) {
+                        newElement.appendChild(filteredChild);
+                    }
+                }
+
+                return newElement;
+            }
+
+            return null;
+        };
+
+        // 过滤所有子节点
+        const filteredNodes = [];
+        for (const child of tempDiv.childNodes) {
+            const filteredChild = filterNode(child);
+            if (filteredChild) {
+                filteredNodes.push(filteredChild);
+            }
+        }
+
+        // 创建新的容器
+        const newContainer = document.createElement('div');
+        filteredNodes.forEach(node => newContainer.appendChild(node));
+
+        return newContainer.innerHTML;
+    }
+
+    /**
+     * 验证URL是否安全
+     */
+    isValidUrl(url) {
+        try {
+            const urlObj = new URL(url);
+            return ['http:', 'https:', 'mailto:'].includes(urlObj.protocol);
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * 验证图片src是否安全
+     */
+    isValidImageSrc(src) {
+        try {
+            const urlObj = new URL(src);
+            return ['http:', 'https:'].includes(urlObj.protocol);
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * HTML转义，防止XSS攻击
+     */
+    escapeHtml(text) {
+        if (typeof text !== 'string') {
+            return '';
+        }
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    /**
+     * 移除Markdown标记，返回纯文本
+     * 用于在摘要列表中显示纯文本内容
+     * 高性能版本：使用预编译正则表达式和优化的处理流程
+     */
+    stripMarkdown(text) {
+        if (typeof text !== 'string') {
+            return '';
+        }
+        
+        // 预编译正则表达式（避免重复编译）
+        const patterns = {
+            // 代码块（优先处理，避免处理代码块内的Markdown）
+            codeBlocks: /```[\s\S]*?```|~~~[\s\S]*?~~~/g,
+            // 行首标记（标题、引用、列表、水平线）
+            lineStart: /^(#{1,6}\s+|>\s*|[\s]*[-*+]\s+|[\s]*\d+\.\s+|[-*_]{3,}$)/gm,
+            // 内联格式（粗体、斜体、删除线、行内代码）
+            inline: /(\*\*([^*]+)\*\*|\*([^*]+)\*|__([^_]+)__|_([^_]+)_|~~([^~]+)~~|`([^`]+)`)/g,
+            // 链接和图片
+            links: /!?\[([^\]]*)\]\([^)]+\)/g,
+            // 表格分隔符
+            table: /\|/g,
+            // 空白字符清理
+            whitespace: /\n\s*\n/g,
+            spaces: /\s+/g
+        };
+        
+        // 分步处理，减少字符串操作次数
+        let result = text;
+        
+        // 1. 移除代码块（避免处理代码块内的Markdown语法）
+        result = result.replace(patterns.codeBlocks, '');
+        
+        // 2. 处理行首标记
+        result = result.replace(patterns.lineStart, '');
+        
+        // 3. 处理内联格式（使用回调函数提取内容）
+        result = result.replace(patterns.inline, (match, p1, p2, p3, p4, p5, p6, p7) => {
+            return p2 || p3 || p4 || p5 || p6 || p7 || '';
+        });
+        
+        // 4. 处理链接和图片
+        result = result.replace(patterns.links, '$1');
+        
+        // 5. 清理表格和空白字符
+        result = result
+            .replace(patterns.table, ' ')
+            .replace(patterns.whitespace, '\n')
+            .replace(patterns.spaces, ' ')
+            .trim();
+        
+        return result;
     }
 }
 
