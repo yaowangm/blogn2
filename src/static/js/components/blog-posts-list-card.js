@@ -16,14 +16,15 @@ class BlogPostsListCard extends BaseComponent {
         this.currentCategoryName = '全部文章';
         this.isOwner = false; // 是否为博客所有者
         this.projectData = null; // 项目数据
+        this.boundEventHandlers = {}; // 存储绑定的事件处理器，用于清理
         this.loadPageSizeConfig();
     }
 
-    connectedCallback() {
+    async connectedCallback() {
         this.projectId = this.getProjectIdFromUrl();
         this.currentFolderId = this.getCurrentFolderId();
         this.render();
-        this.checkOwnership();
+        await this.checkOwnership();
         this.loadData();
         this.addEventListeners();
     }
@@ -55,6 +56,9 @@ class BlogPostsListCard extends BaseComponent {
                     const currentUser = JSON.parse(userInfo);
                     this.isOwner = currentUser.id === this.projectData.userid;
                 }
+                
+                // 所有权检查完成后重新渲染，确保按钮显示状态正确
+                this.render();
             }
         } catch (error) {
             console.error('检查博客所有权失败:', error);
@@ -70,6 +74,24 @@ class BlogPostsListCard extends BaseComponent {
             this.currentPage = 1; // 重置页码
             this.loadData();
         });
+        
+        // 监听用户登录状态变化
+        this.boundEventHandlers.tokenRefreshed = () => {
+            this.checkOwnership();
+        };
+        window.addEventListener('tokenRefreshed', this.boundEventHandlers.tokenRefreshed);
+        
+        this.boundEventHandlers.tokensCleared = () => {
+            this.isOwner = false;
+            this.render();
+        };
+        window.addEventListener('tokensCleared', this.boundEventHandlers.tokensCleared);
+        
+        // 监听用户信息更新（登录成功后）
+        this.boundEventHandlers.userLoginSuccess = () => {
+            this.checkOwnership();
+        };
+        document.addEventListener('userLoginSuccess', this.boundEventHandlers.userLoginSuccess);
     }
 
     async loadData() {
@@ -285,6 +307,19 @@ class BlogPostsListCard extends BaseComponent {
         console.error(message);
         this.loading = false;
         this.render();
+    }
+
+    disconnectedCallback() {
+        // 清理事件监听器，避免内存泄漏
+        if (this.boundEventHandlers.tokenRefreshed) {
+            window.removeEventListener('tokenRefreshed', this.boundEventHandlers.tokenRefreshed);
+        }
+        if (this.boundEventHandlers.tokensCleared) {
+            window.removeEventListener('tokensCleared', this.boundEventHandlers.tokensCleared);
+        }
+        if (this.boundEventHandlers.userLoginSuccess) {
+            document.removeEventListener('userLoginSuccess', this.boundEventHandlers.userLoginSuccess);
+        }
     }
 }
 
