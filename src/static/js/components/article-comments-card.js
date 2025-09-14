@@ -264,7 +264,7 @@ class ArticleCommentsCard extends BaseComponent {
     /**
      * 刷新评论列表
      */
-    async refreshComments() {
+    async refreshComments(commentId = null) {
         try {
             // 跳转到第一页以显示最新评论
             this.currentPage = 1;
@@ -280,10 +280,48 @@ class ArticleCommentsCard extends BaseComponent {
             
             // 重新渲染以显示用户信息
             this.render();
+            
+            // 如果有指定的评论ID，滚动到该评论并突出显示
+            if (commentId) {
+                this.scrollToCommentAndHighlight(commentId);
+            }
         } catch (error) {
             console.error('Failed to refresh comments:', error);
             this.showError('刷新评论失败');
         }
+    }
+
+    /**
+     * 滚动到指定评论并突出显示
+     */
+    scrollToCommentAndHighlight(commentId) {
+        // 等待DOM渲染完成
+        setTimeout(() => {
+            const commentElement = this.shadowRoot.querySelector(`#post${commentId}`);
+            if (commentElement) {
+                // 滚动到评论位置
+                commentElement.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+                
+                // 添加突出显示效果
+                this.highlightComment(commentElement);
+            }
+        }, 100);
+    }
+
+    /**
+     * 突出显示评论
+     */
+    highlightComment(commentElement) {
+        // 添加高亮样式
+        commentElement.classList.add('comment-highlight');
+        
+        // 3秒后移除高亮效果
+        setTimeout(() => {
+            commentElement.classList.remove('comment-highlight');
+        }, 3000);
     }
 
     /**
@@ -672,6 +710,28 @@ class ArticleCommentsCard extends BaseComponent {
                 
                 .comment-item:hover {
                     background-color: var(--gray-50);
+                }
+
+                .comment-highlight {
+                    background-color: #fef3c7 !important;
+                    border: 2px solid #f59e0b !important;
+                    border-radius: var(--border-radius-md);
+                    animation: highlightPulse 0.6s ease-in-out;
+                }
+
+                @keyframes highlightPulse {
+                    0% {
+                        transform: scale(1);
+                        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+                    }
+                    50% {
+                        transform: scale(1.02);
+                        box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.3);
+                    }
+                    100% {
+                        transform: scale(1);
+                        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+                    }
                 }
 
                 .comment-avatar {
