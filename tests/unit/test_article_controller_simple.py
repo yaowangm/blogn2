@@ -199,11 +199,20 @@ class TestArticleControllerSimple:
         # 导入控制器函数
         from src.controllers.article import create_article_comment
         
+        # 模拟Request对象
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        
+        # 模拟current_user
+        mock_current_user = {"id": 1, "name": "testuser"}
+        
         # 执行测试
         result = await create_article_comment(
             article_id=1,
             comment_data={"content": "新评论", "user_id": 1},
-            session=self.mock_session
+            request=mock_request,
+            session=self.mock_session,
+            current_user=mock_current_user
         )
         
         # 验证结果
@@ -224,12 +233,21 @@ class TestArticleControllerSimple:
         # 导入控制器函数
         from src.controllers.article import create_article_comment
         
+        # 模拟Request对象
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        
+        # 模拟current_user
+        mock_current_user = {"id": 1, "name": "testuser"}
+        
         # 执行测试并验证异常
         with pytest.raises(HTTPException) as exc_info:
             await create_article_comment(
                 article_id=999,
                 comment_data={"content": "新评论"},
-                session=self.mock_session
+                request=mock_request,
+                session=self.mock_session,
+                current_user=mock_current_user
             )
         
         assert exc_info.value.status_code == 404
