@@ -117,6 +117,9 @@ class RecentMessagesCard extends BaseComponent {
                     padding: var(--spacing-4) var(--spacing-5);
                     border-bottom: 1px solid var(--gray-200);
                     background: var(--gray-50);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
                 }
 
                 .card-title {
@@ -124,6 +127,19 @@ class RecentMessagesCard extends BaseComponent {
                     font-weight: 600;
                     color: var(--gray-900);
                     margin: 0;
+                }
+
+                .view-all-link {
+                    font-size: var(--font-size-sm);
+                    color: var(--primary-color);
+                    text-decoration: none;
+                    font-weight: 500;
+                    transition: var(--transition-fast);
+                }
+
+                .view-all-link:hover {
+                    color: var(--primary-color-dark);
+                    text-decoration: underline;
                 }
 
                 .card-body {
@@ -238,6 +254,7 @@ class RecentMessagesCard extends BaseComponent {
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">最近留言</h3>
+                    <a href="/messages" class="view-all-link" target="_blank">查看全部</a>
                 </div>
                 <div class="card-body">
                     <div class="message-list">

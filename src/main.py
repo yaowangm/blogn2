@@ -405,6 +405,18 @@ async def blog_page(project_id: int):
     """
     return FileResponse("src/static/blog.html")
 
+@app.get("/messages")
+async def messages_page():
+    """
+    留言本页面路由
+    
+    返回留言本页面HTML文件。
+    
+    Returns:
+        FileResponse: 留言本页面HTML文件
+    """
+    return FileResponse("src/static/messages.html")
+
 
 @app.get("/blog/{project_id}/create-post")
 async def create_post_page(project_id: int):

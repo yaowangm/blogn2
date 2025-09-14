@@ -220,6 +220,69 @@ class BlogService:
             # 如果查询失败，返回空列表
             print(f"Warning: Could not fetch messages: {e}")
             return []
+
+    async def get_messages_list(self, page: int = 1, limit: int = 10) -> Dict[str, Any]:
+        """获取留言本分页列表"""
+        try:
+            # 计算偏移量
+            offset = (page - 1) * limit
+            
+            # 获取总数
+            total = await self.post_repo.count_messages()
+            
+            # 获取分页数据
+            messages = await self.post_repo.get_messages_paginated(limit, offset)
+            
+            formatted_messages = []
+            for message in messages:
+                # 格式化留言时间
+                post_time = message["post_time"]
+                if post_time:
+                    time_str = self._format_relative_time(post_time)
+                else:
+                    time_str = "未知时间"
+                
+                # 格式化最后回复时间
+                last_reply_time = message.get("last_reply_time")
+                last_reply_time_str = ""
+                if last_reply_time:
+                    last_reply_time_str = self._format_relative_time(last_reply_time)
+                
+                formatted_messages.append({
+                    "id": message["id"],
+                    "author": message["author_name"],
+                    "subject": message["subject"] or "无标题",
+                    "post_time": time_str,
+                    "last_reply_author": message.get("last_reply_author"),
+                    "last_reply_time": last_reply_time_str,
+                    "size": message.get("size", 0),
+                    "hits": message.get("hits", 0),
+                    "reply_count": message.get("reply_count", 0),
+                    "userid": message["userid"]
+                })
+            
+            # 计算总页数
+            total_pages = (total + limit - 1) // limit
+            
+            return {
+                "messages": formatted_messages,
+                "total": total,
+                "current_page": page,
+                "total_pages": total_pages,
+                "has_prev": page > 1,
+                "has_next": page < total_pages
+            }
+        except Exception as e:
+            # 如果查询失败，返回空数据
+            print(f"Warning: Could not fetch messages list: {e}")
+            return {
+                "messages": [],
+                "total": 0,
+                "current_page": page,
+                "total_pages": 0,
+                "has_prev": False,
+                "has_next": False
+            }
     
     async def get_latest_posts(self, page: int = 1, page_size: int = 10, exclude: Optional[int] = None, blogid: Optional[int] = None) -> Dict[str, Any]:
         """获取最新的博文记录（支持分页）"""

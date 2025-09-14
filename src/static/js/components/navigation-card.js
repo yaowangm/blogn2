@@ -139,6 +139,10 @@ class NavigationCard extends BaseComponent {
                             <div class="nav-icon">${Icons.tag}</div>
                             <span class="nav-text">标签云</span>
                         </a>
+                        <a href="/messages" class="nav-item" target="_blank">
+                            <div class="nav-icon">${Icons.message}</div>
+                            <span class="nav-text">留言本</span>
+                        </a>
                     </div>
                 </div>
             </div>

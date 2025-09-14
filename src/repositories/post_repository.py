@@ -202,6 +202,70 @@ class PostRepository:
         """获取最近的留言本记录（别名方法）"""
         return await self.get_messages(limit)
     
+    async def get_messages_paginated(self, limit: int = 10, offset: int = 0) -> List[dict]:
+        """获取留言本分页记录"""
+        statement = (
+            select(Post)
+            .where(Post.projectitemid == 0)  # 只获取留言本
+            .where(Post.rootid == 0)  # 只获取主贴
+            .order_by(Post.id.desc())  # 按id倒序排序
+            .offset(offset)
+            .limit(limit)
+        )
+        
+        result = await self.session.exec(statement)
+        messages = []
+        
+        for message in result.all():
+            # 获取用户名
+            author_name = "用户"  # 默认值
+            if message.userid:
+                try:
+                    # 查询用户表获取用户名
+                    user_result = await self.session.exec(select(User.name).where(User.id == message.userid))
+                    user_name = user_result.first()
+                    if user_name:
+                        author_name = user_name
+                    else:
+                        author_name = "用户"
+                except Exception as e:
+                    author_name = "用户"
+            
+            # 获取最后回复用户名
+            last_reply_author = None
+            if message.lastreplyid and message.lastreplyid > 0:
+                try:
+                    # 查询用户表获取最后回复用户名
+                    user_result = await self.session.exec(select(User.name).where(User.id == message.lastreplyid))
+                    last_reply_user_name = user_result.first()
+                    if last_reply_user_name:
+                        last_reply_author = last_reply_user_name
+                    else:
+                        last_reply_author = "未知用户"
+                except Exception as e:
+                    last_reply_author = "未知用户"
+            
+            messages.append({
+                "id": message.id,
+                "subject": message.subject,
+                "content": message.content,
+                "userid": message.userid,
+                "projectitemid": message.projectitemid,
+                "rootid": message.rootid,
+                "post_time": message.posttime,
+                "last_reply_time": message.lastreplytime,
+                "status": message.status,
+                "lastreplyid": message.lastreplyid,
+                "replycount": message.replycount or 0,
+                "author_name": author_name,
+                "last_reply_author": last_reply_author,
+                "reply_count": message.replycount or 0,
+                "size": message.size or 0,
+                "hits": message.hits or 0
+            })
+        
+        return messages
+    
     async def count_comments(self) -> int:
         """统计评论数量（排除留言本）"""
         statement = select(func.count(Post.id)).where(Post.projectitemid > 0)

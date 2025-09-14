@@ -102,6 +102,27 @@ async def get_recent_messages(
     """
     return await blog_service.get_recent_messages(limit)
 
+@router.get("/messages", response_model=Dict[str, Any])
+@handle_api_errors("获取留言本列表失败")
+@cache_blog_messages()  # 使用默认缓存时间
+async def get_messages_list(
+    page: int = 1,
+    limit: int = 10,
+    blog_service: BlogService = Depends(get_blog_service)
+):
+    """
+    获取留言本分页列表
+    
+    Args:
+        page: 页码，默认1
+        limit: 每页数量，默认10
+        blog_service: 博客服务实例
+        
+    Returns:
+        Dict[str, Any]: 留言本分页数据
+    """
+    return await blog_service.get_messages_list(page, limit)
+
 @router.get("/blogs/posts/latest", response_model=Dict[str, Any])
 @handle_api_errors("获取最新博文失败")
 @cache_blog_recent_list()  # 使用默认缓存时间
