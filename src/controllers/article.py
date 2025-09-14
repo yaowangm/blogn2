@@ -38,6 +38,8 @@ router = APIRouter(tags=["文章管理"])
 @cache_article_detail(ttl=1800)  # 缓存30分钟
 async def get_article_detail(
     article_id: int,
+    page: int = 1,
+    per_page: int = 10,
     session: AsyncSession = Depends(get_async_session),
     current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
@@ -91,8 +93,10 @@ async def get_article_detail(
             folder_repo = FolderRepository(session)
             category = await folder_repo.get_by_id(article.folderid)
         
-        # 获取文章评论
-        comments = await post_repo.get_by_project_item_id(article_id)
+        # 获取文章评论（分页）
+        comments_data = await post_repo.get_by_project_item_id_paginated(article_id, page, per_page)
+        comments = comments_data["comments"]
+        pagination = comments_data["pagination"]
         
         # 获取文章附件图片
         attachments = await attachment_repo.get_by_project_item_id(article_id)
@@ -138,7 +142,8 @@ async def get_article_detail(
                     "post_time": comment.posttime,
                     "reply_count": comment.replycount or 0
                 } for comment in comments
-            ] if comments else []
+            ] if comments else [],
+            "comments_pagination": pagination
         }
         
     except HTTPException:

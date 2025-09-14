@@ -8,6 +8,9 @@ class ArticleCommentsCard extends BaseComponent {
         this.articleId = null;
         this.articleData = null;
         this.userMap = {};
+        this.currentPage = 1;
+        this.perPage = 10;
+        this.pagination = null;
     }
 
     async connectedCallback() {
@@ -48,11 +51,16 @@ class ArticleCommentsCard extends BaseComponent {
                 headers['Authorization'] = `Bearer ${token}`;
             }
             
-            const response = await fetch(`/api/articles/${this.articleId}`, {
+            const response = await fetch(`/api/articles/${this.articleId}?page=${this.currentPage}&per_page=${this.perPage}`, {
                 headers: headers
             });
             if (response.ok) {
                 this.articleData = await response.json();
+                
+                // 保存分页信息
+                if (this.articleData.comments_pagination) {
+                    this.pagination = this.articleData.comments_pagination;
+                }
                 
                 // 如果有评论，获取每个评论的用户信息
                 if (this.articleData.comments && this.articleData.comments.length > 0) {
@@ -137,11 +145,13 @@ class ArticleCommentsCard extends BaseComponent {
                 <div class="card-body">
                     ${this.renderComments(comments)}
                 </div>
+                ${this.renderPagination()}
             </div>
         `;
 
         this.addStyles();
         this.addEventListeners();
+        this.setupPaginationCallback();
     }
 
     /**
@@ -571,6 +581,52 @@ class ArticleCommentsCard extends BaseComponent {
                 style.parentNode.removeChild(style);
             }
         }, 3000);
+    }
+
+    /**
+     * 渲染分页导航
+     */
+    renderPagination() {
+        if (!this.pagination || this.pagination.total_pages <= 1) {
+            return '';
+        }
+
+        return `
+            <div class="pagination-container">
+                <navigation-card mode="pagination" pagination='${JSON.stringify(this.pagination)}'></navigation-card>
+            </div>
+        `;
+    }
+
+    /**
+     * 切换到指定页面
+     */
+    async goToPage(page) {
+        if (page < 1 || page > this.pagination.total_pages) {
+            return;
+        }
+        
+        this.currentPage = page;
+        await this.loadArticleData();
+        this.render();
+        this.checkAndScrollToComment();
+    }
+
+    /**
+     * 设置分页导航回调
+     */
+    setupPaginationCallback() {
+        const navigationCard = this.shadowRoot.querySelector('navigation-card');
+        if (navigationCard && this.pagination) {
+            // 为评论分页添加item_type
+            const paginationData = {
+                ...this.pagination,
+                item_type: '条评论'
+            };
+            navigationCard.setPagination(paginationData, (page) => {
+                this.goToPage(page);
+            });
+        }
     }
 
     /**

@@ -1,6 +1,6 @@
 from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from src.models.post import Post
 from src.models.project_item import ProjectItem
 from src.models.user import User
@@ -33,6 +33,42 @@ class PostRepository:
             statement = statement.limit(limit)
         result = await self.session.exec(statement)
         return result.all()
+    
+    async def get_by_project_item_id_paginated(self, project_item_id: int, page: int = 1, per_page: int = 10) -> Dict[str, Any]:
+        """根据项目项ID获取分页评论"""
+        # 计算偏移量
+        offset = (page - 1) * per_page
+        
+        # 获取总数
+        count_statement = select(func.count(Post.id)).where(Post.projectitemid == project_item_id)
+        count_result = await self.session.exec(count_statement)
+        total = count_result.first()
+        
+        # 获取分页数据
+        statement = (
+            select(Post)
+            .where(Post.projectitemid == project_item_id)
+            .order_by(Post.posttime.desc())
+            .offset(offset)
+            .limit(per_page)
+        )
+        result = await self.session.exec(statement)
+        comments = result.all()
+        
+        # 计算分页信息
+        total_pages = (total + per_page - 1) // per_page
+        
+        return {
+            "comments": comments,
+            "pagination": {
+                "current_page": page,
+                "per_page": per_page,
+                "total": total,
+                "total_pages": total_pages,
+                "has_prev": page > 1,
+                "has_next": page < total_pages
+            }
+        }
     
     async def get_recent_comments_by_project(self, project_id: int, limit: int = 5) -> List[dict]:
         """获取指定项目的最近评论，包含用户名和文章名"""
