@@ -266,6 +266,9 @@ class ArticleCommentsCard extends BaseComponent {
      */
     async refreshComments() {
         try {
+            // 跳转到第一页以显示最新评论
+            this.currentPage = 1;
+            
             // 重新加载文章数据（包含评论）
             await this.loadArticleData();
             
