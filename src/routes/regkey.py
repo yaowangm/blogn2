@@ -14,7 +14,7 @@ from datetime import datetime
 from src.database import get_async_session
 from src.models.regkey import RegKey, RegKeyWithUserInfo
 from src.models.user import User
-from src.utils.auth_middleware import get_optional_current_user
+from src.utils.auth_dependencies import get_optional_current_user
 from src.utils.permission_decorators import require_auth
 
 # 请求模型

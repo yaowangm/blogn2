@@ -24,7 +24,7 @@ from src.repositories.post_repository import PostRepository
 from src.repositories.attachment_repository import AttachmentRepository
 from src.models.post import Post
 from src.utils.cache import cache_article_detail, cache_article_comments, cache_article_attachments, clear_article_detail_cache, clear_article_comments_cache
-from src.utils.auth_middleware import get_current_user, get_optional_current_user
+from src.utils.auth_dependencies import get_current_user, get_optional_current_user
 from src.utils.permission_manager import permission_manager
 from src.utils.permission_decorators import require_auth
 from src.constants import ArticleStatus, ErrorMessages

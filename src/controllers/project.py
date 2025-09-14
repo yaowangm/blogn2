@@ -16,7 +16,7 @@ from src.utils.cache import (
     cache_project_categories, cache_project_external_links, cache_project_rss,
     cache_project_stats, cache_user_projects
 )
-from src.utils.auth_middleware import get_current_user, get_optional_current_user
+from src.utils.auth_dependencies import get_current_user, get_optional_current_user
 from src.utils.permission_manager import permission_manager
 from src.constants import ArticleStatus
 from src.utils.file_utils import get_temp_dir
