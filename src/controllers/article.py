@@ -11,7 +11,7 @@
 所有接口都支持缓存以提高性能。
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import List, Dict, Any, Optional
 from sqlmodel.ext.asyncio.session import AsyncSession
 from datetime import datetime
@@ -151,6 +151,7 @@ async def get_article_detail(
 async def create_article_comment(
     article_id: int,
     comment_data: Dict[str, Any],
+    request: Request,
     session: AsyncSession = Depends(get_async_session),
     current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
@@ -206,12 +207,22 @@ async def create_article_comment(
         if user_id is None:
             raise HTTPException(status_code=400, detail="用户ID不能为空")
         
+        # 获取客户端IP地址
+        client_ip = request.client.host if request.client else "127.0.0.1"
+        
+        # 计算内容大小（字节数）
+        content_bytes = content.strip().encode('utf-8')
+        content_size = len(content_bytes)
+        
         # 创建评论
         comment = Post(
             projectitemid=article_id,
             userid=user_id,
             subject=comment_data.get("subject", ""),
             content=content.strip(),
+            size=content_size,  # 内容大小（字节）
+            hits=0,  # 访问次数初始为0
+            userip=client_ip,  # 用户IP地址
             posttime=datetime.now(),
             status=1,  # 1表示正常状态
             rootid=0,  # 主评论的rootid为0
@@ -245,6 +256,7 @@ async def create_article_comment(
 async def create_article_comment_auth(
     article_id: int,
     comment_data: Dict[str, Any],
+    request: Request,
     session: AsyncSession = Depends(get_async_session),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
@@ -291,13 +303,23 @@ async def create_article_comment_auth(
         # 使用登录用户ID
         user_id = current_user.get("id")
         
+        # 获取客户端IP地址
+        client_ip = request.client.host if request.client else "127.0.0.1"
+        
+        # 计算内容大小（字节数）
+        content_bytes = content.strip().encode('utf-8')
+        content_size = len(content_bytes)
+        
         # 创建评论
         comment = Post(
             projectitemid=article_id,
             userid=user_id,
             subject=comment_data.get("subject", ""),
             content=content.strip(),
-            createtime=datetime.now(),
+            size=content_size,  # 内容大小（字节）
+            hits=0,  # 访问次数初始为0
+            userip=client_ip,  # 用户IP地址
+            posttime=datetime.now(),
             status=1,  # 1表示正常状态
             rootid=0,  # 主评论的rootid为0
             replycount=0  # 新评论的回复数为0
