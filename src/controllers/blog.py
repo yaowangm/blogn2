@@ -5,6 +5,7 @@ from src.services.blog_service import BlogService
 from src.utils.error_handlers import handle_api_errors
 from src.utils.dependencies import get_blog_service
 from src.utils.cache import cache_blog_recent_list, cache_blog_popular_list, cache_blog_detail, cache_blog_comments, cache_blog_messages
+from src.utils.auth_dependencies import get_current_user
 
 # 创建博客API路由器
 router = APIRouter()
@@ -122,6 +123,45 @@ async def get_messages_list(
         Dict[str, Any]: 留言本分页数据
     """
     return await blog_service.get_messages_list(page, limit)
+
+@router.get("/thread/{thread_id}", response_model=Dict[str, Any])
+@handle_api_errors("获取主题失败")
+@cache_blog_messages()  # 使用默认缓存时间
+async def get_thread(
+    thread_id: int,
+    blog_service: BlogService = Depends(get_blog_service)
+):
+    """
+    获取主题的所有留言
+    
+    Args:
+        thread_id: 主题ID（主贴ID）
+        blog_service: 博客服务实例
+        
+    Returns:
+        Dict[str, Any]: 主题留言数据
+    """
+    return await blog_service.get_thread(thread_id)
+
+@router.post("/messages", response_model=Dict[str, Any])
+@handle_api_errors("提交留言失败")
+async def create_message(
+    message_data: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    blog_service: BlogService = Depends(get_blog_service)
+):
+    """
+    提交新留言
+    
+    Args:
+        message_data: 留言数据
+        current_user: 当前用户
+        blog_service: 博客服务实例
+        
+    Returns:
+        Dict[str, Any]: 创建结果
+    """
+    return await blog_service.create_message(message_data, current_user)
 
 @router.get("/blogs/posts/latest", response_model=Dict[str, Any])
 @handle_api_errors("获取最新博文失败")

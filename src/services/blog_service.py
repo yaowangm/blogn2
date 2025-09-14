@@ -283,6 +283,79 @@ class BlogService:
                 "has_prev": False,
                 "has_next": False
             }
+
+    async def get_thread(self, thread_id: int) -> Dict[str, Any]:
+        """获取主题的所有留言"""
+        try:
+            messages = await self.post_repo.get_thread_messages(thread_id)
+            
+            formatted_messages = []
+            for message in messages:
+                # 格式化留言时间
+                post_time = message["post_time"]
+                if post_time:
+                    time_str = self._format_relative_time(post_time)
+                else:
+                    time_str = "未知时间"
+                
+                formatted_messages.append({
+                    "id": message["id"],
+                    "author": message["author_name"],
+                    "subject": message["subject"] or "无标题",
+                    "content": message["content"] or "",
+                    "post_time": time_str,
+                    "is_main_post": message["is_main_post"],
+                    "userid": message["userid"]
+                })
+            
+            return {
+                "messages": formatted_messages,
+                "thread_id": thread_id
+            }
+        except Exception as e:
+            # 如果查询失败，返回空数据
+            print(f"Warning: Could not fetch thread {thread_id}: {e}")
+            return {
+                "messages": [],
+                "thread_id": thread_id
+            }
+
+    async def create_message(self, message_data: Dict[str, Any], current_user: Dict[str, Any]) -> Dict[str, Any]:
+        """创建新留言"""
+        try:
+            # 验证输入数据
+            subject = message_data.get("subject", "").strip()
+            content = message_data.get("content", "").strip()
+            thread_id = message_data.get("thread_id")
+            
+            if not subject:
+                raise ValueError("标题不能为空")
+            
+            if not content:
+                raise ValueError("内容不能为空")
+            
+            if len(subject) > 200:
+                raise ValueError("标题不能超过200个字符")
+            
+            # 创建留言记录
+            new_message = await self.post_repo.create_message(
+                subject=subject,
+                content=content,
+                user_id=current_user["id"],
+                thread_id=thread_id
+            )
+            
+            return {
+                "id": new_message.id,
+                "subject": new_message.subject,
+                "content": new_message.content,
+                "user_id": new_message.userid,
+                "thread_id": thread_id,
+                "created_at": new_message.posttime
+            }
+        except Exception as e:
+            print(f"Error creating message: {e}")
+            raise ValueError(str(e))
     
     async def get_latest_posts(self, page: int = 1, page_size: int = 10, exclude: Optional[int] = None, blogid: Optional[int] = None) -> Dict[str, Any]:
         """获取最新的博文记录（支持分页）"""

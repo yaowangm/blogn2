@@ -417,6 +417,21 @@ async def messages_page():
     """
     return FileResponse("src/static/messages.html")
 
+@app.get("/thread/{thread_id}")
+async def thread_page(thread_id: int):
+    """
+    留言本主题页面路由
+    
+    返回留言本主题页面HTML文件。
+    
+    Args:
+        thread_id: 主题ID（主贴ID）
+        
+    Returns:
+        FileResponse: 留言本主题页面HTML文件
+    """
+    return FileResponse("src/static/thread.html")
+
 
 @app.get("/blog/{project_id}/create-post")
 async def create_post_page(project_id: int):
