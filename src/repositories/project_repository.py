@@ -96,4 +96,23 @@ class ProjectRepository:
         if project:
             project.recordcount = max((project.recordcount or 0) - 1, 0)
             project.updatetime = datetime.now()
-            self.session.add(project) 
+            self.session.add(project)
+    
+    async def increment_comment_count(self, project_id: int) -> bool:
+        """
+        增加项目的评论数量
+        
+        Args:
+            project_id: 项目ID
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        project = await self.get_by_id(project_id)
+        if project:
+            project.commentcount = (project.commentcount or 0) + 1
+            project.updatetime = datetime.now()
+            await self.session.commit()
+            await self.session.refresh(project)
+            return True
+        return False 

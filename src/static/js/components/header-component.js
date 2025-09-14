@@ -34,6 +34,9 @@ class HeaderComponent extends BaseComponent {
         
         // 监听令牌相关事件
         this.setupTokenEventListeners();
+        
+        // 动态加载token-manager服务
+        this.loadTokenManager();
     }
 
     render() {
@@ -644,6 +647,35 @@ class HeaderComponent extends BaseComponent {
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
         </svg>`;
+    }
+
+    /**
+     * 动态加载token-manager服务
+     */
+    loadTokenManager() {
+        // 检查token-manager是否已经加载
+        if (window.tokenManager) {
+            console.log('TokenManager already loaded');
+            return;
+        }
+
+        // 检查是否已经有token-manager脚本
+        const existingScript = document.querySelector('script[src="/static/js/services/token-manager.js"]');
+        if (existingScript) {
+            console.log('TokenManager script already exists');
+            return;
+        }
+
+        // 动态加载token-manager脚本
+        const script = document.createElement('script');
+        script.src = '/static/js/services/token-manager.js';
+        script.onload = () => {
+            console.log('TokenManager loaded successfully');
+        };
+        script.onerror = () => {
+            console.error('Failed to load token-manager.js');
+        };
+        document.head.appendChild(script);
     }
 }
 

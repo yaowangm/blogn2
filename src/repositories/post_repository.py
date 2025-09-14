@@ -176,4 +176,11 @@ class PostRepository:
         """统计留言本数量"""
         statement = select(func.count(Post.id)).where(Post.projectitemid == 0)
         result = await self.session.exec(statement)
-        return result.first() or 0 
+        return result.first() or 0
+    
+    async def create(self, post: Post) -> Post:
+        """创建新的评论或留言"""
+        self.session.add(post)
+        await self.session.flush()  # 获取生成的ID
+        await self.session.refresh(post)  # 刷新对象以获取完整数据
+        return post 

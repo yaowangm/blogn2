@@ -13,6 +13,7 @@ class CommentFormCard extends BaseComponent {
 
     async connectedCallback() {
         this.articleId = this.getArticleIdFromUrl();
+        
         if (!this.articleId) {
             this.showError('无法获取文章ID');
             return;
@@ -21,8 +22,13 @@ class CommentFormCard extends BaseComponent {
         // 加载文章数据并检查评论设置
         await this.loadArticleData();
         
+        // 检查登录状态
+        this.isLoggedIn = this.checkLoginStatus();
+        
         // 检查是否可以发表评论
-        if (!this.canComment()) {
+        const canComment = this.canComment();
+        
+        if (!canComment) {
             this.hide();
             return;
         }
@@ -66,7 +72,6 @@ class CommentFormCard extends BaseComponent {
         if (!this.articleData) return false;
         
         const allowpost = this.articleData.allowpost || 1;
-        this.isLoggedIn = this.checkLoginStatus();
         
         switch (allowpost) {
             case 1: // 允许匿名评论
@@ -125,6 +130,7 @@ class CommentFormCard extends BaseComponent {
     }
 
     async handleSubmit(e) {
+        
         e.preventDefault();
         if (this.isSubmitting) return;
         
@@ -139,16 +145,31 @@ class CommentFormCard extends BaseComponent {
         this.setSubmitting(true);
         
         try {
+            // 准备请求头
+            const headers = { 'Content-Type': 'application/json' };
+            const token = localStorage.getItem('access_token');
+            const userInfo = localStorage.getItem('user_info');
+            
+            
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            const requestBody = {
+                content: content,
+                user_id: this.getCurrentUserId()
+            };
+            
+            
             const response = await fetch(`/api/articles/${this.articleId}/comments`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    content: content,
-                    user_id: this.getCurrentUserId()
-                })
+                headers: headers,
+                body: JSON.stringify(requestBody)
             });
-
+            
+            
             if (response.ok) {
+                const result = await response.json();
                 this.showSuccess('评论发表成功！');
                 this.resetForm();
                 this.dispatchEvent(new CustomEvent('commentAdded', {
@@ -190,7 +211,17 @@ class CommentFormCard extends BaseComponent {
     }
 
     getCurrentUserId() {
-        return 1; // 临时返回1，实际应该从用户会话获取
+        // 从localStorage获取用户信息
+        const userInfo = localStorage.getItem('user_info');
+        if (userInfo) {
+            try {
+                const user = JSON.parse(userInfo);
+                return user.id;
+            } catch (e) {
+                console.error('Failed to parse user info:', e);
+            }
+        }
+        return 0; // 匿名用户返回0
     }
 
     showSuccess(message) {

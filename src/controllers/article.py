@@ -150,7 +150,8 @@ async def get_article_detail(
 async def create_article_comment(
     article_id: int,
     comment_data: Dict[str, Any],
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
     """
     为指定文章创建评论
@@ -159,9 +160,9 @@ async def create_article_comment(
         article_id: 文章ID
         comment_data: 评论数据，包含：
         - content: 评论内容（必需）
-        - user_id: 用户ID（必需）
         - subject: 评论主题（可选）
         session: 数据库会话
+        current_user: 当前用户信息（可选）
         
     Returns:
         Dict[str, Any]: 创建结果，包含：
@@ -178,14 +179,30 @@ async def create_article_comment(
         if not article:
             raise HTTPException(status_code=404, detail="文章不存在")
         
+        # 验证评论权限
+        allowpost = article.allowpost or 1
+        is_logged_in = current_user is not None
+        
+        if allowpost == 3:  # 不允许任何评论
+            raise HTTPException(status_code=403, detail="此文章已关闭评论功能")
+        elif allowpost == 2 and not is_logged_in:  # 只允许登录用户评论
+            raise HTTPException(status_code=401, detail="需要登录后才能发表评论")
+        
         # 验证评论数据
         content = comment_data.get("content")
-        user_id = comment_data.get("user_id")
-        
         if not content or not content.strip():
             raise HTTPException(status_code=400, detail="评论内容不能为空")
         
-        if not user_id:
+        # 获取用户ID
+        user_id = None
+        if is_logged_in:
+            user_id = current_user.get("id")
+        elif allowpost == 1:  # 允许匿名评论
+            # 对于匿名评论，可以设置一个默认用户ID或特殊处理
+            # 这里我们要求匿名用户也提供user_id，前端可以设置为0或特殊值
+            user_id = comment_data.get("user_id", 0)
+        
+        if user_id is None:
             raise HTTPException(status_code=400, detail="用户ID不能为空")
         
         # 创建评论
@@ -195,7 +212,9 @@ async def create_article_comment(
             subject=comment_data.get("subject", ""),
             content=content.strip(),
             posttime=datetime.now(),
-            status=1  # 1表示正常状态
+            status=1,  # 1表示正常状态
+            rootid=0,  # 主评论的rootid为0
+            replycount=0  # 新评论的回复数为0
         )
         
         await post_repo.create(comment)
@@ -207,11 +226,12 @@ async def create_article_comment(
         await clear_article_detail_cache(article_id)
         await clear_article_comments_cache(article_id)
         
-        return {
+        result = {
             "success": True,
             "message": "评论创建成功",
             "comment_id": comment.id
         }
+        return result
         
     except HTTPException:
         raise

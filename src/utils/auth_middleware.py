@@ -147,20 +147,23 @@ async def get_optional_current_user(
         
         # 提取令牌
         token = auth_header.split(" ")[1]
+        
         if not token:
             return None
         
         # 验证令牌
         user_data = auth_service.get_user_from_token(token)
+        
         if not user_data:
             return None
         
         # 获取用户详细信息
         user = await user_service.get_user_by_id(user_data["user_id"])
+        
         if not user or user.state == 0:
             return None
         
-        return {
+        user_info = {
             "id": user.id,
             "name": user.name,
             "email": user.email,
@@ -169,6 +172,8 @@ async def get_optional_current_user(
             "lastupdate": user.lastupdate,
             "iplog": user.iplog
         }
+        
+        return user_info
     except Exception:
         # 任何错误都返回None，表示未登录
         return None

@@ -173,7 +173,10 @@ class AuthService:
             
             # 检查过期时间
             exp = payload.get("exp")
-            if exp is None or datetime.utcnow() > datetime.fromtimestamp(exp):
+            current_time = datetime.utcnow()
+            exp_time = datetime.fromtimestamp(exp) if exp else None
+            
+            if exp is None or current_time > exp_time:
                 return None
             
             return payload
