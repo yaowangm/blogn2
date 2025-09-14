@@ -386,6 +386,26 @@ class ArticleContentCard extends BaseComponent {
                     text-align: justify;
                 }
                 
+                /* 代码块样式修复 - 防止变形并添加滚动条 */
+                .markdown-content pre {
+                    overflow-x: auto !important;
+                    overflow-y: hidden !important;
+                    white-space: pre !important;
+                    word-wrap: normal !important;
+                    word-break: normal !important;
+                    max-width: 700px !important;
+                    box-sizing: border-box !important;
+                }
+                
+                .markdown-content pre code {
+                    white-space: pre !important;
+                    word-wrap: normal !important;
+                    word-break: normal !important;
+                    display: block !important;
+                    overflow-x: auto !important;
+                    max-width: 100% !important;
+                }
+                
                 .article-attachment {
                     margin-top: var(--spacing-8);
                     padding-top: var(--spacing-6);
