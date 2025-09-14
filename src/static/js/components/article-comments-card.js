@@ -652,9 +652,7 @@ class ArticleCommentsCard extends BaseComponent {
                 }
                 
                 .comments-list {
-                    max-height: 600px;
-                    overflow-y: auto;
-                    scroll-behavior: smooth;
+                    /* 移除高度限制和滚动，分页后一次显示所有评论 */
                 }
                 
                 .comment-item {
