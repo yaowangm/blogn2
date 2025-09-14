@@ -141,6 +141,102 @@ class ArticleCommentsCard extends BaseComponent {
         `;
 
         this.addStyles();
+        this.addEventListeners();
+    }
+
+    /**
+     * 添加事件监听器
+     */
+    addEventListeners() {
+        // 移除之前的事件监听器（如果存在）
+        if (this.clickHandler) {
+            this.shadowRoot.removeEventListener('click', this.clickHandler);
+        }
+        
+        // 创建新的事件处理器
+        this.clickHandler = (e) => {
+            if (e.target.closest('.delete-comment-btn')) {
+                const button = e.target.closest('.delete-comment-btn');
+                const commentId = parseInt(button.dataset.commentId);
+                if (commentId) {
+                    this.deleteComment(commentId);
+                }
+            }
+        };
+        
+        // 添加新的事件监听器
+        this.shadowRoot.addEventListener('click', this.clickHandler);
+    }
+
+    /**
+     * 检查当前用户是否有删除评论的权限
+     */
+    canDeleteComment(comment) {
+        // 检查是否已登录
+        const userInfo = localStorage.getItem('user_info');
+        if (!userInfo) {
+            return false;
+        }
+        
+        try {
+            const currentUser = JSON.parse(userInfo);
+            const currentUserId = currentUser.id;
+            const isAdmin = currentUser.state === 10;
+            
+            // 管理员可以删除任何评论
+            if (isAdmin) {
+                return true;
+            }
+            
+            // 文章作者可以删除评论（需要检查文章作者）
+            // 这里我们假设文章数据中包含了作者信息
+            if (this.articleData && this.articleData.author) {
+                const articleAuthorId = this.articleData.author.id;
+                return articleAuthorId === currentUserId;
+            }
+            
+            return false;
+        } catch (error) {
+            console.error('Error checking delete permission:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 删除评论
+     */
+    async deleteComment(commentId) {
+        if (!confirm('确定要删除这条评论吗？此操作不可撤销。')) {
+            return;
+        }
+        
+        try {
+            // 获取认证token
+            const token = localStorage.getItem('access_token');
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            const response = await fetch(`/api/articles/${this.articleId}/comments/${commentId}`, {
+                method: 'DELETE',
+                headers: headers
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                this.showSuccess('评论删除成功！');
+                
+                // 刷新评论列表
+                await this.refreshComments();
+            } else {
+                const error = await response.json();
+                throw new Error(error.detail || '删除失败');
+            }
+        } catch (error) {
+            console.error('Failed to delete comment:', error);
+            this.showError(`删除评论失败: ${error.message}`);
+        }
     }
 
     /**
@@ -233,6 +329,9 @@ class ArticleCommentsCard extends BaseComponent {
         let blogId = null;
         let userAvatar = null;
         
+        // 检查当前用户是否有删除权限
+        const canDelete = this.canDeleteComment(comment);
+        
         if (user_id) {
             if (this.userMap && this.userMap[user_id]) {
                 const user = this.userMap[user_id];
@@ -283,8 +382,18 @@ class ArticleCommentsCard extends BaseComponent {
                                 <span class="user-name">${this.escapeHtml(userName)}</span>
                             `}
                         </div>
-                        <div class="comment-time">
-                            ${this.formatDate(post_time)}
+                        <div class="comment-actions">
+                            <div class="comment-time">
+                                ${this.formatDate(post_time)}
+                            </div>
+                            ${canDelete ? `
+                                <button class="delete-comment-btn" 
+                                        data-comment-id="${id}" 
+                                        title="删除评论">
+                                    <i class="fas fa-trash"></i>
+                                    删除
+                                </button>
+                            ` : ''}
                         </div>
                     </div>
                     
@@ -403,6 +512,55 @@ class ArticleCommentsCard extends BaseComponent {
         this.addStyles();
     }
 
+    showSuccess(message) {
+        // 创建临时成功提示
+        const successDiv = document.createElement('div');
+        successDiv.className = 'success-message';
+        successDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #10b981;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            animation: slideIn 0.3s ease-out;
+        `;
+        successDiv.textContent = message;
+        
+        // 添加动画样式
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        document.body.appendChild(successDiv);
+        
+        // 3秒后自动移除
+        setTimeout(() => {
+            if (successDiv.parentNode) {
+                successDiv.parentNode.removeChild(successDiv);
+            }
+            if (style.parentNode) {
+                style.parentNode.removeChild(style);
+            }
+        }, 3000);
+    }
+
     /**
      * 添加样式
      */
@@ -507,9 +665,42 @@ class ArticleCommentsCard extends BaseComponent {
                     text-decoration: underline;
                 }
                 
+                .comment-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                }
+                
                 .comment-time {
                     font-size: var(--font-size-xs);
                     color: var(--gray-500);
+                }
+                
+                .delete-comment-btn {
+                    padding: var(--spacing-2) var(--spacing-3);
+                    font-size: var(--font-size-sm);
+                    border: 1px solid var(--red-300);
+                    color: var(--red-600);
+                    background-color: transparent;
+                    border-radius: var(--border-radius-md);
+                    cursor: pointer;
+                    transition: all var(--transition-fast);
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                    font-weight: 500;
+                    min-height: 32px;
+                }
+                
+                .delete-comment-btn:hover {
+                    background-color: var(--red-50);
+                    border-color: var(--red-400);
+                    color: var(--red-700);
+                }
+                
+                .delete-comment-btn:active {
+                    background-color: var(--red-100);
+                    transform: translateY(1px);
                 }
                 
                 .comment-content {

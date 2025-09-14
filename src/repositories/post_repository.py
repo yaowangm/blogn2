@@ -183,4 +183,16 @@ class PostRepository:
         self.session.add(post)
         await self.session.flush()  # 获取生成的ID
         await self.session.refresh(post)  # 刷新对象以获取完整数据
-        return post 
+        return post
+    
+    async def delete(self, comment_id: int) -> bool:
+        """删除评论"""
+        statement = select(Post).where(Post.id == comment_id)
+        result = await self.session.exec(statement)
+        comment = result.first()
+        
+        if not comment:
+            return False
+        
+        await self.session.delete(comment)
+        return True 

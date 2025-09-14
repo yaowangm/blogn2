@@ -346,3 +346,27 @@ class ProjectItemRepository:
             
             return True
         return False
+    
+    async def decrement_comment_count(self, project_item_id: int) -> bool:
+        """
+        减少项目项的评论数量
+        
+        Args:
+            project_item_id: 项目项ID
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        project_item = await self.get_by_id(project_item_id)
+        if project_item and project_item.commentcount > 0:
+            project_item.commentcount -= 1
+            await self.session.commit()
+            await self.session.refresh(project_item)
+            
+            # 同时更新对应项目的评论数
+            from src.repositories.project_repository import ProjectRepository
+            project_repo = ProjectRepository(self.session)
+            await project_repo.decrement_comment_count(project_item.projectid)
+            
+            return True
+        return False

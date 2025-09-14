@@ -115,4 +115,23 @@ class ProjectRepository:
             await self.session.commit()
             await self.session.refresh(project)
             return True
+        return False
+    
+    async def decrement_comment_count(self, project_id: int) -> bool:
+        """
+        减少项目的评论数量
+        
+        Args:
+            project_id: 项目ID
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        project = await self.get_by_id(project_id)
+        if project and project.commentcount > 0:
+            project.commentcount -= 1
+            project.updatetime = datetime.now()
+            await self.session.commit()
+            await self.session.refresh(project)
+            return True
         return False 

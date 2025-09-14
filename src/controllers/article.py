@@ -349,6 +349,81 @@ async def create_article_comment_auth(
         raise HTTPException(status_code=500, detail=f"创建评论失败: {str(e)}")
 
 
+@router.delete("/articles/{article_id}/comments/{comment_id}", response_model=Dict[str, Any])
+async def delete_article_comment(
+    article_id: int,
+    comment_id: int,
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
+):
+    """
+    删除指定文章的评论
+    
+    Args:
+        article_id: 文章ID
+        comment_id: 评论ID
+        request: 请求对象
+        session: 数据库会话
+        current_user: 当前用户信息（可选）
+        
+    Returns:
+        Dict[str, Any]: 删除结果，包含：
+        - success: 是否成功
+        - message: 结果消息
+    """
+    post_repo = PostRepository(session)
+    project_item_repo = ProjectItemRepository(session)
+    project_repo = ProjectRepository(session)
+    
+    try:
+        # 验证文章是否存在
+        article = await project_item_repo.get_by_id(article_id)
+        if not article:
+            raise HTTPException(status_code=404, detail="文章不存在")
+        
+        # 验证评论是否存在
+        comment = await post_repo.get_by_id(comment_id)
+        if not comment:
+            raise HTTPException(status_code=404, detail="评论不存在")
+        
+        # 验证评论是否属于该文章
+        if comment.projectitemid != article_id:
+            raise HTTPException(status_code=400, detail="评论不属于该文章")
+        
+        # 权限检查：只有管理员或文章作者可以删除评论
+        if not current_user:
+            raise HTTPException(status_code=401, detail="需要登录才能删除评论")
+        
+        current_user_id = current_user.get("id")
+        is_admin = current_user.get("state") == 10
+        is_article_author = article.userid == current_user_id
+        
+        if not (is_admin or is_article_author):
+            raise HTTPException(status_code=403, detail="无权限删除该评论")
+        
+        # 删除评论
+        await post_repo.delete(comment_id)
+        
+        # 更新文章的评论数
+        await project_item_repo.decrement_comment_count(article_id)
+        
+        # 失效相关缓存
+        await clear_article_detail_cache(article_id)
+        await clear_article_comments_cache(article_id)
+        
+        result = {
+            "success": True,
+            "message": "评论删除成功"
+        }
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"删除评论失败: {str(e)}")
+
+
 @router.get("/articles/{article_id}/comments", response_model=List[Dict[str, Any]])
 @cache_article_comments(ttl=900)  # 缓存15分钟
 async def get_article_comments(
