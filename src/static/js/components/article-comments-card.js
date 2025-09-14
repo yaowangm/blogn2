@@ -144,6 +144,28 @@ class ArticleCommentsCard extends BaseComponent {
     }
 
     /**
+     * 刷新评论列表
+     */
+    async refreshComments() {
+        try {
+            // 重新加载文章数据（包含评论）
+            await this.loadArticleData();
+            
+            // 重新渲染组件
+            this.render();
+            
+            // 重新加载用户信息
+            await this.loadCommentUsers();
+            
+            // 重新渲染以显示用户信息
+            this.render();
+        } catch (error) {
+            console.error('Failed to refresh comments:', error);
+            this.showError('刷新评论失败');
+        }
+    }
+
+    /**
      * 检查URL锚点并滚动到对应评论
      */
     checkAndScrollToComment() {

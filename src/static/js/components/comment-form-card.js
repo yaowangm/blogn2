@@ -179,10 +179,15 @@ class CommentFormCard extends BaseComponent {
                 const result = await response.json();
                 this.showSuccess('评论发表成功！');
                 this.resetForm();
+                
+                // 触发评论添加事件
                 this.dispatchEvent(new CustomEvent('commentAdded', {
                     detail: { articleId: this.articleId },
                     bubbles: true
                 }));
+                
+                // 刷新评论列表
+                this.refreshCommentsList();
             } else {
                 const error = await response.json();
                 throw new Error(error.detail || '提交失败');
@@ -215,6 +220,17 @@ class CommentFormCard extends BaseComponent {
     resetForm() {
         const form = this.shadowRoot.getElementById('commentForm');
         form.reset();
+    }
+
+    /**
+     * 刷新评论列表
+     */
+    refreshCommentsList() {
+        // 查找页面中的评论卡片组件并刷新
+        const commentsCard = document.querySelector('article-comments-card');
+        if (commentsCard && typeof commentsCard.refreshComments === 'function') {
+            commentsCard.refreshComments();
+        }
     }
 
     getCurrentUserId() {
