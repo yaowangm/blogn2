@@ -26,6 +26,7 @@ from src.models.post import Post
 from src.utils.cache import cache_article_detail, cache_article_comments, cache_article_attachments, clear_article_detail_cache, clear_article_comments_cache
 from src.utils.auth_middleware import get_current_user, get_optional_current_user
 from src.utils.permission_manager import permission_manager
+from src.utils.permission_decorators import require_auth
 from src.constants import ArticleStatus, ErrorMessages
 from src.utils.file_utils import get_temp_dir
 
@@ -154,7 +155,7 @@ async def create_article_comment(
     current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
     """
-    为指定文章创建评论
+    为指定文章创建评论（支持匿名和登录用户）
     
     Args:
         article_id: 文章ID
@@ -212,6 +213,91 @@ async def create_article_comment(
             subject=comment_data.get("subject", ""),
             content=content.strip(),
             posttime=datetime.now(),
+            status=1,  # 1表示正常状态
+            rootid=0,  # 主评论的rootid为0
+            replycount=0  # 新评论的回复数为0
+        )
+        
+        await post_repo.create(comment)
+        
+        # 更新文章的评论数
+        await project_item_repo.increment_comment_count(article_id)
+        
+        # 失效相关缓存
+        await clear_article_detail_cache(article_id)
+        await clear_article_comments_cache(article_id)
+        
+        result = {
+            "success": True,
+            "message": "评论创建成功",
+            "comment_id": comment.id
+        }
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"创建评论失败: {str(e)}")
+
+
+@router.post("/articles/{article_id}/comments/auth", response_model=Dict[str, Any])
+@require_auth()
+async def create_article_comment_auth(
+    article_id: int,
+    comment_data: Dict[str, Any],
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    为指定文章创建评论（仅限登录用户）
+    
+    Args:
+        article_id: 文章ID
+        comment_data: 评论数据，包含：
+        - content: 评论内容（必需）
+        - subject: 评论主题（可选）
+        session: 数据库会话
+        current_user: 当前用户信息（必需）
+        
+    Returns:
+        Dict[str, Any]: 创建结果，包含：
+        - success: 是否成功
+        - message: 结果消息
+        - comment_id: 新创建的评论ID
+    """
+    post_repo = PostRepository(session)
+    project_item_repo = ProjectItemRepository(session)
+    
+    try:
+        # 验证文章是否存在
+        article = await project_item_repo.get_by_id(article_id)
+        if not article:
+            raise HTTPException(status_code=404, detail="文章不存在")
+        
+        # 验证评论权限
+        allowpost = article.allowpost or 1
+        
+        if allowpost == 3:  # 不允许任何评论
+            raise HTTPException(status_code=403, detail="此文章已关闭评论功能")
+        elif allowpost == 1:  # 允许匿名评论，但这里要求登录
+            # 可以继续，但会记录为登录用户评论
+            pass
+        
+        # 验证评论数据
+        content = comment_data.get("content")
+        if not content or not content.strip():
+            raise HTTPException(status_code=400, detail="评论内容不能为空")
+        
+        # 使用登录用户ID
+        user_id = current_user.get("id")
+        
+        # 创建评论
+        comment = Post(
+            projectitemid=article_id,
+            userid=user_id,
+            subject=comment_data.get("subject", ""),
+            content=content.strip(),
+            createtime=datetime.now(),
             status=1,  # 1表示正常状态
             rootid=0,  # 主评论的rootid为0
             replycount=0  # 新评论的回复数为0

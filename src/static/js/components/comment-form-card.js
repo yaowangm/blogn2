@@ -161,7 +161,14 @@ class CommentFormCard extends BaseComponent {
             };
             
             
-            const response = await fetch(`/api/articles/${this.articleId}/comments`, {
+            // 根据文章设置和用户登录状态选择合适的API端点
+            let apiUrl = `/api/articles/${this.articleId}/comments`;
+            if (this.articleData?.allowpost === 2 && this.isLoggedIn) {
+                // 只允许登录用户评论，且用户已登录，使用认证API
+                apiUrl = `/api/articles/${this.articleId}/comments/auth`;
+            }
+            
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: headers,
                 body: JSON.stringify(requestBody)
