@@ -216,6 +216,7 @@ async def create_article_comment(
         
         # 创建评论
         comment = Post(
+            folderid=0,  # 文件夹ID为0
             projectitemid=article_id,
             userid=user_id,
             subject=comment_data.get("subject", ""),
@@ -312,6 +313,7 @@ async def create_article_comment_auth(
         
         # 创建评论
         comment = Post(
+            folderid=0,  # 文件夹ID为0
             projectitemid=article_id,
             userid=user_id,
             subject=comment_data.get("subject", ""),
