@@ -388,8 +388,8 @@ class PostRepository:
         return result.first() or 0
     
     async def count_messages(self) -> int:
-        """统计留言本数量"""
-        statement = select(func.count(Post.id)).where(Post.projectitemid == 0)
+        """统计留言本主贴数量"""
+        statement = select(func.count(Post.id)).where(Post.projectitemid == 0).where(Post.rootid == 0)
         result = await self.session.exec(statement)
         return result.first() or 0
     
