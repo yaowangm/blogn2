@@ -63,6 +63,9 @@ class ThreadCard extends BaseComponent {
     updateContent(data) {
         this.messages = data.messages || [];
         this.renderMessagesList();
+        
+        // 更新页面标题
+        this.updatePageTitle();
     }
 
     renderMessagesList() {
@@ -132,6 +135,23 @@ class ThreadCard extends BaseComponent {
         
         if (cardBody) {
             cardBody.innerHTML = this.createErrorHTML(message);
+        }
+    }
+
+    updatePageTitle() {
+        // 获取主贴的标题
+        const mainPost = this.messages.find(msg => msg.is_main_post);
+        if (mainPost && mainPost.subject) {
+            // 限制标题为前20个字符
+            const title = mainPost.subject.length > 20 
+                ? mainPost.subject.substring(0, 20) + '...' 
+                : mainPost.subject;
+            
+            // 更新页面标题
+            document.title = `${title} - 留言本`;
+        } else {
+            // 如果没有找到主贴或标题，使用默认标题
+            document.title = '留言本主题 - BlogN2';
         }
     }
 
