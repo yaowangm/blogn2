@@ -206,7 +206,19 @@ class ArticleCommentsCard extends BaseComponent {
      * 删除评论
      */
     async deleteComment(commentId) {
-        if (!confirm('确定要删除这条评论吗？此操作不可撤销。')) {
+        // 查找要删除的评论
+        const comment = this.articleData.comments?.find(c => c.id === commentId);
+        if (!comment) {
+            this.showError('找不到要删除的评论');
+            return;
+        }
+        
+        // 获取评论内容的前10个字符
+        const contentPreview = comment.content ? 
+            (comment.content.length > 10 ? comment.content.substring(0, 10) + '...' : comment.content) : 
+            '无内容';
+        
+        if (!confirm(`确定要删除这条评论吗？\n\n评论内容预览：${contentPreview}\n\n此操作不可撤销。`)) {
             return;
         }
         
