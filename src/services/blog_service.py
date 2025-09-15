@@ -305,7 +305,10 @@ class BlogService:
                     "content": message["content"] or "",
                     "post_time": time_str,
                     "is_main_post": message["is_main_post"],
-                    "userid": message["userid"]
+                    "userid": message["userid"],
+                    "lastreplyid": message.get("lastreplyid"),
+                    "lastreplytime": message.get("lastreplytime"),
+                    "replycount": message.get("replycount", 0)
                 })
             
             return {

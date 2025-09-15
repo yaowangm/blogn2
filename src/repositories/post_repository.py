@@ -1,6 +1,7 @@
 from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 from src.models.post import Post
 from src.models.project_item import ProjectItem
 from src.models.user import User
@@ -168,17 +169,20 @@ class PostRepository:
             
             # 获取最后回复用户名
             last_reply_author = None
-            if message.lastreplyid and message.lastreplyid > 0:
-                try:
-                    # 查询用户表获取最后回复用户名
-                    user_result = await self.session.exec(select(User.name).where(User.id == message.lastreplyid))
-                    last_reply_user_name = user_result.first()
-                    if last_reply_user_name:
-                        last_reply_author = last_reply_user_name
-                    else:
+            if message.lastreplyid is not None and message.lastreplyid >= 0:
+                if message.lastreplyid == 0:
+                    last_reply_author = "匿名用户"
+                else:
+                    try:
+                        # 查询用户表获取最后回复用户名
+                        user_result = await self.session.exec(select(User.name).where(User.id == message.lastreplyid))
+                        last_reply_user_name = user_result.first()
+                        if last_reply_user_name:
+                            last_reply_author = last_reply_user_name
+                        else:
+                            last_reply_author = "未知用户"
+                    except Exception as e:
                         last_reply_author = "未知用户"
-                except Exception as e:
-                    last_reply_author = "未知用户"
             
             messages.append({
                 "id": message.id,
@@ -233,17 +237,20 @@ class PostRepository:
             
             # 获取最后回复用户名
             last_reply_author = None
-            if message.lastreplyid and message.lastreplyid > 0:
-                try:
-                    # 查询用户表获取最后回复用户名
-                    user_result = await self.session.exec(select(User.name).where(User.id == message.lastreplyid))
-                    last_reply_user_name = user_result.first()
-                    if last_reply_user_name:
-                        last_reply_author = last_reply_user_name
-                    else:
+            if message.lastreplyid is not None and message.lastreplyid >= 0:
+                if message.lastreplyid == 0:
+                    last_reply_author = "匿名用户"
+                else:
+                    try:
+                        # 查询用户表获取最后回复用户名
+                        user_result = await self.session.exec(select(User.name).where(User.id == message.lastreplyid))
+                        last_reply_user_name = user_result.first()
+                        if last_reply_user_name:
+                            last_reply_author = last_reply_user_name
+                        else:
+                            last_reply_author = "未知用户"
+                    except Exception as e:
                         last_reply_author = "未知用户"
-                except Exception as e:
-                    last_reply_author = "未知用户"
             
             messages.append({
                 "id": message.id,
@@ -302,7 +309,10 @@ class PostRepository:
                 "userid": main_post.userid,
                 "post_time": main_post.posttime,
                 "author_name": author_name,
-                "is_main_post": True
+                "is_main_post": True,
+                "lastreplyid": main_post.lastreplyid,
+                "lastreplytime": main_post.lastreplytime,
+                "replycount": main_post.replycount or 0
             })
         
         # 处理跟贴
@@ -343,10 +353,11 @@ class PostRepository:
             if main_post:
                 # 更新回复数和最后回复信息
                 main_post.replycount = (main_post.replycount or 0) + 1
-                main_post.lastreplyid = reply_user_id
+                main_post.lastreplyid = reply_user_id  # 存储最后回复者的用户ID
                 main_post.lastreplytime = datetime.now()
                 
                 await self.session.flush()
+                await self.session.commit()
         except Exception as e:
             print(f"Error updating main post stats: {e}")
     

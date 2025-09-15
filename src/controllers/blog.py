@@ -223,6 +223,10 @@ async def create_message(
         
         await post_repo.create(message)
         
+        # 如果是跟贴，更新主贴的统计信息
+        if thread_id:
+            await post_repo._update_main_post_stats(thread_id, message.id, user_id)
+        
         return {
             "success": True,
             "message": "留言创建成功",
