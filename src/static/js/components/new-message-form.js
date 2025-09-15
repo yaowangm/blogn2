@@ -229,30 +229,36 @@ class NewMessageForm extends BaseComponent {
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
+                    position: relative;
+                    z-index: 1;
                 }
 
                 .btn-primary {
-                    background: var(--primary-color);
-                    color: var(--white);
+                    background: #2563eb;
+                    color: #ffffff;
                 }
 
                 .btn-primary:hover:not(:disabled) {
-                    background: var(--primary-color-dark);
+                    background: #1d4ed8;
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
                 }
 
                 .btn-primary:disabled {
-                    background: var(--gray-400);
+                    background: #94a3b8;
                     cursor: not-allowed;
                 }
 
                 .btn-secondary {
-                    background: var(--gray-100);
-                    color: var(--gray-700);
-                    border: 1px solid var(--gray-300);
+                    background: #f1f5f9;
+                    color: #374151;
+                    border: 1px solid #d1d5db;
                 }
 
                 .btn-secondary:hover {
-                    background: var(--gray-200);
+                    background: #e2e8f0;
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
                 }
 
                 .error-message {
