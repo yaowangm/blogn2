@@ -320,42 +320,6 @@ class BlogService:
                 "thread_id": thread_id
             }
 
-    async def create_message(self, message_data: Dict[str, Any], current_user: Dict[str, Any]) -> Dict[str, Any]:
-        """创建新留言"""
-        try:
-            # 验证输入数据
-            subject = message_data.get("subject", "").strip()
-            content = message_data.get("content", "").strip()
-            thread_id = message_data.get("thread_id")
-            
-            if not subject:
-                raise ValueError("标题不能为空")
-            
-            if not content:
-                raise ValueError("内容不能为空")
-            
-            if len(subject) > 200:
-                raise ValueError("标题不能超过200个字符")
-            
-            # 创建留言记录
-            new_message = await self.post_repo.create_message(
-                subject=subject,
-                content=content,
-                user_id=current_user["id"],
-                thread_id=thread_id
-            )
-            
-            return {
-                "id": new_message.id,
-                "subject": new_message.subject,
-                "content": new_message.content,
-                "user_id": new_message.userid,
-                "thread_id": thread_id,
-                "created_at": new_message.posttime
-            }
-        except Exception as e:
-            print(f"Error creating message: {e}")
-            raise ValueError(str(e))
     
     async def get_latest_posts(self, page: int = 1, page_size: int = 10, exclude: Optional[int] = None, blogid: Optional[int] = None) -> Dict[str, Any]:
         """获取最新的博文记录（支持分页）"""

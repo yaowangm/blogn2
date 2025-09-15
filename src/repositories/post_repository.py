@@ -320,37 +320,6 @@ class PostRepository:
         
         return messages
     
-    async def create_message(self, subject: str, content: str, user_id: int, thread_id: int = None) -> Post:
-        """创建新留言"""
-        from datetime import datetime
-        
-        # 计算内容大小
-        content_size = len(content.encode('utf-8'))
-        
-        # 创建留言记录
-        new_message = Post(
-            subject=subject,
-            content=content,
-            userid=user_id,
-            projectitemid=0,  # 留言本
-            rootid=thread_id if thread_id else 0,  # 如果有thread_id则是跟贴，否则是主贴
-            size=content_size,
-            status=1,  # 正常状态
-            hits=0,
-            posttime=datetime.now(),
-            replycount=0,
-            userip="127.0.0.1"  # 默认IP
-        )
-        
-        self.session.add(new_message)
-        await self.session.flush()  # 获取生成的ID
-        await self.session.refresh(new_message)  # 刷新对象以获取完整数据
-        
-        # 如果是跟贴，更新主贴的回复数和最后回复时间
-        if thread_id:
-            await self._update_main_post_stats(thread_id, new_message.id, user_id)
-        
-        return new_message
     
     async def _get_user_name(self, user_id: int) -> str:
         """获取用户名"""
@@ -398,6 +367,7 @@ class PostRepository:
         self.session.add(post)
         await self.session.flush()  # 获取生成的ID
         await self.session.refresh(post)  # 刷新对象以获取完整数据
+        await self.session.commit()  # 提交事务
         return post
     
     async def delete(self, comment_id: int) -> bool:

@@ -57,6 +57,12 @@ class MessagesListCard extends BaseComponent {
         }
     }
 
+    // 公共方法：刷新到第一页
+    refreshToFirstPage() {
+        this.currentPage = 1;
+        this.loadMessages();
+    }
+
     updateContent(data) {
         this.messages = data.messages || [];
         this.total = data.total || 0;

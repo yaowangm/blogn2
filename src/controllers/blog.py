@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request, HTTPException
 from typing import List, Dict, Any, Optional
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.services.blog_service import BlogService
 from src.utils.error_handlers import handle_api_errors
 from src.utils.dependencies import get_blog_service
 from src.utils.cache import cache_blog_recent_list, cache_blog_popular_list, cache_blog_detail, cache_blog_comments, cache_blog_messages
-from src.utils.auth_dependencies import get_current_user
+from src.utils.auth_dependencies import get_current_user, get_optional_current_user
+from src.database import get_async_session
 
 # 创建博客API路由器
 router = APIRouter()
@@ -105,7 +107,7 @@ async def get_recent_messages(
 
 @router.get("/messages", response_model=Dict[str, Any])
 @handle_api_errors("获取留言本列表失败")
-@cache_blog_messages()  # 使用默认缓存时间
+# @cache_blog_messages()  # 暂时禁用缓存以测试新留言功能
 async def get_messages_list(
     page: int = 1,
     limit: int = 10,
@@ -147,21 +149,92 @@ async def get_thread(
 @handle_api_errors("提交留言失败")
 async def create_message(
     message_data: Dict[str, Any],
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    blog_service: BlogService = Depends(get_blog_service)
+    request: Request,
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user),
+    session: AsyncSession = Depends(get_async_session)
 ):
     """
     提交新留言
     
     Args:
         message_data: 留言数据
+        request: 请求对象
         current_user: 当前用户
-        blog_service: 博客服务实例
+        session: 数据库会话
         
     Returns:
         Dict[str, Any]: 创建结果
     """
-    return await blog_service.create_message(message_data, current_user)
+    from src.repositories.post_repository import PostRepository
+    from src.models.post import Post
+    from datetime import datetime
+    
+    post_repo = PostRepository(session)
+    
+    try:
+        # 验证留言数据
+        subject = message_data.get("subject", "").strip()
+        content = message_data.get("content", "").strip()
+        
+        if not subject:
+            raise HTTPException(status_code=400, detail="留言标题不能为空")
+        
+        if not content:
+            raise HTTPException(status_code=400, detail="留言内容不能为空")
+        
+        if len(subject) > 200:
+            raise HTTPException(status_code=400, detail="标题不能超过200个字符")
+        
+        # 获取用户ID
+        user_id = None
+        if current_user:
+            user_id = current_user.get("id")
+        else:
+            # 对于匿名留言，要求前端提供user_id
+            user_id = message_data.get("user_id", 0)
+        
+        if user_id is None:
+            raise HTTPException(status_code=400, detail="用户ID不能为空")
+        
+        # 获取客户端IP地址
+        client_ip = request.client.host if request.client else "127.0.0.1"
+        
+        # 计算内容大小（字节数）
+        content_bytes = content.encode('utf-8')
+        content_size = len(content_bytes)
+        
+        # 创建留言
+        message = Post(
+            folderid=0,  # 文件夹ID为0
+            projectitemid=0,  # 留言本的projectitemid为0
+            userid=user_id,
+            subject=subject,
+            content=content,
+            size=content_size,  # 内容大小（字节）
+            hits=0,  # 访问次数初始为0
+            userip=client_ip,  # 用户IP地址
+            posttime=datetime.now(),
+            status=1,  # 1表示正常状态
+            rootid=0,  # 主留言的rootid为0
+            replycount=0  # 新留言的回复数为0
+        )
+        
+        await post_repo.create(message)
+        
+        return {
+            "success": True,
+            "message": "留言创建成功",
+            "message_id": message.id,
+            "subject": message.subject,
+            "content": message.content,
+            "user_id": message.userid,
+            "created_at": message.posttime
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"创建留言失败: {str(e)}")
 
 @router.get("/blogs/posts/latest", response_model=Dict[str, Any])
 @handle_api_errors("获取最新博文失败")

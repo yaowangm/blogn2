@@ -1,30 +1,23 @@
 class NewMessageForm extends BaseComponent {
     constructor() {
         super();
-        this.threadId = null;
         this.submitting = false;
     }
 
-    static get observedAttributes() {
-        return ['thread-id'];
-    }
-
     connectedCallback() {
-        this.threadId = this.getAttribute('thread-id');
         this.render();
         this.setupEventListeners();
-    }
-
-    attributeChangedCallback(name, oldValue, newValue) {
-        if (name === 'thread-id' && newValue) {
-            this.threadId = newValue;
-        }
     }
 
     setupEventListeners() {
         const form = this.shadowRoot.querySelector('#message-form');
         if (form) {
             form.addEventListener('submit', (e) => this.handleSubmit(e));
+        }
+        
+        const clearBtn = this.shadowRoot.querySelector('#clear-btn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this.clearForm());
         }
     }
 
@@ -59,15 +52,24 @@ class NewMessageForm extends BaseComponent {
         this.updateSubmitButton(true);
 
         try {
+            // 准备请求头
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            
+            // 添加认证头（如果用户已登录）
+            const token = localStorage.getItem('access_token');
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
             const response = await fetch('/api/messages', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: headers,
                 body: JSON.stringify({
                     subject: subject,
                     content: content,
-                    thread_id: this.threadId
+                    user_id: this.getCurrentUserId()  // 获取当前用户ID
                 })
             });
 
@@ -76,15 +78,15 @@ class NewMessageForm extends BaseComponent {
                 throw new Error(errorData.detail || '提交失败');
             }
 
-            // 提交成功，清空表单并刷新主题
-            event.target.reset();
-            this.showSuccess('留言提交成功！');
-            
-            // 通知主题卡片刷新
-            const threadCard = document.querySelector('thread-card');
-            if (threadCard) {
-                threadCard.loadThread();
+            // 提交成功，清空表单
+            const form = this.shadowRoot.querySelector('#message-form');
+            if (form) {
+                form.reset();
             }
+            this.showSuccess('留言发表成功！');
+            
+            // 通知消息列表刷新到第一页
+            this.refreshMessagesList();
 
         } catch (error) {
             this.logError('Error submitting message', error);
@@ -95,11 +97,46 @@ class NewMessageForm extends BaseComponent {
         }
     }
 
+    refreshMessagesList() {
+        // 查找消息列表组件并刷新到第一页
+        const messagesListCard = document.querySelector('messages-list-card');
+        if (messagesListCard && typeof messagesListCard.refreshToFirstPage === 'function') {
+            messagesListCard.refreshToFirstPage();
+        }
+    }
+
+    clearForm() {
+        const form = this.shadowRoot.querySelector('#message-form');
+        if (form) {
+            form.reset();
+        }
+        
+        // 隐藏错误和成功消息
+        const errorDiv = this.shadowRoot.querySelector('.error-message');
+        const successDiv = this.shadowRoot.querySelector('.success-message');
+        if (errorDiv) errorDiv.style.display = 'none';
+        if (successDiv) successDiv.style.display = 'none';
+    }
+
+    getCurrentUserId() {
+        // 从localStorage获取用户信息
+        const userInfo = localStorage.getItem('user_info');
+        if (userInfo) {
+            try {
+                const user = JSON.parse(userInfo);
+                return user.id;
+            } catch (e) {
+                console.error('Failed to parse user info:', e);
+            }
+        }
+        return 0; // 匿名用户返回0
+    }
+
     updateSubmitButton(submitting) {
         const button = this.shadowRoot.querySelector('#submit-btn');
         if (button) {
             button.disabled = submitting;
-            button.textContent = submitting ? '提交中...' : '提交留言';
+            button.textContent = submitting ? '发表中...' : '发表留言';
         }
     }
 
@@ -305,11 +342,11 @@ class NewMessageForm extends BaseComponent {
                         </div>
                         
                         <div class="form-actions">
-                            <button type="button" class="btn btn-secondary" onclick="this.closest('form').reset()">
+                            <button type="button" class="btn btn-secondary" id="clear-btn">
                                 清空
                             </button>
                             <button type="submit" id="submit-btn" class="btn btn-primary">
-                                提交留言
+                                发表留言
                             </button>
                         </div>
                         
