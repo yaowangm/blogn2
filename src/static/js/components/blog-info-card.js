@@ -34,25 +34,19 @@ class BlogInfoCard extends BaseComponent {
             let userId = window.targetUserId;
             
             if (!userId) {
-                // 从localStorage获取当前用户信息
-                const userInfo = localStorage.getItem('user_info');
-                
-                if (!userInfo) {
+                // 从UserManager获取当前用户信息
+                if (!UserManager.isLoggedIn()) {
                     // 如果没有目标用户ID且未登录，显示错误
                     this.showError('无法获取用户ID');
                     return;
                 }
 
-                const currentUser = JSON.parse(userInfo);
+                const currentUser = UserManager.getCurrentUser();
                 userId = currentUser.id;
             }
 
             // 获取用户信息
-            const token = localStorage.getItem('access_token');
-            const headers = {};
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
+            const headers = UserManager.createHeaders();
             
             const userResponse = await fetch(`/api/users/${userId}`, { headers });
             if (!userResponse.ok) {
@@ -601,23 +595,18 @@ class BlogInfoCard extends BaseComponent {
         this.clearCreateBlogErrors();
 
         // 获取当前用户信息
-        const userInfo = localStorage.getItem('user_info');
-        if (!userInfo) {
+        if (!UserManager.isLoggedIn()) {
             this.showCreateBlogError('blogName', '用户信息获取失败，请重新登录');
             return;
         }
 
-        const currentUser = JSON.parse(userInfo);
+        const currentUser = UserManager.getCurrentUser();
 
         try {
             // 调用创建博客API
-            const token = localStorage.getItem('access_token');
-            const headers = {
+            const headers = UserManager.createHeaders({
                 'Content-Type': 'application/json'
-            };
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
+            });
 
             const response = await fetch('/api/projects/create', {
                 method: 'POST',

@@ -23,7 +23,7 @@ class CommentFormCard extends BaseComponent {
         await this.loadArticleData();
         
         // 检查登录状态
-        this.isLoggedIn = this.checkLoginStatus();
+        this.isLoggedIn = UserManager.isLoggedIn();
         
         // 检查是否可以发表评论
         const canComment = this.canComment();
@@ -56,14 +56,6 @@ class CommentFormCard extends BaseComponent {
         }
     }
 
-    /**
-     * 检查登录状态
-     */
-    checkLoginStatus() {
-        const token = localStorage.getItem('access_token');
-        const userInfo = localStorage.getItem('user_info');
-        return !!(token && userInfo);
-    }
 
     /**
      * 检查是否可以发表评论
@@ -146,18 +138,13 @@ class CommentFormCard extends BaseComponent {
         
         try {
             // 准备请求头
-            const headers = { 'Content-Type': 'application/json' };
-            const token = localStorage.getItem('access_token');
-            const userInfo = localStorage.getItem('user_info');
-            
-            
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
+            const headers = UserManager.createHeaders({
+                'Content-Type': 'application/json'
+            });
             
             const requestBody = {
                 content: content,
-                user_id: this.getCurrentUserId()
+                user_id: UserManager.getCurrentUserId()
             };
             
             
@@ -236,19 +223,6 @@ class CommentFormCard extends BaseComponent {
         }
     }
 
-    getCurrentUserId() {
-        // 从localStorage获取用户信息
-        const userInfo = localStorage.getItem('user_info');
-        if (userInfo) {
-            try {
-                const user = JSON.parse(userInfo);
-                return user.id;
-            } catch (e) {
-                console.error('Failed to parse user info:', e);
-            }
-        }
-        return 0; // 匿名用户返回0
-    }
 
     showSuccess(message) {
         this.showMessage(message, 'success');

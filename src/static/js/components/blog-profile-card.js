@@ -49,20 +49,15 @@ class BlogProfileCard extends BaseComponent {
                     
                     if (!userId) {
                         // 如果没有目标用户ID，使用当前登录用户
-                        const userInfo = localStorage.getItem('user_info');
-                        if (userInfo) {
-                            const currentUser = JSON.parse(userInfo);
+                        if (UserManager.isLoggedIn()) {
+                            const currentUser = UserManager.getCurrentUser();
                             userId = currentUser.id;
                         }
                     }
                     
                     if (userId) {
                         // 获取用户的博客信息
-                        const token = localStorage.getItem('access_token');
-                        const headers = {};
-                        if (token) {
-                            headers['Authorization'] = `Bearer ${token}`;
-                        }
+                        const headers = UserManager.createHeaders();
                         
                         // 获取用户信息
                         const userResponse = await fetch(`/api/users/${userId}`, { headers });

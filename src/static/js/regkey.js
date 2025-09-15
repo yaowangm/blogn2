@@ -30,17 +30,14 @@ class RegistrationCodeManager {
     async checkAuthStatus() {
         try {
             // 检查本地存储的认证状态（与header-component保持一致）
-            const token = localStorage.getItem('access_token');
-            const userInfo = localStorage.getItem('user_info');
-            
-            if (!token || !userInfo) {
+            if (!UserManager.isLoggedIn()) {
                 // 没有认证信息，重定向到首页（让用户通过登录模态框登录）
                 window.location.href = '/';
                 return;
             }
             
             try {
-                this.currentUser = JSON.parse(userInfo);
+                this.currentUser = UserManager.getCurrentUser();
             } catch (error) {
                 console.error('解析用户信息失败:', error);
                 localStorage.removeItem('access_token');
@@ -71,7 +68,7 @@ class RegistrationCodeManager {
             if (window.tokenManager) {
                 token = await window.tokenManager.getValidAccessToken();
             } else {
-                token = localStorage.getItem('access_token');
+                token = UserManager.getAccessToken();
             }
             
             if (!token) {
@@ -127,12 +124,12 @@ class RegistrationCodeManager {
             if (window.tokenManager) {
                 token = await window.tokenManager.getValidAccessToken();
             } else {
-                token = localStorage.getItem('access_token');
+                token = UserManager.getAccessToken();
             }
             
             // 如果令牌管理服务没有返回令牌，尝试直接从localStorage获取
             if (!token) {
-                token = localStorage.getItem('access_token');
+                token = UserManager.getAccessToken();
             }
             
             if (!token) {
@@ -290,12 +287,12 @@ class RegistrationCodeManager {
             if (window.tokenManager) {
                 token = await window.tokenManager.getValidAccessToken();
             } else {
-                token = localStorage.getItem('access_token');
+                token = UserManager.getAccessToken();
             }
             
             // 如果令牌管理服务没有返回令牌，尝试直接从localStorage获取
             if (!token) {
-                token = localStorage.getItem('access_token');
+                token = UserManager.getAccessToken();
             }
             
             if (!token) {

@@ -498,12 +498,9 @@ class HeaderComponent extends BaseComponent {
         }
         
         // 检查本地存储的认证状态
-        const token = localStorage.getItem('access_token');
-        const userInfo = localStorage.getItem('user_info');
-        
-        if (token && userInfo) {
+        if (UserManager.isLoggedIn()) {
             try {
-                this.userInfo = JSON.parse(userInfo);
+                this.userInfo = UserManager.getCurrentUser();
                 this.isLoggedIn = true;
                 // 清理用户名中的多余空格
                 this.userName = (this.userInfo.name || 'User').trim();
@@ -576,7 +573,7 @@ class HeaderComponent extends BaseComponent {
     async handleLogout() {
         try {
             // 调用登出API
-            const token = localStorage.getItem('access_token');
+            const token = UserManager.getAccessToken();
             if (token) {
                 await fetch('/api/auth/logout', {
                     method: 'POST',

@@ -44,12 +44,8 @@ class ArticleCommentsCard extends BaseComponent {
      */
     async loadArticleData() {
         try {
-            // 获取认证token
-            const token = localStorage.getItem('access_token');
-            const headers = {};
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
+            // 获取认证头
+            const headers = UserManager.createHeaders();
             
             const response = await fetch(`/api/articles/${this.articleId}?page=${this.currentPage}&per_page=${this.perPage}`, {
                 headers: headers
@@ -183,13 +179,14 @@ class ArticleCommentsCard extends BaseComponent {
      */
     canDeleteComment(comment) {
         // 检查是否已登录
-        const userInfo = localStorage.getItem('user_info');
-        if (!userInfo) {
+        if (!UserManager.isLoggedIn()) {
             return false;
         }
         
         try {
-            const currentUser = JSON.parse(userInfo);
+            const currentUser = UserManager.getCurrentUser();
+            if (!currentUser) return false;
+            
             const currentUserId = currentUser.id;
             const isAdmin = currentUser.state === 10;
             
@@ -233,12 +230,10 @@ class ArticleCommentsCard extends BaseComponent {
         }
         
         try {
-            // 获取认证token
-            const token = localStorage.getItem('access_token');
-            const headers = { 'Content-Type': 'application/json' };
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
+            // 获取认证头
+            const headers = UserManager.createHeaders({
+                'Content-Type': 'application/json'
+            });
             
             const response = await fetch(`/api/articles/${this.articleId}/comments/${commentId}`, {
                 method: 'DELETE',

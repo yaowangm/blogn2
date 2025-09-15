@@ -37,7 +37,7 @@ class CreatePostForm extends BaseComponent {
         this.projectId = this.getProjectIdFromUrl();
         
         // 检查用户登录状态
-        const isLoggedIn = this.checkLoginStatus();
+        const isLoggedIn = UserManager.isLoggedIn();
         
         if (!isLoggedIn) {
             this.showLoginRequired();
@@ -308,7 +308,7 @@ class CreatePostForm extends BaseComponent {
         this.updateLoadingState(true);
 
         // 再次检查登录状态
-        if (!this.checkLoginStatus()) {
+        if (!UserManager.isLoggedIn()) {
             this.showError('请先登录后再发表文章');
             this.resetSubmitState();
             return;
@@ -371,7 +371,7 @@ class CreatePostForm extends BaseComponent {
                 attachment: this.formData.attachment,
                 attachments: this.formData.attachments,
                 projectid: this.projectId,
-                userid: this.getCurrentUserId(),
+                userid: UserManager.getCurrentUserId(),
                 createtime: new Date().toISOString(),
                 updatetime: new Date().toISOString(),
                 lastmodifytime: new Date().toISOString(),
@@ -559,12 +559,6 @@ class CreatePostForm extends BaseComponent {
         }
     }
 
-    checkLoginStatus() {
-        const token = localStorage.getItem('access_token');
-        const userInfo = localStorage.getItem('user_info');
-        
-        return !!(token && userInfo);
-    }
 
     showLoginRequired() {
         this.shadowRoot.innerHTML = `
@@ -666,14 +660,6 @@ class CreatePostForm extends BaseComponent {
         }
     }
 
-    getCurrentUserId() {
-        const userInfo = localStorage.getItem('user_info');
-        if (userInfo) {
-            const currentUser = JSON.parse(userInfo);
-            return currentUser.id;
-        }
-        return null;
-    }
 
     showError(message) {
         // 显示错误消息

@@ -51,9 +51,8 @@ class BlogPostsListCard extends BaseComponent {
                 this.projectData = await projectResponse.json();
                 
                 // 检查当前用户是否为博客所有者
-                const userInfo = localStorage.getItem('user_info');
-                if (userInfo) {
-                    const currentUser = JSON.parse(userInfo);
+                if (UserManager.isLoggedIn()) {
+                    const currentUser = UserManager.getCurrentUser();
                     this.isOwner = currentUser.id === this.projectData.userid;
                 }
                 

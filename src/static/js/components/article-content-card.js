@@ -45,12 +45,8 @@ class ArticleContentCard extends BaseComponent {
      */
     async loadArticleData() {
         try {
-            // 获取认证token
-            const token = localStorage.getItem('access_token');
-            const headers = {};
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
+            // 获取认证头
+            const headers = UserManager.createHeaders();
             
             const response = await fetch(`/api/articles/${this.articleId}`, {
                 headers: headers

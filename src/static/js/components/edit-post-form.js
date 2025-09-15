@@ -50,7 +50,7 @@ class EditPostForm extends BaseComponent {
         }
         
         // 检查用户登录状态
-        const isLoggedIn = this.checkLoginStatus();
+        const isLoggedIn = UserManager.isLoggedIn();
         
         if (!isLoggedIn) {
             this.showLoginRequired();
@@ -559,7 +559,7 @@ class EditPostForm extends BaseComponent {
         this.updateLoadingState(true);
 
         // 再次检查登录状态
-        if (!this.checkLoginStatus()) {
+        if (!UserManager.isLoggedIn()) {
             this.showError('请先登录后再编辑文章');
             this.resetSubmitState();
             return;
@@ -623,7 +623,7 @@ class EditPostForm extends BaseComponent {
                 attachments: this.formData.attachments,
                 deleted_attachments: this.deletedImages || [], // 标记为删除的现有图片
                 projectid: this.projectId,
-                userid: this.getCurrentUserId()
+                userid: UserManager.getCurrentUserId()
             };
             
 
@@ -797,12 +797,6 @@ class EditPostForm extends BaseComponent {
         }
     }
 
-    checkLoginStatus() {
-        const token = localStorage.getItem('access_token');
-        const userInfo = localStorage.getItem('user_info');
-        
-        return !!(token && userInfo);
-    }
 
     showLoginRequired() {
         this.shadowRoot.innerHTML = `
@@ -904,14 +898,6 @@ class EditPostForm extends BaseComponent {
         }
     }
 
-    getCurrentUserId() {
-        const userInfo = localStorage.getItem('user_info');
-        if (userInfo) {
-            const currentUser = JSON.parse(userInfo);
-            return currentUser.id;
-        }
-        return null;
-    }
 
     showError(message) {
         // 显示错误消息

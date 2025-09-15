@@ -52,24 +52,15 @@ class NewMessageForm extends BaseComponent {
         this.updateSubmitButton(true);
 
         try {
-            // 准备请求头
-            const headers = {
-                'Content-Type': 'application/json',
-            };
-            
-            // 添加认证头（如果用户已登录）
-            const token = localStorage.getItem('access_token');
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
-            
             const response = await fetch('/api/messages', {
                 method: 'POST',
-                headers: headers,
+                headers: UserManager.createHeaders({
+                    'Content-Type': 'application/json',
+                }),
                 body: JSON.stringify({
                     subject: subject,
                     content: content,
-                    user_id: this.getCurrentUserId()  // 获取当前用户ID
+                    user_id: UserManager.getCurrentUserId()  // 使用公用的用户管理方法
                 })
             });
 
@@ -118,19 +109,6 @@ class NewMessageForm extends BaseComponent {
         if (successDiv) successDiv.style.display = 'none';
     }
 
-    getCurrentUserId() {
-        // 从localStorage获取用户信息
-        const userInfo = localStorage.getItem('user_info');
-        if (userInfo) {
-            try {
-                const user = JSON.parse(userInfo);
-                return user.id;
-            } catch (e) {
-                console.error('Failed to parse user info:', e);
-            }
-        }
-        return 0; // 匿名用户返回0
-    }
 
     updateSubmitButton(submitting) {
         const button = this.shadowRoot.querySelector('#submit-btn');

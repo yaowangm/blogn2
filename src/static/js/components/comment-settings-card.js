@@ -18,7 +18,7 @@ class CommentSettingsCard extends BaseComponent {
         }
 
         // 检查登录状态
-        this.isLoggedIn = this.checkLoginStatus();
+        this.isLoggedIn = UserManager.isLoggedIn();
         
         // 加载文章数据
         await this.loadArticleData();
@@ -37,23 +37,14 @@ class CommentSettingsCard extends BaseComponent {
     /**
      * 检查登录状态
      */
-    checkLoginStatus() {
-        const token = localStorage.getItem('access_token');
-        const userInfo = localStorage.getItem('user_info');
-        return !!(token && userInfo);
-    }
 
     /**
      * 加载文章数据
      */
     async loadArticleData() {
         try {
-            // 获取认证token
-            const token = localStorage.getItem('access_token');
-            const headers = {};
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
+            // 获取认证头
+            const headers = UserManager.createHeaders();
             
             const response = await fetch(`/api/articles/${this.articleId}`, {
                 headers: headers
