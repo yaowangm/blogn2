@@ -175,14 +175,16 @@ async def create_message(
         # 验证留言数据
         subject = message_data.get("subject", "").strip()
         content = message_data.get("content", "").strip()
+        thread_id = message_data.get("thread_id")
         
-        if not subject:
+        # 对于跟贴，subject可以为空；对于主贴，subject不能为空
+        if not thread_id and not subject:
             raise HTTPException(status_code=400, detail="留言标题不能为空")
         
         if not content:
             raise HTTPException(status_code=400, detail="留言内容不能为空")
         
-        if len(subject) > 200:
+        if subject and len(subject) > 200:
             raise HTTPException(status_code=400, detail="标题不能超过200个字符")
         
         # 获取用户ID
@@ -215,7 +217,7 @@ async def create_message(
             userip=client_ip,  # 用户IP地址
             posttime=datetime.now(),
             status=1,  # 1表示正常状态
-            rootid=0,  # 主留言的rootid为0
+            rootid=thread_id if thread_id else 0,  # 跟贴的rootid为thread_id，主贴的rootid为0
             replycount=0  # 新留言的回复数为0
         )
         

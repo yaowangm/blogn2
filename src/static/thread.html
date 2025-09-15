@@ -98,6 +98,7 @@
                 const messageForm = document.getElementById('message-form');
                 if (messageForm) {
                     messageForm.setAttribute('thread-id', threadId);
+                    // attributeChangedCallback会自动处理重新渲染
                 }
             } else {
                 console.error('Invalid thread ID in URL');
