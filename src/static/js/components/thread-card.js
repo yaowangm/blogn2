@@ -130,6 +130,16 @@ class ThreadCard extends BaseComponent {
         }
     }
 
+    /**
+     * 刷新主题消息列表
+     * 供外部组件调用，用于在发表跟贴后刷新显示
+     */
+    refreshMessages() {
+        if (this.threadId) {
+            this.loadThread();
+        }
+    }
+
     showError(message) {
         const cardBody = this.shadowRoot.querySelector('.card-body');
         
