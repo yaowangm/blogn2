@@ -394,4 +394,136 @@ class PostRepository:
             return False
         
         await self.session.delete(comment)
-        return True 
+        return True
+    
+    async def delete_message(self, message_id: int) -> Dict[str, Any]:
+        """删除留言（主贴或跟贴）
+        
+        Args:
+            message_id: 留言ID
+            
+        Returns:
+            Dict[str, Any]: 删除结果信息
+        """
+        try:
+            # 获取留言信息
+            statement = select(Post).where(Post.id == message_id)
+            result = await self.session.exec(statement)
+            message = result.first()
+            
+            if not message:
+                return {"success": False, "message": "留言不存在"}
+            
+            # 检查是否为留言本留言
+            if message.projectitemid != 0:
+                return {"success": False, "message": "只能删除留言本中的留言"}
+            
+            deleted_count = 0
+            deleted_messages = []
+            
+            if message.rootid == 0:
+                # 删除主贴，需要同时删除所有跟贴
+                # 1. 先删除所有跟贴
+                replies_statement = select(Post).where(Post.rootid == message_id)
+                replies_result = await self.session.exec(replies_statement)
+                replies = replies_result.all()
+                
+                for reply in replies:
+                    await self.session.delete(reply)
+                    deleted_count += 1
+                    deleted_messages.append({
+                        "id": reply.id,
+                        "type": "reply",
+                        "subject": reply.subject
+                    })
+                
+                # 2. 删除主贴
+                await self.session.delete(message)
+                deleted_count += 1
+                deleted_messages.append({
+                    "id": message.id,
+                    "type": "main_post",
+                    "subject": message.subject
+                })
+                
+                # 3. 提交事务
+                await self.session.commit()
+                
+                return {
+                    "success": True,
+                    "message": f"成功删除主贴及{len(replies)}条跟贴",
+                    "deleted_count": deleted_count,
+                    "deleted_messages": deleted_messages,
+                    "is_main_post": True
+                }
+            else:
+                # 删除跟贴
+                main_post_id = message.rootid
+                
+                # 1. 删除跟贴
+                await self.session.delete(message)
+                deleted_count += 1
+                deleted_messages.append({
+                    "id": message.id,
+                    "type": "reply",
+                    "subject": message.subject
+                })
+                
+                # 2. 更新主贴的统计信息
+                await self._update_main_post_stats_after_delete(main_post_id)
+                
+                # 3. 提交事务
+                await self.session.commit()
+                
+                return {
+                    "success": True,
+                    "message": "成功删除跟贴",
+                    "deleted_count": deleted_count,
+                    "deleted_messages": deleted_messages,
+                    "is_main_post": False,
+                    "main_post_id": main_post_id
+                }
+                
+        except Exception as e:
+            await self.session.rollback()
+            return {"success": False, "message": f"删除留言失败: {str(e)}"}
+    
+    async def _update_main_post_stats_after_delete(self, main_post_id: int):
+        """删除跟贴后更新主贴的统计信息"""
+        try:
+            # 获取主贴
+            main_post_result = await self.session.exec(select(Post).where(Post.id == main_post_id))
+            main_post = main_post_result.first()
+            
+            if main_post:
+                # 重新计算回复数
+                reply_count_statement = select(func.count(Post.id)).where(Post.rootid == main_post_id)
+                reply_count_result = await self.session.exec(reply_count_statement)
+                new_reply_count = reply_count_result.first() or 0
+                
+                # 更新回复数
+                main_post.replycount = new_reply_count
+                
+                # 更新最后回复信息
+                if new_reply_count > 0:
+                    # 获取最新的跟贴
+                    latest_reply_statement = (
+                        select(Post)
+                        .where(Post.rootid == main_post_id)
+                        .order_by(Post.posttime.desc())
+                        .limit(1)
+                    )
+                    latest_reply_result = await self.session.exec(latest_reply_statement)
+                    latest_reply = latest_reply_result.first()
+                    
+                    if latest_reply:
+                        main_post.lastreplyid = latest_reply.userid
+                        main_post.lastreplytime = latest_reply.posttime
+                else:
+                    # 没有跟贴了，清空最后回复信息
+                    main_post.lastreplyid = None
+                    main_post.lastreplytime = None
+                
+                await self.session.flush()
+        except Exception as e:
+            print(f"Error updating main post stats after delete: {e}") 

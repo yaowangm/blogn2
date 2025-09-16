@@ -248,6 +248,57 @@ async def create_message(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"创建留言失败: {str(e)}")
 
+@router.delete("/messages/{message_id}", response_model=Dict[str, Any])
+@handle_api_errors("删除留言失败")
+async def delete_message(
+    message_id: int,
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    删除留言（仅管理员可操作）
+    
+    Args:
+        message_id: 留言ID
+        current_user: 当前用户
+        session: 数据库会话
+        
+    Returns:
+        Dict[str, Any]: 删除结果
+    """
+    from src.repositories.post_repository import PostRepository
+    from src.utils.permission_manager import permission_manager
+    
+    # 检查用户是否登录
+    if not current_user:
+        raise HTTPException(status_code=401, detail="需要登录才能删除留言")
+    
+    # 检查是否为管理员
+    if not permission_manager.is_admin(current_user.get("state", 0)):
+        raise HTTPException(status_code=403, detail="只有管理员才能删除留言")
+    
+    post_repo = PostRepository(session)
+    
+    try:
+        # 执行删除操作
+        result = await post_repo.delete_message(message_id)
+        
+        if result["success"]:
+            return {
+                "success": True,
+                "message": result["message"],
+                "deleted_count": result["deleted_count"],
+                "deleted_messages": result["deleted_messages"],
+                "is_main_post": result["is_main_post"]
+            }
+        else:
+            raise HTTPException(status_code=400, detail=result["message"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"删除留言失败: {str(e)}")
+
 @router.get("/blogs/posts/latest", response_model=Dict[str, Any])
 @handle_api_errors("获取最新博文失败")
 @cache_blog_recent_list()  # 使用默认缓存时间
