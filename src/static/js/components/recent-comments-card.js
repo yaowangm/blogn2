@@ -165,21 +165,6 @@ class RecentCommentsCard extends BaseComponent {
         }
     }
 
-    /**
-     * 截断文本
-     * @param {string} text - 原始文本
-     * @param {number} maxLength - 最大长度
-     * @returns {string} 截断后的文本
-     */
-    truncateText(text, maxLength) {
-        if (!text || typeof text !== 'string') {
-            return '';
-        }
-        if (text.length <= maxLength) {
-            return text;
-        }
-        return text.substring(0, maxLength) + '...';
-    }
 
     /**
      * 创建加载状态HTML
@@ -222,12 +207,6 @@ class RecentCommentsCard extends BaseComponent {
         // 使用正确的URL模式：article/{articleid}#post{commentid}
         return `/article/${projectitemid}#post${commentId}`;
     }
-
-    /**
-     * HTML转义方法
-     * @param {string} text - 需要转义的文本
-     * @returns {string} 转义后的文本
-     */
 
 
     render() {

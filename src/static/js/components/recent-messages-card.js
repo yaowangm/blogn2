@@ -5,12 +5,6 @@ class RecentMessagesCard extends BaseComponent {
         this.loading = true;
     }
 
-    /**
-     * HTML转义函数，防止XSS攻击
-     * @param {string} text - 需要转义的文本
-     * @returns {string} 转义后的安全文本
-     */
-
 
     connectedCallback() {
         this.render();
