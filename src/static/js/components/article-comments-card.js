@@ -472,22 +472,7 @@ class ArticleCommentsCard extends BaseComponent {
     /**
      * HTML转义并处理换行
      */
-    escapeHtml(text) {
-        if (!text || typeof text !== 'string') {
-            return '';
-        }
-        
-        // 先转义HTML特殊字符
-        const escaped = text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-        
-        // 将换行符转换为HTML换行标签
-        return escaped.replace(/\r?\n/g, '<br>');
-    }
+
 
     /**
      * 验证URL是否安全有效

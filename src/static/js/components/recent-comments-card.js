@@ -228,14 +228,7 @@ class RecentCommentsCard extends BaseComponent {
      * @param {string} text - 需要转义的文本
      * @returns {string} 转义后的文本
      */
-    escapeHtml(text) {
-        if (typeof text !== 'string') {
-            return '';
-        }
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+
 
     render() {
         this.shadowRoot.innerHTML = `

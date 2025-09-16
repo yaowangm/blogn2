@@ -66,15 +66,7 @@ class BlogListCard extends BaseComponent {
      * @param {string} text - 需要转义的文本
      * @returns {string} 转义后的安全文本
      */
-    escapeHtml(text) {
-        if (typeof text !== 'string') return text;
-        return text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
+
 
     connectedCallback() {
         // 检查是否应该显示分类信息
