@@ -5,7 +5,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from src.services.blog_service import BlogService
 from src.utils.error_handlers import handle_api_errors
 from src.utils.dependencies import get_blog_service
-from src.utils.cache import cache_blog_recent_list, cache_blog_popular_list, cache_blog_detail, cache_blog_comments, cache_blog_messages
+from src.utils.cache import cache_blog_recent_list, cache_blog_popular_list, cache_blog_detail, cache_blog_comments, cache_blog_messages_recent, cache_blog_messages_list, cache_blog_message_thread, clear_blog_messages_cache
 from src.utils.auth_dependencies import get_current_user, get_optional_current_user
 from src.database import get_async_session
 
@@ -88,7 +88,7 @@ async def get_about_content(
 
 @router.get("/blogs/messages/recent", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最近留言失败")
-# @cache_blog_messages()  # 使用默认缓存时间 - 临时禁用用于测试
+@cache_blog_messages_recent(ttl=900)  # 缓存15分钟
 async def get_recent_messages(
     limit: int = 5,
     blog_service: BlogService = Depends(get_blog_service)
@@ -107,7 +107,7 @@ async def get_recent_messages(
 
 @router.get("/messages", response_model=Dict[str, Any])
 @handle_api_errors("获取留言本列表失败")
-# @cache_blog_messages()  # 暂时禁用缓存以测试新留言功能
+@cache_blog_messages_list(ttl=900)  # 缓存15分钟
 async def get_messages_list(
     page: int = 1,
     limit: int = 10,
@@ -127,7 +127,7 @@ async def get_messages_list(
     return await blog_service.get_messages_list(page, limit)
 
 @router.get("/thread/{thread_id}", response_model=Dict[str, Any])
-# @cache_blog_messages()  # 使用默认缓存时间 - 临时禁用用于测试
+@cache_blog_message_thread(ttl=900)  # 缓存15分钟
 async def get_thread(
     thread_id: int,
     blog_service: BlogService = Depends(get_blog_service)
@@ -233,6 +233,9 @@ async def create_message(
         if thread_id:
             await post_repo._update_main_post_stats(thread_id, message.id, user_id)
         
+        # 清除留言相关缓存
+        await clear_blog_messages_cache()
+        
         return {
             "success": True,
             "message": "留言创建成功",
@@ -284,6 +287,9 @@ async def delete_message(
         result = await post_repo.delete_post(message_id)
         
         if result["success"]:
+            # 清除留言相关缓存
+            await clear_blog_messages_cache()
+            
             return {
                 "success": True,
                 "message": result["message"],

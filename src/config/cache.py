@@ -430,4 +430,46 @@ class CacheKeyGenerator:
         Returns:
             str: 所有友情链接缓存键
         """
-        return CacheKeyGenerator._build_key("friend_links", "all") 
+        return CacheKeyGenerator._build_key("friend_links", "all")
+    
+    # ==================== 留言相关缓存键 ====================
+    
+    @staticmethod
+    def blog_messages_recent(limit: int = 5) -> str:
+        """
+        最近留言缓存键
+        
+        Args:
+            limit: 返回数量限制
+            
+        Returns:
+            str: 最近留言缓存键
+        """
+        return CacheKeyGenerator._build_key("blog", "messages", "recent", limit)
+    
+    @staticmethod
+    def blog_messages_list(page: int = 1, limit: int = 10) -> str:
+        """
+        留言列表缓存键
+        
+        Args:
+            page: 页码
+            limit: 每页数量
+            
+        Returns:
+            str: 留言列表缓存键
+        """
+        return CacheKeyGenerator._build_key("blog", "messages", "list", page, limit)
+    
+    @staticmethod
+    def blog_message_thread(thread_id: int) -> str:
+        """
+        留言主题缓存键
+        
+        Args:
+            thread_id: 主题ID
+            
+        Returns:
+            str: 留言主题缓存键
+        """
+        return CacheKeyGenerator._build_key("blog", "messages", "thread", thread_id) 

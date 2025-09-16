@@ -317,10 +317,25 @@ def cache_blog_comments(ttl: int = None):
                           CacheKeyGenerator.blog_comments(kwargs.get('blog_id', 0)))
 
 
-def cache_blog_messages(ttl: int = None):
-    """博客留言缓存装饰器"""
+def cache_blog_messages_recent(ttl: int = None):
+    """最近留言缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
-                          f"blog:messages:recent:{kwargs.get('limit', 5)}")
+                          CacheKeyGenerator.blog_messages_recent(kwargs.get('limit', 5)))
+
+
+def cache_blog_messages_list(ttl: int = None):
+    """留言列表缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+                          CacheKeyGenerator.blog_messages_list(
+                              kwargs.get('page', 1), 
+                              kwargs.get('limit', 10)
+                          ))
+
+
+def cache_blog_message_thread(ttl: int = None):
+    """留言主题缓存装饰器"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+                          CacheKeyGenerator.blog_message_thread(kwargs.get('thread_id', 0)))
 
 
 # 其他缓存装饰器
@@ -521,6 +536,14 @@ async def clear_article_attachments_cache(article_id: int):
         await cache_manager.clear_pattern(f"article:attachments:{article_id}")
         if cache_settings.cache_debug:
             logger.debug(f"清除文章附件缓存: article:attachments:{article_id}")
+
+
+async def clear_blog_messages_cache():
+    """直接清除所有留言相关缓存"""
+    if cache_settings.enable_cache:
+        await cache_manager.clear_pattern("blog:messages:*")
+        if cache_settings.cache_debug:
+            logger.debug("清除所有留言相关缓存: blog:messages:*")
 
 
 # ==================== 缓存统计 ====================
