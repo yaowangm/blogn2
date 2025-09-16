@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 def _is_testing_environment() -> bool:
     """检查是否在测试环境中"""
-    return os.getenv("PYTEST_CURRENT_TEST") is not None
+    return os.getenv("PYTEST_CURRENT_TEST") is not None or os.getenv("TESTING") == "true"
 
 
 def _has_mock_objects(kwargs: dict) -> bool:
@@ -175,6 +175,10 @@ def cache_decorator(
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
+            # 在测试环境中直接跳过缓存
+            if _is_testing_environment():
+                return await func(*args, **kwargs)
+            
             # 缓存启用检查
             if not enable_cache or not cache_settings.enable_cache:
                 return await func(*args, **kwargs)

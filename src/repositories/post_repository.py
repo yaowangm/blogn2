@@ -314,6 +314,9 @@ class PostRepository:
                 "lastreplytime": main_post.lastreplytime,
                 "replycount": main_post.replycount or 0
             })
+        else:
+            # 如果找不到主贴，抛出异常
+            raise ValueError(f"主题 {thread_id} 不存在")
         
         # 处理跟贴
         for reply in replies:

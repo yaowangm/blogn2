@@ -11,7 +11,7 @@
 所有接口都支持缓存以提高性能。
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Body
 from typing import List, Dict, Any, Optional
 from sqlmodel.ext.asyncio.session import AsyncSession
 from datetime import datetime
@@ -155,8 +155,8 @@ async def get_article_detail(
 @router.post("/articles/{article_id}/comments", response_model=Dict[str, Any])
 async def create_article_comment(
     article_id: int,
-    comment_data: Dict[str, Any],
     request: Request,
+    comment_data: Dict[str, Any] = Body(...),
     session: AsyncSession = Depends(get_async_session),
     current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
@@ -261,8 +261,8 @@ async def create_article_comment(
 @require_auth()
 async def create_article_comment_auth(
     article_id: int,
-    comment_data: Dict[str, Any],
     request: Request,
+    comment_data: Dict[str, Any] = Body(...),
     session: AsyncSession = Depends(get_async_session),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):

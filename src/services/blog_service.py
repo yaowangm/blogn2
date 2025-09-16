@@ -315,8 +315,11 @@ class BlogService:
                 "messages": formatted_messages,
                 "thread_id": thread_id
             }
+        except ValueError as e:
+            # 如果主题不存在，重新抛出异常
+            raise e
         except Exception as e:
-            # 如果查询失败，返回空数据
+            # 其他查询失败，返回空数据
             print(f"Warning: Could not fetch thread {thread_id}: {e}")
             return {
                 "messages": [],

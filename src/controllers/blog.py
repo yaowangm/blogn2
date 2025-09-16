@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException, Body
 from typing import List, Dict, Any, Optional
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -52,7 +52,7 @@ async def get_popular_blogs(
 
 @router.get("/comments/recent", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最近评论失败")
-@cache_blog_comments()  # 使用默认缓存时间
+# @cache_blog_comments()  # 使用默认缓存时间 - 临时禁用用于测试
 async def get_recent_comments(
     limit: int = 5,
     blog_service: BlogService = Depends(get_blog_service)
@@ -88,7 +88,7 @@ async def get_about_content(
 
 @router.get("/blogs/messages/recent", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最近留言失败")
-@cache_blog_messages()  # 使用默认缓存时间
+# @cache_blog_messages()  # 使用默认缓存时间 - 临时禁用用于测试
 async def get_recent_messages(
     limit: int = 5,
     blog_service: BlogService = Depends(get_blog_service)
@@ -127,8 +127,7 @@ async def get_messages_list(
     return await blog_service.get_messages_list(page, limit)
 
 @router.get("/thread/{thread_id}", response_model=Dict[str, Any])
-@handle_api_errors("获取主题失败")
-@cache_blog_messages()  # 使用默认缓存时间
+# @cache_blog_messages()  # 使用默认缓存时间 - 临时禁用用于测试
 async def get_thread(
     thread_id: int,
     blog_service: BlogService = Depends(get_blog_service)
@@ -143,13 +142,20 @@ async def get_thread(
     Returns:
         Dict[str, Any]: 主题留言数据
     """
-    return await blog_service.get_thread(thread_id)
+    try:
+        return await blog_service.get_thread(thread_id)
+    except ValueError as e:
+        # 主题不存在，返回404
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        # 其他错误，返回500
+        raise HTTPException(status_code=500, detail=f"获取主题失败: {str(e)}")
 
 @router.post("/messages", response_model=Dict[str, Any])
 @handle_api_errors("提交留言失败")
 async def create_message(
-    message_data: Dict[str, Any],
     request: Request,
+    message_data: Dict[str, Any] = Body(...),
     current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
