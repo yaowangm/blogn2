@@ -6,8 +6,9 @@ import os
 from pathlib import Path
 
 # 导入main模块
-from src.main import app, serve_file, UPLOAD_BASE_PATH, AVATAR_BASE_PATH
+from src.main import app
 from src.utils.file_utils import validate_and_sanitize_path
+from src.utils.file_handlers import FileHandler
 
 
 class TestMain:
@@ -22,11 +23,11 @@ class TestMain:
     def test_serve_file_exists(self):
         """测试文件存在时的serve_file函数"""
         with patch('os.path.exists', return_value=True):
-            with patch('src.main.FileResponse') as mock_file_response:
+            with patch('src.utils.file_handlers.FileResponse') as mock_file_response:
                 mock_response = MagicMock()
                 mock_file_response.return_value = mock_response
                 
-                result = serve_file("/path/to/file.jpg", "image/jpeg")
+                result = FileHandler.serve_file("/path/to/file.jpg", "image/jpeg")
                 
                 assert result == mock_response
                 mock_file_response.assert_called_once_with("/path/to/file.jpg", media_type="image/jpeg")
@@ -36,7 +37,7 @@ class TestMain:
         """测试文件不存在时的serve_file函数"""
         with patch('os.path.exists', return_value=False):
             with pytest.raises(HTTPException) as exc_info:
-                serve_file("/path/to/nonexistent.jpg")
+                FileHandler.serve_file("/path/to/nonexistent.jpg")
             
             assert exc_info.value.status_code == 404
             assert exc_info.value.detail == "File not found"
@@ -98,8 +99,8 @@ class TestMain:
     @pytest.mark.unit
     def test_serve_upload_file(self, client):
         """测试upload文件服务"""
-        with patch('src.main.validate_and_sanitize_path', return_value="/safe/path/file.jpg"):
-            with patch('src.main.serve_file') as mock_serve_file:
+        with patch('src.utils.file_utils.validate_and_sanitize_path', return_value="/safe/path/file.jpg"):
+            with patch('src.utils.file_handlers.FileHandler.serve_file') as mock_serve_file:
                 mock_response = MagicMock()
                 mock_serve_file.return_value = mock_response
                 
@@ -119,8 +120,8 @@ class TestMain:
     @pytest.mark.unit
     def test_serve_avatar_valid(self, client):
         """测试有效的头像文件服务"""
-        with patch('src.main.validate_and_sanitize_path', return_value="/safe/path/avatar.jpg"):
-            with patch('src.main.serve_file') as mock_serve_file:
+        with patch('src.utils.file_utils.validate_and_sanitize_path', return_value="/safe/path/avatar.jpg"):
+            with patch('src.utils.file_handlers.FileHandler.serve_file') as mock_serve_file:
                 mock_response = MagicMock()
                 mock_serve_file.return_value = mock_response
                 
@@ -149,7 +150,7 @@ class TestMain:
     @pytest.mark.unit
     def test_root_endpoint(self, client):
         """测试根路径端点"""
-        with patch('src.main.FileResponse') as mock_file_response:
+        with patch('fastapi.responses.FileResponse') as mock_file_response:
             mock_response = MagicMock()
             mock_file_response.return_value = mock_response
             

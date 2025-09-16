@@ -27,6 +27,7 @@ from src.utils.cache import cache_article_detail, cache_article_comments, cache_
 from src.utils.auth_dependencies import get_current_user, get_optional_current_user
 from src.utils.permission_manager import permission_manager
 from src.utils.permission_decorators import require_auth
+from src.utils.comment_handlers import CommentHandler
 from src.constants import ArticleStatus, ErrorMessages
 from src.utils.file_utils import get_temp_dir
 
@@ -177,80 +178,15 @@ async def create_article_comment(
         - message: 结果消息
         - comment_id: 新创建的评论ID
     """
-    post_repo = PostRepository(session)
-    project_item_repo = ProjectItemRepository(session)
-    
     try:
-        # 验证文章是否存在
-        article = await project_item_repo.get_by_id(article_id)
-        if not article:
-            raise HTTPException(status_code=404, detail="文章不存在")
-        
-        # 验证评论权限
-        allowpost = article.allowpost or 1
-        is_logged_in = current_user is not None
-        
-        if allowpost == 3:  # 不允许任何评论
-            raise HTTPException(status_code=403, detail="此文章已关闭评论功能")
-        elif allowpost == 2 and not is_logged_in:  # 只允许登录用户评论
-            raise HTTPException(status_code=401, detail="需要登录后才能发表评论")
-        
-        # 验证评论数据
-        content = comment_data.get("content")
-        if not content or not content.strip():
-            raise HTTPException(status_code=400, detail="评论内容不能为空")
-        
-        # 获取用户ID
-        user_id = None
-        if is_logged_in:
-            user_id = current_user.get("id")
-        elif allowpost == 1:  # 允许匿名评论
-            # 对于匿名评论，可以设置一个默认用户ID或特殊处理
-            # 这里我们要求匿名用户也提供user_id，前端可以设置为0或特殊值
-            user_id = comment_data.get("user_id", 0)
-        
-        if user_id is None:
-            raise HTTPException(status_code=400, detail="用户ID不能为空")
-        
-        # 获取客户端IP地址
-        client_ip = request.client.host if request.client else "127.0.0.1"
-        
-        # 计算内容大小（字节数）
-        content_bytes = content.strip().encode('utf-8')
-        content_size = len(content_bytes)
-        
-        # 创建评论
-        comment = Post(
-            folderid=0,  # 文件夹ID为0
-            projectitemid=article_id,
-            userid=user_id,
-            subject=comment_data.get("subject", ""),
-            content=content.strip(),
-            size=content_size,  # 内容大小（字节）
-            hits=0,  # 访问次数初始为0
-            userip=client_ip,  # 用户IP地址
-            posttime=datetime.now(),
-            status=1,  # 1表示正常状态
-            rootid=0,  # 主评论的rootid为0
-            replycount=0  # 新评论的回复数为0
+        return await CommentHandler.create_comment(
+            article_id=article_id,
+            comment_data=comment_data,
+            request=request,
+            session=session,
+            current_user=current_user,
+            require_auth=False
         )
-        
-        await post_repo.create(comment)
-        
-        # 更新文章的评论数
-        await project_item_repo.increment_comment_count(article_id)
-        
-        # 失效相关缓存
-        await clear_article_detail_cache(article_id)
-        await clear_article_comments_cache(article_id)
-        
-        result = {
-            "success": True,
-            "message": "评论创建成功",
-            "comment_id": comment.id
-        }
-        return result
-        
     except HTTPException:
         raise
     except Exception as e:
@@ -283,71 +219,15 @@ async def create_article_comment_auth(
         - message: 结果消息
         - comment_id: 新创建的评论ID
     """
-    post_repo = PostRepository(session)
-    project_item_repo = ProjectItemRepository(session)
-    
     try:
-        # 验证文章是否存在
-        article = await project_item_repo.get_by_id(article_id)
-        if not article:
-            raise HTTPException(status_code=404, detail="文章不存在")
-        
-        # 验证评论权限
-        allowpost = article.allowpost or 1
-        
-        if allowpost == 3:  # 不允许任何评论
-            raise HTTPException(status_code=403, detail="此文章已关闭评论功能")
-        elif allowpost == 1:  # 允许匿名评论，但这里要求登录
-            # 可以继续，但会记录为登录用户评论
-            pass
-        
-        # 验证评论数据
-        content = comment_data.get("content")
-        if not content or not content.strip():
-            raise HTTPException(status_code=400, detail="评论内容不能为空")
-        
-        # 使用登录用户ID
-        user_id = current_user.get("id")
-        
-        # 获取客户端IP地址
-        client_ip = request.client.host if request.client else "127.0.0.1"
-        
-        # 计算内容大小（字节数）
-        content_bytes = content.strip().encode('utf-8')
-        content_size = len(content_bytes)
-        
-        # 创建评论
-        comment = Post(
-            folderid=0,  # 文件夹ID为0
-            projectitemid=article_id,
-            userid=user_id,
-            subject=comment_data.get("subject", ""),
-            content=content.strip(),
-            size=content_size,  # 内容大小（字节）
-            hits=0,  # 访问次数初始为0
-            userip=client_ip,  # 用户IP地址
-            posttime=datetime.now(),
-            status=1,  # 1表示正常状态
-            rootid=0,  # 主评论的rootid为0
-            replycount=0  # 新评论的回复数为0
+        return await CommentHandler.create_comment(
+            article_id=article_id,
+            comment_data=comment_data,
+            request=request,
+            session=session,
+            current_user=current_user,
+            require_auth=True
         )
-        
-        await post_repo.create(comment)
-        
-        # 更新文章的评论数
-        await project_item_repo.increment_comment_count(article_id)
-        
-        # 失效相关缓存
-        await clear_article_detail_cache(article_id)
-        await clear_article_comments_cache(article_id)
-        
-        result = {
-            "success": True,
-            "message": "评论创建成功",
-            "comment_id": comment.id
-        }
-        return result
-        
     except HTTPException:
         raise
     except Exception as e:
@@ -377,52 +257,13 @@ async def delete_article_comment(
         - success: 是否成功
         - message: 结果消息
     """
-    post_repo = PostRepository(session)
-    project_item_repo = ProjectItemRepository(session)
-    project_repo = ProjectRepository(session)
-    
     try:
-        # 验证文章是否存在
-        article = await project_item_repo.get_by_id(article_id)
-        if not article:
-            raise HTTPException(status_code=404, detail="文章不存在")
-        
-        # 验证评论是否存在
-        comment = await post_repo.get_by_id(comment_id)
-        if not comment:
-            raise HTTPException(status_code=404, detail="评论不存在")
-        
-        # 验证评论是否属于该文章
-        if comment.projectitemid != article_id:
-            raise HTTPException(status_code=400, detail="评论不属于该文章")
-        
-        # 权限检查：只有管理员或文章作者可以删除评论
-        if not current_user:
-            raise HTTPException(status_code=401, detail="需要登录才能删除评论")
-        
-        current_user_id = current_user.get("id")
-        is_admin = current_user.get("state") == 10
-        is_article_author = article.userid == current_user_id
-        
-        if not (is_admin or is_article_author):
-            raise HTTPException(status_code=403, detail="无权限删除该评论")
-        
-        # 删除评论
-        await post_repo.delete(comment_id)
-        
-        # 更新文章的评论数
-        await project_item_repo.decrement_comment_count(article_id)
-        
-        # 失效相关缓存
-        await clear_article_detail_cache(article_id)
-        await clear_article_comments_cache(article_id)
-        
-        result = {
-            "success": True,
-            "message": "评论删除成功"
-        }
-        return result
-        
+        return await CommentHandler.delete_comment(
+            article_id=article_id,
+            comment_id=comment_id,
+            session=session,
+            current_user=current_user
+        )
     except HTTPException:
         raise
     except Exception as e:

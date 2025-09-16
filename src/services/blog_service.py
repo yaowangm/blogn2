@@ -5,8 +5,10 @@ from src.repositories.user_repository import UserRepository
 from src.repositories.project_item_repository import ProjectItemRepository
 from src.repositories.project_repository import ProjectRepository
 from src.repositories.post_repository import PostRepository
+from src.services.base_service import BaseService
+from src.utils.time_utils import TimeUtils
 
-class BlogService:
+class BlogService(BaseService):
     """博客业务逻辑服务类
     
     提供博客相关的业务逻辑处理，包括最新加入、最热门、最近评论等功能。
@@ -49,7 +51,7 @@ class BlogService:
             # 格式化创建时间
             createtime = project["createtime"]
             if createtime:
-                join_date = self._format_relative_time(createtime)
+                join_date = TimeUtils.format_relative_time(createtime)
             else:
                 join_date = "未知日期"
             
@@ -75,10 +77,7 @@ class BlogService:
         for i, project in enumerate(popular_projects):
             # 格式化访问量
             access_count = project["accesscount"]
-            if access_count >= 1000:
-                access_str = f"{access_count/1000:.1f}k"
-            else:
-                access_str = str(access_count)
+            access_str = TimeUtils.format_access_count(access_count)
             
             # 检查用户头像是否存在
             userid = project["userid"]
@@ -106,7 +105,7 @@ class BlogService:
                 # 格式化评论时间
                 post_time = comment["post_time"]
                 if post_time:
-                    time_str = self._format_relative_time(post_time)
+                    time_str = TimeUtils.format_relative_time(post_time)
                 else:
                     time_str = "未知时间"
                 
@@ -184,7 +183,7 @@ class BlogService:
                 # 格式化留言时间为相对时间
                 post_time = message["post_time"]
                 if post_time:
-                    time_str = self._format_relative_time(post_time)
+                    time_str = TimeUtils.format_relative_time(post_time)
                 else:
                     time_str = "未知时间"
                 
@@ -238,7 +237,7 @@ class BlogService:
                 # 格式化留言时间
                 post_time = message["post_time"]
                 if post_time:
-                    time_str = self._format_relative_time(post_time)
+                    time_str = TimeUtils.format_relative_time(post_time)
                 else:
                     time_str = "未知时间"
                 
@@ -246,7 +245,7 @@ class BlogService:
                 last_reply_time = message.get("last_reply_time")
                 last_reply_time_str = ""
                 if last_reply_time:
-                    last_reply_time_str = self._format_relative_time(last_reply_time)
+                    last_reply_time_str = TimeUtils.format_relative_time(last_reply_time)
                 
                 formatted_messages.append({
                     "id": message["id"],
@@ -294,7 +293,7 @@ class BlogService:
                 # 格式化留言时间
                 post_time = message["post_time"]
                 if post_time:
-                    time_str = self._format_relative_time(post_time)
+                    time_str = TimeUtils.format_relative_time(post_time)
                 else:
                     time_str = "未知时间"
                 
@@ -344,7 +343,7 @@ class BlogService:
                 # 格式化创建时间
                 createtime = post["createtime"]
                 if createtime:
-                    time_str = self._format_relative_time(createtime)
+                    time_str = TimeUtils.format_relative_time(createtime)
                 else:
                     time_str = "未知时间"
                 
@@ -398,27 +397,3 @@ class BlogService:
                 "total_pages": 0
             }
     
-    def _format_relative_time(self, post_time: datetime) -> str:
-        """格式化时间显示"""
-        now = datetime.now()
-        diff = now - post_time
-        
-        # 如果是今天，显示相对时间
-        if diff.days == 0:
-            if diff.seconds >= 3600:
-                hours = diff.seconds // 3600
-                return f"{hours}小时前"
-            elif diff.seconds >= 60:
-                minutes = diff.seconds // 60
-                return f"{minutes}分钟前"
-            else:
-                return "刚刚"
-        # 如果是昨天，显示"昨天"
-        elif diff.days == 1:
-            return "昨天"
-        # 如果是前天，显示"前天"
-        elif diff.days == 2:
-            return "前天"
-        # 其他情况显示具体日期
-        else:
-            return post_time.strftime("%Y-%m-%d") 

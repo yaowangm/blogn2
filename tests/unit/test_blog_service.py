@@ -413,47 +413,53 @@ class TestBlogService:
     @pytest.mark.unit
     def test_format_relative_time_just_now(self, blog_service):
         """测试格式化时间：刚刚"""
+        from src.utils.time_utils import TimeUtils
         now = datetime.now()
-        result = blog_service._format_relative_time(now)
+        result = TimeUtils.format_relative_time(now)
         assert result == "刚刚"
     
     @pytest.mark.unit
     def test_format_relative_time_minutes_ago(self, blog_service):
         """测试格式化时间：分钟前"""
+        from src.utils.time_utils import TimeUtils
         now = datetime.now()
         past_time = now - timedelta(minutes=30)
-        result = blog_service._format_relative_time(past_time)
+        result = TimeUtils.format_relative_time(past_time)
         assert result == "30分钟前"
     
     @pytest.mark.unit
     def test_format_relative_time_hours_ago(self, blog_service):
         """测试格式化时间：小时前"""
+        from src.utils.time_utils import TimeUtils
         now = datetime.now()
         past_time = now - timedelta(hours=2)
-        result = blog_service._format_relative_time(past_time)
+        result = TimeUtils.format_relative_time(past_time)
         assert result == "2小时前"
     
     @pytest.mark.unit
     def test_format_relative_time_yesterday(self, blog_service):
         """测试格式化时间：昨天"""
+        from src.utils.time_utils import TimeUtils
         now = datetime.now()
         yesterday = now - timedelta(days=1)
-        result = blog_service._format_relative_time(yesterday)
+        result = TimeUtils.format_relative_time(yesterday)
         assert result == "昨天"
     
     @pytest.mark.unit
     def test_format_relative_time_day_before_yesterday(self, blog_service):
         """测试格式化时间：前天"""
+        from src.utils.time_utils import TimeUtils
         now = datetime.now()
         day_before_yesterday = now - timedelta(days=2)
-        result = blog_service._format_relative_time(day_before_yesterday)
+        result = TimeUtils.format_relative_time(day_before_yesterday)
         assert result == "前天"
     
     @pytest.mark.unit
     def test_format_relative_time_other_days(self, blog_service):
         """测试格式化时间：其他日期"""
+        from src.utils.time_utils import TimeUtils
         past_time = datetime(2023, 1, 15)
-        result = blog_service._format_relative_time(past_time)
+        result = TimeUtils.format_relative_time(past_time)
         assert result == "2023-01-15"
     
     @pytest.mark.unit
