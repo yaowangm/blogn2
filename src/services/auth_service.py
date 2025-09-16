@@ -174,10 +174,13 @@ class AuthService:
             
             # 检查过期时间
             exp = payload.get("exp")
+            if exp is None:
+                return None
+                
             current_time = datetime.utcnow()
-            exp_time = datetime.fromtimestamp(exp) if exp else None
+            exp_time = datetime.fromtimestamp(exp)
             
-            if exp is None or current_time > exp_time:
+            if current_time > exp_time:
                 return None
             
             return payload
@@ -208,7 +211,10 @@ class AuthService:
             
             # 检查过期时间
             exp = payload.get("exp")
-            if exp is None or datetime.utcnow() > datetime.fromtimestamp(exp):
+            if exp is None:
+                return None
+                
+            if datetime.utcnow() > datetime.fromtimestamp(exp):
                 return None
             
             # 创建新的访问令牌
