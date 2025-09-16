@@ -5,20 +5,6 @@ class RecentMessagesCard extends BaseComponent {
         this.loading = true;
     }
 
-    /**
-     * HTML转义函数，防止XSS攻击
-     * @param {string} text - 需要转义的文本
-     * @returns {string} 转义后的安全文本
-     */
-    escapeHtml(text) {
-        if (typeof text !== 'string') return text;
-        return text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
 
     connectedCallback() {
         this.render();
@@ -117,6 +103,9 @@ class RecentMessagesCard extends BaseComponent {
                     padding: var(--spacing-4) var(--spacing-5);
                     border-bottom: 1px solid var(--gray-200);
                     background: var(--gray-50);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
                 }
 
                 .card-title {
@@ -124,6 +113,19 @@ class RecentMessagesCard extends BaseComponent {
                     font-weight: 600;
                     color: var(--gray-900);
                     margin: 0;
+                }
+
+                .view-all-link {
+                    font-size: var(--font-size-sm);
+                    color: var(--primary-color);
+                    text-decoration: none;
+                    font-weight: 500;
+                    transition: var(--transition-fast);
+                }
+
+                .view-all-link:hover {
+                    color: var(--primary-color-dark);
+                    text-decoration: underline;
                 }
 
                 .card-body {
@@ -238,6 +240,7 @@ class RecentMessagesCard extends BaseComponent {
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">最近留言</h3>
+                    <a href="/messages" class="view-all-link" target="_blank">查看全部</a>
                 </div>
                 <div class="card-body">
                     <div class="message-list">

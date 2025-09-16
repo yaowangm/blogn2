@@ -4,20 +4,6 @@ class FooterComponent extends BaseComponent {
         this.metadata = null;
     }
 
-    /**
-     * HTML转义函数，防止XSS攻击
-     * @param {string} text - 需要转义的文本
-     * @returns {string} 转义后的安全文本
-     */
-    escapeHtml(text) {
-        if (typeof text !== 'string') return text;
-        return text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
 
     async connectedCallback() {
         await this.loadMetadata();

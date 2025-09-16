@@ -46,11 +46,8 @@ class ArticleHeaderCard extends BaseComponent {
      */
     async checkUserPermissions() {
         try {
-            // 从localStorage获取当前用户信息
-            const userInfo = localStorage.getItem('user_info');
-            const token = localStorage.getItem('access_token');
-            
-            if (!userInfo || !token) {
+            // 从UserManager获取当前用户信息
+            if (!UserManager.isLoggedIn()) {
                 // 用户未登录
                 this.currentUser = null;
                 this.isAdmin = false;
@@ -58,7 +55,7 @@ class ArticleHeaderCard extends BaseComponent {
                 return;
             }
 
-            this.currentUser = JSON.parse(userInfo);
+            this.currentUser = UserManager.getCurrentUser();
             
             // 检查是否为管理员（state为10表示管理员）
             this.isAdmin = this.currentUser.state === 10;
@@ -80,12 +77,8 @@ class ArticleHeaderCard extends BaseComponent {
      */
     async loadArticleData() {
         try {
-            // 获取认证token
-            const token = localStorage.getItem('access_token');
-            const headers = {};
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
+            // 获取认证头
+            const headers = UserManager.createHeaders();
             
             const response = await fetch(`/api/articles/${this.articleId}`, {
                 headers: headers
@@ -272,13 +265,12 @@ class ArticleHeaderCard extends BaseComponent {
         }
         
         try {
-            const token = localStorage.getItem('access_token');
+            const headers = UserManager.createHeaders({
+                'Content-Type': 'application/json'
+            });
             const response = await fetch(`/api/articles/${this.articleId}`, {
                 method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
+                headers: headers
             });
             
             if (response.ok) {
@@ -315,13 +307,12 @@ class ArticleHeaderCard extends BaseComponent {
         }
         
         try {
-            const token = localStorage.getItem('access_token');
+            const headers = UserManager.createHeaders({
+                'Content-Type': 'application/json'
+            });
             const response = await fetch(`/api/articles/${this.articleId}/permanent`, {
                 method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
+                headers: headers
             });
             
             if (response.ok) {

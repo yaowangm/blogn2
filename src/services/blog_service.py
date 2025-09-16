@@ -5,8 +5,10 @@ from src.repositories.user_repository import UserRepository
 from src.repositories.project_item_repository import ProjectItemRepository
 from src.repositories.project_repository import ProjectRepository
 from src.repositories.post_repository import PostRepository
+from src.services.base_service import BaseService
+from src.utils.time_utils import TimeUtils
 
-class BlogService:
+class BlogService(BaseService):
     """博客业务逻辑服务类
     
     提供博客相关的业务逻辑处理，包括最新加入、最热门、最近评论等功能。
@@ -49,7 +51,7 @@ class BlogService:
             # 格式化创建时间
             createtime = project["createtime"]
             if createtime:
-                join_date = self._format_relative_time(createtime)
+                join_date = TimeUtils.format_relative_time(createtime)
             else:
                 join_date = "未知日期"
             
@@ -75,10 +77,7 @@ class BlogService:
         for i, project in enumerate(popular_projects):
             # 格式化访问量
             access_count = project["accesscount"]
-            if access_count >= 1000:
-                access_str = f"{access_count/1000:.1f}k"
-            else:
-                access_str = str(access_count)
+            access_str = TimeUtils.format_access_count(access_count)
             
             # 检查用户头像是否存在
             userid = project["userid"]
@@ -106,7 +105,7 @@ class BlogService:
                 # 格式化评论时间
                 post_time = comment["post_time"]
                 if post_time:
-                    time_str = self._format_relative_time(post_time)
+                    time_str = TimeUtils.format_relative_time(post_time)
                 else:
                     time_str = "未知时间"
                 
@@ -184,7 +183,7 @@ class BlogService:
                 # 格式化留言时间为相对时间
                 post_time = message["post_time"]
                 if post_time:
-                    time_str = self._format_relative_time(post_time)
+                    time_str = TimeUtils.format_relative_time(post_time)
                 else:
                     time_str = "未知时间"
                 
@@ -220,6 +219,112 @@ class BlogService:
             # 如果查询失败，返回空列表
             print(f"Warning: Could not fetch messages: {e}")
             return []
+
+    async def get_messages_list(self, page: int = 1, limit: int = 10) -> Dict[str, Any]:
+        """获取留言本分页列表"""
+        try:
+            # 计算偏移量
+            offset = (page - 1) * limit
+            
+            # 获取总数
+            total = await self.post_repo.count_messages()
+            
+            # 获取分页数据
+            messages = await self.post_repo.get_messages_paginated(limit, offset)
+            
+            formatted_messages = []
+            for message in messages:
+                # 格式化留言时间
+                post_time = message["post_time"]
+                if post_time:
+                    time_str = TimeUtils.format_relative_time(post_time)
+                else:
+                    time_str = "未知时间"
+                
+                # 格式化最后回复时间
+                last_reply_time = message.get("last_reply_time")
+                last_reply_time_str = ""
+                if last_reply_time:
+                    last_reply_time_str = TimeUtils.format_relative_time(last_reply_time)
+                
+                formatted_messages.append({
+                    "id": message["id"],
+                    "author": message["author_name"],
+                    "subject": message["subject"] or "无标题",
+                    "post_time": time_str,
+                    "last_reply_author": message.get("last_reply_author"),
+                    "last_reply_time": last_reply_time_str,
+                    "size": message.get("size", 0),
+                    "hits": message.get("hits", 0),
+                    "reply_count": message.get("reply_count", 0),
+                    "userid": message["userid"]
+                })
+            
+            # 计算总页数
+            total_pages = (total + limit - 1) // limit
+            
+            return {
+                "messages": formatted_messages,
+                "total": total,
+                "current_page": page,
+                "total_pages": total_pages,
+                "has_prev": page > 1,
+                "has_next": page < total_pages
+            }
+        except Exception as e:
+            # 如果查询失败，返回空数据
+            print(f"Warning: Could not fetch messages list: {e}")
+            return {
+                "messages": [],
+                "total": 0,
+                "current_page": page,
+                "total_pages": 0,
+                "has_prev": False,
+                "has_next": False
+            }
+
+    async def get_thread(self, thread_id: int) -> Dict[str, Any]:
+        """获取主题的所有留言"""
+        try:
+            messages = await self.post_repo.get_thread_messages(thread_id)
+            
+            formatted_messages = []
+            for message in messages:
+                # 格式化留言时间
+                post_time = message["post_time"]
+                if post_time:
+                    time_str = TimeUtils.format_relative_time(post_time)
+                else:
+                    time_str = "未知时间"
+                
+                formatted_messages.append({
+                    "id": message["id"],
+                    "author": message["author_name"],
+                    "subject": message["subject"] or "无标题",
+                    "content": message["content"] or "",
+                    "post_time": time_str,
+                    "is_main_post": message["is_main_post"],
+                    "userid": message["userid"],
+                    "lastreplyid": message.get("lastreplyid"),
+                    "lastreplytime": message.get("lastreplytime"),
+                    "replycount": message.get("replycount", 0)
+                })
+            
+            return {
+                "messages": formatted_messages,
+                "thread_id": thread_id
+            }
+        except ValueError as e:
+            # 如果主题不存在，重新抛出异常
+            raise e
+        except Exception as e:
+            # 其他查询失败，返回空数据
+            print(f"Warning: Could not fetch thread {thread_id}: {e}")
+            return {
+                "messages": [],
+                "thread_id": thread_id
+            }
+
     
     async def get_latest_posts(self, page: int = 1, page_size: int = 10, exclude: Optional[int] = None, blogid: Optional[int] = None) -> Dict[str, Any]:
         """获取最新的博文记录（支持分页）"""
@@ -238,7 +343,7 @@ class BlogService:
                 # 格式化创建时间
                 createtime = post["createtime"]
                 if createtime:
-                    time_str = self._format_relative_time(createtime)
+                    time_str = TimeUtils.format_relative_time(createtime)
                 else:
                     time_str = "未知时间"
                 
@@ -292,27 +397,3 @@ class BlogService:
                 "total_pages": 0
             }
     
-    def _format_relative_time(self, post_time: datetime) -> str:
-        """格式化时间显示"""
-        now = datetime.now()
-        diff = now - post_time
-        
-        # 如果是今天，显示相对时间
-        if diff.days == 0:
-            if diff.seconds >= 3600:
-                hours = diff.seconds // 3600
-                return f"{hours}小时前"
-            elif diff.seconds >= 60:
-                minutes = diff.seconds // 60
-                return f"{minutes}分钟前"
-            else:
-                return "刚刚"
-        # 如果是昨天，显示"昨天"
-        elif diff.days == 1:
-            return "昨天"
-        # 如果是前天，显示"前天"
-        elif diff.days == 2:
-            return "前天"
-        # 其他情况显示具体日期
-        else:
-            return post_time.strftime("%Y-%m-%d") 

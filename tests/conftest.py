@@ -228,6 +228,16 @@ async def clear_cache_after_each_test():
     try:
         from src.utils.cache import cache_manager
         if cache_manager.is_available():
+            # 检查事件循环是否还在运行
+            try:
+                loop = asyncio.get_running_loop()
+                if loop.is_closed():
+                    # 事件循环已关闭，跳过缓存清理
+                    return
+            except RuntimeError:
+                # 没有运行的事件循环，跳过缓存清理
+                return
+            
             # 清理所有缓存
             await cache_manager.clear_pattern("*")
     except Exception as e:

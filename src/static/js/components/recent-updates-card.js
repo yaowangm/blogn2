@@ -11,20 +11,6 @@ class RecentUpdatesCard extends BaseComponent {
         this.errorMessage = '';
     }
 
-    /**
-     * HTML转义函数，防止XSS攻击
-     * @param {string} text - 需要转义的文本
-     * @returns {string} 转义后的安全文本
-     */
-    escapeHtml(text) {
-        if (typeof text !== 'string') return text;
-        return text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
 
     connectedCallback() {
         this.render();
@@ -373,21 +359,6 @@ class RecentUpdatesCard extends BaseComponent {
         this.render();
     }
 
-    /**
-     * 截断文本
-     * @param {string} text - 原始文本
-     * @param {number} maxLength - 最大长度
-     * @returns {string} 截断后的文本
-     */
-    truncateText(text, maxLength) {
-        if (!text || typeof text !== 'string') {
-            return '';
-        }
-        if (text.length <= maxLength) {
-            return text;
-        }
-        return text.substring(0, maxLength) + '...';
-    }
 }
 
 customElements.define('recent-updates-card', RecentUpdatesCard);

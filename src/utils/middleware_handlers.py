@@ -1,0 +1,78 @@
+"""
+中间件处理器
+
+提供应用中间件的统一配置和管理。
+"""
+
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from src.utils.cache import cache_manager, cache_stats
+from src.config.cache import cache_settings
+
+
+class MiddlewareHandler:
+    """中间件处理器类"""
+    
+    @staticmethod
+    def setup_cors_middleware(app: FastAPI) -> None:
+        """
+        配置CORS中间件
+        
+        Args:
+            app: FastAPI应用实例
+        """
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],  # 在生产环境中应该限制具体域名以提高安全性
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    
+    @staticmethod
+    def setup_cache_control_middleware(app: FastAPI) -> None:
+        """
+        配置缓存控制中间件
+        
+        Args:
+            app: FastAPI应用实例
+        """
+        @app.middleware("http")
+        async def add_cache_control_headers(request: Request, call_next):
+            """
+            为敏感API添加缓存控制头的中间件
+            """
+            response = await call_next(request)
+            
+            # 为敏感的个人资料相关API添加缓存控制
+            if request.url.path.startswith("/api/users/") or request.url.path.startswith("/api/projects/user/"):
+                response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
+                response.headers["Pragma"] = "no-cache"
+                response.headers["Expires"] = "0"
+            
+            return response
+    
+    @staticmethod
+    def setup_static_files(app: FastAPI) -> None:
+        """
+        配置静态文件服务
+        
+        Args:
+            app: FastAPI应用实例
+        """
+        app.mount("/static", StaticFiles(directory="src/static"), name="static")
+    
+    @staticmethod
+    def setup_all_middleware(app: FastAPI) -> None:
+        """
+        配置所有中间件
+        
+        Args:
+            app: FastAPI应用实例
+        """
+        MiddlewareHandler.setup_cors_middleware(app)
+        MiddlewareHandler.setup_cache_control_middleware(app)
+        MiddlewareHandler.setup_static_files(app)
+

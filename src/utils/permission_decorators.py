@@ -9,7 +9,7 @@ from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer
 
 from src.utils.permission_manager import permission_manager
-from src.utils.auth_middleware import get_optional_current_user
+from src.utils.auth_dependencies import get_optional_current_user, get_current_user
 
 # 安全方案
 security = HTTPBearer(auto_error=False)
@@ -156,4 +156,4 @@ def get_current_user_for_permission():
 
 def get_current_user_required():
     """获取当前用户（必需）的依赖项"""
-    return Depends(get_optional_current_user)
+    return Depends(get_current_user)

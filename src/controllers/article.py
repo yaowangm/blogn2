@@ -11,7 +11,7 @@
 所有接口都支持缓存以提高性能。
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Body
 from typing import List, Dict, Any, Optional
 from sqlmodel.ext.asyncio.session import AsyncSession
 from datetime import datetime
@@ -24,8 +24,11 @@ from src.repositories.post_repository import PostRepository
 from src.repositories.attachment_repository import AttachmentRepository
 from src.models.post import Post
 from src.utils.cache import cache_article_detail, cache_article_comments, cache_article_attachments, clear_article_detail_cache, clear_article_comments_cache
-from src.utils.auth_middleware import get_current_user, get_optional_current_user
+from src.utils.auth_dependencies import get_current_user, get_optional_current_user
 from src.utils.permission_manager import permission_manager
+from src.utils.permission_decorators import require_auth
+from src.utils.comment_handlers import CommentHandler
+from src.utils.time_utils import TimeUtils
 from src.constants import ArticleStatus, ErrorMessages
 from src.utils.file_utils import get_temp_dir
 
@@ -37,6 +40,8 @@ router = APIRouter(tags=["文章管理"])
 @cache_article_detail(ttl=1800)  # 缓存30分钟
 async def get_article_detail(
     article_id: int,
+    page: int = 1,
+    per_page: int = 10,
     session: AsyncSession = Depends(get_async_session),
     current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
@@ -90,8 +95,10 @@ async def get_article_detail(
             folder_repo = FolderRepository(session)
             category = await folder_repo.get_by_id(article.folderid)
         
-        # 获取文章评论
-        comments = await post_repo.get_by_project_item_id(article_id)
+        # 获取文章评论（分页）
+        comments_data = await post_repo.get_by_project_item_id_paginated(article_id, page, per_page)
+        comments = comments_data["comments"]
+        pagination = comments_data["pagination"]
         
         # 获取文章附件图片
         attachments = await attachment_repo.get_by_project_item_id(article_id)
@@ -137,7 +144,8 @@ async def get_article_detail(
                     "post_time": comment.posttime,
                     "reply_count": comment.replycount or 0
                 } for comment in comments
-            ] if comments else []
+            ] if comments else [],
+            "comments_pagination": pagination
         }
         
     except HTTPException:
@@ -149,19 +157,21 @@ async def get_article_detail(
 @router.post("/articles/{article_id}/comments", response_model=Dict[str, Any])
 async def create_article_comment(
     article_id: int,
-    comment_data: Dict[str, Any],
-    session: AsyncSession = Depends(get_async_session)
+    request: Request,
+    comment_data: Dict[str, Any] = Body(...),
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
     """
-    为指定文章创建评论
+    为指定文章创建评论（支持匿名和登录用户）
     
     Args:
         article_id: 文章ID
         comment_data: 评论数据，包含：
         - content: 评论内容（必需）
-        - user_id: 用户ID（必需）
         - subject: 评论主题（可选）
         session: 数据库会话
+        current_user: 当前用户信息（可选）
         
     Returns:
         Dict[str, Any]: 创建结果，包含：
@@ -169,54 +179,96 @@ async def create_article_comment(
         - message: 结果消息
         - comment_id: 新创建的评论ID
     """
-    post_repo = PostRepository(session)
-    project_item_repo = ProjectItemRepository(session)
-    
     try:
-        # 验证文章是否存在
-        article = await project_item_repo.get_by_id(article_id)
-        if not article:
-            raise HTTPException(status_code=404, detail="文章不存在")
-        
-        # 验证评论数据
-        content = comment_data.get("content")
-        user_id = comment_data.get("user_id")
-        
-        if not content or not content.strip():
-            raise HTTPException(status_code=400, detail="评论内容不能为空")
-        
-        if not user_id:
-            raise HTTPException(status_code=400, detail="用户ID不能为空")
-        
-        # 创建评论
-        comment = Post(
-            projectitemid=article_id,
-            userid=user_id,
-            subject=comment_data.get("subject", ""),
-            content=content.strip(),
-            posttime=datetime.now(),
-            status=1  # 1表示正常状态
+        return await CommentHandler.create_comment(
+            article_id=article_id,
+            comment_data=comment_data,
+            request=request,
+            session=session,
+            current_user=current_user,
+            require_auth=False
         )
-        
-        await post_repo.create(comment)
-        
-        # 更新文章的评论数
-        await project_item_repo.increment_comment_count(article_id)
-        
-        # 失效相关缓存
-        await clear_article_detail_cache(article_id)
-        await clear_article_comments_cache(article_id)
-        
-        return {
-            "success": True,
-            "message": "评论创建成功",
-            "comment_id": comment.id
-        }
-        
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"创建评论失败: {str(e)}")
+
+
+@router.post("/articles/{article_id}/comments/auth", response_model=Dict[str, Any])
+@require_auth()
+async def create_article_comment_auth(
+    article_id: int,
+    request: Request,
+    comment_data: Dict[str, Any] = Body(...),
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    为指定文章创建评论（仅限登录用户）
+    
+    Args:
+        article_id: 文章ID
+        comment_data: 评论数据，包含：
+        - content: 评论内容（必需）
+        - subject: 评论主题（可选）
+        session: 数据库会话
+        current_user: 当前用户信息（必需）
+        
+    Returns:
+        Dict[str, Any]: 创建结果，包含：
+        - success: 是否成功
+        - message: 结果消息
+        - comment_id: 新创建的评论ID
+    """
+    try:
+        return await CommentHandler.create_comment(
+            article_id=article_id,
+            comment_data=comment_data,
+            request=request,
+            session=session,
+            current_user=current_user,
+            require_auth=True
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"创建评论失败: {str(e)}")
+
+
+@router.delete("/articles/{article_id}/comments/{comment_id}", response_model=Dict[str, Any])
+async def delete_article_comment(
+    article_id: int,
+    comment_id: int,
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
+):
+    """
+    删除指定文章的评论
+    
+    Args:
+        article_id: 文章ID
+        comment_id: 评论ID
+        request: 请求对象
+        session: 数据库会话
+        current_user: 当前用户信息（可选）
+        
+    Returns:
+        Dict[str, Any]: 删除结果，包含：
+        - success: 是否成功
+        - message: 结果消息
+    """
+    try:
+        return await CommentHandler.delete_comment(
+            article_id=article_id,
+            comment_id=comment_id,
+            session=session,
+            current_user=current_user
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"删除评论失败: {str(e)}")
 
 
 @router.get("/articles/{article_id}/comments", response_model=List[Dict[str, Any]])
@@ -389,7 +441,7 @@ async def update_article(
                 if os.path.exists(temp_path):
                     # 创建按月份命名的子目录
                     from datetime import datetime
-                    current_time = datetime.now()
+                    current_time = TimeUtils.now_utc()
                     month_dir = current_time.strftime("%Y%m")
                     monthly_upload_path = os.path.join(upload_dir, month_dir)
                     os.makedirs(monthly_upload_path, exist_ok=True)
@@ -427,8 +479,8 @@ async def update_article(
             "allowpost": article_data.get("allowpost", 1),
             "attachment": article_data.get("attachment"),
             "itemsize": itemsize,
-            "updatetime": datetime.now(),
-            "lastmodifytime": datetime.now()
+            "updatetime": TimeUtils.now_utc(),
+            "lastmodifytime": TimeUtils.now_utc()
         }
         
         # 移除None值
@@ -461,7 +513,7 @@ async def update_article(
                         
                         if os.path.exists(temp_path):
                             # 创建按月份命名的子目录
-                            current_time = datetime.now()
+                            current_time = TimeUtils.now_utc()
                             month_dir = current_time.strftime("%Y%m")
                             monthly_upload_path = os.path.join(upload_dir, month_dir)
                             os.makedirs(monthly_upload_path, exist_ok=True)
@@ -485,8 +537,8 @@ async def update_article(
                     amtype=1,  # 默认为正常类型
                     comment=attachment_data.get("comment", ""),
                     linkstr=relative_path,
-                    createtime=datetime.now(),
-                    updatetime=datetime.now()
+                    createtime=TimeUtils.now_utc(),
+                    updatetime=TimeUtils.now_utc()
                 )
                 await attachment_repo.create(attachment)
         

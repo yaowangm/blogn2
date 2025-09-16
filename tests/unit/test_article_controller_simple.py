@@ -54,7 +54,7 @@ class TestArticleControllerSimple:
         # 设置模拟对象
         mock_repo = AsyncMock()
         mock_repo_class.return_value = mock_repo
-        mock_repo.get_by_id.return_value = self.mock_article
+        mock_repo.get_by_id = AsyncMock(return_value=self.mock_article)
         mock_permission.can_manage_system.return_value = True
         
         # 模拟用户数据
@@ -119,7 +119,7 @@ class TestArticleControllerSimple:
         # 设置模拟对象
         mock_repo = AsyncMock()
         mock_repo_class.return_value = mock_repo
-        mock_repo.get_by_id.return_value = None
+        mock_repo.get_by_id = AsyncMock(return_value=None)
         
         # 导入控制器函数
         from src.controllers.article import get_article_detail
@@ -143,7 +143,7 @@ class TestArticleControllerSimple:
         # 设置模拟对象
         mock_repo = AsyncMock()
         mock_repo_class.return_value = mock_repo
-        mock_repo.get_by_id.return_value = self.mock_article
+        mock_repo.get_by_id = AsyncMock(return_value=self.mock_article)
         
         # 模拟评论数据
         mock_comment = MagicMock()
@@ -176,60 +176,68 @@ class TestArticleControllerSimple:
         # 验证缓存被调用（如果缓存装饰器正常工作）
         # mock_cache.assert_called_once()  # 注释掉，因为装饰器可能不会在测试中被调用
     
-    @patch('src.controllers.article.ProjectItemRepository')
-    @patch('src.controllers.article.PostRepository')
-    async def test_create_article_comment_success(self, mock_post_repo_class, mock_repo_class):
+    @patch('src.controllers.article.CommentHandler.create_comment')
+    async def test_create_article_comment_success(self, mock_create_comment):
         """测试创建文章评论成功"""
-        # 设置模拟对象
-        mock_repo = AsyncMock()
-        mock_repo_class.return_value = mock_repo
-        mock_repo.get_by_id.return_value = self.mock_article
-        
-        # 模拟创建的评论
-        mock_created_comment = MagicMock()
-        mock_created_comment.id = 1
-        mock_created_comment.content = "新评论"
-        mock_created_comment.userid = 1
-        mock_created_comment.posttime = datetime.now()
-        
-        mock_post_repo = AsyncMock()
-        mock_post_repo_class.return_value = mock_post_repo
-        mock_post_repo.create.return_value = mock_created_comment
+        # 设置模拟返回值
+        mock_create_comment.return_value = {
+            "success": True,
+            "message": "评论创建成功",
+            "comment_id": 1
+        }
         
         # 导入控制器函数
         from src.controllers.article import create_article_comment
+        
+        # 模拟Request对象
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        
+        # 模拟current_user
+        mock_current_user = {"id": 1, "name": "testuser"}
         
         # 执行测试
         result = await create_article_comment(
             article_id=1,
             comment_data={"content": "新评论", "user_id": 1},
-            session=self.mock_session
+            request=mock_request,
+            session=self.mock_session,
+            current_user=mock_current_user
         )
         
         # 验证结果
         assert result is not None
         assert result["success"] is True
+        assert "comment_id" in result
         
-        # 验证方法被调用
-        mock_post_repo.create.assert_called_once()
+        # 验证CommentHandler.create_comment被调用
+        mock_create_comment.assert_called_once()
     
-    @patch('src.controllers.article.ProjectItemRepository')
-    async def test_create_article_comment_article_not_found(self, mock_repo_class):
+    @patch('src.controllers.article.CommentHandler.create_comment')
+    async def test_create_article_comment_article_not_found(self, mock_create_comment):
         """测试创建文章评论失败 - 文章不存在"""
-        # 设置模拟对象
-        mock_repo = AsyncMock()
-        mock_repo_class.return_value = mock_repo
-        mock_repo.get_by_id.return_value = None
+        # 设置模拟返回值 - 抛出404异常
+        from fastapi import HTTPException
+        mock_create_comment.side_effect = HTTPException(status_code=404, detail="文章不存在")
         
         # 导入控制器函数
         from src.controllers.article import create_article_comment
+        
+        # 模拟Request对象
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        
+        # 模拟current_user
+        mock_current_user = {"id": 1, "name": "testuser"}
         
         # 执行测试并验证异常
         with pytest.raises(HTTPException) as exc_info:
             await create_article_comment(
                 article_id=999,
                 comment_data={"content": "新评论"},
-                session=self.mock_session
+                request=mock_request,
+                session=self.mock_session,
+                current_user=mock_current_user
             )
         
         assert exc_info.value.status_code == 404
@@ -242,7 +250,7 @@ class TestArticleControllerSimple:
         # 设置模拟对象
         mock_repo = AsyncMock()
         mock_repo_class.return_value = mock_repo
-        mock_repo.get_by_id.return_value = self.mock_article
+        mock_repo.get_by_id = AsyncMock(return_value=self.mock_article)
         mock_repo.update.return_value = self.mock_article
         mock_permission.can_manage_system.return_value = True
         
@@ -270,7 +278,7 @@ class TestArticleControllerSimple:
         # 设置模拟对象
         mock_repo = AsyncMock()
         mock_repo_class.return_value = mock_repo
-        mock_repo.get_by_id.return_value = None
+        mock_repo.get_by_id = AsyncMock(return_value=None)
         
         # 导入控制器函数
         from src.controllers.article import update_article
@@ -298,7 +306,7 @@ class TestArticleControllerSimple:
         # 设置模拟对象
         mock_repo = AsyncMock()
         mock_repo_class.return_value = mock_repo
-        mock_repo.get_by_id.return_value = None
+        mock_repo.get_by_id = AsyncMock(return_value=None)
         
         # 导入控制器函数
         from src.controllers.article import delete_article
@@ -363,7 +371,7 @@ class TestArticleControllerSimple:
         # 设置模拟对象
         mock_repo = AsyncMock()
         mock_repo_class.return_value = mock_repo
-        mock_repo.get_by_id.return_value = None
+        mock_repo.get_by_id = AsyncMock(return_value=None)
         
         # 导入控制器函数
         from src.controllers.article import permanently_delete_article

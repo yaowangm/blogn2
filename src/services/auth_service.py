@@ -1,3 +1,4 @@
+from src.utils.time_utils import TimeUtils
 """
 JWT认证服务
 提供用户登录、令牌生成和验证功能
@@ -94,7 +95,7 @@ class AuthService:
                 return None
             
             # 更新最后登录信息
-            user.lastupdate = datetime.now()
+            user.lastupdate = TimeUtils.now_utc()
             user.iplog = client_ip
             await self.user_repo.update(user)
             
@@ -173,7 +174,13 @@ class AuthService:
             
             # 检查过期时间
             exp = payload.get("exp")
-            if exp is None or datetime.utcnow() > datetime.fromtimestamp(exp):
+            if exp is None:
+                return None
+                
+            current_time = datetime.utcnow()
+            exp_time = datetime.fromtimestamp(exp)
+            
+            if current_time > exp_time:
                 return None
             
             return payload
@@ -204,7 +211,10 @@ class AuthService:
             
             # 检查过期时间
             exp = payload.get("exp")
-            if exp is None or datetime.utcnow() > datetime.fromtimestamp(exp):
+            if exp is None:
+                return None
+                
+            if datetime.utcnow() > datetime.fromtimestamp(exp):
                 return None
             
             # 创建新的访问令牌

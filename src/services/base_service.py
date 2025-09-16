@@ -2,10 +2,25 @@
 基础服务类 (BaseService)
 
 提供所有服务类共用的基础功能，包括：
-- 依赖注入的统一管理
-- 异步操作的通用错误处理
-- 服务实例的创建和初始化
-- 日志记录和异常处理
+- 依赖注入的统一管理：简化仓储依赖的注入
+- 异步操作的通用错误处理：统一的异常捕获和日志记录
+- 服务实例的创建和初始化：工厂方法模式创建服务实例
+- 日志记录和异常处理：自动记录错误日志并重新抛出异常
+
+设计模式：
+- 泛型设计：支持不同类型的服务
+- 工厂模式：通过类方法创建服务实例
+- 模板方法：提供通用的错误处理模板
+
+使用示例：
+```python
+class UserService(BaseService):
+    def __init__(self, user_repo: UserRepository):
+        super().__init__(user_repo)
+
+# 创建服务实例
+service = UserService.create_with_session(session, UserRepository)
+```
 
 所有业务服务都应该继承此类以获得基础功能。
 """

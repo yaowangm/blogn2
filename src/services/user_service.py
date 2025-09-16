@@ -3,8 +3,9 @@ from src.repositories.user_repository import UserRepository
 from src.repositories.project_repository import ProjectRepository
 from src.database import User
 from src.services.auth_service import AuthService
+from src.services.base_service import BaseService
 
-class UserService:
+class UserService(BaseService):
     """用户业务逻辑服务类
     
     提供用户相关的业务逻辑处理，包括用户查询、统计、分页等功能。

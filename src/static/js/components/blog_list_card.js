@@ -61,20 +61,6 @@ class BlogListCard extends BaseComponent {
                this.hasAttribute('show-category');
     }
 
-    /**
-     * HTML转义函数，防止XSS攻击
-     * @param {string} text - 需要转义的文本
-     * @returns {string} 转义后的安全文本
-     */
-    escapeHtml(text) {
-        if (typeof text !== 'string') return text;
-        return text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
 
     connectedCallback() {
         // 检查是否应该显示分类信息
@@ -181,24 +167,13 @@ class BlogListCard extends BaseComponent {
                 const image = post.image || (post.attachment ? `/upload/${post.attachment}` : null);
                 const avatar = post.avatar;
                 
-                // HTML转义函数，防止XSS攻击
-                const escapeHtml = (text) => {
-                    if (typeof text !== 'string') return text;
-                    return text
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
-                        .replace(/"/g, '&quot;')
-                        .replace(/'/g, '&#39;');
-                };
-                
                 // 安全处理所有文本字段，防止HTML注入和XSS攻击
-                const safeTitle = escapeHtml(title);
-                const safeAuthor = escapeHtml(author);
+                const safeTitle = this.escapeHtml(title);
+                const safeAuthor = this.escapeHtml(author);
                 // 移除Markdown标记，显示纯文本摘要
-                const safeExcerpt = escapeHtml(this.stripMarkdown(excerpt));
-                const safeBlogName = post.blog_name ? escapeHtml(post.blog_name) : '';
-                const safeTime = escapeHtml(time || '未知时间');
+                const safeExcerpt = this.escapeHtml(this.stripMarkdown(excerpt));
+                const safeBlogName = post.blog_name ? this.escapeHtml(post.blog_name) : '';
+                const safeTime = this.escapeHtml(time || '未知时间');
                 
                 // 如果是订阅文章，显示博客名称
                 const blogInfo = safeBlogName ? `<span class="post-blog">来自: ${safeBlogName}</span>` : '';

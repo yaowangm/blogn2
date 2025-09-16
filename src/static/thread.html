@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>留言本主题 - BlogN2</title>
+    <meta name="description" content="BlogN2留言本主题讨论">
+    <meta name="keywords" content="留言本,主题,讨论,交流">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    
+    <!-- 预加载关键资源 -->
+    <link rel="preload" href="/static/css/main.css" as="style">
+    <link rel="preload" href="/static/css/components.css" as="style">
+    <link rel="preload" href="/static/js/components/base-component.js" as="script">
+    
+    <!-- 样式文件 -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    
+    <!-- 字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- RSS自动发现 -->
+    <link rel="alternate" type="application/rss+xml" title="BlogN2 全站RSS" href="/api/rss/site">
+</head>
+<body>
+    <!-- 顶栏组件 -->
+    <header-component></header-component>
+
+    <!-- 主要内容区域 -->
+    <main class="main-content">
+        <div class="container">
+            <div class="content-grid">
+                <!-- 左边栏 -->
+                <aside class="sidebar sidebar-left">
+                    <!-- 全站导航卡片 -->
+                    <navigation-card></navigation-card>
+                    
+                    <!-- 最近评论列表 -->
+                    <recent-comments-card></recent-comments-card>
+                    
+                    <!-- 友情链接 -->
+                    <friend-links-card></friend-links-card>
+                </aside>
+
+                <!-- 右边栏 -->
+                <aside class="sidebar sidebar-right">
+                    <!-- 主题卡片 -->
+                    <thread-card id="thread-card"></thread-card>
+                    
+                    <!-- 提交新留言表单 -->
+                    <new-message-form id="message-form"></new-message-form>
+                </aside>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底栏组件 -->
+    <footer-component></footer-component>
+
+    <!-- 图标库 -->
+    <script src="/static/js/components/icons.js"></script>
+    
+    <!-- 用户管理工具 -->
+    <script src="/static/js/utils/user-manager.js"></script>
+    
+    <!-- Web Components -->
+        <script src="/static/js/utils/html-utils.js"></script>
+<script src="/static/js/components/base-component.js"></script>
+    <script src="/static/js/components/header-component.js"></script>
+    <script src="/static/js/components/footer-component.js"></script>
+    <script src="/static/js/components/navigation-card.js"></script>
+    <script src="/static/js/components/recent-comments-card.js"></script>
+    <script src="/static/js/components/friend-links-card.js"></script>
+    <script src="/static/js/components/thread-card.js"></script>
+    <script src="/static/js/components/new-message-form.js"></script>
+    
+    <!-- RSS自动发现脚本 -->
+    <script src="/static/js/rss-discovery.js"></script>
+    
+    <!-- 主题页面初始化脚本 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 从URL获取thread_id
+            const pathParts = window.location.pathname.split('/');
+            const threadId = pathParts[pathParts.length - 1];
+            
+            if (threadId && !isNaN(threadId)) {
+                // 设置主题卡片的thread-id属性
+                const threadCard = document.getElementById('thread-card');
+                if (threadCard) {
+                    threadCard.setAttribute('thread-id', threadId);
+                }
+                
+                // 设置留言表单的thread-id属性
+                const messageForm = document.getElementById('message-form');
+                if (messageForm) {
+                    messageForm.setAttribute('thread-id', threadId);
+                    // attributeChangedCallback会自动处理重新渲染
+                }
+            } else {
+                console.error('Invalid thread ID in URL');
+            }
+        });
+    </script>
+</body>
+</html>

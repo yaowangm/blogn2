@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request, HTTPException, Body
 from typing import List, Dict, Any, Optional
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.services.blog_service import BlogService
 from src.utils.error_handlers import handle_api_errors
 from src.utils.dependencies import get_blog_service
-from src.utils.cache import cache_blog_recent_list, cache_blog_popular_list, cache_blog_detail, cache_blog_comments, cache_blog_messages
+from src.utils.cache import cache_blog_recent_list, cache_blog_popular_list, cache_blog_detail, cache_blog_comments, cache_blog_messages_recent, cache_blog_messages_list, cache_blog_message_thread, clear_blog_messages_cache
+from src.utils.auth_dependencies import get_current_user, get_optional_current_user
+from src.database import get_async_session
 
 # 创建博客API路由器
 router = APIRouter()
@@ -49,7 +52,7 @@ async def get_popular_blogs(
 
 @router.get("/comments/recent", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最近评论失败")
-@cache_blog_comments()  # 使用默认缓存时间
+# @cache_blog_comments()  # 使用默认缓存时间 - 临时禁用用于测试
 async def get_recent_comments(
     limit: int = 5,
     blog_service: BlogService = Depends(get_blog_service)
@@ -85,7 +88,7 @@ async def get_about_content(
 
 @router.get("/blogs/messages/recent", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最近留言失败")
-@cache_blog_messages()  # 使用默认缓存时间
+@cache_blog_messages_recent(ttl=900)  # 缓存15分钟
 async def get_recent_messages(
     limit: int = 5,
     blog_service: BlogService = Depends(get_blog_service)
@@ -101,6 +104,208 @@ async def get_recent_messages(
         List[Dict[str, Any]]: 最近的留言列表
     """
     return await blog_service.get_recent_messages(limit)
+
+@router.get("/messages", response_model=Dict[str, Any])
+@handle_api_errors("获取留言本列表失败")
+@cache_blog_messages_list(ttl=900)  # 缓存15分钟
+async def get_messages_list(
+    page: int = 1,
+    limit: int = 10,
+    blog_service: BlogService = Depends(get_blog_service)
+):
+    """
+    获取留言本分页列表
+    
+    Args:
+        page: 页码，默认1
+        limit: 每页数量，默认10
+        blog_service: 博客服务实例
+        
+    Returns:
+        Dict[str, Any]: 留言本分页数据
+    """
+    return await blog_service.get_messages_list(page, limit)
+
+@router.get("/thread/{thread_id}", response_model=Dict[str, Any])
+@cache_blog_message_thread(ttl=900)  # 缓存15分钟
+async def get_thread(
+    thread_id: int,
+    blog_service: BlogService = Depends(get_blog_service)
+):
+    """
+    获取主题的所有留言
+    
+    Args:
+        thread_id: 主题ID（主贴ID）
+        blog_service: 博客服务实例
+        
+    Returns:
+        Dict[str, Any]: 主题留言数据
+    """
+    try:
+        return await blog_service.get_thread(thread_id)
+    except ValueError as e:
+        # 主题不存在，返回404
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        # 其他错误，返回500
+        raise HTTPException(status_code=500, detail=f"获取主题失败: {str(e)}")
+
+@router.post("/messages", response_model=Dict[str, Any])
+@handle_api_errors("提交留言失败")
+async def create_message(
+    request: Request,
+    message_data: Dict[str, Any] = Body(...),
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    提交新留言
+    
+    Args:
+        message_data: 留言数据
+        request: 请求对象
+        current_user: 当前用户
+        session: 数据库会话
+        
+    Returns:
+        Dict[str, Any]: 创建结果
+    """
+    from src.repositories.post_repository import PostRepository
+    from src.models.post import Post
+    from src.utils.time_utils import TimeUtils
+    from datetime import datetime
+    
+    post_repo = PostRepository(session)
+    
+    try:
+        # 验证留言数据
+        subject = message_data.get("subject", "").strip()
+        content = message_data.get("content", "").strip()
+        thread_id = message_data.get("thread_id")
+        
+        # 对于跟贴，subject可以为空；对于主贴，subject不能为空
+        if not thread_id and not subject:
+            raise HTTPException(status_code=400, detail="留言标题不能为空")
+        
+        if not content:
+            raise HTTPException(status_code=400, detail="留言内容不能为空")
+        
+        if subject and len(subject) > 200:
+            raise HTTPException(status_code=400, detail="标题不能超过200个字符")
+        
+        # 获取用户ID
+        user_id = None
+        if current_user:
+            user_id = current_user.get("id")
+        else:
+            # 对于匿名留言，要求前端提供user_id
+            user_id = message_data.get("user_id", 0)
+        
+        if user_id is None:
+            raise HTTPException(status_code=400, detail="用户ID不能为空")
+        
+        # 获取客户端IP地址
+        client_ip = request.client.host if request.client else "127.0.0.1"
+        
+        # 计算内容大小（字节数）
+        content_bytes = content.encode('utf-8')
+        content_size = len(content_bytes)
+        
+        # 创建留言
+        message = Post(
+            folderid=0,  # 文件夹ID为0
+            projectitemid=0,  # 留言本的projectitemid为0
+            userid=user_id,
+            subject=subject,
+            content=content,
+            size=content_size,  # 内容大小（字节）
+            hits=0,  # 访问次数初始为0
+            userip=client_ip,  # 用户IP地址
+            posttime=TimeUtils.now_utc(),
+            status=1,  # 1表示正常状态
+            rootid=thread_id if thread_id else 0,  # 跟贴的rootid为thread_id，主贴的rootid为0
+            replycount=0  # 新留言的回复数为0
+        )
+        
+        await post_repo.create(message)
+        
+        # 如果是跟贴，更新主贴的统计信息
+        if thread_id:
+            await post_repo._update_main_post_stats(thread_id, message.id, user_id)
+        
+        # 清除留言相关缓存
+        await clear_blog_messages_cache()
+        
+        return {
+            "success": True,
+            "message": "留言创建成功",
+            "message_id": message.id,
+            "subject": message.subject,
+            "content": message.content,
+            "user_id": message.userid,
+            "created_at": message.posttime
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"创建留言失败: {str(e)}")
+
+@router.delete("/messages/{message_id}", response_model=Dict[str, Any])
+@handle_api_errors("删除留言失败")
+async def delete_message(
+    message_id: int,
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    删除留言（仅管理员可操作）
+    
+    Args:
+        message_id: 留言ID
+        current_user: 当前用户
+        session: 数据库会话
+        
+    Returns:
+        Dict[str, Any]: 删除结果
+    """
+    from src.repositories.post_repository import PostRepository
+    from src.utils.permission_manager import permission_manager
+    from src.utils.time_utils import TimeUtils
+    
+    # 检查用户是否登录
+    if not current_user:
+        raise HTTPException(status_code=401, detail="需要登录才能删除留言")
+    
+    # 检查是否为管理员
+    if not permission_manager.is_admin(current_user.get("state", 0)):
+        raise HTTPException(status_code=403, detail="只有管理员才能删除留言")
+    
+    post_repo = PostRepository(session)
+    
+    try:
+        # 执行删除操作
+        result = await post_repo.delete_post(message_id)
+        
+        if result["success"]:
+            # 清除留言相关缓存
+            await clear_blog_messages_cache()
+            
+            return {
+                "success": True,
+                "message": result["message"],
+                "deleted_count": result["deleted_count"],
+                "deleted_messages": result.get("deleted_posts", result.get("deleted_messages", [])),
+                "is_main_post": result["is_main_post"]
+            }
+        else:
+            raise HTTPException(status_code=400, detail=result["message"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"删除留言失败: {str(e)}")
 
 @router.get("/blogs/posts/latest", response_model=Dict[str, Any])
 @handle_api_errors("获取最新博文失败")

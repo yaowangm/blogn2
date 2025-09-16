@@ -13,6 +13,7 @@ class CommentFormCard extends BaseComponent {
 
     async connectedCallback() {
         this.articleId = this.getArticleIdFromUrl();
+        
         if (!this.articleId) {
             this.showError('无法获取文章ID');
             return;
@@ -21,8 +22,13 @@ class CommentFormCard extends BaseComponent {
         // 加载文章数据并检查评论设置
         await this.loadArticleData();
         
+        // 检查登录状态
+        this.isLoggedIn = UserManager.isLoggedIn();
+        
         // 检查是否可以发表评论
-        if (!this.canComment()) {
+        const canComment = this.canComment();
+        
+        if (!canComment) {
             this.hide();
             return;
         }
@@ -50,14 +56,6 @@ class CommentFormCard extends BaseComponent {
         }
     }
 
-    /**
-     * 检查登录状态
-     */
-    checkLoginStatus() {
-        const token = localStorage.getItem('access_token');
-        const userInfo = localStorage.getItem('user_info');
-        return !!(token && userInfo);
-    }
 
     /**
      * 检查是否可以发表评论
@@ -66,7 +64,6 @@ class CommentFormCard extends BaseComponent {
         if (!this.articleData) return false;
         
         const allowpost = this.articleData.allowpost || 1;
-        this.isLoggedIn = this.checkLoginStatus();
         
         switch (allowpost) {
             case 1: // 允许匿名评论
@@ -125,6 +122,7 @@ class CommentFormCard extends BaseComponent {
     }
 
     async handleSubmit(e) {
+        
         e.preventDefault();
         if (this.isSubmitting) return;
         
@@ -139,22 +137,47 @@ class CommentFormCard extends BaseComponent {
         this.setSubmitting(true);
         
         try {
-            const response = await fetch(`/api/articles/${this.articleId}/comments`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    content: content,
-                    user_id: this.getCurrentUserId()
-                })
+            // 准备请求头
+            const headers = UserManager.createHeaders({
+                'Content-Type': 'application/json'
             });
-
+            
+            const requestBody = {
+                content: content,
+                user_id: UserManager.getCurrentUserId()
+            };
+            
+            
+            // 根据文章设置和用户登录状态选择合适的API端点
+            let apiUrl = `/api/articles/${this.articleId}/comments`;
+            if (this.articleData?.allowpost === 2 && this.isLoggedIn) {
+                // 只允许登录用户评论，且用户已登录，使用认证API
+                apiUrl = `/api/articles/${this.articleId}/comments/auth`;
+            }
+            
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(requestBody)
+            });
+            
+            
             if (response.ok) {
+                const result = await response.json();
                 this.showSuccess('评论发表成功！');
                 this.resetForm();
+                
+                // 触发评论添加事件
                 this.dispatchEvent(new CustomEvent('commentAdded', {
-                    detail: { articleId: this.articleId },
+                    detail: { 
+                        articleId: this.articleId,
+                        commentId: result.comment_id
+                    },
                     bubbles: true
                 }));
+                
+                // 刷新评论列表并滚动到新评论
+                this.refreshCommentsList(result.comment_id);
             } else {
                 const error = await response.json();
                 throw new Error(error.detail || '提交失败');
@@ -189,9 +212,17 @@ class CommentFormCard extends BaseComponent {
         form.reset();
     }
 
-    getCurrentUserId() {
-        return 1; // 临时返回1，实际应该从用户会话获取
+    /**
+     * 刷新评论列表
+     */
+    refreshCommentsList(commentId = null) {
+        // 查找页面中的评论卡片组件并刷新
+        const commentsCard = document.querySelector('article-comments-card');
+        if (commentsCard && typeof commentsCard.refreshComments === 'function') {
+            commentsCard.refreshComments(commentId);
+        }
     }
+
 
     showSuccess(message) {
         this.showMessage(message, 'success');

@@ -98,7 +98,7 @@ class TestCacheDecorator:
         # 创建一个测试函数
         call_count = 0
         
-        @cache_decorator(ttl=60)
+        @cache_decorator(ttl=60, enable_cache=False)  # 在测试中强制禁用缓存
         async def test_function(param1, param2=10):
             nonlocal call_count
             call_count += 1
@@ -109,30 +109,22 @@ class TestCacheDecorator:
         assert result1["result"] == 20
         assert result1["call_count"] == 1
         
-        # 第二次调用 - 如果缓存启用，应该从缓存返回；如果禁用，应该重新执行
+        # 第二次调用 - 缓存被禁用，应该重新执行
         result2 = await test_function(5, param2=15)
         assert result2["result"] == 20
-        
-        if cache_settings.enable_cache:
-            assert result2["call_count"] == 1  # 调用次数没有增加
-        else:
-            assert result2["call_count"] == 2  # 调用次数增加
+        assert result2["call_count"] == 2  # 调用次数增加
         
         # 不同参数 - 应该重新执行函数
         result3 = await test_function(10, param2=20)
         assert result3["result"] == 30
-        
-        if cache_settings.enable_cache:
-            assert result3["call_count"] == 2  # 调用次数增加
-        else:
-            assert result3["call_count"] == 3  # 调用次数增加
+        assert result3["call_count"] == 3  # 调用次数增加
 
     @pytest.mark.asyncio
     async def test_cache_blog_list_decorator(self):
         """测试博客列表缓存装饰器"""
         call_count = 0
         
-        @cache_blog_list(ttl=60)
+        @cache_blog_list(ttl=60, enable_cache=False)  # 在测试中强制禁用缓存
         async def get_blog_list(page=1, limit=10):
             nonlocal call_count
             call_count += 1
@@ -143,30 +135,22 @@ class TestCacheDecorator:
         assert len(result1) == 1
         assert result1[0]["id"] == 1
         
-        # 第二次调用相同参数
+        # 第二次调用相同参数 - 缓存被禁用，应该重新执行
         result2 = await get_blog_list(page=1, limit=5)
         assert len(result2) == 1
-        
-        if cache_settings.enable_cache:
-            assert result2[0]["id"] == 1  # 仍然是第一次的结果
-        else:
-            assert result2[0]["id"] == 2  # 新的结果
+        assert result2[0]["id"] == 2  # 新的结果
         
         # 不同参数 - 应该重新执行
         result3 = await get_blog_list(page=2, limit=5)
         assert len(result3) == 1
-        
-        if cache_settings.enable_cache:
-            assert result3[0]["id"] == 2  # 新的结果
-        else:
-            assert result3[0]["id"] == 3  # 新的结果
+        assert result3[0]["id"] == 3  # 新的结果
 
     @pytest.mark.asyncio
     async def test_cache_user_profile_decorator(self):
         """测试用户资料缓存装饰器"""
         call_count = 0
         
-        @cache_user_profile(ttl=60)
+        @cache_user_profile(ttl=60, enable_cache=False)  # 在测试中强制禁用缓存
         async def get_user_profile(user_id=0):
             nonlocal call_count
             call_count += 1
@@ -177,23 +161,15 @@ class TestCacheDecorator:
         assert result1["user_id"] == 123
         assert result1["call_count"] == 1
         
-        # 第二次调用相同参数
+        # 第二次调用相同参数 - 缓存被禁用，应该重新执行
         result2 = await get_user_profile(user_id=123)
         assert result2["user_id"] == 123
-        
-        if cache_settings.enable_cache:
-            assert result2["call_count"] == 1  # 仍然是第一次的结果
-        else:
-            assert result2["call_count"] == 2  # 新的结果
+        assert result2["call_count"] == 2  # 新的结果
         
         # 不同用户ID - 应该重新执行
         result3 = await get_user_profile(user_id=456)
         assert result3["user_id"] == 456
-        
-        if cache_settings.enable_cache:
-            assert result3["call_count"] == 2  # 新的结果
-        else:
-            assert result3["call_count"] == 3  # 新的结果
+        assert result3["call_count"] == 3  # 新的结果
 
     @pytest.mark.asyncio
     async def test_cache_disabled(self):

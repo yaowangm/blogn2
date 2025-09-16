@@ -31,14 +31,8 @@ function getTargetUserId() {
     }
     
     // 如果没有指定用户ID，则使用当前登录用户
-    const userInfo = localStorage.getItem('user_info');
-    if (userInfo) {
-        try {
-            const user = JSON.parse(userInfo);
-            return user.id;
-        } catch (error) {
-            console.error('解析用户信息失败:', error);
-        }
+    if (UserManager.isLoggedIn()) {
+        return UserManager.getCurrentUserId();
     }
     
     return null;
@@ -48,16 +42,13 @@ function getTargetUserId() {
  * 检查用户认证状态
  */
 function checkAuthStatus() {
-    const token = localStorage.getItem('access_token');
-    const userInfo = localStorage.getItem('user_info');
-    
-    if (!token || !userInfo) {
+    if (!UserManager.isLoggedIn()) {
         // 用户未登录，这是正常情况，不需要特殊处理
         return;
     }
     
     try {
-        const user = JSON.parse(userInfo);
+        const user = UserManager.getCurrentUser();
     } catch (error) {
         console.error('解析用户信息失败:', error);
         localStorage.removeItem('access_token');
@@ -97,10 +88,9 @@ function updatePageTitle() {
         document.title = '个人资料 - BlogN2';
     } else {
         // 使用当前登录用户信息
-        const userInfo = localStorage.getItem('user_info');
-        if (userInfo) {
+        if (UserManager.isLoggedIn()) {
             try {
-                const user = JSON.parse(userInfo);
+                const user = UserManager.getCurrentUser();
                 document.title = `${user.name}的个人资料 - BlogN2`;
             } catch (error) {
                 console.error('更新页面标题失败:', error);

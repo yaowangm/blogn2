@@ -1,8 +1,9 @@
 from typing import Dict, Any
 from src.repositories.user_repository import UserRepository
 from src.repositories.project_item_repository import ProjectItemRepository
+from src.services.base_service import BaseService
 
-class MetadataService:
+class MetadataService(BaseService):
     """网站元数据业务逻辑服务类
     
     提供网站统计信息和元数据的业务逻辑处理。

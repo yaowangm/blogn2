@@ -139,6 +139,10 @@ class NavigationCard extends BaseComponent {
                             <div class="nav-icon">${Icons.tag}</div>
                             <span class="nav-text">标签云</span>
                         </a>
+                        <a href="/messages" class="nav-item" target="_blank">
+                            <div class="nav-icon">${Icons.message}</div>
+                            <span class="nav-text">留言本</span>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -284,8 +288,10 @@ class NavigationCard extends BaseComponent {
     }
 
     renderPaginationInfo() {
-        const { current_page, total_pages, total_count } = this.pagination;
-        return `<div class="pagination-info">第 ${current_page} 页，共 ${total_pages} 页，总计 ${total_count} 个用户</div>`;
+        const { current_page, total_pages, total, total_count } = this.pagination;
+        const count = total || total_count || 0;
+        const itemType = this.pagination.item_type || '条记录';
+        return `<div class="pagination-info">第 ${current_page} 页，共 ${total_pages} 页，总计 ${count} ${itemType}</div>`;
     }
 
     createPaginationButton(text, enabled, onClick, isActive = false) {

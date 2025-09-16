@@ -10,20 +10,6 @@ class HeaderComponent extends BaseComponent {
         this.registrationLogin = false; // 注册登录标识
     }
 
-    /**
-     * HTML转义函数，防止XSS攻击
-     * @param {string} text - 需要转义的文本
-     * @returns {string} 转义后的安全文本
-     */
-    escapeHtml(text) {
-        if (typeof text !== 'string') return text;
-        return text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
 
     async connectedCallback() {
         await this.loadMetadata();
@@ -34,6 +20,9 @@ class HeaderComponent extends BaseComponent {
         
         // 监听令牌相关事件
         this.setupTokenEventListeners();
+        
+        // 动态加载token-manager服务
+        this.loadTokenManager();
     }
 
     render() {
@@ -495,12 +484,9 @@ class HeaderComponent extends BaseComponent {
         }
         
         // 检查本地存储的认证状态
-        const token = localStorage.getItem('access_token');
-        const userInfo = localStorage.getItem('user_info');
-        
-        if (token && userInfo) {
+        if (UserManager.isLoggedIn()) {
             try {
-                this.userInfo = JSON.parse(userInfo);
+                this.userInfo = UserManager.getCurrentUser();
                 this.isLoggedIn = true;
                 // 清理用户名中的多余空格
                 this.userName = (this.userInfo.name || 'User').trim();
@@ -573,7 +559,7 @@ class HeaderComponent extends BaseComponent {
     async handleLogout() {
         try {
             // 调用登出API
-            const token = localStorage.getItem('access_token');
+            const token = UserManager.getAccessToken();
             if (token) {
                 await fetch('/api/auth/logout', {
                     method: 'POST',
@@ -644,6 +630,35 @@ class HeaderComponent extends BaseComponent {
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
         </svg>`;
+    }
+
+    /**
+     * 动态加载token-manager服务
+     */
+    loadTokenManager() {
+        // 检查token-manager是否已经加载
+        if (window.tokenManager) {
+            console.log('TokenManager already loaded');
+            return;
+        }
+
+        // 检查是否已经有token-manager脚本
+        const existingScript = document.querySelector('script[src="/static/js/services/token-manager.js"]');
+        if (existingScript) {
+            console.log('TokenManager script already exists');
+            return;
+        }
+
+        // 动态加载token-manager脚本
+        const script = document.createElement('script');
+        script.src = '/static/js/services/token-manager.js';
+        script.onload = () => {
+            console.log('TokenManager loaded successfully');
+        };
+        script.onerror = () => {
+            console.error('Failed to load token-manager.js');
+        };
+        document.head.appendChild(script);
     }
 }
 

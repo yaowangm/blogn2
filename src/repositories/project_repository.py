@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from src.models.project import Project
 from src.models.user import User
+from src.utils.time_utils import TimeUtils
 
 class ProjectRepository:
     """Project数据访问层"""
@@ -84,7 +85,7 @@ class ProjectRepository:
         
         if project:
             project.recordcount = (project.recordcount or 0) + 1
-            project.updatetime = datetime.now()
+            project.updatetime = TimeUtils.now_utc()
             self.session.add(project)
     
     async def decrement_record_count(self, project_id: int) -> None:
@@ -95,5 +96,43 @@ class ProjectRepository:
         
         if project:
             project.recordcount = max((project.recordcount or 0) - 1, 0)
-            project.updatetime = datetime.now()
-            self.session.add(project) 
+            project.updatetime = TimeUtils.now_utc()
+            self.session.add(project)
+    
+    async def increment_comment_count(self, project_id: int) -> bool:
+        """
+        增加项目的评论数量
+        
+        Args:
+            project_id: 项目ID
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        project = await self.get_by_id(project_id)
+        if project:
+            project.commentcount = (project.commentcount or 0) + 1
+            project.updatetime = TimeUtils.now_utc()
+            await self.session.commit()
+            await self.session.refresh(project)
+            return True
+        return False
+    
+    async def decrement_comment_count(self, project_id: int) -> bool:
+        """
+        减少项目的评论数量
+        
+        Args:
+            project_id: 项目ID
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        project = await self.get_by_id(project_id)
+        if project and project.commentcount > 0:
+            project.commentcount -= 1
+            project.updatetime = TimeUtils.now_utc()
+            await self.session.commit()
+            await self.session.refresh(project)
+            return True
+        return False 

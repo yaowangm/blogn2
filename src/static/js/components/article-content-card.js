@@ -45,12 +45,8 @@ class ArticleContentCard extends BaseComponent {
      */
     async loadArticleData() {
         try {
-            // 获取认证token
-            const token = localStorage.getItem('access_token');
-            const headers = {};
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
+            // 获取认证头
+            const headers = UserManager.createHeaders();
             
             const response = await fetch(`/api/articles/${this.articleId}`, {
                 headers: headers
@@ -384,6 +380,26 @@ class ArticleContentCard extends BaseComponent {
                 
                 .article-content p {
                     text-align: justify;
+                }
+                
+                /* 代码块样式修复 - 防止变形并添加滚动条 */
+                .markdown-content pre {
+                    overflow-x: auto !important;
+                    overflow-y: hidden !important;
+                    white-space: pre !important;
+                    word-wrap: normal !important;
+                    word-break: normal !important;
+                    max-width: 700px !important;
+                    box-sizing: border-box !important;
+                }
+                
+                .markdown-content pre code {
+                    white-space: pre !important;
+                    word-wrap: normal !important;
+                    word-break: normal !important;
+                    display: block !important;
+                    overflow-x: auto !important;
+                    max-width: 100% !important;
                 }
                 
                 .article-attachment {

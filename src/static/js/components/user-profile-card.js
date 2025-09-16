@@ -35,25 +35,19 @@ class UserProfileCard extends BaseComponent {
             let userId = window.targetUserId;
             
             if (!userId) {
-                // 从localStorage获取当前用户信息
-                const userInfo = localStorage.getItem('user_info');
-                
-                if (!userInfo) {
+                // 从UserManager获取当前用户信息
+                if (!UserManager.isLoggedIn()) {
                     // 如果没有目标用户ID且未登录，显示错误
                     this.showError('无法获取用户ID');
                     return;
                 }
 
-                const currentUser = JSON.parse(userInfo);
+                const currentUser = UserManager.getCurrentUser();
                 userId = currentUser.id;
             }
 
             // 获取用户详细信息
-            const token = localStorage.getItem('access_token');
-            const headers = {};
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
+            const headers = UserManager.createHeaders();
             
             const userResponse = await fetch(`/api/users/${userId}`, { headers });
             
@@ -443,10 +437,9 @@ class UserProfileCard extends BaseComponent {
     canResetPassword() {
         try {
             // 获取当前登录用户信息
-            const userInfo = localStorage.getItem('user_info');
-            if (!userInfo) return false;
+            if (!UserManager.isLoggedIn()) return false;
             
-            const currentUser = JSON.parse(userInfo);
+            const currentUser = UserManager.getCurrentUser();
             
             // 管理员可以重置任何用户的密码
             if (currentUser.state === 10) return true;
@@ -588,7 +581,7 @@ class UserProfileCard extends BaseComponent {
 
         try {
             // 获取当前用户token
-            const token = localStorage.getItem('access_token');
+            const token = UserManager.getAccessToken();
             if (!token) {
                 this.showResetPasswordError('请先登录');
                 return;

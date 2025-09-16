@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timedelta
 import os
 from src.services.blog_service import BlogService
+from src.utils.time_utils import TimeUtils
 
 
 class TestBlogService:
@@ -39,7 +40,7 @@ class TestBlogService:
         return {
             "id": 1,
             "name": "测试博客",
-            "createtime": datetime.now() - timedelta(days=1),
+            "createtime": TimeUtils.now_utc() - timedelta(days=1),
             "userid": 123,
             "accesscount": 1500,
             "author_name": "测试作者"
@@ -52,7 +53,7 @@ class TestBlogService:
             "id": 1,
             "author_name": "评论者",
             "content": "这是一条测试评论",
-            "post_time": datetime.now() - timedelta(hours=2),
+            "post_time": TimeUtils.now_utc() - timedelta(hours=2),
             "projectitemid": 456,
             "userid": 789
         }
@@ -64,7 +65,7 @@ class TestBlogService:
             "id": 1,
             "author_name": "留言者",
             "subject": "测试留言标题",
-            "post_time": datetime.now() - timedelta(hours=1),
+            "post_time": TimeUtils.now_utc() - timedelta(hours=1),
             "userid": 101,
             "last_reply_author": "回复者",
             "reply_count": 3
@@ -77,7 +78,7 @@ class TestBlogService:
             "id": 1,
             "name": "测试博文标题",
             "comment": "这是博文内容摘要",
-            "createtime": datetime.now() - timedelta(hours=3),
+            "createtime": TimeUtils.now_utc() - timedelta(hours=3),
             "userid": 202,
             "author_name": "博文作者",
             "blog_name": "测试博客",
@@ -308,7 +309,7 @@ class TestBlogService:
             "id": 1,
             "author_name": "留言者",
             "subject": "这是一个非常非常长的留言标题，超过了50个字符的限制，应该被截断并添加省略号，确保测试能够正确验证截断逻辑",
-            "post_time": datetime.now() - timedelta(hours=1),
+            "post_time": TimeUtils.now_utc() - timedelta(hours=1),
             "userid": 101,
             "last_reply_author": None,
             "reply_count": 2
@@ -329,7 +330,7 @@ class TestBlogService:
             "id": 1,
             "author_name": "留言者",
             "subject": "测试标题",
-            "post_time": datetime.now() - timedelta(hours=1),
+            "post_time": TimeUtils.now_utc() - timedelta(hours=1),
             "userid": 101,
             "last_reply_author": None,
             "reply_count": 0
@@ -379,7 +380,7 @@ class TestBlogService:
             "id": 1,
             "name": "这是一个非常非常长的博文标题，超过了50个字符的限制，应该被截断并添加省略号，确保测试能够正确验证截断逻辑",
             "comment": "这是一个非常非常长的博文摘要内容，超过了100个字符的限制，应该被截断并添加省略号，确保测试能够正确验证截断逻辑，这是一个非常长的内容，需要更多的文字来达到100个字符的限制，这是额外的内容来确保测试能够正确工作",
-            "createtime": datetime.now() - timedelta(hours=3),
+            "createtime": TimeUtils.now_utc() - timedelta(hours=3),
             "userid": 202,
             "author_name": "博文作者",
             "blog_name": "测试博客",
@@ -413,47 +414,53 @@ class TestBlogService:
     @pytest.mark.unit
     def test_format_relative_time_just_now(self, blog_service):
         """测试格式化时间：刚刚"""
-        now = datetime.now()
-        result = blog_service._format_relative_time(now)
+        from src.utils.time_utils import TimeUtils
+        now = TimeUtils.now_utc()
+        result = TimeUtils.format_relative_time(now)
         assert result == "刚刚"
     
     @pytest.mark.unit
     def test_format_relative_time_minutes_ago(self, blog_service):
         """测试格式化时间：分钟前"""
-        now = datetime.now()
+        from src.utils.time_utils import TimeUtils
+        now = TimeUtils.now_utc()
         past_time = now - timedelta(minutes=30)
-        result = blog_service._format_relative_time(past_time)
+        result = TimeUtils.format_relative_time(past_time)
         assert result == "30分钟前"
     
     @pytest.mark.unit
     def test_format_relative_time_hours_ago(self, blog_service):
         """测试格式化时间：小时前"""
-        now = datetime.now()
+        from src.utils.time_utils import TimeUtils
+        now = TimeUtils.now_utc()
         past_time = now - timedelta(hours=2)
-        result = blog_service._format_relative_time(past_time)
+        result = TimeUtils.format_relative_time(past_time)
         assert result == "2小时前"
     
     @pytest.mark.unit
     def test_format_relative_time_yesterday(self, blog_service):
         """测试格式化时间：昨天"""
-        now = datetime.now()
+        from src.utils.time_utils import TimeUtils
+        now = TimeUtils.now_utc()
         yesterday = now - timedelta(days=1)
-        result = blog_service._format_relative_time(yesterday)
+        result = TimeUtils.format_relative_time(yesterday)
         assert result == "昨天"
     
     @pytest.mark.unit
     def test_format_relative_time_day_before_yesterday(self, blog_service):
         """测试格式化时间：前天"""
-        now = datetime.now()
+        from src.utils.time_utils import TimeUtils
+        now = TimeUtils.now_utc()
         day_before_yesterday = now - timedelta(days=2)
-        result = blog_service._format_relative_time(day_before_yesterday)
+        result = TimeUtils.format_relative_time(day_before_yesterday)
         assert result == "前天"
     
     @pytest.mark.unit
     def test_format_relative_time_other_days(self, blog_service):
         """测试格式化时间：其他日期"""
+        from src.utils.time_utils import TimeUtils
         past_time = datetime(2023, 1, 15)
-        result = blog_service._format_relative_time(past_time)
+        result = TimeUtils.format_relative_time(past_time)
         assert result == "2023-01-15"
     
     @pytest.mark.unit

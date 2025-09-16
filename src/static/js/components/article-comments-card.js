@@ -8,6 +8,9 @@ class ArticleCommentsCard extends BaseComponent {
         this.articleId = null;
         this.articleData = null;
         this.userMap = {};
+        this.currentPage = 1;
+        this.perPage = 10;
+        this.pagination = null;
     }
 
     async connectedCallback() {
@@ -41,18 +44,19 @@ class ArticleCommentsCard extends BaseComponent {
      */
     async loadArticleData() {
         try {
-            // 获取认证token
-            const token = localStorage.getItem('access_token');
-            const headers = {};
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
+            // 获取认证头
+            const headers = UserManager.createHeaders();
             
-            const response = await fetch(`/api/articles/${this.articleId}`, {
+            const response = await fetch(`/api/articles/${this.articleId}?page=${this.currentPage}&per_page=${this.perPage}`, {
                 headers: headers
             });
             if (response.ok) {
                 this.articleData = await response.json();
+                
+                // 保存分页信息
+                if (this.articleData.comments_pagination) {
+                    this.pagination = this.articleData.comments_pagination;
+                }
                 
                 // 如果有评论，获取每个评论的用户信息
                 if (this.articleData.comments && this.articleData.comments.length > 0) {
@@ -137,10 +141,182 @@ class ArticleCommentsCard extends BaseComponent {
                 <div class="card-body">
                     ${this.renderComments(comments)}
                 </div>
+                ${this.renderPagination()}
             </div>
         `;
 
         this.addStyles();
+        this.addEventListeners();
+        this.setupPaginationCallback();
+    }
+
+    /**
+     * 添加事件监听器
+     */
+    addEventListeners() {
+        // 移除之前的事件监听器（如果存在）
+        if (this.clickHandler) {
+            this.shadowRoot.removeEventListener('click', this.clickHandler);
+        }
+        
+        // 创建新的事件处理器
+        this.clickHandler = (e) => {
+            if (e.target.closest('.delete-comment-btn')) {
+                const button = e.target.closest('.delete-comment-btn');
+                const commentId = parseInt(button.dataset.commentId);
+                if (commentId) {
+                    this.deleteComment(commentId);
+                }
+            }
+        };
+        
+        // 添加新的事件监听器
+        this.shadowRoot.addEventListener('click', this.clickHandler);
+    }
+
+    /**
+     * 检查当前用户是否有删除评论的权限
+     */
+    canDeleteComment(comment) {
+        // 检查是否已登录
+        if (!UserManager.isLoggedIn()) {
+            return false;
+        }
+        
+        try {
+            const currentUser = UserManager.getCurrentUser();
+            if (!currentUser) return false;
+            
+            const currentUserId = currentUser.id;
+            const isAdmin = currentUser.state === 10;
+            
+            // 管理员可以删除任何评论
+            if (isAdmin) {
+                return true;
+            }
+            
+            // 文章作者可以删除评论（需要检查文章作者）
+            // 这里我们假设文章数据中包含了作者信息
+            if (this.articleData && this.articleData.author) {
+                const articleAuthorId = this.articleData.author.id;
+                return articleAuthorId === currentUserId;
+            }
+            
+            return false;
+        } catch (error) {
+            console.error('Error checking delete permission:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 删除评论
+     */
+    async deleteComment(commentId) {
+        // 查找要删除的评论
+        const comment = this.articleData.comments?.find(c => c.id === commentId);
+        if (!comment) {
+            this.showError('找不到要删除的评论');
+            return;
+        }
+        
+        // 获取评论内容的前10个字符
+        const contentPreview = comment.content ? 
+            (comment.content.length > 10 ? comment.content.substring(0, 10) + '...' : comment.content) : 
+            '无内容';
+        
+        if (!confirm(`确定要删除这条评论吗？\n\n评论内容预览：${contentPreview}\n\n此操作不可撤销。`)) {
+            return;
+        }
+        
+        try {
+            // 获取认证头
+            const headers = UserManager.createHeaders({
+                'Content-Type': 'application/json'
+            });
+            
+            const response = await fetch(`/api/articles/${this.articleId}/comments/${commentId}`, {
+                method: 'DELETE',
+                headers: headers
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                this.showSuccess('评论删除成功！');
+                
+                // 刷新评论列表
+                await this.refreshComments();
+            } else {
+                const error = await response.json();
+                throw new Error(error.detail || '删除失败');
+            }
+        } catch (error) {
+            console.error('Failed to delete comment:', error);
+            this.showError(`删除评论失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 刷新评论列表
+     */
+    async refreshComments(commentId = null) {
+        try {
+            // 跳转到第一页以显示最新评论
+            this.currentPage = 1;
+            
+            // 重新加载文章数据（包含评论）
+            await this.loadArticleData();
+            
+            // 重新渲染组件
+            this.render();
+            
+            // 重新加载用户信息
+            await this.loadCommentUsers();
+            
+            // 重新渲染以显示用户信息
+            this.render();
+            
+            // 如果有指定的评论ID，滚动到该评论并突出显示
+            if (commentId) {
+                this.scrollToCommentAndHighlight(commentId);
+            }
+        } catch (error) {
+            console.error('Failed to refresh comments:', error);
+            this.showError('刷新评论失败');
+        }
+    }
+
+    /**
+     * 滚动到指定评论并突出显示
+     */
+    scrollToCommentAndHighlight(commentId) {
+        // 等待DOM渲染完成
+        setTimeout(() => {
+            const commentElement = this.shadowRoot.querySelector(`#post${commentId}`);
+            if (commentElement) {
+                // 滚动到评论位置
+                commentElement.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+                
+                // 添加突出显示效果
+                this.highlightComment(commentElement);
+            }
+        }, 100);
+    }
+
+    /**
+     * 突出显示评论
+     */
+    highlightComment(commentElement) {
+        // 添加高亮样式
+        commentElement.classList.add('comment-highlight');
+        
+        // 3秒后移除高亮效果
+        setTimeout(() => {
+            commentElement.classList.remove('comment-highlight');
+        }, 3000);
     }
 
     /**
@@ -211,6 +387,9 @@ class ArticleCommentsCard extends BaseComponent {
         let blogId = null;
         let userAvatar = null;
         
+        // 检查当前用户是否有删除权限
+        const canDelete = this.canDeleteComment(comment);
+        
         if (user_id) {
             if (this.userMap && this.userMap[user_id]) {
                 const user = this.userMap[user_id];
@@ -261,8 +440,18 @@ class ArticleCommentsCard extends BaseComponent {
                                 <span class="user-name">${this.escapeHtml(userName)}</span>
                             `}
                         </div>
-                        <div class="comment-time">
-                            ${this.formatDate(post_time)}
+                        <div class="comment-actions">
+                            <div class="comment-time">
+                                ${this.formatDate(post_time)}
+                            </div>
+                            ${canDelete ? `
+                                <button class="delete-comment-btn" 
+                                        data-comment-id="${id}" 
+                                        title="删除评论">
+                                    <i class="fas fa-trash"></i>
+                                    删除
+                                </button>
+                            ` : ''}
                         </div>
                     </div>
                     
@@ -283,22 +472,7 @@ class ArticleCommentsCard extends BaseComponent {
     /**
      * HTML转义并处理换行
      */
-    escapeHtml(text) {
-        if (!text || typeof text !== 'string') {
-            return '';
-        }
-        
-        // 先转义HTML特殊字符
-        const escaped = text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-        
-        // 将换行符转换为HTML换行标签
-        return escaped.replace(/\r?\n/g, '<br>');
-    }
+
 
     /**
      * 验证URL是否安全有效
@@ -381,6 +555,101 @@ class ArticleCommentsCard extends BaseComponent {
         this.addStyles();
     }
 
+    showSuccess(message) {
+        // 创建临时成功提示
+        const successDiv = document.createElement('div');
+        successDiv.className = 'success-message';
+        successDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #10b981;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            animation: slideIn 0.3s ease-out;
+        `;
+        successDiv.textContent = message;
+        
+        // 添加动画样式
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        document.body.appendChild(successDiv);
+        
+        // 3秒后自动移除
+        setTimeout(() => {
+            if (successDiv.parentNode) {
+                successDiv.parentNode.removeChild(successDiv);
+            }
+            if (style.parentNode) {
+                style.parentNode.removeChild(style);
+            }
+        }, 3000);
+    }
+
+    /**
+     * 渲染分页导航
+     */
+    renderPagination() {
+        if (!this.pagination || this.pagination.total_pages <= 1) {
+            return '';
+        }
+
+        return `
+            <div class="pagination-container">
+                <navigation-card mode="pagination" pagination='${JSON.stringify(this.pagination)}'></navigation-card>
+            </div>
+        `;
+    }
+
+    /**
+     * 切换到指定页面
+     */
+    async goToPage(page) {
+        if (page < 1 || page > this.pagination.total_pages) {
+            return;
+        }
+        
+        this.currentPage = page;
+        await this.loadArticleData();
+        this.render();
+        this.checkAndScrollToComment();
+    }
+
+    /**
+     * 设置分页导航回调
+     */
+    setupPaginationCallback() {
+        const navigationCard = this.shadowRoot.querySelector('navigation-card');
+        if (navigationCard && this.pagination) {
+            // 为评论分页添加item_type
+            const paginationData = {
+                ...this.pagination,
+                item_type: '条评论'
+            };
+            navigationCard.setPagination(paginationData, (page) => {
+                this.goToPage(page);
+            });
+        }
+    }
+
     /**
      * 添加样式
      */
@@ -404,9 +673,7 @@ class ArticleCommentsCard extends BaseComponent {
                 }
                 
                 .comments-list {
-                    max-height: 600px;
-                    overflow-y: auto;
-                    scroll-behavior: smooth;
+                    /* 移除高度限制和滚动，分页后一次显示所有评论 */
                 }
                 
                 .comment-item {
@@ -423,6 +690,28 @@ class ArticleCommentsCard extends BaseComponent {
                 
                 .comment-item:hover {
                     background-color: var(--gray-50);
+                }
+
+                .comment-highlight {
+                    background-color: #fef3c7 !important;
+                    border: 2px solid #f59e0b !important;
+                    border-radius: var(--border-radius-md);
+                    animation: highlightPulse 0.6s ease-in-out;
+                }
+
+                @keyframes highlightPulse {
+                    0% {
+                        transform: scale(1);
+                        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+                    }
+                    50% {
+                        transform: scale(1.02);
+                        box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.3);
+                    }
+                    100% {
+                        transform: scale(1);
+                        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+                    }
                 }
 
                 .comment-avatar {
@@ -485,9 +774,42 @@ class ArticleCommentsCard extends BaseComponent {
                     text-decoration: underline;
                 }
                 
+                .comment-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                }
+                
                 .comment-time {
                     font-size: var(--font-size-xs);
                     color: var(--gray-500);
+                }
+                
+                .delete-comment-btn {
+                    padding: var(--spacing-2) var(--spacing-3);
+                    font-size: var(--font-size-sm);
+                    border: 1px solid var(--red-300);
+                    color: var(--red-600);
+                    background-color: transparent;
+                    border-radius: var(--border-radius-md);
+                    cursor: pointer;
+                    transition: all var(--transition-fast);
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                    font-weight: 500;
+                    min-height: 32px;
+                }
+                
+                .delete-comment-btn:hover {
+                    background-color: var(--red-50);
+                    border-color: var(--red-400);
+                    color: var(--red-700);
+                }
+                
+                .delete-comment-btn:active {
+                    background-color: var(--red-100);
+                    transform: translateY(1px);
                 }
                 
                 .comment-content {

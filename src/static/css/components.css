@@ -698,10 +698,16 @@ latest-posts-card {
     padding: var(--spacing-4);
     border-radius: var(--radius-md);
     overflow-x: auto;
+    overflow-y: hidden;
     margin: var(--spacing-4) 0;
     font-family: 'Consolas', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
     font-size: 0.9em;
     line-height: 1.5;
+    white-space: pre;
+    word-wrap: normal;
+    word-break: normal;
+    max-width: 700px;
+    box-sizing: border-box;
 }
 
 .markdown-content pre code {
@@ -709,6 +715,12 @@ latest-posts-card {
     color: inherit;
     padding: 0;
     border-radius: 0;
+    white-space: pre;
+    word-wrap: normal;
+    word-break: normal;
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
 }
 
 .markdown-content table {

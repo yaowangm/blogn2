@@ -14,8 +14,9 @@ from datetime import datetime
 from src.database import get_async_session
 from src.models.regkey import RegKey, RegKeyWithUserInfo
 from src.models.user import User
-from src.utils.auth_middleware import get_optional_current_user
+from src.utils.auth_dependencies import get_optional_current_user
 from src.utils.permission_decorators import require_auth
+from src.utils.time_utils import TimeUtils
 
 # 请求模型
 class ExchangeRegKeyRequest(BaseModel):
@@ -138,7 +139,7 @@ async def exchange_regkey(
             name=regkey,
             ownerid=request.user_id,
             status=1,  # 未使用
-            createtime=datetime.now()
+            createtime=TimeUtils.now_utc()
         )
         
         # 扣除用户积分

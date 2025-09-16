@@ -19,7 +19,7 @@ from src.models.user_response import (
 )
 from src.utils.error_handlers import handle_api_errors
 from src.utils.dependencies import get_user_service
-from src.utils.auth_middleware import get_optional_current_user, get_current_user
+from src.utils.auth_dependencies import get_optional_current_user, get_current_user
 from src.utils.cache import cache_user_profile, cache_user_blogs, cache_user_summary, cache_user_count, cache_new_users
 from src.utils.permission_manager import permission_manager
 from src.utils.permission_decorators import require_auth
