@@ -13,12 +13,15 @@ class TimeUtils:
     @staticmethod
     def now_utc() -> datetime:
         """
-        获取当前UTC时间
+        获取当前UTC时间（timezone-naive）
+        
+        注意：返回的datetime对象没有时区信息，但表示的是UTC时间
+        这样可以直接存储到数据库中，避免时区转换问题
         
         Returns:
-            datetime: 当前UTC时间
+            datetime: 当前UTC时间（timezone-naive）
         """
-        return datetime.now(timezone.utc)
+        return datetime.utcnow()
     
     @staticmethod
     def ensure_utc(dt: datetime) -> datetime:
@@ -52,9 +55,12 @@ class TimeUtils:
         Returns:
             str: 格式化后的相对时间字符串
         """
-        # 确保使用UTC时区进行时间比较
+        # 确保两个datetime对象都是timezone-naive的UTC时间
         now = TimeUtils.now_utc()
-        post_time = TimeUtils.ensure_utc(post_time)
+        
+        # 如果post_time是timezone-aware，转换为timezone-naive的UTC时间
+        if post_time.tzinfo is not None:
+            post_time = post_time.astimezone(timezone.utc).replace(tzinfo=None)
         
         diff = now - post_time
         
