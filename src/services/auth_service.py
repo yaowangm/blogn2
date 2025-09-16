@@ -1,3 +1,4 @@
+from src.utils.time_utils import TimeUtils
 """
 JWT认证服务
 提供用户登录、令牌生成和验证功能
@@ -94,7 +95,7 @@ class AuthService:
                 return None
             
             # 更新最后登录信息
-            user.lastupdate = datetime.now()
+            user.lastupdate = TimeUtils.now_utc()
             user.iplog = client_ip
             await self.user_repo.update(user)
             

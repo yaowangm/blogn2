@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse
 
 from src.utils.file_utils import get_temp_dir, validate_and_sanitize_path
 from src.config.app import get_upload_dir
+from src.utils.time_utils import TimeUtils
 
 
 class FileHandler:
@@ -148,7 +149,7 @@ class FileHandler:
     async def _save_regular_file(file_content: bytes, unique_filename: str) -> Dict[str, Any]:
         """保存正式文件"""
         upload_dir = get_upload_dir()
-        current_time = datetime.now()
+        current_time = TimeUtils.now_utc()
         month_dir = current_time.strftime("%Y%m")
         monthly_upload_path = os.path.join(upload_dir, month_dir)
         os.makedirs(monthly_upload_path, exist_ok=True)

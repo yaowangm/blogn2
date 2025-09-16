@@ -221,7 +221,7 @@ async def create_message(
             size=content_size,  # 内容大小（字节）
             hits=0,  # 访问次数初始为0
             userip=client_ip,  # 用户IP地址
-            posttime=datetime.now(),
+            posttime=TimeUtils.now_utc(),
             status=1,  # 1表示正常状态
             rootid=thread_id if thread_id else 0,  # 跟贴的rootid为thread_id，主贴的rootid为0
             replycount=0  # 新留言的回复数为0
@@ -271,6 +271,7 @@ async def delete_message(
     """
     from src.repositories.post_repository import PostRepository
     from src.utils.permission_manager import permission_manager
+from src.utils.time_utils import TimeUtils
     
     # 检查用户是否登录
     if not current_user:

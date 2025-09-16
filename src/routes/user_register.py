@@ -1,3 +1,4 @@
+from src.utils.time_utils import TimeUtils
 """
 用户注册API路由
 提供新用户注册功能
@@ -133,9 +134,9 @@ async def register_user(
             email=request.email,
             password=password_hash,
             state=1,  # 正常状态
-            regtime=datetime.now(),
+            regtime=TimeUtils.now_utc(),
             point=0,  # 初始积分
-            lastupdate=datetime.now()
+            lastupdate=TimeUtils.now_utc()
         )
         
         # 5. 在事务中完成用户创建和注册码更新

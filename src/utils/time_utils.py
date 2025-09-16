@@ -4,11 +4,42 @@
 提供时间格式化和处理的统一工具函数。
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class TimeUtils:
     """时间处理工具类"""
+    
+    @staticmethod
+    def now_utc() -> datetime:
+        """
+        获取当前UTC时间
+        
+        Returns:
+            datetime: 当前UTC时间
+        """
+        return datetime.now(timezone.utc)
+    
+    @staticmethod
+    def ensure_utc(dt: datetime) -> datetime:
+        """
+        确保datetime对象为UTC时区
+        
+        Args:
+            dt: 要处理的datetime对象
+            
+        Returns:
+            datetime: UTC时区的datetime对象
+        """
+        if dt is None:
+            return None
+        
+        if dt.tzinfo is None:
+            # 如果没有时区信息，假设为UTC
+            return dt.replace(tzinfo=timezone.utc)
+        else:
+            # 如果有时区信息，转换为UTC
+            return dt.astimezone(timezone.utc)
     
     @staticmethod
     def format_relative_time(post_time: datetime) -> str:
@@ -21,7 +52,10 @@ class TimeUtils:
         Returns:
             str: 格式化后的相对时间字符串
         """
-        now = datetime.now()
+        # 确保使用UTC时区进行时间比较
+        now = TimeUtils.now_utc()
+        post_time = TimeUtils.ensure_utc(post_time)
+        
         diff = now - post_time
         
         # 如果是今天，显示相对时间

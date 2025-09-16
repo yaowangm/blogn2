@@ -13,6 +13,7 @@ from src.models.post import Post
 from src.repositories.post_repository import PostRepository
 from src.repositories.project_item_repository import ProjectItemRepository
 from src.utils.cache import clear_article_detail_cache, clear_article_comments_cache
+from src.utils.time_utils import TimeUtils
 
 
 class CommentHandler:
@@ -92,7 +93,7 @@ class CommentHandler:
             size=content_size,  # 内容大小（字节）
             hits=0,  # 访问次数初始为0
             userip=client_ip,  # 用户IP地址
-            posttime=datetime.now(),
+            posttime=TimeUtils.now_utc(),
             status=1,  # 1表示正常状态
             rootid=0,  # 主评论的rootid为0
             replycount=0  # 新评论的回复数为0

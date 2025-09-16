@@ -3,6 +3,7 @@ from datetime import datetime
 from src.repositories.project_repository import ProjectRepository
 from src.repositories.project_item_repository import ProjectItemRepository
 from src.repositories.user_repository import UserRepository
+from src.utils.time_utils import TimeUtils
 
 class RSSService:
     """RSS服务类
@@ -60,7 +61,7 @@ class RSSService:
             str: RFC 822格式的日期字符串
         """
         if not date:
-            return datetime.now().strftime("%a, %d %b %Y %H:%M:%S %z")
+            return TimeUtils.now_utc().strftime("%a, %d %b %Y %H:%M:%S %z")
         
         # 转换为本地时区并格式化为RFC 822格式
         return date.strftime("%a, %d %b %Y %H:%M:%S %z")
@@ -147,7 +148,7 @@ class RSSService:
             "link": "/",
             "description": "聚合所有博客的最新文章",
             "language": "zh-CN",
-            "last_build_date": self._format_rss_date(datetime.now()),
+            "last_build_date": self._format_rss_date(TimeUtils.now_utc()),
             "items": rss_items
         }
     
@@ -198,6 +199,6 @@ class RSSService:
             "link": f"/blog/{project_id}",
             "description": project.comment or "博客RSS订阅",
             "language": "zh-CN",
-            "last_build_date": self._format_rss_date(datetime.now()),
+            "last_build_date": self._format_rss_date(TimeUtils.now_utc()),
             "items": rss_items
         }

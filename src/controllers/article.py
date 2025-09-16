@@ -28,6 +28,7 @@ from src.utils.auth_dependencies import get_current_user, get_optional_current_u
 from src.utils.permission_manager import permission_manager
 from src.utils.permission_decorators import require_auth
 from src.utils.comment_handlers import CommentHandler
+from src.utils.time_utils import TimeUtils
 from src.constants import ArticleStatus, ErrorMessages
 from src.utils.file_utils import get_temp_dir
 
@@ -440,7 +441,7 @@ async def update_article(
                 if os.path.exists(temp_path):
                     # 创建按月份命名的子目录
                     from datetime import datetime
-                    current_time = datetime.now()
+                    current_time = TimeUtils.now_utc()
                     month_dir = current_time.strftime("%Y%m")
                     monthly_upload_path = os.path.join(upload_dir, month_dir)
                     os.makedirs(monthly_upload_path, exist_ok=True)
@@ -478,8 +479,8 @@ async def update_article(
             "allowpost": article_data.get("allowpost", 1),
             "attachment": article_data.get("attachment"),
             "itemsize": itemsize,
-            "updatetime": datetime.now(),
-            "lastmodifytime": datetime.now()
+            "updatetime": TimeUtils.now_utc(),
+            "lastmodifytime": TimeUtils.now_utc()
         }
         
         # 移除None值
@@ -512,7 +513,7 @@ async def update_article(
                         
                         if os.path.exists(temp_path):
                             # 创建按月份命名的子目录
-                            current_time = datetime.now()
+                            current_time = TimeUtils.now_utc()
                             month_dir = current_time.strftime("%Y%m")
                             monthly_upload_path = os.path.join(upload_dir, month_dir)
                             os.makedirs(monthly_upload_path, exist_ok=True)
@@ -536,8 +537,8 @@ async def update_article(
                     amtype=1,  # 默认为正常类型
                     comment=attachment_data.get("comment", ""),
                     linkstr=relative_path,
-                    createtime=datetime.now(),
-                    updatetime=datetime.now()
+                    createtime=TimeUtils.now_utc(),
+                    updatetime=TimeUtils.now_utc()
                 )
                 await attachment_repo.create(attachment)
         

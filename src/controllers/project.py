@@ -20,6 +20,7 @@ from src.utils.auth_dependencies import get_current_user, get_optional_current_u
 from src.utils.permission_manager import permission_manager
 from src.constants import ArticleStatus
 from src.utils.file_utils import get_temp_dir
+from src.utils.time_utils import TimeUtils
 
 # 创建项目API路由器
 router = APIRouter()
@@ -426,8 +427,8 @@ async def create_project(
                 name=project_data["name"],
                 comment=project_data.get("comment"),
                 userid=userid,
-                createtime=datetime.now(),
-                updatetime=datetime.now(),
+                createtime=TimeUtils.now_utc(),
+                updatetime=TimeUtils.now_utc(),
                 state=1,  # 正常状态
                 recordcount=0,
                 accesscount=0,
@@ -528,9 +529,9 @@ async def create_post(
             folderid=post_data.get("folderid"),
             status=post_data.get("status", 1),
             allowpost=post_data.get("allowpost", 1),
-            createtime=datetime.now(),
-            updatetime=datetime.now(),
-            lastmodifytime=datetime.now()
+            createtime=TimeUtils.now_utc(),
+            updatetime=TimeUtils.now_utc(),
+            lastmodifytime=TimeUtils.now_utc()
         )
         
         # 处理临时文件移动
@@ -550,7 +551,7 @@ async def create_post(
                 
                 if os.path.exists(temp_path):
                     # 创建按月份命名的子目录
-                    current_time = datetime.now()
+                    current_time = TimeUtils.now_utc()
                     month_dir = current_time.strftime("%Y%m")
                     monthly_upload_path = os.path.join(upload_dir, month_dir)
                     os.makedirs(monthly_upload_path, exist_ok=True)
@@ -588,7 +589,7 @@ async def create_post(
                         
                         if os.path.exists(temp_path):
                             # 创建按月份命名的子目录
-                            current_time = datetime.now()
+                            current_time = TimeUtils.now_utc()
                             month_dir = current_time.strftime("%Y%m")
                             monthly_upload_path = os.path.join(upload_dir, month_dir)
                             os.makedirs(monthly_upload_path, exist_ok=True)
@@ -612,8 +613,8 @@ async def create_post(
                     amtype=1,  # 默认为正常类型
                     comment=attachment_data.get("comment", ""),
                     linkstr=relative_path,
-                    createtime=datetime.now(),
-                    updatetime=datetime.now()
+                    createtime=TimeUtils.now_utc(),
+                    updatetime=TimeUtils.now_utc()
                 )
                 await attachment_repo.create(attachment)
         

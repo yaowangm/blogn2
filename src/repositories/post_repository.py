@@ -5,6 +5,7 @@ from datetime import datetime
 from src.models.post import Post
 from src.models.project_item import ProjectItem
 from src.models.user import User
+from src.utils.time_utils import TimeUtils
 
 class PostRepository:
     """评论数据访问层
@@ -357,7 +358,7 @@ class PostRepository:
                 # 更新回复数和最后回复信息
                 main_post.replycount = (main_post.replycount or 0) + 1
                 main_post.lastreplyid = reply_user_id  # 存储最后回复者的用户ID
-                main_post.lastreplytime = datetime.now()
+                main_post.lastreplytime = TimeUtils.now_utc()
                 
                 await self.session.flush()
                 await self.session.commit()
