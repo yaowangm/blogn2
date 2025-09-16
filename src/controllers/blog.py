@@ -281,14 +281,14 @@ async def delete_message(
     
     try:
         # 执行删除操作
-        result = await post_repo.delete_message(message_id)
+        result = await post_repo.delete_post(message_id)
         
         if result["success"]:
             return {
                 "success": True,
                 "message": result["message"],
                 "deleted_count": result["deleted_count"],
-                "deleted_messages": result["deleted_messages"],
+                "deleted_messages": result.get("deleted_posts", result.get("deleted_messages", [])),
                 "is_main_post": result["is_main_post"]
             }
         else:
