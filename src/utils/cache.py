@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 import os
+import sys
 from functools import wraps
 from typing import Any, Callable, Optional, Union
 from datetime import datetime, timedelta
@@ -28,7 +29,33 @@ logger = logging.getLogger(__name__)
 
 def _is_testing_environment() -> bool:
     """检查是否在测试环境中"""
-    return os.getenv("PYTEST_CURRENT_TEST") is not None or os.getenv("TESTING") == "true"
+    # 检查环境变量
+    if os.getenv("PYTEST_CURRENT_TEST") is not None or os.getenv("TESTING") == "true":
+        return True
+    
+    # 检查命令行参数
+    if any("pytest" in arg for arg in sys.argv):
+        return True
+    
+    # 检查是否在pytest模块中运行
+    if "pytest" in sys.modules:
+        return True
+    
+    # 检查调用栈中是否有pytest相关模块
+    import inspect
+    frame = inspect.currentframe()
+    while frame:
+        if frame.f_code.co_filename and "pytest" in frame.f_code.co_filename:
+            return True
+        frame = frame.f_back
+    
+    # 调试信息
+    if os.getenv("CACHE_DEBUG") == "true":
+        print(f"测试环境检测: PYTEST_CURRENT_TEST={os.getenv('PYTEST_CURRENT_TEST')}, "
+              f"TESTING={os.getenv('TESTING')}, pytest in modules={'pytest' in sys.modules}, "
+              f"pytest in argv={any('pytest' in arg for arg in sys.argv)}")
+    
+    return False
 
 
 def _has_mock_objects(kwargs: dict) -> bool:
@@ -258,9 +285,9 @@ def invalidate_cache_pattern(pattern: str):
 # ==================== 预定义缓存装饰器 ====================
 
 # 用户相关缓存装饰器
-def cache_user_profile(ttl: int = None):
+def cache_user_profile(ttl: int = None, enable_cache: bool = True):
     """用户资料缓存装饰器"""
-    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+    return cache_decorator(ttl=ttl, enable_cache=enable_cache, key_builder=lambda *args, **kwargs: 
                           CacheKeyGenerator.user_profile(kwargs.get('user_id', 0)))
 
 
@@ -287,9 +314,9 @@ def cache_user_blogs(ttl: int = None):
 
 
 # 博客相关缓存装饰器
-def cache_blog_list(ttl: int = None):
+def cache_blog_list(ttl: int = None, enable_cache: bool = True):
     """博客列表缓存装饰器"""
-    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
+    return cache_decorator(ttl=ttl, enable_cache=enable_cache, key_builder=lambda *args, **kwargs: 
                           CacheKeyGenerator.blog_list(kwargs.get('page', 1), kwargs.get('limit', 10)))
 
 
