@@ -109,8 +109,17 @@ class BlogHeaderCard extends BaseComponent {
                 .stat-number { font-size: var(--font-size-2xl); font-weight: 700; color: var(--primary-color); margin: 0 0 var(--spacing-2) 0; }
                 .stat-label { font-size: var(--font-size-sm); color: var(--gray-600); margin: 0; text-transform: uppercase; letter-spacing: 0.05em; }
                 .blog-meta { display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-4) var(--spacing-6); background: var(--gray-50); border-radius: var(--radius-lg); }
+                .meta-items-left { 
+                    display: flex; 
+                    align-items: center; 
+                    gap: var(--spacing-6); 
+                }
                 .meta-item { display: flex; align-items: center; gap: var(--spacing-2); color: var(--gray-600); font-size: var(--font-size-sm); }
                 .meta-icon { width: 16px; height: 16px; color: var(--gray-500); }
+                .meta-subscription-right { 
+                    display: flex; 
+                    align-items: center; 
+                }
                 .subscription-section { 
                     margin-top: var(--spacing-4); 
                     padding: var(--spacing-4); 
@@ -150,10 +159,46 @@ class BlogHeaderCard extends BaseComponent {
                 .subscription-button.unsubscribe { 
                     background: var(--red-500); 
                 }
-                .subscription-button.unsubscribe:hover { 
-                    background: #dc2626; 
+                .subscription-button.unsubscribe:hover {
+                    background: #dc2626;
                     transform: translateY(-1px);
                     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                }
+                .subscription-button-inline { 
+                    background: var(--primary-color); 
+                    color: white; 
+                    border: none; 
+                    padding: var(--spacing-2) var(--spacing-4); 
+                    border-radius: var(--radius-md); 
+                    cursor: pointer; 
+                    font-size: var(--font-size-xs); 
+                    font-weight: 500; 
+                    transition: all 0.2s ease;
+                    display: inline-block;
+                    text-decoration: none;
+                    min-width: 60px;
+                    min-height: 28px;
+                    position: relative;
+                    z-index: 1;
+                }
+                .subscription-button-inline:hover { 
+                    background: #1d4ed8; 
+                    transform: translateY(-1px); 
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
+                .subscription-button-inline:disabled { 
+                    background: var(--gray-400); 
+                    cursor: not-allowed; 
+                    transform: none; 
+                    box-shadow: none;
+                }
+                .subscription-button-inline.unsubscribe {
+                    background: var(--red-500);
+                }
+                .subscription-button-inline.unsubscribe:hover {
+                    background: #dc2626;
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
                 }
             </style>
 
@@ -201,20 +246,24 @@ class BlogHeaderCard extends BaseComponent {
                     </div>
                 </div>
                 <div class="blog-meta">
-                    <div class="meta-item">
-                        <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
-                        </svg>
-                        <span>创建于 ${createDate}</span>
+                    <div class="meta-items-left">
+                        <div class="meta-item">
+                            <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
+                            </svg>
+                            <span>创建于 ${createDate}</span>
+                        </div>
+                        <div class="meta-item">
+                            <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
+                            </svg>
+                            <span>更新于 ${updateDate}</span>
+                        </div>
                     </div>
-                    <div class="meta-item">
-                        <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
-                        </svg>
-                        <span>更新于 ${updateDate}</span>
+                    <div class="meta-subscription-right">
+                        ${this.renderSubscriptionButton()}
                     </div>
                 </div>
-                ${this.renderSubscriptionSection()}
             </div>
         `;
     }
@@ -224,7 +273,40 @@ class BlogHeaderCard extends BaseComponent {
     }
 
     /**
-     * 渲染订阅区域
+     * 渲染订阅按钮（内联版本）
+     */
+    renderSubscriptionButton() {
+        // 检查UserManager是否可用
+        if (typeof UserManager === 'undefined') {
+            console.error('UserManager not available in renderSubscriptionButton');
+            return '';
+        }
+
+        // 如果未登录，不显示订阅按钮
+        if (!UserManager.isLoggedIn()) {
+            return '';
+        }
+
+        // 如果是当前用户的博客，不显示订阅按钮
+        if (this.isCurrentUserBlog) {
+            return '';
+        }
+
+        // 如果订阅状态未加载，显示加载中
+        if (this.subscriptionStatus === null) {
+            return `<button class="subscription-button-inline" disabled>加载中...</button>`;
+        }
+
+        // 根据订阅状态显示相应按钮
+        const isSubscribed = this.subscriptionStatus.is_subscribed;
+        const buttonText = isSubscribed ? '取消订阅' : '订阅';
+        const buttonClass = isSubscribed ? 'subscription-button-inline unsubscribe' : 'subscription-button-inline';
+
+        return `<button class="${buttonClass}" onclick="this.getRootNode().host.handleSubscription()">${buttonText}</button>`;
+    }
+
+    /**
+     * 渲染订阅区域（保留原方法以兼容）
      */
     renderSubscriptionSection() {
         // 检查UserManager是否可用
