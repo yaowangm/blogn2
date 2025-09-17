@@ -95,6 +95,12 @@ class PageHandler:
             """订阅的博客页面路由"""
             return FileResponse("src/static/subscriptions.html")
         
+        # 分类维护页面
+        @router.get("/blog/{project_id}/categories/maintenance")
+        async def category_maintenance_page(project_id: int):
+            """分类维护页面路由"""
+            return FileResponse("src/static/category-maintenance.html")
+        
         # 调试页面
         @router.get("/debug/article-api")
         async def debug_article_api():

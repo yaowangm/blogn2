@@ -741,3 +741,204 @@ async def update_project(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"更新项目失败: {str(e)}")
+
+@router.get("/projects/{project_id}/categories")
+async def get_project_categories(
+    project_id: int,
+    session: AsyncSession = Depends(get_async_session)
+) -> List[Dict[str, Any]]:
+    """
+    获取项目的分类列表
+    
+    Args:
+        project_id: 项目ID
+        session: 数据库会话
+        
+    Returns:
+        List[Dict]: 分类列表
+    """
+    try:
+        folder_repo = FolderRepository(session)
+        categories = await folder_repo.get_by_project_id_with_count(project_id)
+        
+        # 为每个分类添加颜色（可以根据需要自定义）
+        colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#84cc16', '#f97316']
+        
+        result = []
+        for i, category in enumerate(categories):
+            result.append({
+                "id": category["id"],
+                "name": category["name"],
+                "count": category["recordcount"] or 0,
+                "color": colors[i % len(colors)]
+            })
+        
+        return result
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取分类列表失败: {str(e)}")
+
+@router.post("/projects/{project_id}/categories")
+async def create_category(
+    project_id: int,
+    category_data: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+) -> Dict[str, Any]:
+    """
+    创建新分类
+    
+    Args:
+        project_id: 项目ID
+        category_data: 分类数据
+        current_user: 当前用户信息
+        session: 数据库会话
+        
+    Returns:
+        Dict: 创建的分类信息
+    """
+    try:
+        # 检查项目是否存在
+        project_repo = ProjectRepository(session)
+        project = await project_repo.get_project_by_id(project_id)
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="项目不存在")
+        
+        # 检查权限：只有项目所有者可以创建分类
+        if current_user["id"] != project.userid:
+            raise HTTPException(status_code=403, detail="没有权限创建分类")
+        
+        # 创建分类
+        folder_repo = FolderRepository(session)
+        folder = Folder(
+            name=category_data["name"],
+            projectid=project_id,
+            recordcount=0,
+            postcount=0
+        )
+        
+        session.add(folder)
+        await session.commit()
+        await session.refresh(folder)
+        
+        return {
+            "id": folder.id,
+            "name": folder.name,
+            "count": 0,
+            "color": "#3b82f6"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=f"创建分类失败: {str(e)}")
+
+@router.put("/projects/{project_id}/categories/{category_id}")
+async def update_category(
+    project_id: int,
+    category_id: int,
+    category_data: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+) -> Dict[str, Any]:
+    """
+    更新分类
+    
+    Args:
+        project_id: 项目ID
+        category_id: 分类ID
+        category_data: 分类数据
+        current_user: 当前用户信息
+        session: 数据库会话
+        
+    Returns:
+        Dict: 更新后的分类信息
+    """
+    try:
+        # 检查项目是否存在
+        project_repo = ProjectRepository(session)
+        project = await project_repo.get_project_by_id(project_id)
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="项目不存在")
+        
+        # 检查权限：只有项目所有者可以更新分类
+        if current_user["id"] != project.userid:
+            raise HTTPException(status_code=403, detail="没有权限更新分类")
+        
+        # 检查分类是否存在
+        folder_repo = FolderRepository(session)
+        folder = await folder_repo.get_by_id(category_id)
+        
+        if not folder or folder.projectid != project_id:
+            raise HTTPException(status_code=404, detail="分类不存在")
+        
+        # 更新分类
+        folder.name = category_data["name"]
+        await session.commit()
+        await session.refresh(folder)
+        
+        return {
+            "id": folder.id,
+            "name": folder.name,
+            "count": folder.recordcount or 0,
+            "color": "#3b82f6"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=f"更新分类失败: {str(e)}")
+
+@router.delete("/projects/{project_id}/categories/{category_id}")
+async def delete_category(
+    project_id: int,
+    category_id: int,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+) -> Dict[str, Any]:
+    """
+    删除分类
+    
+    Args:
+        project_id: 项目ID
+        category_id: 分类ID
+        current_user: 当前用户信息
+        session: 数据库会话
+        
+    Returns:
+        Dict: 删除结果
+    """
+    try:
+        # 检查项目是否存在
+        project_repo = ProjectRepository(session)
+        project = await project_repo.get_project_by_id(project_id)
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="项目不存在")
+        
+        # 检查权限：只有项目所有者可以删除分类
+        if current_user["id"] != project.userid:
+            raise HTTPException(status_code=403, detail="没有权限删除分类")
+        
+        # 检查分类是否存在
+        folder_repo = FolderRepository(session)
+        folder = await folder_repo.get_by_id(category_id)
+        
+        if not folder or folder.projectid != project_id:
+            raise HTTPException(status_code=404, detail="分类不存在")
+        
+        # 删除分类
+        await session.delete(folder)
+        await session.commit()
+        
+        return {"message": "分类删除成功"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=f"删除分类失败: {str(e)}")
