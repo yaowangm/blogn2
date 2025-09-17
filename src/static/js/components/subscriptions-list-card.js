@@ -510,8 +510,10 @@ class SubscriptionsListCard extends BaseComponent {
             `<button class="btn btn-danger" onclick="event.stopPropagation(); this.getRootNode().host.unsubscribeFromBlog(${blog.relation_id}, ${blog.project_id}, '${this.escapeHtml(blog.project_name)}')">
                 取消订阅
             </button>` : '';
+            
+        console.log('取消订阅按钮HTML:', unsubscribeButton);
 
-        return `
+        const html = `
             <div class="blog-item" onclick="window.open('/blog/${blog.project_id}', '_blank')" style="cursor: pointer;">
                 <div class="blog-avatar">
                     ${avatar}
@@ -531,6 +533,9 @@ class SubscriptionsListCard extends BaseComponent {
                 </div>
             </div>
         `;
+        
+        console.log('完整HTML结构:', html);
+        return html;
     }
 
     renderPagination() {
