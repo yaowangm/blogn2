@@ -43,6 +43,9 @@ class BlogHeaderCard extends BaseComponent {
                 this.blogData = this.getMockBlogData();
             }
             
+            // 检查是否为当前用户的博客
+            this.checkIfCurrentUserBlog();
+            
             // 检查订阅状态
             await this.loadSubscriptionStatus();
             
@@ -83,6 +86,19 @@ class BlogHeaderCard extends BaseComponent {
         }
     }
 
+
+    /**
+     * 检查是否为当前用户的博客
+     */
+    checkIfCurrentUserBlog() {
+        if (!this.blogData || !UserManager.isLoggedIn()) {
+            this.isCurrentUserBlog = false;
+            return;
+        }
+        
+        const currentUser = UserManager.getCurrentUser();
+        this.isCurrentUserBlog = currentUser.id === this.blogData.userid;
+    }
 
     getMockBlogData() {
         return {
