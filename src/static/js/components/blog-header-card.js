@@ -100,6 +100,25 @@ class BlogHeaderCard extends BaseComponent {
         this.isCurrentUserBlog = currentUser.id === this.blogData.userid;
     }
 
+    /**
+     * 检查是否为管理员
+     */
+    isAdmin() {
+        if (!UserManager.isLoggedIn()) {
+            return false;
+        }
+        
+        const currentUser = UserManager.getCurrentUser();
+        return currentUser.role === 'admin' || currentUser.role === 'administrator';
+    }
+
+    /**
+     * 检查是否可以编辑博客信息
+     */
+    canEditBlog() {
+        return this.isCurrentUserBlog || this.isAdmin();
+    }
+
     getMockBlogData() {
         return {
             id: this.projectId,
@@ -216,6 +235,29 @@ class BlogHeaderCard extends BaseComponent {
                     transform: translateY(-1px);
                     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
                 }
+                .edit-blog-button { 
+                    background: var(--gray-600); 
+                    color: white; 
+                    border: none; 
+                    padding: var(--spacing-2) var(--spacing-4); 
+                    border-radius: var(--radius-md); 
+                    cursor: pointer; 
+                    font-size: var(--font-size-xs); 
+                    font-weight: 500; 
+                    transition: all 0.2s ease;
+                    display: inline-block;
+                    text-decoration: none;
+                    min-width: 80px;
+                    min-height: 28px;
+                    margin-right: var(--spacing-2);
+                    position: relative;
+                    z-index: 1;
+                }
+                .edit-blog-button:hover { 
+                    background: var(--gray-700); 
+                    transform: translateY(-1px); 
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
             </style>
 
             <div class="card">
@@ -277,6 +319,7 @@ class BlogHeaderCard extends BaseComponent {
                         </div>
                     </div>
                     <div class="meta-subscription-right">
+                        ${this.renderEditButton()}
                         ${this.renderSubscriptionButton()}
                     </div>
                 </div>
@@ -286,6 +329,28 @@ class BlogHeaderCard extends BaseComponent {
 
     renderError() {
         return `<div class="error"><div>加载失败</div></div>`;
+    }
+
+    /**
+     * 渲染编辑博客信息按钮
+     */
+    renderEditButton() {
+        // 检查UserManager是否可用
+        if (typeof UserManager === 'undefined') {
+            return '';
+        }
+
+        // 如果未登录，不显示编辑按钮
+        if (!UserManager.isLoggedIn()) {
+            return '';
+        }
+
+        // 如果不可以编辑博客，不显示编辑按钮
+        if (!this.canEditBlog()) {
+            return '';
+        }
+
+        return `<button class="edit-blog-button" onclick="this.getRootNode().host.showEditModal()">修改博客信息</button>`;
     }
 
     /**
@@ -432,6 +497,199 @@ class BlogHeaderCard extends BaseComponent {
     /**
      * 处理订阅操作
      */
+    /**
+     * 显示编辑博客信息模态框
+     */
+    showEditModal() {
+        if (!this.canEditBlog()) {
+            alert('您没有权限编辑此博客');
+            return;
+        }
+
+        // 创建模态框
+        const modal = document.createElement('div');
+        modal.className = 'edit-blog-modal';
+        modal.innerHTML = `
+            <div class="modal-overlay" onclick="this.parentElement.remove()">
+                <div class="modal-content" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>修改博客信息</h3>
+                        <button class="modal-close" onclick="this.closest('.edit-blog-modal').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="edit-blog-form">
+                            <div class="form-group">
+                                <label for="blog-name">博客名称</label>
+                                <input type="text" id="blog-name" name="name" value="${this.escapeHtml(this.blogData.name || '')}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="blog-description">博客描述</label>
+                                <textarea id="blog-description" name="comment" rows="4" required>${this.escapeHtml(this.blogData.comment || '')}</textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-cancel" onclick="this.closest('.edit-blog-modal').remove()">取消</button>
+                        <button type="button" class="btn-save" onclick="this.getRootNode().host.saveBlogInfo()">保存</button>
+                    </div>
+                </div>
+            </div>
+            <style>
+                .edit-blog-modal {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    z-index: 1000;
+                }
+                .modal-overlay {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .modal-content {
+                    background: white;
+                    border-radius: 8px;
+                    width: 90%;
+                    max-width: 500px;
+                    max-height: 90vh;
+                    overflow-y: auto;
+                }
+                .modal-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 20px;
+                    border-bottom: 1px solid #e5e7eb;
+                }
+                .modal-header h3 {
+                    margin: 0;
+                    font-size: 18px;
+                    font-weight: 600;
+                }
+                .modal-close {
+                    background: none;
+                    border: none;
+                    font-size: 24px;
+                    cursor: pointer;
+                    color: #6b7280;
+                }
+                .modal-body {
+                    padding: 20px;
+                }
+                .form-group {
+                    margin-bottom: 20px;
+                }
+                .form-group label {
+                    display: block;
+                    margin-bottom: 5px;
+                    font-weight: 500;
+                    color: #374151;
+                }
+                .form-group input,
+                .form-group textarea {
+                    width: 100%;
+                    padding: 8px 12px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 4px;
+                    font-size: 14px;
+                    box-sizing: border-box;
+                }
+                .form-group textarea {
+                    resize: vertical;
+                    min-height: 80px;
+                }
+                .modal-footer {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 10px;
+                    padding: 20px;
+                    border-top: 1px solid #e5e7eb;
+                }
+                .btn-cancel,
+                .btn-save {
+                    padding: 8px 16px;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                }
+                .btn-cancel {
+                    background: #f3f4f6;
+                    color: #374151;
+                }
+                .btn-save {
+                    background: #3b82f6;
+                    color: white;
+                }
+                .btn-cancel:hover {
+                    background: #e5e7eb;
+                }
+                .btn-save:hover {
+                    background: #2563eb;
+                }
+            </style>
+        `;
+
+        document.body.appendChild(modal);
+    }
+
+    /**
+     * 保存博客信息
+     */
+    async saveBlogInfo() {
+        const form = document.getElementById('edit-blog-form');
+        if (!form) return;
+
+        const formData = new FormData(form);
+        const blogData = {
+            name: formData.get('name'),
+            comment: formData.get('comment')
+        };
+
+        try {
+            const response = await fetch(`/api/projects/${this.projectId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${UserManager.getAccessToken()}`
+                },
+                body: JSON.stringify(blogData)
+            });
+
+            if (response.ok) {
+                // 更新本地数据
+                this.blogData.name = blogData.name;
+                this.blogData.comment = blogData.comment;
+                
+                // 重新渲染
+                this.render();
+                
+                // 关闭模态框
+                const modal = document.querySelector('.edit-blog-modal');
+                if (modal) {
+                    modal.remove();
+                }
+                
+                alert('博客信息更新成功');
+            } else {
+                const error = await response.json();
+                alert(error.detail || '更新失败');
+            }
+        } catch (error) {
+            console.error('Save blog info error:', error);
+            alert('保存失败，请重试');
+        }
+    }
+
     async handleSubscription() {
         if (!UserManager.isLoggedIn()) {
             alert('请先登录');

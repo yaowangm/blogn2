@@ -677,3 +677,67 @@ async def create_post(
     except Exception as e:
         # 事务会自动回滚
         raise HTTPException(status_code=500, detail=f"创建文章失败: {str(e)}")
+
+@router.put("/projects/{project_id}")
+async def update_project(
+    project_id: int,
+    project_data: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+) -> Dict[str, Any]:
+    """
+    更新项目信息
+    
+    Args:
+        project_id: 项目ID
+        project_data: 项目数据
+        current_user: 当前用户信息
+        session: 数据库会话
+        
+    Returns:
+        Dict: 更新后的项目信息
+    """
+    try:
+        # 获取项目信息
+        project_repo = ProjectRepository(session)
+        project = await project_repo.get_project_by_id(project_id)
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="项目不存在")
+        
+        # 检查权限：只有项目所有者或管理员可以修改
+        if current_user["id"] != project.userid and current_user.get("role") not in ["admin", "administrator"]:
+            raise HTTPException(status_code=403, detail="没有权限修改此项目")
+        
+        # 更新项目信息
+        update_data = {}
+        if "name" in project_data:
+            update_data["name"] = project_data["name"]
+        if "comment" in project_data:
+            update_data["comment"] = project_data["comment"]
+        
+        if not update_data:
+            raise HTTPException(status_code=400, detail="没有提供要更新的数据")
+        
+        # 设置更新时间
+        update_data["updatetime"] = datetime.now()
+        
+        # 更新项目
+        updated_project = await project_repo.update_project(project_id, update_data)
+        
+        if not updated_project:
+            raise HTTPException(status_code=500, detail="更新项目失败")
+        
+        return {
+            "id": updated_project.id,
+            "name": updated_project.name,
+            "comment": updated_project.comment,
+            "userid": updated_project.userid,
+            "createtime": updated_project.createtime,
+            "updatetime": updated_project.updatetime
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"更新项目失败: {str(e)}")
