@@ -14,8 +14,8 @@ class FolderRepository:
         return result.first()
     
     async def get_by_project_id(self, project_id: int) -> List[Folder]:
-        """根据项目ID获取所有文件夹"""
-        statement = select(Folder).where(Folder.projectid == project_id)
+        """根据项目ID获取所有文件夹，按ID倒序排序"""
+        statement = select(Folder).where(Folder.projectid == project_id).order_by(Folder.id.desc())
         result = await self.session.exec(statement)
         return result.all()
     
@@ -23,7 +23,7 @@ class FolderRepository:
         """根据项目ID获取文件夹及其文章数量"""
         # 使用folders表中的recordcount字段
         folders = await self.get_by_project_id(project_id)
-        return [{"id": folder.id, "name": folder.name, "parent": folder.parent, "recordcount": folder.recordcount} for folder in folders]
+        return [{"id": folder.id, "name": folder.name.strip() if folder.name else "", "parent": folder.parent, "recordcount": folder.recordcount} for folder in folders]
     
     async def count_by_project_id(self, project_id: int) -> int:
         """统计项目下的文件夹数量"""

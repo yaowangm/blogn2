@@ -812,7 +812,7 @@ async def create_category(
         # 创建分类
         folder_repo = FolderRepository(session)
         folder = Folder(
-            name=category_data["name"],
+            name=category_data["name"].strip(),
             projectid=project_id,
             recordcount=0,
             postcount=0
@@ -876,7 +876,7 @@ async def update_category(
             raise HTTPException(status_code=404, detail="分类不存在")
         
         # 更新分类
-        folder.name = category_data["name"]
+        folder.name = category_data["name"].strip()
         await session.commit()
         await session.refresh(folder)
         
