@@ -146,4 +146,48 @@ class UserService(BaseService):
         # 更新密码
         success = await self.user_repo.update_password(user_id, hashed_password)
         if not success:
-            raise Exception("密码更新失败") 
+            raise Exception("密码更新失败")
+
+    async def update_user_email(self, user_id: int, new_email: str) -> None:
+        """
+        更新用户邮箱
+        
+        Args:
+            user_id: 用户ID
+            new_email: 新邮箱地址
+            
+        Raises:
+            Exception: 当更新失败时
+        """
+        # 验证邮箱格式
+        if not self._is_valid_email(new_email):
+            raise Exception("邮箱格式不正确")
+        
+        # 检查用户是否存在
+        user = await self.user_repo.get_by_id(user_id)
+        if not user:
+            raise Exception("用户不存在")
+        
+        # 检查邮箱是否已被其他用户使用
+        existing_user = await self.user_repo.get_by_email(new_email)
+        if existing_user and existing_user.id != user_id:
+            raise Exception("该邮箱已被其他用户使用")
+        
+        # 更新邮箱
+        success = await self.user_repo.update_email(user_id, new_email)
+        if not success:
+            raise Exception("邮箱更新失败")
+    
+    def _is_valid_email(self, email: str) -> bool:
+        """
+        验证邮箱格式
+        
+        Args:
+            email: 邮箱地址
+            
+        Returns:
+            bool: 邮箱格式是否有效
+        """
+        import re
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return re.match(pattern, email) is not None 

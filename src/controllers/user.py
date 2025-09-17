@@ -254,3 +254,49 @@ async def reset_user_password(
     # 调用用户服务重置密码
     await user_service.reset_user_password(user_id, new_password)
     return {"message": "密码重置成功"}
+
+@router.post("/users/{user_id}/update-email")
+@handle_api_errors("修改邮箱失败")
+@require_auth()
+async def update_user_email(
+    user_id: int,
+    email_data: Dict[str, str],
+    user_service: UserService = Depends(get_user_service),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    修改用户邮箱
+    
+    权限控制：
+    - 管理员可以修改任何用户的邮箱
+    - 普通用户只能修改自己的邮箱
+    
+    Args:
+        user_id: 要修改邮箱的用户ID
+        email_data: 包含新邮箱的数据 {"new_email": "新邮箱"}
+        user_service: 用户服务实例
+        current_user: 当前登录用户信息
+        
+    Returns:
+        Dict[str, str]: 修改结果
+        
+    Raises:
+        HTTPException: 当无权限或用户不存在时
+    """
+    # 检查目标用户是否存在
+    target_user = await user_service.get_user_by_id(user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    # 权限检查：管理员可以修改任何用户的邮箱，普通用户只能修改自己的邮箱
+    if current_user.get("state") != 10 and current_user.get("id") != user_id:
+        raise HTTPException(status_code=403, detail="无权限修改该用户的邮箱")
+    
+    # 验证新邮箱
+    new_email = email_data.get("new_email")
+    if not new_email:
+        raise HTTPException(status_code=400, detail="新邮箱不能为空")
+    
+    # 调用用户服务修改邮箱
+    await user_service.update_user_email(user_id, new_email)
+    return {"message": "邮箱修改成功"}

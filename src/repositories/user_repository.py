@@ -124,6 +124,39 @@ class UserRepository:
             print(f"更新projectid失败: {e}")
             return False
 
+    async def update_email(self, user_id: int, new_email: str) -> bool:
+        """
+        更新用户邮箱
+        
+        Args:
+            user_id: 用户ID
+            new_email: 新邮箱地址
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        try:
+            # 检查邮箱是否已被其他用户使用
+            existing_user = await self.get_by_email(new_email)
+            if existing_user and existing_user.id != user_id:
+                return False
+            
+            # 获取用户
+            user = await self.get_by_id(user_id)
+            if not user:
+                return False
+            
+            # 更新邮箱
+            user.email = new_email
+            await self.session.commit()
+            
+            return True
+            
+        except Exception as e:
+            await self.session.rollback()
+            print(f"更新邮箱失败: {e}")
+            return False
+
     async def increment_point(self, user_id: int, points: int = 10) -> None:
         """
         增加用户积分
