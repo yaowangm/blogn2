@@ -13,14 +13,27 @@ class NavigationCard extends BaseComponent {
     connectedCallback() {
         this.render();
     }
+    
+    disconnectedCallback() {
+        // 清理事件监听器，避免内存泄漏
+        if (this.shadowRoot) {
+            this.shadowRoot.removeEventListener('click', this.handleClick);
+            this.shadowRoot.removeEventListener('keydown', this.handleKeydown);
+        }
+    }
 
     attributeChangedCallback(name, oldValue, newValue) {
         if (name === 'mode') {
             this.mode = newValue || 'navigation';
             this.render();
         } else if (name === 'pagination' && newValue) {
-            this.pagination = JSON.parse(newValue);
-            this.render();
+            try {
+                this.pagination = JSON.parse(newValue);
+                this.render();
+            } catch (error) {
+                console.error('NavigationCard: Invalid pagination JSON:', error);
+                this.pagination = null;
+            }
         }
     }
 
@@ -29,6 +42,25 @@ class NavigationCard extends BaseComponent {
         this.pagination = pagination;
         this.onPageChange = onPageChange;
         this.render();
+    }
+    
+    // 新增方法：设置导航项（保持向后兼容）
+    setNavigationItems(items) {
+        this.navigationItems = items;
+        if (this.mode === 'navigation') {
+            this.render();
+        }
+    }
+    
+    // 获取默认导航项
+    getDefaultNavigationItems() {
+        return [
+            { href: '/users', text: '用户列表', icon: Icons.usersList, target: '' },
+            { href: '/api/rss/site', text: '全站RSS', icon: Icons.rss, target: '_blank' },
+            { href: '/categories', text: '分类浏览', icon: Icons.folder, target: '' },
+            { href: '/tags', text: '标签云', icon: Icons.tag, target: '' },
+            { href: '/messages', text: '留言本', icon: Icons.message, target: '_blank' }
+        ];
     }
 
     render() {
@@ -123,30 +155,21 @@ class NavigationCard extends BaseComponent {
                 </div>
                 <div class="card-body">
                     <div class="nav-list">
-                        <a href="/users" class="nav-item">
-                            <div class="nav-icon">${Icons.usersList}</div>
-                            <span class="nav-text">用户列表</span>
-                        </a>
-                        <a href="/api/rss/site" class="nav-item" target="_blank">
-                            <div class="nav-icon">${Icons.rss}</div>
-                            <span class="nav-text">全站RSS</span>
-                        </a>
-                        <a href="/categories" class="nav-item">
-                            <div class="nav-icon">${Icons.folder}</div>
-                            <span class="nav-text">分类浏览</span>
-                        </a>
-                        <a href="/tags" class="nav-item">
-                            <div class="nav-icon">${Icons.tag}</div>
-                            <span class="nav-text">标签云</span>
-                        </a>
-                        <a href="/messages" class="nav-item" target="_blank">
-                            <div class="nav-icon">${Icons.message}</div>
-                            <span class="nav-text">留言本</span>
-                        </a>
+                        ${this.renderNavigationItems()}
                     </div>
                 </div>
             </div>
         `;
+    }
+    
+    renderNavigationItems() {
+        const items = this.navigationItems || this.getDefaultNavigationItems();
+        return items.map(item => `
+            <a href="${item.href}" class="nav-item" ${item.target ? `target="${item.target}"` : ''}>
+                <div class="nav-icon">${item.icon}</div>
+                <span class="nav-text">${item.text}</span>
+            </a>
+        `).join('');
     }
 
     renderPagination() {
@@ -224,10 +247,10 @@ class NavigationCard extends BaseComponent {
                 }
             </style>
 
-            <div class="pagination-container">
+            <nav class="pagination-container" role="navigation" aria-label="分页导航">
                 ${this.renderPaginationButtons()}
                 ${this.renderPaginationInfo()}
-            </div>
+            </nav>
         `;
 
         this.attachPaginationEventListeners();
@@ -291,25 +314,50 @@ class NavigationCard extends BaseComponent {
         const { current_page, total_pages, total, total_count } = this.pagination;
         const count = total || total_count || 0;
         const itemType = this.pagination.item_type || '条记录';
-        return `<div class="pagination-info">第 ${current_page} 页，共 ${total_pages} 页，总计 ${count} ${itemType}</div>`;
+        return `<div class="pagination-info" role="status" aria-live="polite">第 ${current_page} 页，共 ${total_pages} 页，总计 ${count} ${itemType}</div>`;
     }
 
     createPaginationButton(text, enabled, onClick, isActive = false) {
         const classes = `pagination-btn ${isActive ? 'active' : ''} ${!enabled ? 'disabled' : ''}`;
         const dataAction = enabled ? `data-action="${text}"` : '';
+        const ariaLabel = this.getPaginationButtonAriaLabel(text, isActive);
         
-        return `<a href="#" class="${classes}" ${dataAction}>${text}</a>`;
+        return `<a href="#" class="${classes}" ${dataAction} aria-label="${ariaLabel}" role="button" tabindex="${enabled ? '0' : '-1'}">${text}</a>`;
+    }
+    
+    getPaginationButtonAriaLabel(text, isActive) {
+        if (text === '上一页') return '转到上一页';
+        if (text === '下一页') return '转到下一页';
+        if (text === '...') return '更多页码';
+        if (isActive) return `当前第${text}页`;
+        return `转到第${text}页`;
     }
 
     attachPaginationEventListeners() {
-        const buttons = this.shadowRoot.querySelectorAll('.pagination-btn[data-action]');
-        buttons.forEach(button => {
-            button.addEventListener('click', (e) => {
+        // 绑定事件处理器到实例方法，便于清理
+        this.handleClick = (e) => {
+            if (e.target.classList.contains('pagination-btn') && e.target.hasAttribute('data-action')) {
                 e.preventDefault();
-                const action = button.getAttribute('data-action');
+                const action = e.target.getAttribute('data-action');
                 this.handleButtonClick(action);
-            });
-        });
+            }
+        };
+        
+        this.handleKeydown = (e) => {
+            if (e.target.classList.contains('pagination-btn') && e.target.hasAttribute('data-action')) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const action = e.target.getAttribute('data-action');
+                    this.handleButtonClick(action);
+                }
+            }
+        };
+        
+        // 使用事件委托提高性能
+        this.shadowRoot.addEventListener('click', this.handleClick);
+        
+        // 添加键盘支持
+        this.shadowRoot.addEventListener('keydown', this.handleKeydown);
     }
 
     handleButtonClick(action) {
@@ -333,6 +381,12 @@ class NavigationCard extends BaseComponent {
     }
 
     handlePageChange(page) {
+        // 验证页码有效性
+        if (!this.pagination || page < 1 || page > this.pagination.total_pages) {
+            return;
+        }
+        
+        // 调用回调函数（保持向后兼容）
         if (this.onPageChange) {
             this.onPageChange(page);
         }
@@ -345,7 +399,7 @@ class NavigationCard extends BaseComponent {
         });
         this.dispatchEvent(event);
         
-        // 同时尝试在document上触发事件
+        // 同时在document上触发事件（保持向后兼容）
         const docEvent = new CustomEvent('page-change', {
             detail: { page },
             bubbles: true,
