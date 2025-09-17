@@ -40,7 +40,6 @@ class SubscriptionsListCard extends BaseComponent {
 
     async checkOwnership() {
         if (!this.projectId) {
-            console.log('项目ID为空，跳过所有权检查');
             return;
         }
 
@@ -49,26 +48,17 @@ class SubscriptionsListCard extends BaseComponent {
             const projectResponse = await fetch(`/api/projects/${this.projectId}`);
             if (projectResponse.ok) {
                 this.projectData = await projectResponse.json();
-                console.log('项目数据:', this.projectData);
                 
                 // 检查当前用户是否为博客所有者
                 if (UserManager.isLoggedIn()) {
                     const currentUser = UserManager.getCurrentUser();
                     this.isOwner = currentUser.id === this.projectData.userid;
-                    console.log('用户权限检查:', {
-                        currentUserId: currentUser.id,
-                        projectUserId: this.projectData.userid,
-                        isOwner: this.isOwner
-                    });
                 } else {
-                    console.log('用户未登录');
                     this.isOwner = false;
                 }
                 
                 // 所有权检查完成后重新渲染
                 this.render();
-            } else {
-                console.error('获取项目信息失败:', projectResponse.status);
             }
         } catch (error) {
             console.error('检查博客所有权失败:', error);
@@ -366,12 +356,6 @@ class SubscriptionsListCard extends BaseComponent {
                     border-color: #dc2626;
                 }
                 
-                .blog-actions {
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-2);
-                }
-                
                 .blog-actions .btn {
                     pointer-events: auto;
                 }
@@ -499,21 +483,12 @@ class SubscriptionsListCard extends BaseComponent {
         const subscribedAt = blog.subscribed_at ? 
             new Date(blog.subscribed_at).toLocaleDateString('zh-CN') : '未知时间';
         
-        console.log('渲染博客条目:', {
-            blogName: blog.project_name,
-            isOwner: this.isOwner,
-            relationId: blog.relation_id,
-            projectId: blog.project_id
-        });
-        
         const unsubscribeButton = this.isOwner ? 
             `<button class="btn btn-danger" onclick="event.stopPropagation(); this.getRootNode().host.unsubscribeFromBlog(${blog.relation_id}, ${blog.project_id}, '${this.escapeHtml(blog.project_name)}')">
                 取消订阅
             </button>` : '';
-            
-        console.log('取消订阅按钮HTML:', unsubscribeButton);
 
-        const html = `
+        return `
             <div class="blog-item" onclick="window.open('/blog/${blog.project_id}', '_blank')" style="cursor: pointer;">
                 <div class="blog-avatar">
                     ${avatar}
@@ -533,9 +508,6 @@ class SubscriptionsListCard extends BaseComponent {
                 </div>
             </div>
         `;
-        
-        console.log('完整HTML结构:', html);
-        return html;
     }
 
     renderPagination() {
