@@ -89,6 +89,12 @@ class PageHandler:
             """博客文章页面路由"""
             return FileResponse("src/static/article.html")
         
+        # 订阅的博客页面
+        @router.get("/blog/{project_id}/subscriptions")
+        async def subscriptions_page(project_id: int):
+            """订阅的博客页面路由"""
+            return FileResponse("src/static/subscriptions.html")
+        
         # 调试页面
         @router.get("/debug/article-api")
         async def debug_article_api():

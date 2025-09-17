@@ -73,3 +73,7 @@ class SubscriptionService:
             "subscriber_count": len(subscribers),
             "subscription_count": len(subscriptions)
         }
+    
+    async def get_subscribed_blogs(self, project_id: int, page: int = 1, limit: int = 10) -> Dict[str, Any]:
+        """获取指定博客订阅的所有博客列表"""
+        return await self.relation_repo.get_subscribed_blogs_by_project(project_id, page, limit)

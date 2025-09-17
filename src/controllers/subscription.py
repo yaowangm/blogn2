@@ -188,3 +188,28 @@ async def get_subscription_stats(
     stats = await subscription_service.get_subscription_count(project_id)
     
     return stats
+
+@router.get("/blogs/{project_id}")
+@handle_api_errors("获取订阅博客列表失败")
+async def get_subscribed_blogs(
+    project_id: int,
+    page: int = 1,
+    limit: int = 10,
+    session: AsyncSession = Depends(get_async_session)
+) -> Dict[str, Any]:
+    """
+    获取指定博客订阅的所有博客列表
+    
+    Args:
+        project_id: 博客项目ID
+        page: 页码
+        limit: 每页数量
+        session: 数据库会话
+        
+    Returns:
+        Dict: 订阅博客列表和分页信息
+    """
+    subscription_service = SubscriptionService(session)
+    result = await subscription_service.get_subscribed_blogs(project_id, page, limit)
+    
+    return result
