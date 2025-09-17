@@ -166,10 +166,8 @@ class SubscriptionsListCard extends BaseComponent {
                 :host {
                     display: block;
                     font-family: var(--font-family);
-                }
-                
-                /* CSS Variables */
-                :root {
+                    
+                    /* CSS Variables for Shadow DOM */
                     --primary-color: #3b82f6;
                     --primary-hover: #2563eb;
                     --white: #ffffff;
@@ -208,6 +206,7 @@ class SubscriptionsListCard extends BaseComponent {
                     --transition-fast: all 0.15s ease;
                     --transition-normal: all 0.3s ease;
                 }
+                
                 
                 .card {
                     background: var(--white);
