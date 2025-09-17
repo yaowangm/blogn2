@@ -11,6 +11,7 @@ from src.models.project_item import ProjectItem
 from src.models.post import Post
 from src.models.subscription import Subscription
 from src.models.urllink import UrlLink
+from src.models.relation import Relation
 
 # 加载环境变量
 load_dotenv()
