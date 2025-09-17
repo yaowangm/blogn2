@@ -30,6 +30,7 @@ class BlogPostsListCard extends BaseComponent {
         
         // 添加事件监听器（必须在异步操作之前）
         this.addCategoryEventListeners();
+        this.addEventListeners();
         
         // 异步执行其他初始化操作
         this.initializeAsync();
