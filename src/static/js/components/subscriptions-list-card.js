@@ -317,6 +317,8 @@ class SubscriptionsListCard extends BaseComponent {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-2);
+                    flex-shrink: 0;
+                    min-width: fit-content;
                 }
                 
                 .btn {
@@ -332,6 +334,8 @@ class SubscriptionsListCard extends BaseComponent {
                     transition: var(--transition-fast);
                     text-decoration: none;
                     line-height: 1;
+                    flex-shrink: 0;
+                    white-space: nowrap;
                 }
                 
                 .btn-primary {
