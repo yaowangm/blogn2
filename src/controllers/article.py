@@ -414,6 +414,26 @@ async def update_article(
         if not permission_manager.can_manage_system(current_user) and current_user.get("id") != article.userid:
             raise HTTPException(status_code=403, detail="无权限修改该文章")
         
+        # 检查分类是否发生变化，如果变化则更新相关分类的文章数量统计
+        old_folder_id = article.folderid
+        new_folder_id = article_data.get("folderid")
+        
+        # 处理None值：如果new_folder_id是None，表示未分类（0）
+        if new_folder_id is None:
+            new_folder_id = 0
+        
+        if old_folder_id != new_folder_id:
+            from src.repositories.folder_repository import FolderRepository
+            folder_repo = FolderRepository(session)
+            
+            # 如果旧分类存在且不是未分类（0），减少旧分类的文章数量
+            if old_folder_id and old_folder_id != 0:
+                await folder_repo.decrement_record_count(old_folder_id)
+            
+            # 如果新分类存在且不是未分类（0），增加新分类的文章数量
+            if new_folder_id and new_folder_id != 0:
+                await folder_repo.increment_record_count(new_folder_id)
+        
         # 更新文章数据
         from datetime import datetime
         import os
@@ -470,11 +490,16 @@ async def update_article(
             except Exception as e:
                 pass  # 删除旧图片失败，继续处理
         
+        # 处理folderid：如果为None则设置为0（未分类）
+        folderid = article_data.get("folderid")
+        if folderid is None:
+            folderid = 0
+        
         update_data = {
             "name": article_data.get("name"),
             "comment": article_data.get("comment"),
             "itemtype": article_data.get("itemtype", ArticleStatus.NORMAL),
-            "folderid": article_data.get("folderid"),
+            "folderid": folderid,
             "status": article_data.get("status", 1),
             "allowpost": article_data.get("allowpost", 1),
             "attachment": article_data.get("attachment"),
@@ -483,8 +508,8 @@ async def update_article(
             "lastmodifytime": TimeUtils.now_utc()
         }
         
-        # 移除None值
-        update_data = {k: v for k, v in update_data.items() if v is not None}
+        # 移除None值（但保留folderid=0）
+        update_data = {k: v for k, v in update_data.items() if v is not None or k == "folderid"}
         
         updated_article = await project_item_repo.update(article_id, **update_data)
         if not updated_article:
