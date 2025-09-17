@@ -91,11 +91,13 @@ class CategoriesCard extends BaseComponent {
     notifyBlogPostsList(folderId, folderName) {
         // 查找博客文章列表卡片并通知它更新
         const blogPostsListCard = document.querySelector('blog-posts-list-card');
+        console.log('categories-card: notifyBlogPostsList called, folderId:', folderId, 'folderName:', folderName, 'blogPostsListCard found:', !!blogPostsListCard);
         if (blogPostsListCard) {
             // 触发自定义事件
             const event = new CustomEvent('categoryChanged', {
                 detail: { folderId, folderName }
             });
+            console.log('categories-card: dispatching categoryChanged event:', event);
             blogPostsListCard.dispatchEvent(event);
         }
     }

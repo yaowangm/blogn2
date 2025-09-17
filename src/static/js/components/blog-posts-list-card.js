@@ -28,11 +28,11 @@ class BlogPostsListCard extends BaseComponent {
         // 立即渲染基本结构
         this.render();
         
+        // 添加事件监听器（必须在异步操作之前）
+        this.addCategoryEventListeners();
+        
         // 异步执行其他初始化操作
         this.initializeAsync();
-        
-        // 添加事件监听器
-        this.addEventListeners();
     }
     
     async initializeAsync() {
@@ -82,7 +82,7 @@ class BlogPostsListCard extends BaseComponent {
         }
     }
 
-    addEventListeners() {
+    addCategoryEventListeners() {
         // 监听分类变化事件
         this.addEventListener('categoryChanged', (event) => {
             const { folderId, folderName } = event.detail;
