@@ -765,6 +765,20 @@ async def get_project_categories(
         colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#84cc16', '#f97316']
         
         result = []
+        
+        # 添加未分类项（folderid=0）
+        from src.repositories.project_item_repository import ProjectItemRepository
+        project_item_repo = ProjectItemRepository(session)
+        uncategorized_count = await project_item_repo.count_by_project_id_and_folder(project_id, 0)
+        
+        result.append({
+            "id": 0,
+            "name": "未分类",
+            "count": uncategorized_count,
+            "color": "#6b7280"
+        })
+        
+        # 添加其他分类
         for i, category in enumerate(categories):
             result.append({
                 "id": category["id"],
@@ -931,11 +945,24 @@ async def delete_category(
         if not folder or folder.projectid != project_id:
             raise HTTPException(status_code=404, detail="分类不存在")
         
+        # 检查分类下是否有文章，如果有则设置为未分类
+        from src.repositories.post_repository import PostRepository
+        post_repo = PostRepository(session)
+        updated_articles_count = await post_repo.update_articles_folder_to_uncategorized(category_id)
+        
         # 删除分类
         await session.delete(folder)
         await session.commit()
         
-        return {"message": "分类删除成功"}
+        # 返回删除结果，包含处理的文章数量
+        message = "分类删除成功"
+        if updated_articles_count > 0:
+            message += f"，已将{updated_articles_count}篇文章设置为未分类"
+        
+        return {
+            "message": message,
+            "updated_articles_count": updated_articles_count
+        }
         
     except HTTPException:
         raise
