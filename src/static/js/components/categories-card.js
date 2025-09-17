@@ -12,9 +12,10 @@ class CategoriesCard extends BaseComponent {
     }
 
 
-    connectedCallback() {
+    async connectedCallback() {
         this.render();
-        this.checkOwnership();
+        await this.checkOwnership();
+        this.render(); // 重新渲染以显示维护按钮
         this.loadData();
     }
 
@@ -153,6 +154,8 @@ class CategoriesCard extends BaseComponent {
             this.categories = this.getMockCategories();
         } finally {
             this.loading = false;
+            // 重新检查所有权状态并渲染
+            await this.checkOwnership();
             this.render();
             // 延迟添加事件监听器，确保DOM已经渲染
             setTimeout(() => {
@@ -328,6 +331,7 @@ class CategoriesCard extends BaseComponent {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-1);
+                    margin: var(--spacing-3) var(--spacing-6) var(--spacing-4) var(--spacing-6);
                 }
 
                 .maintain-button:hover {
@@ -343,8 +347,8 @@ class CategoriesCard extends BaseComponent {
                         ${Icons.categories}
                         分类列表
                     </h3>
-                    ${this.isOwner ? this.renderMaintainButton() : ''}
                 </div>
+                ${this.isOwner ? this.renderMaintainButton() : ''}
                 ${this.loading ? this.renderLoading() : 
                   this.categories.length > 0 ? this.renderCategories() : 
                   this.renderEmptyState()}
@@ -435,7 +439,7 @@ class CategoriesCard extends BaseComponent {
 
     goToMaintenance() {
         if (this.projectId) {
-            window.location.href = `/blog/${this.projectId}/categories/maintenance`;
+            window.open(`/blog/${this.projectId}/categories/maintenance`, '_blank');
         }
     }
 }
