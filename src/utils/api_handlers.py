@@ -7,7 +7,7 @@ API路由处理器
 from fastapi import FastAPI, UploadFile, File, Depends
 from typing import Dict, Any
 
-from src.controllers import metadata, user, blog, project, article, urllink, rss, auth, subscription
+from src.controllers import metadata, user, blog, project, article, urllink, rss, auth, subscription, broadcast
 from src.routes import regkey, user_register
 from src.utils.file_handlers import FileHandler
 from src.utils.file_utils import validate_and_sanitize_path
@@ -35,6 +35,7 @@ class APIHandler:
         app.include_router(rss.router, prefix="/api")
         app.include_router(auth.router, prefix="/api")
         app.include_router(subscription.router, prefix="/api")
+        app.include_router(broadcast.router, prefix="/api")
         app.include_router(regkey.router, prefix="/api")
         app.include_router(user_register.router, prefix="/api")
     
