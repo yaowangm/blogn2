@@ -506,15 +506,18 @@ class BlogHeaderCard extends BaseComponent {
             return;
         }
 
+        // 设置全局引用，以便模态框中的按钮可以访问组件实例
+        window.blogHeaderComponent = this;
+
         // 创建模态框
         const modal = document.createElement('div');
         modal.className = 'edit-blog-modal';
         modal.innerHTML = `
-            <div class="modal-overlay" onclick="this.parentElement.remove()">
+            <div class="modal-overlay" onclick="this.parentElement.remove(); window.blogHeaderComponent = null;">
                 <div class="modal-content" onclick="event.stopPropagation()">
                     <div class="modal-header">
                         <h3>修改博客信息</h3>
-                        <button class="modal-close" onclick="this.closest('.edit-blog-modal').remove()">&times;</button>
+                        <button class="modal-close" onclick="this.closest('.edit-blog-modal').remove(); window.blogHeaderComponent = null;">&times;</button>
                     </div>
                     <div class="modal-body">
                         <form id="edit-blog-form">
@@ -529,8 +532,8 @@ class BlogHeaderCard extends BaseComponent {
                         </form>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn-cancel" onclick="this.closest('.edit-blog-modal').remove()">取消</button>
-                        <button type="button" class="btn-save" onclick="this.getRootNode().host.saveBlogInfo()">保存</button>
+                        <button type="button" class="btn-cancel" onclick="this.closest('.edit-blog-modal').remove(); window.blogHeaderComponent = null;">取消</button>
+                        <button type="button" class="btn-save" onclick="window.blogHeaderComponent.saveBlogInfo()">保存</button>
                     </div>
                 </div>
             </div>
@@ -678,6 +681,9 @@ class BlogHeaderCard extends BaseComponent {
                 if (modal) {
                     modal.remove();
                 }
+                
+                // 清理全局引用
+                window.blogHeaderComponent = null;
                 
                 alert('博客信息更新成功');
             } else {
