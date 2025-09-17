@@ -357,7 +357,7 @@ class BlogPostsListCard extends BaseComponent {
         // 复用 blog-list-card 组件显示原创文章
         return `
             <div class="blog-list-container">
-                <blog-list-card show-category></blog-list-card>
+                <blog-list-card show-category data-page-handler="original"></blog-list-card>
             </div>
         `;
     }
@@ -366,7 +366,7 @@ class BlogPostsListCard extends BaseComponent {
         // 复用 blog-list-card 组件显示订阅文章
         return `
             <div class="blog-list-container">
-                <blog-list-card id="subscription-posts-card"></blog-list-card>
+                <blog-list-card id="subscription-posts-card" data-page-handler="subscription"></blog-list-card>
             </div>
         `;
     }
@@ -383,6 +383,67 @@ class BlogPostsListCard extends BaseComponent {
             .catch(error => {
                 console.warn('⚠️ 加载应用配置失败，使用默认pagesize=10:', error);
             });
+    }
+
+    addEventListeners() {
+        // 监听document上的分页事件
+        document.addEventListener('page-change', (event) => {
+            const target = event.target;
+            let blogListCard = null;
+            
+            // 检查target是否存在且有closest方法
+            if (target && typeof target.closest === 'function') {
+                blogListCard = target.closest('blog-list-card');
+            }
+            
+            if (blogListCard) {
+                const handler = blogListCard.getAttribute('data-page-handler');
+                
+                // 处理原创文章标签页的分页（包括分类列表）
+                if (this.activeTab === 'original' && (handler === 'original' || !handler)) {
+                    this.goToPage(event.detail.page);
+                }
+                // 处理订阅文章标签页的分页
+                else if (this.activeTab === 'subscription' && handler === 'subscription') {
+                    this.goToPage(event.detail.page);
+                }
+            } else {
+                // 如果找不到blog-list-card，可能是从navigation-card直接触发的
+                this.goToPage(event.detail.page);
+            }
+        });
+    }
+
+    isActiveBlogListCard(blogListCard) {
+        // 检查是否是当前激活标签页的blog-list-card
+        if (this.activeTab === 'original') {
+            return !blogListCard.id || blogListCard.id !== 'subscription-posts-card';
+        } else if (this.activeTab === 'subscription') {
+            return blogListCard.id === 'subscription-posts-card';
+        }
+        return false;
+    }
+
+    goToPage(page) {
+        if (page < 1 || page > this.totalPages || page === this.currentPage) {
+            return;
+        }
+        
+        this.currentPage = page;
+        
+        // 更新内嵌的blog-list-card组件的分页
+        const blogListCard = this.shadowRoot.querySelector('blog-list-card');
+        if (blogListCard) {
+            blogListCard.currentPage = page;
+            blogListCard.updatePagination();
+            // 调用blog-list-card的loadContent方法来实际加载数据
+            if (typeof blogListCard.loadContent === 'function') {
+                blogListCard.loadContent(page);
+            }
+        } else {
+            // 如果没有找到blog-list-card，说明需要重新渲染，然后加载数据
+            this.loadData();
+        }
     }
 
     showError(message) {

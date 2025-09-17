@@ -20,6 +20,7 @@ class SubscriptionsListCard extends BaseComponent {
         this.projectId = this.getProjectIdFromUrl();
         this.render();
         this.initializeAsync();
+        this.addEventListeners();
     }
 
     getProjectIdFromUrl() {
@@ -514,33 +515,35 @@ class SubscriptionsListCard extends BaseComponent {
     }
 
     renderPagination() {
-        const prevDisabled = this.currentPage === 1;
-        const nextDisabled = this.currentPage === this.totalPages;
+        if (this.totalPages <= 1) {
+            return '';
+        }
         
-        return `
-            <div class="pagination">
-                <div class="pagination-info">
-                    共 ${this.totalBlogs} 条记录
-                </div>
-                <div class="pagination-controls">
-                    <button class="nav-btn" onclick="this.getRootNode().host.goToPage(1)" ${prevDisabled ? 'disabled' : ''}>
-                        首页
-                    </button>
-                    <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.currentPage - 1})" ${prevDisabled ? 'disabled' : ''}>
-                        上一页
-                    </button>
-                    <div class="page-info">
-                        <span>第 ${this.currentPage} 页，共 ${this.totalPages} 页</span>
-                    </div>
-                    <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.currentPage + 1})" ${nextDisabled ? 'disabled' : ''}>
-                        下一页
-                    </button>
-                    <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.totalPages})" ${nextDisabled ? 'disabled' : ''}>
-                        尾页
-                    </button>
-                </div>
-            </div>
-        `;
+        const pagination = {
+            current_page: this.currentPage,
+            total_pages: this.totalPages,
+            total: this.totalBlogs,
+            has_prev: this.currentPage > 1,
+            has_next: this.currentPage < this.totalPages
+        };
+        
+        return `<navigation-card mode="pagination" pagination='${JSON.stringify(pagination)}'></navigation-card>`;
+    }
+
+    addEventListeners() {
+        // 监听document上的分页事件
+        document.addEventListener('page-change', (event) => {
+            this.goToPage(event.detail.page);
+        });
+    }
+
+    goToPage(page) {
+        if (page < 1 || page > this.totalPages || page === this.currentPage) {
+            return;
+        }
+        
+        this.currentPage = page;
+        this.loadSubscriptions(page);
     }
 }
 

@@ -337,11 +337,21 @@ class NavigationCard extends BaseComponent {
             this.onPageChange(page);
         }
         
-        // 触发自定义事件
-        this.dispatchEvent(new CustomEvent('page-change', {
+        // 触发自定义事件，使用composed: true让事件能够穿越Shadow DOM边界
+        const event = new CustomEvent('page-change', {
             detail: { page },
-            bubbles: true
-        }));
+            bubbles: true,
+            composed: true
+        });
+        this.dispatchEvent(event);
+        
+        // 同时尝试在document上触发事件
+        const docEvent = new CustomEvent('page-change', {
+            detail: { page },
+            bubbles: true,
+            composed: true
+        });
+        document.dispatchEvent(docEvent);
     }
 }
 
