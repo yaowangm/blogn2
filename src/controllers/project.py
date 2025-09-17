@@ -18,6 +18,8 @@ from src.utils.cache import (
 )
 from src.utils.auth_dependencies import get_current_user, get_optional_current_user
 from src.utils.permission_manager import permission_manager
+from src.services.blog_service import BlogService
+from src.repositories.user_repository import UserRepository
 from src.constants import ArticleStatus
 from src.utils.file_utils import get_temp_dir
 from src.utils.time_utils import TimeUtils
@@ -137,23 +139,18 @@ async def get_project_posts(
         
         # 转换为字典格式
         posts_data = []
+        
+        # 创建BlogService实例用于头像检查
+        user_repo = UserRepository(session)
+        project_item_repo = ProjectItemRepository(session)
+        project_repo = ProjectRepository(session)
+        post_repo = PostRepository(session)
+        blog_service = BlogService(user_repo, project_item_repo, project_repo, post_repo)
+        
         for post in posts:
             # 生成头像路径 - 使用BlogService检查头像是否存在
             avatar_path = None
             if post["userid"]:
-                from src.services.blog_service import BlogService
-                from src.repositories.user_repository import UserRepository
-                from src.repositories.project_item_repository import ProjectItemRepository
-                from src.repositories.project_repository import ProjectRepository
-                from src.repositories.post_repository import PostRepository
-                
-                # 创建BlogService实例来检查头像
-                user_repo = UserRepository(session)
-                project_item_repo = ProjectItemRepository(session)
-                project_repo = ProjectRepository(session)
-                post_repo = PostRepository(session)
-                blog_service = BlogService(user_repo, project_item_repo, project_repo, post_repo)
-                
                 avatar_path = blog_service._check_avatar_exists(post["userid"])
             
             posts_data.append({
@@ -210,12 +207,6 @@ async def get_project_recent_comments(
         userid = comment["userid"]
         avatar_path = None
         if userid:
-            from src.services.blog_service import BlogService
-            from src.repositories.user_repository import UserRepository
-            from src.repositories.project_item_repository import ProjectItemRepository
-            from src.repositories.project_repository import ProjectRepository
-            from src.repositories.post_repository import PostRepository
-            
             # 创建BlogService实例来检查头像
             user_repo = UserRepository(session)
             project_item_repo = ProjectItemRepository(session)
