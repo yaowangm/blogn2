@@ -49,8 +49,12 @@ class SubscriptionRepository:
             # 生成头像路径
             avatar_path = None
             if project_item.userid:
+                # 检查头像文件是否存在
+                import os
                 prefix = (project_item.userid // 10000) + 1
-                avatar_path = f"/avatar/{prefix}/s_{project_item.userid}.jpg"
+                real_path = f"../pic/blogn_img/userlogo/{prefix}/s_{project_item.userid}.jpg"
+                if os.path.exists(real_path):
+                    avatar_path = f"/avatar/{prefix}/s_{project_item.userid}.jpg"
             
             posts.append({
                 "id": project_item.id,

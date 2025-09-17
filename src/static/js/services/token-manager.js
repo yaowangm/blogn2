@@ -320,7 +320,7 @@ class TokenManager {
                     return await originalFetch(...args);
                 }
             };
-            console.log('全局请求拦截器设置成功');
+            // console.log('全局请求拦截器设置成功');
         } catch (error) {
             console.error('设置全局请求拦截器失败:', error);
         }

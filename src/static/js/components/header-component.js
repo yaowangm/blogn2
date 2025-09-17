@@ -638,14 +638,14 @@ class HeaderComponent extends BaseComponent {
     loadTokenManager() {
         // 检查token-manager是否已经加载
         if (window.tokenManager) {
-            console.log('TokenManager already loaded');
+            // console.log('TokenManager already loaded');
             return;
         }
 
         // 检查是否已经有token-manager脚本
         const existingScript = document.querySelector('script[src="/static/js/services/token-manager.js"]');
         if (existingScript) {
-            console.log('TokenManager script already exists');
+            // console.log('TokenManager script already exists');
             return;
         }
 
@@ -653,7 +653,7 @@ class HeaderComponent extends BaseComponent {
         const script = document.createElement('script');
         script.src = '/static/js/services/token-manager.js';
         script.onload = () => {
-            console.log('TokenManager loaded successfully');
+            // console.log('TokenManager loaded successfully');
         };
         script.onerror = () => {
             console.error('Failed to load token-manager.js');

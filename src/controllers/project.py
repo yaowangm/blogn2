@@ -138,11 +138,23 @@ async def get_project_posts(
         # 转换为字典格式
         posts_data = []
         for post in posts:
-            # 生成头像路径
+            # 生成头像路径 - 使用BlogService检查头像是否存在
             avatar_path = None
             if post["userid"]:
-                prefix = (post["userid"] // 10000) + 1
-                avatar_path = f"/avatar/{prefix}/s_{post['userid']}.jpg"
+                from src.services.blog_service import BlogService
+                from src.repositories.user_repository import UserRepository
+                from src.repositories.project_item_repository import ProjectItemRepository
+                from src.repositories.project_repository import ProjectRepository
+                from src.repositories.post_repository import PostRepository
+                
+                # 创建BlogService实例来检查头像
+                user_repo = UserRepository(session)
+                project_item_repo = ProjectItemRepository(session)
+                project_repo = ProjectRepository(session)
+                post_repo = PostRepository(session)
+                blog_service = BlogService(user_repo, project_item_repo, project_repo, post_repo)
+                
+                avatar_path = blog_service._check_avatar_exists(post["userid"])
             
             posts_data.append({
                 "id": post["id"],
@@ -198,8 +210,20 @@ async def get_project_recent_comments(
         userid = comment["userid"]
         avatar_path = None
         if userid:
-            prefix = (userid // 10000) + 1
-            avatar_path = f"/avatar/{prefix}/s_{userid}.jpg"
+            from src.services.blog_service import BlogService
+            from src.repositories.user_repository import UserRepository
+            from src.repositories.project_item_repository import ProjectItemRepository
+            from src.repositories.project_repository import ProjectRepository
+            from src.repositories.post_repository import PostRepository
+            
+            # 创建BlogService实例来检查头像
+            user_repo = UserRepository(session)
+            project_item_repo = ProjectItemRepository(session)
+            project_repo = ProjectRepository(session)
+            post_repo = PostRepository(session)
+            blog_service = BlogService(user_repo, project_item_repo, project_repo, post_repo)
+            
+            avatar_path = blog_service._check_avatar_exists(userid)
         
         comments_data.append({
             "id": comment["id"],
