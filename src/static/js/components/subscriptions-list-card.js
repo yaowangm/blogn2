@@ -251,11 +251,13 @@ class SubscriptionsListCard extends BaseComponent {
                     border-radius: var(--radius-lg);
                     transition: var(--transition-fast);
                     background: var(--white);
+                    cursor: pointer;
                 }
                 
                 .blog-item:hover {
                     box-shadow: var(--shadow-md);
                     transform: translateY(-1px);
+                    border-color: var(--primary-color);
                 }
                 
                 .blog-avatar {
@@ -288,11 +290,6 @@ class SubscriptionsListCard extends BaseComponent {
                     font-weight: 600;
                     color: var(--gray-900);
                     margin: 0 0 var(--spacing-1) 0;
-                    text-decoration: none;
-                }
-                
-                .blog-name:hover {
-                    color: var(--primary-color);
                 }
                 
                 .blog-description {
@@ -355,6 +352,16 @@ class SubscriptionsListCard extends BaseComponent {
                 .btn-danger:hover {
                     background-color: #dc2626;
                     border-color: #dc2626;
+                }
+                
+                .blog-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                }
+                
+                .blog-actions .btn {
+                    pointer-events: auto;
                 }
                 
                 .btn:disabled {
@@ -481,19 +488,19 @@ class SubscriptionsListCard extends BaseComponent {
             new Date(blog.subscribed_at).toLocaleDateString('zh-CN') : '未知时间';
         
         const unsubscribeButton = this.isOwner ? 
-            `<button class="btn btn-danger" onclick="this.getRootNode().host.unsubscribeFromBlog(${blog.relation_id}, ${blog.project_id}, '${this.escapeHtml(blog.project_name)}')">
+            `<button class="btn btn-danger" onclick="event.stopPropagation(); this.getRootNode().host.unsubscribeFromBlog(${blog.relation_id}, ${blog.project_id}, '${this.escapeHtml(blog.project_name)}')">
                 取消订阅
             </button>` : '';
 
         return `
-            <div class="blog-item">
+            <div class="blog-item" onclick="window.open('/blog/${blog.project_id}', '_blank')" style="cursor: pointer;">
                 <div class="blog-avatar">
                     ${avatar}
                 </div>
                 <div class="blog-content">
-                    <a href="/blog/${blog.project_id}" class="blog-name" target="_blank">
+                    <div class="blog-name">
                         ${this.escapeHtml(blog.project_name)}
-                    </a>
+                    </div>
                     <p class="blog-description">${this.escapeHtml(blog.project_description || '暂无描述')}</p>
                     <div class="blog-meta">
                         <span>作者: ${this.escapeHtml(blog.user_name)}</span>
@@ -501,9 +508,6 @@ class SubscriptionsListCard extends BaseComponent {
                     </div>
                 </div>
                 <div class="blog-actions">
-                    <a href="/blog/${blog.project_id}" class="btn btn-primary" target="_blank">
-                        访问博客
-                    </a>
                     ${unsubscribeButton}
                 </div>
             </div>
