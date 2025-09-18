@@ -19,7 +19,7 @@ class TestArticleCommentsWithRealDB:
     """文章评论功能测试类 - 真实数据库版本"""
 
     @pytest.mark.integration
-    def test_create_article_comment_anonymous(self, test_client, real_sync_session):
+    def test_create_article_comment_anonymous(self, test_client, real_sync_session_with_commit):
         """测试匿名用户创建文章评论"""
         # 创建测试用户（不指定ID，让数据库自动生成）
         user = User(
@@ -28,8 +28,8 @@ class TestArticleCommentsWithRealDB:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 获取生成的用户ID
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 获取生成的用户ID
         
         # 创建测试项目
         project = Project(
@@ -39,8 +39,8 @@ class TestArticleCommentsWithRealDB:
             state=0,
             accesscount=0
         )
-        real_sync_session.add(project)
-        real_sync_session.flush()  # 获取生成的项目ID
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.flush()  # 获取生成的项目ID
         
         # 创建测试文章（允许匿名评论）
         article = ProjectItem(
@@ -53,8 +53,9 @@ class TestArticleCommentsWithRealDB:
             status=1,
             allowpost=1  # 允许匿名评论
         )
-        real_sync_session.add(article)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(article)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 测试创建匿名评论
         comment_data = {
@@ -74,7 +75,7 @@ class TestArticleCommentsWithRealDB:
         assert data["message"] == "评论创建成功"
         
         # 验证评论已保存到数据库
-        comment_result = real_sync_session.exec(
+        comment_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == data["comment_id"])
         )
         comment = comment_result.first()
@@ -85,7 +86,7 @@ class TestArticleCommentsWithRealDB:
         assert comment.status == 1
 
     @pytest.mark.integration
-    def test_create_article_comment_logged_in(self, test_client, real_sync_session):
+    def test_create_article_comment_logged_in(self, test_client, real_sync_session_with_commit):
         """测试登录用户创建文章评论"""
         # 创建测试用户（不指定ID，让数据库自动生成）
         user = User(
@@ -94,8 +95,8 @@ class TestArticleCommentsWithRealDB:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 获取生成的用户ID
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 获取生成的用户ID
         
         # 创建测试项目
         project = Project(
@@ -105,8 +106,8 @@ class TestArticleCommentsWithRealDB:
             state=0,
             accesscount=0
         )
-        real_sync_session.add(project)
-        real_sync_session.flush()  # 获取生成的项目ID
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.flush()  # 获取生成的项目ID
         
         # 创建测试文章（只允许登录用户评论）
         article = ProjectItem(
@@ -119,8 +120,9 @@ class TestArticleCommentsWithRealDB:
             status=1,
             allowpost=2  # 只允许登录用户评论
         )
-        real_sync_session.add(article)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(article)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 模拟登录用户（这里需要实际的认证机制，暂时跳过认证检查）
         # 在实际应用中，这里应该设置有效的认证token
@@ -139,7 +141,7 @@ class TestArticleCommentsWithRealDB:
         assert response.status_code in [401, 403]
 
     @pytest.mark.integration
-    def test_create_article_comment_disabled(self, test_client, real_sync_session):
+    def test_create_article_comment_disabled(self, test_client, real_sync_session_with_commit):
         """测试评论功能被禁用的文章"""
         # 创建测试用户（不指定ID，让数据库自动生成）
         user = User(
@@ -148,8 +150,8 @@ class TestArticleCommentsWithRealDB:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 获取生成的用户ID
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 获取生成的用户ID
         
         # 创建测试项目
         project = Project(
@@ -159,8 +161,8 @@ class TestArticleCommentsWithRealDB:
             state=0,
             accesscount=0
         )
-        real_sync_session.add(project)
-        real_sync_session.flush()  # 获取生成的项目ID
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.flush()  # 获取生成的项目ID
         
         # 创建测试文章（禁用评论）
         article = ProjectItem(
@@ -173,8 +175,9 @@ class TestArticleCommentsWithRealDB:
             status=1,
             allowpost=3  # 禁用评论
         )
-        real_sync_session.add(article)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(article)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 尝试创建评论
         comment_data = {
@@ -192,7 +195,7 @@ class TestArticleCommentsWithRealDB:
         assert "已关闭评论功能" in data["detail"]
 
     @pytest.mark.integration
-    def test_create_article_comment_empty_content(self, test_client, real_sync_session):
+    def test_create_article_comment_empty_content(self, test_client, real_sync_session_with_commit):
         """测试创建空内容评论"""
         # 创建测试用户（不指定ID，让数据库自动生成）
         user = User(
@@ -201,8 +204,8 @@ class TestArticleCommentsWithRealDB:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 获取生成的用户ID
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 获取生成的用户ID
         
         # 创建测试项目
         project = Project(
@@ -212,8 +215,8 @@ class TestArticleCommentsWithRealDB:
             state=0,
             accesscount=0
         )
-        real_sync_session.add(project)
-        real_sync_session.flush()  # 获取生成的项目ID
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.flush()  # 获取生成的项目ID
         
         # 创建测试文章
         article = ProjectItem(
@@ -226,8 +229,9 @@ class TestArticleCommentsWithRealDB:
             status=1,
             allowpost=1
         )
-        real_sync_session.add(article)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(article)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 尝试创建空内容评论
         comment_data = {
@@ -262,7 +266,7 @@ class TestArticleCommentsWithRealDB:
         assert "文章不存在" in data["detail"]
 
     @pytest.mark.integration
-    def test_get_article_comments(self, test_client, real_sync_session):
+    def test_get_article_comments(self, test_client, real_sync_session_with_commit):
         """测试获取文章评论列表"""
         # 创建测试用户（不指定ID，让数据库自动生成）
         user = User(
@@ -271,8 +275,8 @@ class TestArticleCommentsWithRealDB:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 获取生成的用户ID
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 获取生成的用户ID
         
         # 创建测试项目
         project = Project(
@@ -282,8 +286,8 @@ class TestArticleCommentsWithRealDB:
             state=0,
             accesscount=0
         )
-        real_sync_session.add(project)
-        real_sync_session.flush()  # 获取生成的项目ID
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.flush()  # 获取生成的项目ID
         
         # 创建测试文章
         article = ProjectItem(
@@ -296,8 +300,8 @@ class TestArticleCommentsWithRealDB:
             status=1,
             allowpost=1
         )
-        real_sync_session.add(article)
-        real_sync_session.flush()  # 获取生成的文章ID
+        real_sync_session_with_commit.add(article)
+        real_sync_session_with_commit.flush()  # 获取生成的文章ID
         
         # 创建测试评论
         comment1 = Post(
@@ -314,7 +318,8 @@ class TestArticleCommentsWithRealDB:
             rootid=0,
             replycount=0
         )
-        real_sync_session.add(comment1)
+        real_sync_session_with_commit.add(comment1)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
         
         comment2 = Post(
             folderid=0,
@@ -330,8 +335,9 @@ class TestArticleCommentsWithRealDB:
             rootid=0,
             replycount=0
         )
-        real_sync_session.add(comment2)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(comment2)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 获取评论列表
         response = test_client.get(f"/api/articles/{article.id}/comments")
@@ -363,7 +369,7 @@ class TestArticleCommentsWithRealDB:
         assert "文章不存在" in data["detail"]
 
     @pytest.mark.integration
-    def test_get_article_comments_pagination_first_page(self, test_client, real_sync_session):
+    def test_get_article_comments_pagination_first_page(self, test_client, real_sync_session_with_commit):
         """测试评论列表分页功能 - 第一页"""
         # 创建测试用户（不指定ID，让数据库自动生成）
         user = User(
@@ -372,8 +378,8 @@ class TestArticleCommentsWithRealDB:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 获取生成的用户ID
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 获取生成的用户ID
         
         # 创建测试项目
         project = Project(
@@ -383,8 +389,8 @@ class TestArticleCommentsWithRealDB:
             state=0,
             accesscount=0
         )
-        real_sync_session.add(project)
-        real_sync_session.flush()  # 获取生成的项目ID
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.flush()  # 获取生成的项目ID
         
         # 创建测试文章
         article = ProjectItem(
@@ -397,8 +403,8 @@ class TestArticleCommentsWithRealDB:
             status=1,
             allowpost=1
         )
-        real_sync_session.add(article)
-        real_sync_session.flush()  # 获取生成的文章ID
+        real_sync_session_with_commit.add(article)
+        real_sync_session_with_commit.flush()  # 获取生成的文章ID
         
         # 创建多个测试评论
         for i in range(5):
@@ -416,8 +422,9 @@ class TestArticleCommentsWithRealDB:
                 rootid=0,
                 replycount=0
             )
-            real_sync_session.add(comment)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+            real_sync_session_with_commit.add(comment)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 测试第一页（每页3条）
         response = test_client.get(f"/api/articles/{article.id}/comments?page=1&limit=3")
@@ -426,7 +433,7 @@ class TestArticleCommentsWithRealDB:
         assert len(data) == 3
 
     @pytest.mark.integration
-    def test_get_article_comments_pagination_second_page(self, test_client, real_sync_session):
+    def test_get_article_comments_pagination_second_page(self, test_client, real_sync_session_with_commit):
         """测试评论列表分页功能 - 第二页"""
         # 创建测试用户（不指定ID，让数据库自动生成）
         user = User(
@@ -435,8 +442,8 @@ class TestArticleCommentsWithRealDB:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 获取生成的用户ID
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 获取生成的用户ID
         
         # 创建测试项目
         project = Project(
@@ -446,8 +453,8 @@ class TestArticleCommentsWithRealDB:
             state=0,
             accesscount=0
         )
-        real_sync_session.add(project)
-        real_sync_session.flush()  # 获取生成的项目ID
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.flush()  # 获取生成的项目ID
         
         # 创建测试文章
         article = ProjectItem(
@@ -460,8 +467,8 @@ class TestArticleCommentsWithRealDB:
             status=1,
             allowpost=1
         )
-        real_sync_session.add(article)
-        real_sync_session.flush()  # 获取生成的文章ID
+        real_sync_session_with_commit.add(article)
+        real_sync_session_with_commit.flush()  # 获取生成的文章ID
         
         # 创建多个测试评论
         for i in range(5):
@@ -479,8 +486,9 @@ class TestArticleCommentsWithRealDB:
                 rootid=0,
                 replycount=0
             )
-            real_sync_session.add(comment)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+            real_sync_session_with_commit.add(comment)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 测试第二页
         response = test_client.get(f"/api/articles/{article.id}/comments?page=2&limit=3")

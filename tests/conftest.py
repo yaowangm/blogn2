@@ -133,11 +133,10 @@ def real_sync_session(real_sync_engine):
 
 @pytest.fixture
 def real_sync_session_with_commit(real_sync_engine):
-    """创建真实PostgreSQL同步会话 - 测试后回滚所有更改"""
+    """创建真实PostgreSQL同步会话 - 允许提交但测试后回滚所有更改"""
     session = Session(real_sync_engine)
     try:
-        # 开始事务
-        session.begin()
+        # 不开始事务，允许直接提交
         yield session
     finally:
         # 测试结束后回滚所有更改

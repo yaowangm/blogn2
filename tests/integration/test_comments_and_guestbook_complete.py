@@ -18,7 +18,7 @@ class TestCommentsAndGuestbookComplete:
     """评论和留言本功能完整测试类 - 真实数据库版本"""
 
     @pytest.mark.integration
-    def test_article_comment_workflow_create(self, test_client, real_sync_session):
+    def test_article_comment_workflow_create(self, test_client, real_sync_session_with_commit):
         """测试文章评论创建工作流程"""
         # 1. 创建测试用户
         user = User(
@@ -27,8 +27,9 @@ class TestCommentsAndGuestbookComplete:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 2. 创建测试项目
         project = Project(
@@ -38,8 +39,9 @@ class TestCommentsAndGuestbookComplete:
             state=0,
             accesscount=0
         )
-        real_sync_session.add(project)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 3. 创建测试文章（允许匿名评论）
         article = ProjectItem(
@@ -52,8 +54,9 @@ class TestCommentsAndGuestbookComplete:
             status=1,
             allowpost=1  # 允许匿名评论
         )
-        real_sync_session.add(article)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(article)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 4. 测试创建匿名评论
         comment_data = {
@@ -73,7 +76,7 @@ class TestCommentsAndGuestbookComplete:
         comment_id = data["comment_id"]
         
         # 5. 验证评论已保存到数据库
-        comment_result = real_sync_session.exec(
+        comment_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == comment_id)
         )
         comment = comment_result.first()
@@ -84,7 +87,7 @@ class TestCommentsAndGuestbookComplete:
         assert comment.status == 1
 
     @pytest.mark.integration
-    def test_article_comment_workflow_get(self, test_client, real_sync_session):
+    def test_article_comment_workflow_get(self, test_client, real_sync_session_with_commit):
         """测试文章评论获取工作流程"""
         # 1. 创建测试用户
         user = User(
@@ -93,8 +96,9 @@ class TestCommentsAndGuestbookComplete:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 2. 创建测试项目
         project = Project(
@@ -104,8 +108,9 @@ class TestCommentsAndGuestbookComplete:
             state=0,
             accesscount=0
         )
-        real_sync_session.add(project)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 3. 创建测试文章（允许匿名评论）
         article = ProjectItem(
@@ -118,8 +123,9 @@ class TestCommentsAndGuestbookComplete:
             status=1,
             allowpost=1  # 允许匿名评论
         )
-        real_sync_session.add(article)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(article)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 4. 创建测试评论
         comment = Post(
@@ -136,8 +142,9 @@ class TestCommentsAndGuestbookComplete:
             rootid=0,
             replycount=0
         )
-        real_sync_session.add(comment)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(comment)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 5. 测试获取评论列表
         response = test_client.get(f"/api/articles/{article.id}/comments")
@@ -151,7 +158,7 @@ class TestCommentsAndGuestbookComplete:
         assert comment_data["user_id"] == 0
 
     @pytest.mark.integration
-    def test_guestbook_workflow_create(self, test_client, real_sync_session):
+    def test_guestbook_workflow_create(self, test_client, real_sync_session_with_commit):
         """测试留言本创建工作流程"""
         # 1. 创建测试用户
         user = User(
@@ -160,8 +167,9 @@ class TestCommentsAndGuestbookComplete:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 2. 测试创建匿名留言
         message_data = {
@@ -182,7 +190,7 @@ class TestCommentsAndGuestbookComplete:
         message_id = data["message_id"]
         
         # 3. 验证留言已保存到数据库
-        message_result = real_sync_session.exec(
+        message_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == message_id)
         )
         message = message_result.first()
@@ -194,7 +202,7 @@ class TestCommentsAndGuestbookComplete:
         assert message.rootid == 0  # 主贴的rootid为0
 
     @pytest.mark.integration
-    def test_guestbook_workflow_reply(self, test_client, real_sync_session):
+    def test_guestbook_workflow_reply(self, test_client, real_sync_session_with_commit):
         """测试留言本回复工作流程"""
         # 1. 创建测试用户
         user = User(
@@ -203,8 +211,9 @@ class TestCommentsAndGuestbookComplete:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 2. 创建测试留言
         message = Post(
@@ -221,8 +230,9 @@ class TestCommentsAndGuestbookComplete:
             rootid=0,  # 主贴的rootid为0
             replycount=0
         )
-        real_sync_session.add(message)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(message)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 3. 测试创建跟贴
         reply_data = {
@@ -243,7 +253,7 @@ class TestCommentsAndGuestbookComplete:
         reply_id = data["message_id"]
         
         # 4. 验证跟贴已保存到数据库
-        reply_result = real_sync_session.exec(
+        reply_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == reply_id)
         )
         reply = reply_result.first()
@@ -253,7 +263,7 @@ class TestCommentsAndGuestbookComplete:
         assert reply.projectitemid == 0  # 留言本
 
     @pytest.mark.integration
-    def test_guestbook_workflow_get(self, test_client, real_sync_session):
+    def test_guestbook_workflow_get(self, test_client, real_sync_session_with_commit):
         """测试留言本获取工作流程"""
         # 1. 创建测试用户
         user = User(
@@ -262,8 +272,9 @@ class TestCommentsAndGuestbookComplete:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 2. 创建测试留言
         message = Post(
@@ -280,8 +291,9 @@ class TestCommentsAndGuestbookComplete:
             rootid=0,  # 主贴的rootid为0
             replycount=0
         )
-        real_sync_session.add(message)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(message)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 3. 测试获取主题留言
         response = test_client.get(f"/api/thread/{message.id}")
@@ -301,7 +313,7 @@ class TestCommentsAndGuestbookComplete:
         assert main_post["content"] == "这是一条测试留言内容"
 
     @pytest.mark.integration
-    def test_comment_permissions_anonymous_allowed(self, test_client, real_sync_session):
+    def test_comment_permissions_anonymous_allowed(self, test_client, real_sync_session_with_commit):
         """测试评论权限验证 - 允许匿名评论"""
         # 创建测试用户
         user = User(
@@ -310,8 +322,9 @@ class TestCommentsAndGuestbookComplete:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 创建测试项目
         project = Project(
@@ -321,8 +334,9 @@ class TestCommentsAndGuestbookComplete:
             state=0,
             accesscount=0
         )
-        real_sync_session.add(project)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 测试1: 允许匿名评论的文章
         article1 = ProjectItem(
@@ -335,8 +349,9 @@ class TestCommentsAndGuestbookComplete:
             status=1,
             allowpost=1  # 允许匿名评论
         )
-        real_sync_session.add(article1)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(article1)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         comment_data = {
             "content": "匿名评论测试",
@@ -350,7 +365,7 @@ class TestCommentsAndGuestbookComplete:
         assert response.status_code == 200
 
     @pytest.mark.integration
-    def test_comment_permissions_login_required(self, test_client, real_sync_session):
+    def test_comment_permissions_login_required(self, test_client, real_sync_session_with_commit):
         """测试评论权限验证 - 需要登录"""
         # 创建测试用户
         user = User(
@@ -359,8 +374,9 @@ class TestCommentsAndGuestbookComplete:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 创建测试项目
         project = Project(
@@ -370,8 +386,9 @@ class TestCommentsAndGuestbookComplete:
             state=0,
             accesscount=0
         )
-        real_sync_session.add(project)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 测试2: 只允许登录用户评论的文章
         article2 = ProjectItem(
@@ -384,8 +401,9 @@ class TestCommentsAndGuestbookComplete:
             status=1,
             allowpost=2  # 只允许登录用户评论
         )
-        real_sync_session.add(article2)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(article2)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         comment_data = {
             "content": "匿名评论测试",
@@ -399,7 +417,7 @@ class TestCommentsAndGuestbookComplete:
         assert response.status_code == 401  # 需要登录
 
     @pytest.mark.integration
-    def test_comment_permissions_disabled(self, test_client, real_sync_session):
+    def test_comment_permissions_disabled(self, test_client, real_sync_session_with_commit):
         """测试评论权限验证 - 评论被禁用"""
         # 创建测试用户
         user = User(
@@ -408,8 +426,9 @@ class TestCommentsAndGuestbookComplete:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 创建测试项目
         project = Project(
@@ -419,8 +438,9 @@ class TestCommentsAndGuestbookComplete:
             state=0,
             accesscount=0
         )
-        real_sync_session.add(project)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 测试3: 禁用评论的文章
         article3 = ProjectItem(
@@ -433,8 +453,9 @@ class TestCommentsAndGuestbookComplete:
             status=1,
             allowpost=3  # 禁用评论
         )
-        real_sync_session.add(article3)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(article3)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         comment_data = {
             "content": "匿名评论测试",
@@ -445,10 +466,10 @@ class TestCommentsAndGuestbookComplete:
             f"/api/articles/{article3.id}/comments",
             json=comment_data
         )
-        assert response.status_code == 403  # 评论被禁用        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        assert response.status_code == 403  # 评论被禁用
 
     @pytest.mark.integration
-    def test_data_validation(self, test_client, real_sync_session):
+    def test_data_validation(self, test_client, real_sync_session_with_commit):
         """测试数据验证"""
         # 创建测试用户
         user = User(
@@ -457,8 +478,9 @@ class TestCommentsAndGuestbookComplete:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 创建测试项目
         project = Project(
@@ -468,8 +490,9 @@ class TestCommentsAndGuestbookComplete:
             state=0,
             accesscount=0
         )
-        real_sync_session.add(project)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 创建测试文章
         article = ProjectItem(
@@ -482,8 +505,9 @@ class TestCommentsAndGuestbookComplete:
             status=1,
             allowpost=1
         )
-        real_sync_session.add(article)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(article)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 测试1: 空内容评论
         comment_data = {
@@ -545,7 +569,7 @@ class TestCommentsAndGuestbookComplete:
         data = response.json()
         assert "标题不能超过200个字符" in data["detail"]
         
-        # 清理测试数据        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        # 清理测试数据
 
     @pytest.mark.integration
     def test_nonexistent_article_comment_create(self, test_client):
