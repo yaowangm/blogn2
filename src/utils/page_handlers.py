@@ -101,6 +101,12 @@ class PageHandler:
             """分类维护页面路由"""
             return FileResponse("src/static/category-maintenance.html")
         
+        # 管理友情链接页面
+        @router.get("/manage-friend-links")
+        async def manage_friend_links_page():
+            """管理友情链接页面路由"""
+            return FileResponse("src/static/manage-friend-links.html")
+        
         # 调试页面
         @router.get("/debug/article-api")
         async def debug_article_api():

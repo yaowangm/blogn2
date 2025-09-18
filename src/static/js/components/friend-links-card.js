@@ -10,11 +10,14 @@ class FriendLinksCard extends BaseComponent {
         this.projectId = null;
         this.friendLinks = [];
         this.loading = true;
+        this.isOwner = false;
+        this.isAdmin = false;
     }
 
 
-    connectedCallback() {
+    async connectedCallback() {
         this.projectId = this.getProjectIdFromUrl();
+        await this.checkOwnership();
         this.render();
         this.loadData();
     }
@@ -22,6 +25,46 @@ class FriendLinksCard extends BaseComponent {
     getProjectIdFromUrl() {
         // 使用基类的统一方法
         return this.getProjectId();
+    }
+
+    async checkOwnership() {
+        // 检查UserManager是否可用
+        if (typeof UserManager === 'undefined') {
+            this.isOwner = false;
+            this.isAdmin = false;
+            return;
+        }
+
+        // 如果未登录，不是所有者
+        if (!UserManager.isLoggedIn()) {
+            this.isOwner = false;
+            this.isAdmin = false;
+            return;
+        }
+
+        const currentUser = UserManager.getCurrentUser();
+        
+        // 检查是否为管理员（state为10表示管理员）
+        this.isAdmin = currentUser.state === 10;
+
+        // 检查是否为博客所有者
+        if (this.projectId) {
+            try {
+                // 获取博客信息
+                const response = await fetch(`/api/projects/${this.projectId}`);
+                if (response.ok) {
+                    const blogData = await response.json();
+                    this.isOwner = currentUser.id === blogData.userid;
+                } else {
+                    this.isOwner = false;
+                }
+            } catch (error) {
+                console.error('检查所有权失败:', error);
+                this.isOwner = false;
+            }
+        } else {
+            this.isOwner = false;
+        }
     }
 
     async loadData() {
@@ -73,8 +116,27 @@ class FriendLinksCard extends BaseComponent {
             this.friendLinks = this.getDefaultFriendLinks();
         } finally {
             this.loading = false;
+            // 重新检查权限并渲染
+            await this.checkOwnership();
             this.render();
+            this.addEventListeners();
         }
+    }
+
+    addEventListeners() {
+        // 延迟添加事件监听器，确保DOM已经渲染
+        setTimeout(() => {
+            const manageButton = this.shadowRoot.querySelector('.manage-button');
+            if (manageButton) {
+                manageButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const projectId = this.projectId;
+                    if (projectId) {
+                        window.open(`/manage-friend-links?project_id=${projectId}`, '_blank');
+                    }
+                });
+            }
+        }, 100);
     }
 
     getDefaultFriendLinks() {
@@ -122,7 +184,33 @@ class FriendLinksCard extends BaseComponent {
                     margin: 0;
                     display: flex;
                     align-items: center;
+                    justify-content: space-between;
+                }
+
+                .card-title-left {
+                    display: flex;
+                    align-items: center;
                     gap: var(--spacing-2);
+                }
+
+                .manage-button {
+                    padding: var(--spacing-1) var(--spacing-2);
+                    background: var(--primary-color);
+                    color: var(--white);
+                    border: none;
+                    border-radius: var(--radius-sm);
+                    font-size: var(--font-size-xs);
+                    cursor: pointer;
+                    transition: var(--transition-fast);
+                    text-decoration: none;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: var(--spacing-1);
+                }
+
+                .manage-button:hover {
+                    background: var(--primary-dark);
+                    transform: translateY(-1px);
                 }
 
                 .card-title-icon {
@@ -182,8 +270,17 @@ class FriendLinksCard extends BaseComponent {
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">
-                        ${Icons.friendLinks}
-                        友情链接
+                        <div class="card-title-left">
+                            🔗 友情链接
+                        </div>
+                        ${(this.isOwner || this.isAdmin) ? `
+                            <a href="/manage-friend-links?project_id=${this.projectId}" 
+                               class="manage-button" 
+                               target="_blank" 
+                               title="管理友情链接">
+                                ⚙️ 管理
+                            </a>
+                        ` : ''}
                     </h3>
                 </div>
                 <div class="card-body">

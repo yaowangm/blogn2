@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理友情链接 - 博客管理系统</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <style>
+        body {
+            background: var(--gray-50);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-6);
+        }
+        
+        .page-header {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--gray-200);
+            padding: var(--spacing-6);
+            margin-bottom: var(--spacing-6);
+        }
+        
+        .page-title {
+            font-size: var(--font-size-2xl);
+            font-weight: 700;
+            color: var(--gray-900);
+            margin: 0 0 var(--spacing-2) 0;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-3);
+        }
+        
+        .page-title-icon {
+            font-size: var(--font-size-xl);
+        }
+        
+        .page-description {
+            color: var(--gray-600);
+            font-size: var(--font-size-base);
+            margin: 0;
+        }
+        
+        .management-container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: var(--spacing-6);
+        }
+        
+        .links-section {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--gray-200);
+            overflow: hidden;
+        }
+        
+        .section-header {
+            padding: var(--spacing-5);
+            border-bottom: 1px solid var(--gray-200);
+            background: var(--gray-50);
+        }
+        
+        .section-title {
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            color: var(--gray-900);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .add-button {
+            padding: var(--spacing-2) var(--spacing-4);
+            background: var(--primary-color);
+            color: var(--white);
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+        
+        .add-button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+        
+        .links-list {
+            padding: var(--spacing-5);
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-4);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-3);
+            background: var(--gray-50);
+            transition: var(--transition-fast);
+        }
+        
+        .link-item:hover {
+            background: var(--white);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .link-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .link-name {
+            font-weight: 500;
+            color: var(--gray-900);
+            margin-bottom: var(--spacing-1);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .link-url {
+            font-size: var(--font-size-sm);
+            color: var(--gray-600);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .link-actions {
+            display: flex;
+            gap: var(--spacing-2);
+        }
+        
+        .action-button {
+            padding: var(--spacing-1) var(--spacing-2);
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+        
+        .edit-button {
+            background: var(--blue-100);
+            color: var(--blue-700);
+        }
+        
+        .edit-button:hover {
+            background: var(--blue-200);
+        }
+        
+        .delete-button {
+            background: var(--red-100);
+            color: var(--red-700);
+        }
+        
+        .delete-button:hover {
+            background: var(--red-200);
+        }
+        
+        .form-section {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--gray-200);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .form-section.hidden {
+            display: none !important;
+        }
+        
+        .form-content {
+            padding: var(--spacing-5);
+        }
+        
+        .form-group {
+            margin-bottom: var(--spacing-4);
+        }
+        
+        .form-label {
+            display: block;
+            font-weight: 500;
+            color: var(--gray-700);
+            margin-bottom: var(--spacing-2);
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: var(--spacing-3);
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-sm);
+            transition: var(--transition-fast);
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px var(--primary-100);
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: var(--spacing-3);
+            margin-top: var(--spacing-6);
+        }
+        
+        .submit-button {
+            flex: 1;
+            padding: var(--spacing-3) var(--spacing-4);
+            background: var(--primary-color);
+            color: var(--white);
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+        
+        .submit-button:hover {
+            background: var(--primary-dark);
+        }
+        
+        .cancel-button {
+            flex: 1;
+            padding: var(--spacing-3) var(--spacing-4);
+            background: var(--gray-100);
+            color: var(--gray-700);
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+        
+        .cancel-button:hover {
+            background: var(--gray-200);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-8);
+            color: var(--gray-500);
+        }
+        
+        .empty-state-icon {
+            font-size: var(--font-size-4xl);
+            margin-bottom: var(--spacing-4);
+        }
+        
+        .empty-state-text {
+            font-size: var(--font-size-lg);
+            margin-bottom: var(--spacing-2);
+        }
+        
+        .empty-state-description {
+            font-size: var(--font-size-sm);
+            color: var(--gray-400);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: var(--spacing-8);
+            color: var(--gray-500);
+        }
+        
+        .error-message {
+            background: var(--red-50);
+            color: var(--red-700);
+            padding: var(--spacing-3);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--red-200);
+            margin-bottom: var(--spacing-4);
+        }
+        
+        .success-message {
+            background: var(--green-50);
+            color: var(--green-700);
+            padding: var(--spacing-3);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--green-200);
+            margin-bottom: var(--spacing-4);
+        }
+        
+        .limit-warning {
+            background: var(--yellow-50);
+            color: var(--yellow-700);
+            padding: var(--spacing-3);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--yellow-200);
+            margin-bottom: var(--spacing-4);
+            font-size: var(--font-size-sm);
+        }
+        
+        @media (max-width: 768px) {
+            .management-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: var(--spacing-4);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶栏组件 -->
+    <header-component></header-component>
+
+    <!-- 主要内容区域 -->
+    <main class="main-content">
+        <div class="container">
+            <!-- 页面头部 -->
+            <div class="page-header">
+                <h1 class="page-title">
+                    <span class="page-title-icon">⚙️</span>
+                    管理友情链接
+                </h1>
+                <p class="page-description">
+                    管理您的博客友情链接，最多可添加20个友情链接
+                </p>
+            </div>
+
+            <!-- 管理容器 -->
+            <div class="management-container">
+                <!-- 友情链接列表 -->
+                <div class="links-section">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            友情链接列表
+                            <button class="add-button" id="addLinkBtn">
+                                ➕ 新建链接
+                            </button>
+                        </h2>
+                    </div>
+                    <div class="links-list" id="linksList">
+                        <div class="loading">加载中...</div>
+                    </div>
+                </div>
+
+                <!-- 表单区域 -->
+                <div class="form-section" id="formSection" style="display: none;">
+                    <div class="section-header">
+                        <h2 class="section-title" id="formTitle">添加友情链接</h2>
+                    </div>
+                    <div class="form-content">
+                        <form id="linkForm">
+                            <div class="form-group">
+                                <label class="form-label" for="linkName">链接名称</label>
+                                <input 
+                                    type="text" 
+                                    id="linkName" 
+                                    name="subject" 
+                                    class="form-input" 
+                                    placeholder="请输入链接名称"
+                                    required
+                                    maxlength="200"
+                                >
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="linkUrl">链接地址</label>
+                                <input 
+                                    type="url" 
+                                    id="linkUrl" 
+                                    name="linkstr" 
+                                    class="form-input" 
+                                    placeholder="https://example.com"
+                                    required
+                                    maxlength="200"
+                                >
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="linkOrder">排序</label>
+                                <input 
+                                    type="number" 
+                                    id="linkOrder" 
+                                    name="ordernum" 
+                                    class="form-input" 
+                                    placeholder="0"
+                                    min="0"
+                                    value="0"
+                                >
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="submit-button" id="submitBtn">
+                                    添加链接
+                                </button>
+                                <button type="button" class="cancel-button" id="cancelBtn">
+                                    取消
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底栏组件 -->
+    <footer-component></footer-component>
+
+    <!-- 图标库 -->
+    <script src="/static/js/components/icons.js"></script>
+    
+    <!-- 用户管理工具 -->
+    <script src="/static/js/utils/user-manager.js"></script>
+    
+    <!-- Web Components -->
+    <script src="/static/js/utils/html-utils.js"></script>
+    <script src="/static/js/components/base-component.js"></script>
+    <script src="/static/js/components/footer-component.js"></script>
+    <script src="/static/js/components/header-component.js"></script>
+    
+    <!-- 管理友情链接脚本 -->
+    <script src="/static/js/manage-friend-links.js"></script>
+</body>
+</html>
