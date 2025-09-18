@@ -477,8 +477,14 @@ class FriendLinksManager {
         messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
         messageDiv.textContent = message;
         
-        const formContent = document.querySelector('.form-content');
-        formContent.insertBefore(messageDiv, formContent.firstChild);
+        // 在页面顶部显示消息
+        const mainContent = document.querySelector('main');
+        if (mainContent) {
+            mainContent.insertBefore(messageDiv, mainContent.firstChild);
+        } else {
+            // 如果找不到main元素，添加到body
+            document.body.insertBefore(messageDiv, document.body.firstChild);
+        }
         
         // 3秒后自动移除
         setTimeout(() => {
