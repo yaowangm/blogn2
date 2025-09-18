@@ -78,23 +78,7 @@ class FriendLinksManager {
                 });
             }
             
-            // 表单提交
-            const form = document.getElementById('linkForm');
-            if (form) {
-                form.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    this.handleFormSubmit();
-                });
-            }
-            
-            // 取消按钮
-            const cancelBtn = document.getElementById('cancelBtn');
-            if (cancelBtn) {
-                cancelBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    this.resetForm();
-                });
-            }
+            // 不再需要绑定内联表单事件，因为现在使用模态框
         }, 100);
     }
     
@@ -187,23 +171,7 @@ class FriendLinksManager {
     
     showAddForm() {
         this.editingLinkId = null;
-        this.resetForm();
-        document.getElementById('formTitle').textContent = '添加友情链接';
-        document.getElementById('submitBtn').textContent = '保存链接';
-        
-        // 显示表单区域
-        const formSection = document.getElementById('formSection');
-        if (formSection) {
-            formSection.classList.remove('hidden');
-            formSection.style.display = 'block';
-            formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-        
-        // 聚焦到第一个输入框
-        const firstInput = document.getElementById('linkName');
-        if (firstInput) {
-            setTimeout(() => firstInput.focus(), 100);
-        }
+        this.showModal('添加友情链接', '保存链接');
     }
     
     async editLink(linkId) {
@@ -211,58 +179,13 @@ class FriendLinksManager {
         if (!link) return;
         
         this.editingLinkId = linkId;
-        document.getElementById('linkName').value = link.subject;
-        document.getElementById('linkUrl').value = link.linkstr;
-        document.getElementById('linkOrder').value = link.ordernum || 0;
-        
-        document.getElementById('formTitle').textContent = '编辑友情链接';
-        document.getElementById('submitBtn').textContent = '保存修改';
-        
-        // 显示表单区域
-        const formSection = document.getElementById('formSection');
-        if (formSection) {
-            formSection.classList.remove('hidden');
-            formSection.style.display = 'block';
-            formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-        
-        // 聚焦到第一个输入框
-        const firstInput = document.getElementById('linkName');
-        if (firstInput) {
-            setTimeout(() => firstInput.focus(), 100);
-        }
+        this.showModal('编辑友情链接', '保存修改', {
+            subject: link.subject,
+            linkstr: link.linkstr,
+            ordernum: link.ordernum || 0
+        });
     }
     
-    async handleFormSubmit() {
-        const formData = new FormData(document.getElementById('linkForm'));
-        const linkData = {
-            subject: formData.get('subject').trim(),
-            linkstr: formData.get('linkstr').trim(),
-            ordernum: parseInt(formData.get('ordernum')) || 0
-        };
-        
-        // 验证数据
-        if (!linkData.subject || !linkData.linkstr) {
-            this.showError('请填写完整的链接信息');
-            return;
-        }
-        
-        if (linkData.linkstr && !this.isValidUrl(linkData.linkstr)) {
-            this.showError('请输入有效的URL地址');
-            return;
-        }
-        
-        try {
-            if (this.editingLinkId) {
-                await this.updateLink(this.editingLinkId, linkData);
-            } else {
-                await this.createLink(linkData);
-            }
-        } catch (error) {
-            console.error('保存友情链接失败:', error);
-            this.showError('保存失败，请重试');
-        }
-    }
     
     async createLink(linkData) {
         const response = await fetch(`/api/projects/${this.projectId}/friend-links`, {
@@ -326,19 +249,197 @@ class FriendLinksManager {
         }
     }
     
-    resetForm() {
-        document.getElementById('linkForm').reset();
-        document.getElementById('linkOrder').value = 0;
-        this.editingLinkId = null;
-        document.getElementById('formTitle').textContent = '添加友情链接';
-        document.getElementById('submitBtn').textContent = '保存链接';
+    showModal(title, buttonText, data = {}) {
+        // 创建模态框
+        const modal = document.createElement('div');
+        modal.className = 'friend-link-modal';
+        modal.innerHTML = `
+            <div class="modal-overlay" onclick="this.parentElement.remove()">
+                <div class="modal-content" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>${title}</h3>
+                        <button class="modal-close" onclick="this.closest('.friend-link-modal').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="modalLinkForm">
+                            <div class="form-group">
+                                <label for="modalLinkName">链接名称</label>
+                                <input type="text" id="modalLinkName" name="subject" value="${this.escapeHtml(data.subject || '')}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="modalLinkUrl">链接地址</label>
+                                <input type="url" id="modalLinkUrl" name="linkstr" value="${this.escapeHtml(data.linkstr || '')}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="modalLinkOrder">排序</label>
+                                <input type="number" id="modalLinkOrder" name="ordernum" value="${data.ordernum || 0}" min="0">
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-cancel" onclick="this.closest('.friend-link-modal').remove()">取消</button>
+                        <button type="button" class="btn-save" onclick="window.friendLinksManager.handleModalSubmit()">${buttonText}</button>
+                    </div>
+                </div>
+            </div>
+            <style>
+                .friend-link-modal {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    z-index: 1000;
+                }
+                .modal-overlay {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .modal-content {
+                    background: white;
+                    border-radius: 8px;
+                    width: 90%;
+                    max-width: 500px;
+                    max-height: 90vh;
+                    overflow-y: auto;
+                }
+                .modal-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 20px;
+                    border-bottom: 1px solid #e5e7eb;
+                }
+                .modal-header h3 {
+                    margin: 0;
+                    font-size: 18px;
+                    font-weight: 600;
+                }
+                .modal-close {
+                    background: none;
+                    border: none;
+                    font-size: 24px;
+                    cursor: pointer;
+                    color: #6b7280;
+                }
+                .modal-body {
+                    padding: 20px;
+                }
+                .form-group {
+                    margin-bottom: 20px;
+                }
+                .form-group label {
+                    display: block;
+                    margin-bottom: 5px;
+                    font-weight: 500;
+                    color: #374151;
+                }
+                .form-group input {
+                    width: 100%;
+                    padding: 10px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 4px;
+                    font-size: 14px;
+                }
+                .form-group input:focus {
+                    outline: none;
+                    border-color: #3b82f6;
+                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                }
+                .modal-footer {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 10px;
+                    padding: 20px;
+                    border-top: 1px solid #e5e7eb;
+                }
+                .btn-cancel, .btn-save {
+                    padding: 10px 20px;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                }
+                .btn-cancel {
+                    background: #f3f4f6;
+                    color: #374151;
+                }
+                .btn-cancel:hover {
+                    background: #e5e7eb;
+                }
+                .btn-save {
+                    background: #3b82f6;
+                    color: white;
+                }
+                .btn-save:hover {
+                    background: #2563eb;
+                }
+            </style>
+        `;
         
-        // 隐藏表单区域
-        const formSection = document.getElementById('formSection');
-        if (formSection) {
-            formSection.classList.add('hidden');
-            formSection.style.display = 'none';
+        document.body.appendChild(modal);
+        
+        // 聚焦到第一个输入框
+        const firstInput = modal.querySelector('#modalLinkName');
+        if (firstInput) {
+            setTimeout(() => firstInput.focus(), 100);
         }
+    }
+
+    handleModalSubmit() {
+        const form = document.getElementById('modalLinkForm');
+        const formData = new FormData(form);
+        const linkData = {
+            subject: formData.get('subject').trim(),
+            linkstr: formData.get('linkstr').trim(),
+            ordernum: parseInt(formData.get('ordernum')) || 0
+        };
+        
+        // 验证数据
+        if (!linkData.subject || !linkData.linkstr) {
+            this.showError('请填写完整的链接信息');
+            return;
+        }
+        
+        if (linkData.linkstr && !this.isValidUrl(linkData.linkstr)) {
+            this.showError('请输入有效的URL地址');
+            return;
+        }
+        
+        // 关闭模态框
+        const modal = document.querySelector('.friend-link-modal');
+        if (modal) {
+            modal.remove();
+        }
+        
+        // 执行保存操作
+        this.saveLinkData(linkData);
+    }
+
+    async saveLinkData(linkData) {
+        try {
+            if (this.editingLinkId) {
+                await this.updateLink(this.editingLinkId, linkData);
+            } else {
+                await this.createLink(linkData);
+            }
+        } catch (error) {
+            console.error('保存友情链接失败:', error);
+            this.showError('保存失败，请重试');
+        }
+    }
+
+    resetForm() {
+        // 这个方法现在主要用于重置编辑状态
+        this.editingLinkId = null;
     }
     
     isValidUrl(string) {
