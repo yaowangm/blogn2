@@ -83,7 +83,6 @@ class FriendLinksManager {
     }
     
     async loadFriendLinks() {
-        console.log('开始加载友情链接...');
         this.isLoading = true;
         this.renderLinksList();
         
@@ -91,7 +90,6 @@ class FriendLinksManager {
             const response = await fetch(`/api/projects/${this.projectId}/friend-links`);
             if (response.ok) {
                 this.friendLinks = await response.json();
-                console.log('友情链接加载成功:', this.friendLinks);
             } else {
                 throw new Error('获取友情链接失败');
             }
@@ -102,7 +100,6 @@ class FriendLinksManager {
         } finally {
             this.isLoading = false;
             this.renderLinksList();
-            console.log('友情链接列表渲染完成');
         }
     }
     
@@ -202,7 +199,6 @@ class FriendLinksManager {
         if (response.ok) {
             this.showSuccess('友情链接添加成功');
             this.resetForm();
-            console.log('创建成功，开始刷新列表...');
             await this.loadFriendLinks();
         } else {
             const errorData = await response.json();
@@ -222,7 +218,6 @@ class FriendLinksManager {
         if (response.ok) {
             this.showSuccess('友情链接更新成功');
             this.resetForm();
-            console.log('更新成功，开始刷新列表...');
             await this.loadFriendLinks();
         } else {
             const errorData = await response.json();
@@ -243,7 +238,6 @@ class FriendLinksManager {
             
             if (response.ok) {
                 this.showSuccess('友情链接删除成功');
-                console.log('删除成功，开始刷新列表...');
                 await this.loadFriendLinks();
             } else {
                 const errorData = await response.json();
