@@ -629,6 +629,11 @@ async def delete_article(
         user_repo = UserRepository(session)
         await user_repo.decrement_point(article.userid, 10)
         
+        # 更新全局项目项数量统计
+        from src.services.global_stats_service import GlobalStatsService
+        stats_service = GlobalStatsService(session)
+        await stats_service.update_project_item_count(increment=False)
+        
         # 提交事务
         await session.commit()
         
@@ -700,6 +705,11 @@ async def permanently_delete_article(
             from src.repositories.user_repository import UserRepository
             user_repo = UserRepository(session)
             await user_repo.decrement_point(article.userid, 10)
+            
+            # 更新全局项目项数量统计
+            from src.services.global_stats_service import GlobalStatsService
+            stats_service = GlobalStatsService(session)
+            await stats_service.update_project_item_count(increment=False)
         
         # 提交事务
         await session.commit()

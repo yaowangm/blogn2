@@ -456,6 +456,11 @@ async def create_project(
             user_repo = UserRepository(session)
             await user_repo.update_projectid(userid, created_project.id)
             
+            # 更新全局项目数量统计
+            from src.services.global_stats_service import GlobalStatsService
+            stats_service = GlobalStatsService(session)
+            await stats_service.update_project_count(increment=True)
+            
             return {
                 "id": created_project.id,
                 "name": created_project.name,
@@ -640,6 +645,11 @@ async def create_post(
         from src.repositories.user_repository import UserRepository
         user_repo = UserRepository(session)
         await user_repo.increment_point(current_user["id"], 10)
+        
+        # 更新全局项目项数量统计
+        from src.services.global_stats_service import GlobalStatsService
+        stats_service = GlobalStatsService(session)
+        await stats_service.update_project_item_count(increment=True)
         
         # 提交事务（所有操作在同一个事务中）
         await session.commit()
