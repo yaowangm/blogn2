@@ -300,3 +300,73 @@ async def update_user_email(
     # 调用用户服务修改邮箱
     await user_service.update_user_email(user_id, new_email)
     return {"message": "邮箱修改成功"}
+
+@router.post("/users/{user_id}/freeze")
+@handle_api_errors("冻结用户失败")
+@require_auth(admin_only=True)
+async def freeze_user(
+    user_id: int,
+    user_service: UserService = Depends(get_user_service),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    冻结用户（仅管理员）
+    
+    将指定用户的状态设置为冻结（state=2），冻结后用户无法登录。
+    
+    Args:
+        user_id: 要冻结的用户ID
+        user_service: 用户服务实例
+        current_user: 当前登录用户信息（必须是管理员）
+        
+    Returns:
+        Dict[str, str]: 冻结结果
+        
+    Raises:
+        HTTPException: 当用户不存在或已经是管理员时
+    """
+    # 检查目标用户是否存在
+    target_user = await user_service.get_user_by_id(user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    # 不能冻结管理员
+    if target_user.state == 10:
+        raise HTTPException(status_code=400, detail="不能冻结管理员用户")
+    
+    # 调用用户服务冻结用户
+    await user_service.freeze_user(user_id)
+    return {"message": "用户冻结成功"}
+
+@router.post("/users/{user_id}/restore")
+@handle_api_errors("恢复用户失败")
+@require_auth(admin_only=True)
+async def restore_user(
+    user_id: int,
+    user_service: UserService = Depends(get_user_service),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    恢复用户（仅管理员）
+    
+    将指定用户的状态设置为正常（state=1），恢复后用户可以正常登录。
+    
+    Args:
+        user_id: 要恢复的用户ID
+        user_service: 用户服务实例
+        current_user: 当前登录用户信息（必须是管理员）
+        
+    Returns:
+        Dict[str, str]: 恢复结果
+        
+    Raises:
+        HTTPException: 当用户不存在时
+    """
+    # 检查目标用户是否存在
+    target_user = await user_service.get_user_by_id(user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    # 调用用户服务恢复用户
+    await user_service.restore_user(user_id)
+    return {"message": "用户恢复成功"}

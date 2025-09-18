@@ -270,4 +270,29 @@ class UserRepository:
             .limit(limit)
         )
         result = await self.session.exec(statement)
-        return result.all() 
+        return result.all()
+
+    async def update_user_state(self, user_id: int, state: int) -> bool:
+        """
+        更新用户状态
+        
+        Args:
+            user_id: 用户ID
+            state: 新状态 (1=正常, 2=冻结, 10=管理员)
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        try:
+            user = await self.get_by_id(user_id)
+            if not user:
+                return False
+            
+            user.state = state
+            self.session.add(user)
+            await self.session.commit()
+            return True
+        except Exception as e:
+            await self.session.rollback()
+            print(f"Error updating user state: {e}")
+            return False 

@@ -190,4 +190,28 @@ class UserService(BaseService):
         """
         import re
         pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        return re.match(pattern, email) is not None 
+        return re.match(pattern, email) is not None
+
+    async def freeze_user(self, user_id: int) -> bool:
+        """
+        冻结用户
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            bool: 冻结是否成功
+        """
+        return await self.user_repo.update_user_state(user_id, 2)
+
+    async def restore_user(self, user_id: int) -> bool:
+        """
+        恢复用户
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            bool: 恢复是否成功
+        """
+        return await self.user_repo.update_user_state(user_id, 1) 
