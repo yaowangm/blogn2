@@ -88,7 +88,7 @@ class TestMessageDeletionWithRealDB:
             replycount=0
         )
         real_sync_session.add(reply2)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 4. 验证留言已创建
         main_result = real_sync_session.exec(
@@ -164,7 +164,7 @@ class TestMessageDeletionWithRealDB:
             replycount=0
         )
         real_sync_session.add(reply)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 4. 删除跟贴
         response = test_client.delete(f"/api/messages/{reply.id}")
@@ -204,7 +204,7 @@ class TestMessageDeletionWithRealDB:
             replycount=0
         )
         real_sync_session.add(message)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 3. 普通用户尝试删除留言
         response = test_client.delete(f"/api/messages/{message.id}")
@@ -233,7 +233,7 @@ class TestMessageDeletionWithRealDB:
             replycount=0
         )
         real_sync_session.add(message)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 2. 匿名用户尝试删除留言
         response = test_client.delete(f"/api/messages/{message.id}")
@@ -255,7 +255,7 @@ class TestMessageDeletionWithRealDB:
             state=1  # 管理员状态
         )
         real_sync_session.add(admin_user)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 2. 尝试删除不存在的留言
         response = test_client.delete("/api/messages/99999")
@@ -320,7 +320,7 @@ class TestMessageDeletionWithRealDB:
             replycount=0
         )
         real_sync_session.add(comment)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 5. 尝试删除文章评论
         response = test_client.delete(f"/api/messages/{comment.id}")
@@ -391,7 +391,7 @@ class TestMessageDeletionWithRealDB:
             replycount=0
         )
         real_sync_session.add(reply)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 3. 验证留言已创建
         main_result = real_sync_session.exec(
@@ -446,7 +446,7 @@ class TestMessageDeletionWithRealDB:
             replycount=0
         )
         real_sync_session.add(message)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 尝试删除已删除的留言
         response = test_client.delete(f"/api/messages/{message.id}")
@@ -492,7 +492,7 @@ class TestMessageDeletionWithRealDB:
             replycount=0
         )
         real_sync_session.add(message)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 3. 测试各种权限场景
         # 由于测试环境没有完整的认证系统，我们主要测试API端点的响应

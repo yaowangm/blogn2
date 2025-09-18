@@ -351,7 +351,7 @@ class TestGuestbookWithRealDB:
             replycount=0
         )
         real_sync_session.add(reply2)
-        real_sync_session.commit()  # 提交数据让test_client能看到
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 获取主题留言
         response = test_client.get(f"/api/thread/{main_message.id}")
@@ -462,7 +462,7 @@ class TestGuestbookWithRealDB:
             replycount=0
         )
         real_sync_session.add(guestbook_message)
-        real_sync_session.commit()  # 提交数据让test_client能看到
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 获取最近评论
         response = test_client.get("/api/comments/recent?limit=10")

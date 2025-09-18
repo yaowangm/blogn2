@@ -28,7 +28,7 @@ class TestCommentsAndGuestbookComplete:
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
         real_sync_session.add(user)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 2. 创建测试项目
         project = Project(
@@ -39,7 +39,7 @@ class TestCommentsAndGuestbookComplete:
             accesscount=0
         )
         real_sync_session.add(project)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 3. 创建测试文章（允许匿名评论）
         article = ProjectItem(
@@ -53,7 +53,7 @@ class TestCommentsAndGuestbookComplete:
             allowpost=1  # 允许匿名评论
         )
         real_sync_session.add(article)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 4. 测试创建匿名评论
         comment_data = {
@@ -94,7 +94,7 @@ class TestCommentsAndGuestbookComplete:
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
         real_sync_session.add(user)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 2. 创建测试项目
         project = Project(
@@ -105,7 +105,7 @@ class TestCommentsAndGuestbookComplete:
             accesscount=0
         )
         real_sync_session.add(project)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 3. 创建测试文章（允许匿名评论）
         article = ProjectItem(
@@ -119,7 +119,7 @@ class TestCommentsAndGuestbookComplete:
             allowpost=1  # 允许匿名评论
         )
         real_sync_session.add(article)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 4. 创建测试评论
         comment = Post(
@@ -137,7 +137,7 @@ class TestCommentsAndGuestbookComplete:
             replycount=0
         )
         real_sync_session.add(comment)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 5. 测试获取评论列表
         response = test_client.get(f"/api/articles/{article.id}/comments")
@@ -161,7 +161,7 @@ class TestCommentsAndGuestbookComplete:
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
         real_sync_session.add(user)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 2. 测试创建匿名留言
         message_data = {
@@ -204,7 +204,7 @@ class TestCommentsAndGuestbookComplete:
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
         real_sync_session.add(user)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 2. 创建测试留言
         message = Post(
@@ -222,7 +222,7 @@ class TestCommentsAndGuestbookComplete:
             replycount=0
         )
         real_sync_session.add(message)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 3. 测试创建跟贴
         reply_data = {
@@ -263,7 +263,7 @@ class TestCommentsAndGuestbookComplete:
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
         real_sync_session.add(user)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 2. 创建测试留言
         message = Post(
@@ -281,7 +281,7 @@ class TestCommentsAndGuestbookComplete:
             replycount=0
         )
         real_sync_session.add(message)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 3. 测试获取主题留言
         response = test_client.get(f"/api/thread/{message.id}")
@@ -311,7 +311,7 @@ class TestCommentsAndGuestbookComplete:
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
         real_sync_session.add(user)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 创建测试项目
         project = Project(
@@ -322,7 +322,7 @@ class TestCommentsAndGuestbookComplete:
             accesscount=0
         )
         real_sync_session.add(project)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 测试1: 允许匿名评论的文章
         article1 = ProjectItem(
@@ -336,7 +336,7 @@ class TestCommentsAndGuestbookComplete:
             allowpost=1  # 允许匿名评论
         )
         real_sync_session.add(article1)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         comment_data = {
             "content": "匿名评论测试",
@@ -360,7 +360,7 @@ class TestCommentsAndGuestbookComplete:
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
         real_sync_session.add(user)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 创建测试项目
         project = Project(
@@ -371,7 +371,7 @@ class TestCommentsAndGuestbookComplete:
             accesscount=0
         )
         real_sync_session.add(project)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 测试2: 只允许登录用户评论的文章
         article2 = ProjectItem(
@@ -385,7 +385,7 @@ class TestCommentsAndGuestbookComplete:
             allowpost=2  # 只允许登录用户评论
         )
         real_sync_session.add(article2)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         comment_data = {
             "content": "匿名评论测试",
@@ -409,7 +409,7 @@ class TestCommentsAndGuestbookComplete:
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
         real_sync_session.add(user)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 创建测试项目
         project = Project(
@@ -420,7 +420,7 @@ class TestCommentsAndGuestbookComplete:
             accesscount=0
         )
         real_sync_session.add(project)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 测试3: 禁用评论的文章
         article3 = ProjectItem(
@@ -434,7 +434,7 @@ class TestCommentsAndGuestbookComplete:
             allowpost=3  # 禁用评论
         )
         real_sync_session.add(article3)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         comment_data = {
             "content": "匿名评论测试",
@@ -445,10 +445,7 @@ class TestCommentsAndGuestbookComplete:
             f"/api/articles/{article3.id}/comments",
             json=comment_data
         )
-        assert response.status_code == 403  # 评论被禁用
-        real_sync_session.delete(project)
-        real_sync_session.delete(user)
-        real_sync_session.commit()
+        assert response.status_code == 403  # 评论被禁用        real_sync_session.flush()  # 刷新以获取ID，但不提交
 
     @pytest.mark.integration
     def test_data_validation(self, test_client, real_sync_session):
@@ -461,7 +458,7 @@ class TestCommentsAndGuestbookComplete:
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
         real_sync_session.add(user)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 创建测试项目
         project = Project(
@@ -472,7 +469,7 @@ class TestCommentsAndGuestbookComplete:
             accesscount=0
         )
         real_sync_session.add(project)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 创建测试文章
         article = ProjectItem(
@@ -486,7 +483,7 @@ class TestCommentsAndGuestbookComplete:
             allowpost=1
         )
         real_sync_session.add(article)
-        real_sync_session.commit()
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 测试1: 空内容评论
         comment_data = {
@@ -548,11 +545,7 @@ class TestCommentsAndGuestbookComplete:
         data = response.json()
         assert "标题不能超过200个字符" in data["detail"]
         
-        # 清理测试数据
-        real_sync_session.delete(article)
-        real_sync_session.delete(project)
-        real_sync_session.delete(user)
-        real_sync_session.commit()
+        # 清理测试数据        real_sync_session.flush()  # 刷新以获取ID，但不提交
 
     @pytest.mark.integration
     def test_nonexistent_article_comment_create(self, test_client):

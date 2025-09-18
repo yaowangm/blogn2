@@ -17,7 +17,7 @@ class TestArticleCommentsSimple:
     """文章评论功能简单测试类 - 真实数据库版本"""
 
     @pytest.mark.integration
-    def test_create_article_comment_basic(self, test_client, real_sync_session):
+    def test_create_article_comment_basic(self, test_client, real_sync_session_with_commit):
         """测试创建文章评论的基本功能"""
         # 创建测试用户
         user = User(
@@ -26,8 +26,8 @@ class TestArticleCommentsSimple:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.commit()  # 提交到数据库
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 创建测试项目
         project = Project(
@@ -37,8 +37,8 @@ class TestArticleCommentsSimple:
             state=0,
             accesscount=0
         )
-        real_sync_session.add(project)
-        real_sync_session.commit()
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 创建测试文章
         article = ProjectItem(
@@ -51,8 +51,8 @@ class TestArticleCommentsSimple:
             status=1,
             allowpost=1  # 允许匿名评论
         )
-        real_sync_session.add(article)
-        real_sync_session.commit()
+        real_sync_session_with_commit.add(article)
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 测试创建匿名评论
         comment_data = {
@@ -76,7 +76,7 @@ class TestArticleCommentsSimple:
         assert data["message"] == "评论创建成功"
         
         # 验证评论已保存到数据库
-        comment_result = real_sync_session.exec(
+        comment_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == data["comment_id"])
         )
         comment = comment_result.first()
@@ -86,15 +86,10 @@ class TestArticleCommentsSimple:
         assert comment.projectitemid == article.id
         assert comment.status == 1
         
-        # 清理测试数据
-        real_sync_session.delete(comment)
-        real_sync_session.delete(article)
-        real_sync_session.delete(project)
-        real_sync_session.delete(user)
-        real_sync_session.commit()
+        # 数据将在测试结束时自动回滚，无需手动删除
 
     @pytest.mark.integration
-    def test_get_article_comments_basic(self, test_client, real_sync_session):
+    def test_get_article_comments_basic(self, test_client, real_sync_session_with_commit):
         """测试获取文章评论列表的基本功能"""
         # 创建测试用户
         user = User(
@@ -103,8 +98,8 @@ class TestArticleCommentsSimple:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.commit()
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 创建测试项目
         project = Project(
@@ -114,8 +109,8 @@ class TestArticleCommentsSimple:
             state=0,
             accesscount=0
         )
-        real_sync_session.add(project)
-        real_sync_session.commit()
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 创建测试文章
         article = ProjectItem(
@@ -128,8 +123,8 @@ class TestArticleCommentsSimple:
             status=1,
             allowpost=1
         )
-        real_sync_session.add(article)
-        real_sync_session.commit()
+        real_sync_session_with_commit.add(article)
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 创建测试评论
         comment = Post(
@@ -146,8 +141,8 @@ class TestArticleCommentsSimple:
             rootid=0,
             replycount=0
         )
-        real_sync_session.add(comment)
-        real_sync_session.commit()
+        real_sync_session_with_commit.add(comment)
+        real_sync_session_with_commit.commit()  # 提交到数据库
         
         # 获取评论列表
         response = test_client.get(f"/api/articles/{article.id}/comments")
@@ -167,10 +162,5 @@ class TestArticleCommentsSimple:
         assert "post_time" in comment_data
         assert "reply_count" in comment_data
         
-        # 清理测试数据
-        real_sync_session.delete(comment)
-        real_sync_session.delete(article)
-        real_sync_session.delete(project)
-        real_sync_session.delete(user)
-        real_sync_session.commit()
+        # 数据将在测试结束时自动回滚，无需手动删除
 

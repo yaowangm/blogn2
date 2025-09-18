@@ -54,7 +54,7 @@ class TestArticleCommentsWithRealDB:
             allowpost=1  # 允许匿名评论
         )
         real_sync_session.add(article)
-        real_sync_session.commit()  # 提交数据让test_client能看到
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 测试创建匿名评论
         comment_data = {
@@ -120,7 +120,7 @@ class TestArticleCommentsWithRealDB:
             allowpost=2  # 只允许登录用户评论
         )
         real_sync_session.add(article)
-        real_sync_session.commit()  # 提交数据让test_client能看到
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 模拟登录用户（这里需要实际的认证机制，暂时跳过认证检查）
         # 在实际应用中，这里应该设置有效的认证token
@@ -174,7 +174,7 @@ class TestArticleCommentsWithRealDB:
             allowpost=3  # 禁用评论
         )
         real_sync_session.add(article)
-        real_sync_session.commit()  # 提交数据让test_client能看到
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 尝试创建评论
         comment_data = {
@@ -227,7 +227,7 @@ class TestArticleCommentsWithRealDB:
             allowpost=1
         )
         real_sync_session.add(article)
-        real_sync_session.commit()  # 提交数据让test_client能看到
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 尝试创建空内容评论
         comment_data = {
@@ -331,7 +331,7 @@ class TestArticleCommentsWithRealDB:
             replycount=0
         )
         real_sync_session.add(comment2)
-        real_sync_session.commit()  # 提交数据让test_client能看到
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 获取评论列表
         response = test_client.get(f"/api/articles/{article.id}/comments")
@@ -417,7 +417,7 @@ class TestArticleCommentsWithRealDB:
                 replycount=0
             )
             real_sync_session.add(comment)
-        real_sync_session.commit()  # 提交数据让test_client能看到
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 测试第一页（每页3条）
         response = test_client.get(f"/api/articles/{article.id}/comments?page=1&limit=3")
@@ -480,7 +480,7 @@ class TestArticleCommentsWithRealDB:
                 replycount=0
             )
             real_sync_session.add(comment)
-        real_sync_session.commit()  # 提交数据让test_client能看到
+        real_sync_session.flush()  # 刷新以获取ID，但不提交
         
         # 测试第二页
         response = test_client.get(f"/api/articles/{article.id}/comments?page=2&limit=3")

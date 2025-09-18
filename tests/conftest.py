@@ -110,21 +110,49 @@ def real_sync_engine():
 
 @pytest.fixture
 def real_sync_session(real_sync_engine):
-    """创建真实PostgreSQL同步会话"""
+    """创建真实PostgreSQL同步会话 - 每个测试后自动回滚"""
     session = Session(real_sync_engine)
     try:
         # 开始事务
         session.begin()
         yield session
-        # 回滚事务，不提交更改
-        session.rollback()
     finally:
-        # 确保会话被正确关闭
+        # 回滚事务，不提交更改
         try:
-            session.close()
+            session.rollback()
         except Exception:
-            # 忽略关闭时的异常
+            # 忽略回滚时的异常
             pass
+        finally:
+            # 确保会话被正确关闭
+            try:
+                session.close()
+            except Exception:
+                # 忽略关闭时的异常
+                pass
+
+@pytest.fixture
+def real_sync_session_with_commit(real_sync_engine):
+    """创建真实PostgreSQL同步会话 - 测试后回滚所有更改"""
+    session = Session(real_sync_engine)
+    try:
+        # 开始事务
+        session.begin()
+        yield session
+    finally:
+        # 测试结束后回滚所有更改
+        try:
+            session.rollback()
+        except Exception:
+            # 忽略回滚时的异常
+            pass
+        finally:
+            # 确保会话被正确关闭
+            try:
+                session.close()
+            except Exception:
+                # 忽略关闭时的异常
+                pass
 
 @pytest.fixture
 def mock_async_session():
@@ -133,11 +161,97 @@ def mock_async_session():
     mock_session = AsyncMock()
     return mock_session
 
+@pytest.fixture
+async def real_async_session(real_async_engine):
+    """创建真实PostgreSQL异步会话 - 每个测试后自动回滚"""
+    from sqlmodel.ext.asyncio.session import AsyncSession
+    from sqlalchemy.orm import sessionmaker
+    
+    # 创建会话工厂
+    async_session_factory = sessionmaker(
+        real_async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False
+    )
+    
+    async with async_session_factory() as session:
+        # 开始事务
+        await session.begin()
+        # 创建保存点
+        savepoint = await session.begin_nested()
+        try:
+            yield session
+        finally:
+            # 回滚到保存点
+            await savepoint.rollback()
+
+@pytest.fixture
+async def real_async_session_with_commit(real_async_engine):
+    """创建真实PostgreSQL异步会话 - 允许提交但使用保存点回滚"""
+    from sqlmodel.ext.asyncio.session import AsyncSession
+    from sqlalchemy.orm import sessionmaker
+    
+    # 创建会话工厂
+    async_session_factory = sessionmaker(
+        real_async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False
+    )
+    
+    async with async_session_factory() as session:
+        # 开始事务
+        await session.begin()
+        # 创建保存点
+        savepoint = await session.begin_nested()
+        try:
+            yield session
+        finally:
+            # 回滚到保存点
+            await savepoint.rollback()
+
 
 
 @pytest.fixture
 def test_client(real_async_engine):
     """创建测试客户端 - 使用相同的数据库引擎"""
+    # 临时替换应用的数据库引擎和会话工厂
+    from src.database import async_engine, async_session
+    from src.main import app
+    from sqlalchemy.orm import sessionmaker
+    from sqlmodel.ext.asyncio.session import AsyncSession
+    
+    # 保存原始引擎和会话工厂
+    original_engine = async_engine
+    original_session = async_session
+    
+    # 替换为测试引擎和会话工厂
+    import src.database
+    src.database.async_engine = real_async_engine
+    src.database.async_session = sessionmaker(
+        real_async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False
+    )
+    
+    client = None
+    try:
+        client = TestClient(app)
+        yield client
+    finally:
+        # 确保客户端被正确关闭
+        if client:
+            try:
+                client.close()
+            except Exception:
+                # 忽略关闭时的异常
+                pass
+        # 确保恢复原始引擎和会话工厂
+        src.database.async_engine = original_engine
+        src.database.async_session = original_session
+
+@pytest.fixture
+def test_client_with_rollback(real_async_engine):
+    """创建测试客户端 - 使用事务回滚"""
     # 临时替换应用的数据库引擎和会话工厂
     from src.database import async_engine, async_session
     from src.main import app
