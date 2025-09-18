@@ -5,7 +5,7 @@
 """
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from sqlmodel import select
 from src.repositories.subscription_repository import SubscriptionRepository
 from src.models.subscription import Subscription
@@ -58,20 +58,24 @@ class TestSubscriptionRepository:
         # 使用side_effect来为不同的调用返回不同的值
         mock_session.exec.side_effect = [mock_result1, mock_result2]
 
-        # 执行测试
-        result = await repository.get_subscription_posts_by_project(1, 1, 10)
+        # 模拟文件存在检查
+        with patch('os.path.exists') as mock_exists:
+            mock_exists.return_value = True
+            
+            # 执行测试
+            result = await repository.get_subscription_posts_by_project(1, 1, 10)
 
-        # 验证结果
-        assert "posts" in result
-        assert "total" in result
-        assert "page" in result
-        assert "limit" in result
-        assert "total_pages" in result
-        assert len(result["posts"]) == 1
-        assert result["posts"][0]["name"] == "测试文章"
-        assert result["posts"][0]["blog_name"] == "测试博客"
-        assert result["posts"][0]["author_name"] == "测试用户"
-        assert result["posts"][0]["avatar"] == "/avatar/1/s_1.jpg"
+            # 验证结果
+            assert "posts" in result
+            assert "total" in result
+            assert "page" in result
+            assert "limit" in result
+            assert "total_pages" in result
+            assert len(result["posts"]) == 1
+            assert result["posts"][0]["name"] == "测试文章"
+            assert result["posts"][0]["blog_name"] == "测试博客"
+            assert result["posts"][0]["author_name"] == "测试用户"
+            assert result["posts"][0]["avatar"] == "/avatar/1/s_1.jpg"
 
     @pytest.mark.asyncio
     async def test_get_subscription_posts_by_project_empty(self, repository, mock_session):
@@ -139,12 +143,16 @@ class TestSubscriptionRepository:
         
         mock_session.exec.side_effect = [mock_result1, mock_result2]
 
-        # 执行测试
-        result = await repository.get_subscription_posts_by_project(1, 1, 10)
+        # 模拟文件存在检查
+        with patch('os.path.exists') as mock_exists:
+            mock_exists.return_value = True
+            
+            # 执行测试
+            result = await repository.get_subscription_posts_by_project(1, 1, 10)
 
-        # 验证头像路径生成
-        assert len(result["posts"]) == 1
-        assert result["posts"][0]["avatar"] == "/avatar/1/s_1.jpg"
+            # 验证头像路径生成
+            assert len(result["posts"]) == 1
+            assert result["posts"][0]["avatar"] == "/avatar/1/s_1.jpg"
 
     @pytest.mark.asyncio
     async def test_get_subscription_posts_by_project_no_userid(self, repository, mock_session):
