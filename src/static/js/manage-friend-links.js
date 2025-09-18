@@ -431,6 +431,7 @@ class FriendLinksManager {
             } else {
                 await this.createLink(linkData);
             }
+            // 注意：loadFriendLinks 已经在 createLink 和 updateLink 方法中调用了
         } catch (error) {
             console.error('保存友情链接失败:', error);
             this.showError('保存失败，请重试');
