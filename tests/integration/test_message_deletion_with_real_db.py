@@ -37,6 +37,7 @@ class TestMessageDeletionWithRealDB:
         )
         real_sync_session_with_commit.add(admin_user)
         real_sync_session_with_commit.flush()
+        test_data_tracker.add_user(admin_user.id)  # 跟踪管理员用户ID
         
         # 2. 创建主贴
         main_message = Post(
