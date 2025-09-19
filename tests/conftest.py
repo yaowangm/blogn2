@@ -26,18 +26,53 @@ def cleanup_test_data(engine):
     session = Session(engine)
     try:
         print("🧹 开始清理测试数据...")
+        
+        # 获取当前最大的ID作为基准
+        max_id_result = session.execute(text("SELECT MAX(id) as max_id FROM post"))
+        max_id = max_id_result.fetchone()[0] or 0
+        test_id_threshold = max_id - 1000  # 假设测试数据的ID比当前最大ID小1000以内
+        
         # 删除测试用户
-        result1 = session.execute(text("DELETE FROM users WHERE name LIKE '%test%' OR email LIKE '%test%'"))
+        result1 = session.execute(text("DELETE FROM users WHERE name LIKE '%test%' OR email LIKE '%test%' OR name LIKE '%Test%' OR email LIKE '%Test%'"))
         print(f"🗑️ 删除了 {result1.rowcount} 个测试用户")
+        
         # 删除测试项目
         result2 = session.execute(text("DELETE FROM project WHERE name LIKE '%Test%' OR name LIKE '%test%'"))
         print(f"🗑️ 删除了 {result2.rowcount} 个测试项目")
+        
         # 删除测试文章
         result3 = session.execute(text("DELETE FROM projectitem WHERE name LIKE '%Test%' OR name LIKE '%test%'"))
         print(f"🗑️ 删除了 {result3.rowcount} 个测试文章")
-        # 删除测试评论
-        result4 = session.execute(text("DELETE FROM post WHERE content LIKE '%测试%' OR content LIKE '%test%' OR subject LIKE '%测试%' OR subject LIKE '%test%'"))
-        print(f"🗑️ 删除了 {result4.rowcount} 个测试评论")
+        
+        # 删除测试评论和留言（更全面的清理）
+        result4 = session.execute(text("""
+            DELETE FROM post WHERE 
+                content LIKE '%测试%' OR content LIKE '%test%' OR 
+                subject LIKE '%测试%' OR subject LIKE '%test%' OR
+                content LIKE '%这是%' OR subject LIKE '%这是%' OR
+                content LIKE '%跟贴%' OR content LIKE '%主贴%' OR
+                content LIKE '%留言本%' OR subject LIKE '%留言本%' OR
+                content LIKE '%文章评论%' OR subject LIKE '%文章评论%' OR
+                id > :threshold
+        """), {"threshold": test_id_threshold})
+        print(f"🗑️ 删除了 {result4.rowcount} 个测试评论和留言")
+        
+        # 删除测试附件
+        result5 = session.execute(text("DELETE FROM attachment WHERE comment LIKE '%test%' OR comment LIKE '%Test%' OR linkstr LIKE '%test%' OR linkstr LIKE '%Test%'"))
+        print(f"🗑️ 删除了 {result5.rowcount} 个测试附件")
+        
+        # 删除测试分类
+        result6 = session.execute(text("DELETE FROM folders WHERE name LIKE '%test%' OR name LIKE '%Test%'"))
+        print(f"🗑️ 删除了 {result6.rowcount} 个测试分类")
+        
+        # 删除测试友情链接
+        result7 = session.execute(text("DELETE FROM urllink WHERE subject LIKE '%test%' OR subject LIKE '%Test%' OR linkstr LIKE '%test%' OR linkstr LIKE '%Test%'"))
+        print(f"🗑️ 删除了 {result7.rowcount} 个测试友情链接")
+        
+        # 删除测试订阅（基于项目ID）
+        result8 = session.execute(text("DELETE FROM subsc WHERE projectid IN (SELECT id FROM project WHERE name LIKE '%test%' OR name LIKE '%Test%')"))
+        print(f"🗑️ 删除了 {result8.rowcount} 个测试订阅")
+        
         session.commit()
         print("✅ 测试数据清理完成")
     except Exception as e:
