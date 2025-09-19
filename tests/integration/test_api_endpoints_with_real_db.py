@@ -42,7 +42,7 @@ class TestAPIEndpointsWithRealDB:
         assert response.status_code == 404
 
     @pytest.mark.integration
-    def test_get_user_summary_with_real_db(self, test_client, real_sync_session_with_commit):
+    def test_get_user_summary_with_real_db(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试获取用户摘要 - 使用真实数据库"""
         # 创建测试用户数据
         user1 = User(
@@ -72,7 +72,7 @@ class TestAPIEndpointsWithRealDB:
         assert data["total_users"] >= 2
 
     @pytest.mark.integration
-    def test_get_user_count_with_real_db(self, test_client, real_sync_session_with_commit):
+    def test_get_user_count_with_real_db(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试获取用户总数 - 使用真实数据库"""
         # 确保有测试数据
         user = User(
@@ -93,7 +93,7 @@ class TestAPIEndpointsWithRealDB:
         assert data["count"] >= 1
 
     @pytest.mark.integration
-    def test_get_user_by_id_with_real_db(self, test_client, real_sync_session_with_commit):
+    def test_get_user_by_id_with_real_db(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试根据ID获取用户 - 使用真实数据库"""
         # 使用一个已存在的用户ID进行测试
         # 查询数据库中的第一个用户
@@ -118,7 +118,7 @@ class TestAPIEndpointsWithRealDB:
         assert response.status_code == 404
 
     @pytest.mark.integration
-    def test_get_recent_blogs_with_real_db(self, test_client, real_sync_session_with_commit):
+    def test_get_recent_blogs_with_real_db(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试获取最新博客 - 使用真实数据库"""
         # 创建测试项目
         project = Project(
@@ -139,7 +139,7 @@ class TestAPIEndpointsWithRealDB:
         assert isinstance(data, list)
 
     @pytest.mark.integration
-    def test_get_popular_blogs_with_real_db(self, test_client, real_sync_session_with_commit):
+    def test_get_popular_blogs_with_real_db(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试获取热门博客 - 使用真实数据库"""
         # 创建测试项目
         project = Project(
@@ -160,7 +160,7 @@ class TestAPIEndpointsWithRealDB:
         assert isinstance(data, list)
 
     @pytest.mark.integration
-    def test_get_about_content_with_real_db(self, test_client, real_sync_session_with_commit):
+    def test_get_about_content_with_real_db(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试获取关于内容 - 使用真实数据库"""
         # 创建测试项目项
         project_item = ProjectItem(
@@ -186,7 +186,7 @@ class TestAPIEndpointsWithRealDB:
         assert data["title"] == "Why Blogn"
 
     @pytest.mark.integration
-    def test_get_site_metadata_with_real_db(self, test_client, real_sync_session_with_commit):
+    def test_get_site_metadata_with_real_db(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试获取站点元数据 - 使用真实数据库"""
         # 确保有用户数据
         user = User(

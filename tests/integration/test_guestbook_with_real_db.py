@@ -19,7 +19,7 @@ class TestGuestbookWithRealDB:
     """留言本功能测试类 - 真实数据库版本"""
 
     @pytest.mark.integration
-    def test_create_message_anonymous(self, test_client, real_sync_session_with_commit):
+    def test_create_message_anonymous(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试匿名用户创建留言"""
         # 创建测试用户（用于留言本）
         user = User(
@@ -30,6 +30,7 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         
         # 测试创建匿名留言
         message_data = {
@@ -66,7 +67,7 @@ class TestGuestbookWithRealDB:
         assert message.status == 1
 
     @pytest.mark.integration
-    def test_create_message_logged_in(self, test_client, real_sync_session_with_commit):
+    def test_create_message_logged_in(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试登录用户创建留言"""
         # 创建测试用户
         user = User(
@@ -105,7 +106,7 @@ class TestGuestbookWithRealDB:
         assert message.userid == 2002
 
     @pytest.mark.integration
-    def test_create_message_empty_subject(self, test_client, real_sync_session_with_commit):
+    def test_create_message_empty_subject(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试创建空标题留言（应该失败）"""
         message_data = {
             "subject": "",
@@ -123,7 +124,7 @@ class TestGuestbookWithRealDB:
         assert "留言标题不能为空" in data["detail"]
 
     @pytest.mark.integration
-    def test_create_message_empty_content(self, test_client, real_sync_session_with_commit):
+    def test_create_message_empty_content(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试创建空内容留言"""
         message_data = {
             "subject": "有标题但无内容",
@@ -141,7 +142,7 @@ class TestGuestbookWithRealDB:
         assert "留言内容不能为空" in data["detail"]
 
     @pytest.mark.integration
-    def test_create_message_long_subject(self, test_client, real_sync_session_with_commit):
+    def test_create_message_long_subject(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试创建超长标题留言"""
         long_subject = "a" * 201  # 超过200字符限制
         message_data = {
@@ -160,7 +161,7 @@ class TestGuestbookWithRealDB:
         assert "标题不能超过200个字符" in data["detail"]
 
     @pytest.mark.integration
-    def test_create_reply_message(self, test_client, real_sync_session_with_commit):
+    def test_create_reply_message(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试创建跟贴留言"""
         # 创建测试用户
         user = User(
@@ -219,7 +220,7 @@ class TestGuestbookWithRealDB:
         assert reply.projectitemid == 0  # 留言本
 
     @pytest.mark.integration
-    def test_get_messages_list(self, test_client, real_sync_session_with_commit):
+    def test_get_messages_list(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试获取留言本列表"""
         # 创建测试用户
         user = User(
@@ -289,7 +290,7 @@ class TestGuestbookWithRealDB:
             assert "post_time" in message
 
     @pytest.mark.integration
-    def test_get_thread_messages(self, test_client, real_sync_session_with_commit):
+    def test_get_thread_messages(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试获取主题的所有留言（主贴+跟贴）"""
         # 创建测试用户（不指定ID，让数据库自动生成）
         user = User(
@@ -392,7 +393,7 @@ class TestGuestbookWithRealDB:
         assert "主题" in data["detail"] and "不存在" in data["detail"]
 
     @pytest.mark.integration
-    def test_get_recent_comments(self, test_client, real_sync_session_with_commit):
+    def test_get_recent_comments(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试获取最近评论（排除留言本）"""
         # 创建测试用户（不指定ID，让数据库自动生成）
         user = User(

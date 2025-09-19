@@ -25,7 +25,7 @@ class TestMessageDeletionWithRealDB:
     """留言删除功能测试类 - 真实数据库版本"""
 
     @pytest.mark.integration
-    def test_delete_main_message_as_admin(self, test_client, real_sync_session_with_commit):
+    def test_delete_main_message_as_admin(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试管理员删除主贴（包括所有跟贴）"""
         # 1. 创建管理员用户
         admin_user = User(
@@ -117,7 +117,7 @@ class TestMessageDeletionWithRealDB:
         assert main_result.first() is not None
 
     @pytest.mark.integration
-    def test_delete_reply_message_as_admin(self, test_client, real_sync_session_with_commit):
+    def test_delete_reply_message_as_admin(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试管理员删除跟贴"""
         # 1. 创建管理员用户
         admin_user = User(
@@ -175,7 +175,7 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
 
     @pytest.mark.integration
-    def test_delete_message_as_regular_user(self, test_client, real_sync_session_with_commit):
+    def test_delete_message_as_regular_user(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试普通用户尝试删除留言（权限验证）"""
         # 1. 创建普通用户
         regular_user = User(
@@ -215,7 +215,7 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
 
     @pytest.mark.integration
-    def test_delete_message_anonymous_user(self, test_client, real_sync_session_with_commit):
+    def test_delete_message_anonymous_user(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试匿名用户尝试删除留言（认证验证）"""
         # 1. 创建留言
         message = Post(
@@ -244,7 +244,7 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
 
     @pytest.mark.integration
-    def test_delete_nonexistent_message(self, test_client, real_sync_session_with_commit):
+    def test_delete_nonexistent_message(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试删除不存在的留言"""
         # 1. 创建管理员用户
         admin_user = User(
@@ -266,7 +266,7 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
 
     @pytest.mark.integration
-    def test_delete_article_comment(self, test_client, real_sync_session_with_commit):
+    def test_delete_article_comment(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试删除文章评论（非留言本）"""
         # 1. 创建管理员用户
         admin_user = User(
@@ -331,7 +331,7 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
 
     @pytest.mark.integration
-    def test_delete_message_validation(self, test_client, real_sync_session_with_commit):
+    def test_delete_message_validation(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试删除留言的参数验证"""
         # 1. 测试无效的message_id格式
         response = test_client.delete("/api/messages/invalid_id")
@@ -352,7 +352,7 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
 
     @pytest.mark.integration
-    def test_delete_message_direct_repository(self, test_client, real_sync_session_with_commit):
+    def test_delete_message_direct_repository(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试直接使用Repository删除留言（绕过认证）"""
         from src.repositories.post_repository import PostRepository
         from src.database import get_async_session
@@ -421,7 +421,7 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
 
     @pytest.mark.integration
-    def test_delete_message_error_handling(self, test_client, real_sync_session_with_commit):
+    def test_delete_message_error_handling(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试删除留言的错误处理"""
         # 1. 测试删除不存在的留言
         response = test_client.delete("/api/messages/99999")
@@ -455,7 +455,7 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
 
     @pytest.mark.integration
-    def test_delete_message_permission_scenarios(self, test_client, real_sync_session_with_commit):
+    def test_delete_message_permission_scenarios(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试删除留言的权限场景"""
         # 1. 创建不同状态的用户
         admin_user = User(
