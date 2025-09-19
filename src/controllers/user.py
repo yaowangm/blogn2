@@ -265,7 +265,9 @@ async def set_user_intro(
         
         # 更新用户的intropiid字段
         user_repo = UserRepository(session)
-        await user_repo.update_intropiid(current_user["id"], article_id)
+        update_success = await user_repo.update_intropiid(current_user["id"], article_id)
+        if not update_success:
+            raise HTTPException(status_code=500, detail="更新用户intropiid失败")
         
         # 处理头像图片复制和resize
         try:
