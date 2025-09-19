@@ -345,7 +345,8 @@ class TestArticleCommentsWithRealDB:
         )
         real_sync_session_with_commit.add(comment2)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 不提交，依赖事务回滚自动清理
+        # 临时提交数据，让API调用能找到
+        real_sync_session_with_commit.commit()
         
         # 获取评论列表
         response = test_client.get(f"/api/articles/{article.id}/comments")
@@ -432,7 +433,8 @@ class TestArticleCommentsWithRealDB:
             )
             real_sync_session_with_commit.add(comment)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 不提交，依赖事务回滚自动清理
+        # 临时提交数据，让API调用能找到
+        real_sync_session_with_commit.commit()
         
         # 测试第一页（每页3条）
         response = test_client.get(f"/api/articles/{article.id}/comments?page=1&limit=3")
@@ -496,7 +498,8 @@ class TestArticleCommentsWithRealDB:
             )
             real_sync_session_with_commit.add(comment)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 不提交，依赖事务回滚自动清理
+        # 临时提交数据，让API调用能找到
+        real_sync_session_with_commit.commit()
         
         # 测试第二页
         response = test_client.get(f"/api/articles/{article.id}/comments?page=2&limit=3")
