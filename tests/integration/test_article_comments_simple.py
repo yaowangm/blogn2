@@ -27,7 +27,7 @@ class TestArticleCommentsSimple:
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
         real_sync_session_with_commit.add(user)
-        # 不提交，依赖事务回滚自动清理
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
         
         # 创建测试项目
         project = Project(
@@ -38,7 +38,7 @@ class TestArticleCommentsSimple:
             accesscount=0
         )
         real_sync_session_with_commit.add(project)
-        # 不提交，依赖事务回滚自动清理
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
         
         # 创建测试文章
         article = ProjectItem(
@@ -52,7 +52,9 @@ class TestArticleCommentsSimple:
             allowpost=1  # 允许匿名评论
         )
         real_sync_session_with_commit.add(article)
-        # 不提交，依赖事务回滚自动清理
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        
+        print(f"Created article with ID: {article.id}")
         
         # 测试创建匿名评论
         comment_data = {
@@ -99,7 +101,7 @@ class TestArticleCommentsSimple:
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
         real_sync_session_with_commit.add(user)
-        # 不提交，依赖事务回滚自动清理
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
         
         # 创建测试项目
         project = Project(
@@ -110,7 +112,7 @@ class TestArticleCommentsSimple:
             accesscount=0
         )
         real_sync_session_with_commit.add(project)
-        # 不提交，依赖事务回滚自动清理
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
         
         # 创建测试文章
         article = ProjectItem(
@@ -124,7 +126,7 @@ class TestArticleCommentsSimple:
             allowpost=1
         )
         real_sync_session_with_commit.add(article)
-        # 不提交，依赖事务回滚自动清理
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
         
         # 创建测试评论
         comment = Post(
@@ -142,7 +144,7 @@ class TestArticleCommentsSimple:
             replycount=0
         )
         real_sync_session_with_commit.add(comment)
-        # 不提交，依赖事务回滚自动清理
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
         
         # 获取评论列表
         response = test_client.get(f"/api/articles/{article.id}/comments")

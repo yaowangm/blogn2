@@ -147,24 +147,9 @@ class UnifiedDatabaseManager:
                 loop.close()
     
     def commit(self):
-        """提交事务"""
-        if self._transaction:
-            self._transaction.commit()
-        if self._async_transaction:
-            import asyncio
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    asyncio.create_task(self._async_transaction.commit())
-                else:
-                    loop.run_until_complete(self._async_transaction.commit())
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    loop.run_until_complete(self._async_transaction.commit())
-                finally:
-                    loop.close()
+        """提交事务 - 在测试环境中不提交"""
+        # 在测试环境中不提交，让事务回滚处理
+        pass
     
     def rollback(self):
         """回滚事务"""
@@ -462,8 +447,8 @@ async def real_async_session_with_commit(real_async_engine):
 
 
 @pytest.fixture
-def test_client(real_async_engine):
-    """创建测试客户端 - 使用事务回滚"""
+def test_client(unified_db_manager):
+    """创建测试客户端 - 使用统一数据库管理器"""
     # 临时替换应用的数据库引擎和会话工厂
     from src.database import async_engine, async_session
     from src.main import app
@@ -474,34 +459,32 @@ def test_client(real_async_engine):
     original_engine = async_engine
     original_session = async_session
     
-    # 创建测试专用的会话工厂，自动回滚事务
-    class TestAsyncSession(AsyncSession):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            self._test_transaction = None
-        
-        async def __aenter__(self):
-            await super().__aenter__()
-            # 开始测试事务
-            self._test_transaction = await self.begin()
-            return self
-        
-        async def __aexit__(self, exc_type, exc_val, exc_tb):
-            # 回滚测试事务
-            if self._test_transaction:
-                await self._test_transaction.rollback()
-            await super().__aexit__(exc_type, exc_val, exc_tb)
-        
-        async def commit(self):
-            # 在测试环境中不提交，让事务回滚处理
-            pass
-    
-    def create_test_async_session():
-        return TestAsyncSession(real_async_engine, expire_on_commit=False)
-    
-    # 替换为测试引擎和会话工厂
+    # 替换为统一管理器的异步引擎和会话
     import src.database
-    src.database.async_engine = real_async_engine
+    src.database.async_engine = unified_db_manager.async_engine
+    
+    # 创建测试专用的会话工厂，确保在事务中
+    def create_test_async_session():
+        session = AsyncSession(unified_db_manager.async_engine, expire_on_commit=False)
+        # 开始事务
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # 在运行的事件循环中，直接调用begin()
+                session.begin()
+            else:
+                # 在非运行的事件循环中，使用run_until_complete
+                loop.run_until_complete(session.begin())
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(session.begin())
+            finally:
+                loop.close()
+        return session
+    
     src.database.async_session = create_test_async_session
     
     client = None
