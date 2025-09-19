@@ -47,11 +47,10 @@ def cleanup_test_data(engine):
         # 删除测试评论和留言（更安全的清理）
         result4 = session.execute(text("""
             DELETE FROM post WHERE 
-                (content LIKE '%测试%' OR content LIKE '%test%' OR 
-                 subject LIKE '%测试%' OR subject LIKE '%test%' OR
-                 content LIKE '%Test%' OR subject LIKE '%Test%') AND
-                id > :threshold
-        """), {"threshold": test_id_threshold})
+                content LIKE '%测试%' OR content LIKE '%test%' OR 
+                subject LIKE '%测试%' OR subject LIKE '%test%' OR
+                content LIKE '%Test%' OR subject LIKE '%Test%'
+        """))
         print(f"🗑️ 删除了 {result4.rowcount} 个测试评论和留言")
         
         # 删除测试附件
