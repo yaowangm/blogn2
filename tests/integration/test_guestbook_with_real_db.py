@@ -352,7 +352,9 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(reply2)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 不提交，依赖事务回滚自动清理
+        
+        # 临时提交数据，让API调用能找到
+        real_sync_session_with_commit.commit()
         
         # 获取主题留言
         response = test_client.get(f"/api/thread/{main_message.id}")
@@ -464,7 +466,9 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(guestbook_message)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 不提交，依赖事务回滚自动清理
+        
+        # 临时提交数据，让API调用能找到
+        real_sync_session_with_commit.commit()
         
         # 获取最近评论
         response = test_client.get("/api/comments/recent?limit=10")

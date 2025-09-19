@@ -55,7 +55,9 @@ class TestArticleCommentsWithRealDB:
         )
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 不提交，依赖事务回滚自动清理
+        
+        # 临时提交数据，让API调用能找到
+        real_sync_session_with_commit.commit()
         
         # 测试创建匿名评论
         comment_data = {
@@ -122,7 +124,9 @@ class TestArticleCommentsWithRealDB:
         )
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 不提交，依赖事务回滚自动清理
+        
+        # 临时提交数据，让API调用能找到
+        real_sync_session_with_commit.commit()
         
         # 模拟登录用户（这里需要实际的认证机制，暂时跳过认证检查）
         # 在实际应用中，这里应该设置有效的认证token
@@ -177,7 +181,9 @@ class TestArticleCommentsWithRealDB:
         )
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 不提交，依赖事务回滚自动清理
+        
+        # 临时提交数据，让API调用能找到
+        real_sync_session_with_commit.commit()
         
         # 尝试创建评论
         comment_data = {
@@ -231,7 +237,9 @@ class TestArticleCommentsWithRealDB:
         )
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 不提交，依赖事务回滚自动清理
+        
+        # 临时提交数据，让API调用能找到
+        real_sync_session_with_commit.commit()
         
         # 尝试创建空内容评论
         comment_data = {

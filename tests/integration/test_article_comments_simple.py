@@ -54,6 +54,9 @@ class TestArticleCommentsSimple:
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
         
+        # 临时提交数据，让API调用能找到
+        real_sync_session_with_commit.commit()
+        
         print(f"Created article with ID: {article.id}")
         
         # 测试创建匿名评论
@@ -145,6 +148,9 @@ class TestArticleCommentsSimple:
         )
         real_sync_session_with_commit.add(comment)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        
+        # 临时提交数据，让API调用能找到
+        real_sync_session_with_commit.commit()
         
         # 获取评论列表
         response = test_client.get(f"/api/articles/{article.id}/comments")

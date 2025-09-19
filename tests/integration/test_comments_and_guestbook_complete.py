@@ -56,7 +56,9 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 不提交，依赖事务回滚自动清理
+        
+        # 临时提交数据，让API调用能找到
+        real_sync_session_with_commit.commit()
         
         # 4. 测试创建匿名评论
         comment_data = {
@@ -125,7 +127,9 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 不提交，依赖事务回滚自动清理
+        
+        # 临时提交数据，让API调用能找到
+        real_sync_session_with_commit.commit()
         
         # 4. 创建测试评论
         comment = Post(
@@ -507,7 +511,9 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 不提交，依赖事务回滚自动清理
+        
+        # 临时提交数据，让API调用能找到
+        real_sync_session_with_commit.commit()
         
         # 测试1: 空内容评论
         comment_data = {
