@@ -160,12 +160,15 @@ async def get_current_user(
     # 生成头像URL
     avatar_url = None
     if user.id:
+        from src.config.app import validate_app_config
+        config = validate_app_config()
+        avatar_dir = config["avatar_dir"]
+        
         prefix = (user.id // 10000) + 1
         avatar_path = f"/avatar/{prefix}/s_{user.id}.jpg"
-        real_path = f"../pic/blogn_img/userlogo/{prefix}/s_{user.id}.jpg"
+        real_path = os.path.join(avatar_dir, str(prefix), f"s_{user.id}.jpg")
         
         # 检查文件是否存在
-        import os
         if os.path.exists(real_path):
             avatar_url = avatar_path
     

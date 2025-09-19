@@ -270,9 +270,10 @@ async def set_user_intro(
         # 处理头像图片复制和resize
         try:
             # 获取上传目录和头像目录配置
-            from src.config.app import get_upload_dir
+            from src.config.app import get_upload_dir, validate_app_config
             upload_dir = get_upload_dir()
-            avatar_dir = "/home/wy/blogn2/pic/blogn_img/userlogo"
+            config = validate_app_config()
+            avatar_dir = config["avatar_dir"]
             
             # 构建源文件路径
             source_path = os.path.join(upload_dir, article.attachment)
@@ -286,20 +287,31 @@ async def set_user_intro(
             avatar_user_dir = os.path.join(avatar_dir, str(prefix))
             os.makedirs(avatar_user_dir, exist_ok=True)
             
-            # 生成头像文件名
-            avatar_filename = f"s_{user_id}.jpg"
-            avatar_path = os.path.join(avatar_user_dir, avatar_filename)
-            
-            # 复制并resize图片
+            # 创建图片处理器
             image_processor = ImageProcessor()
+            
+            # 创建小头像 (s_userid.jpg) - 用于列表显示
+            small_avatar_filename = f"s_{user_id}.jpg"
+            small_avatar_path = os.path.join(avatar_user_dir, small_avatar_filename)
             await image_processor.resize_and_save_image(
                 source_path=source_path,
-                target_path=avatar_path,
-                max_size=(200, 200)  # 头像最大尺寸
+                target_path=small_avatar_path,
+                max_size=(100, 100)  # 小头像尺寸
             )
             
-            print(f"Avatar created at: {avatar_path}")
-            print(f"File exists: {os.path.exists(avatar_path)}")
+            # 创建大头像 (userid.jpg) - 用于用户资料页面
+            large_avatar_filename = f"{user_id}.jpg"
+            large_avatar_path = os.path.join(avatar_user_dir, large_avatar_filename)
+            await image_processor.resize_and_save_image(
+                source_path=source_path,
+                target_path=large_avatar_path,
+                max_size=(200, 200)  # 大头像尺寸
+            )
+            
+            print(f"Small avatar created at: {small_avatar_path}")
+            print(f"Large avatar created at: {large_avatar_path}")
+            print(f"Small avatar exists: {os.path.exists(small_avatar_path)}")
+            print(f"Large avatar exists: {os.path.exists(large_avatar_path)}")
             
         except Exception as e:
             # 如果图片处理失败，记录错误但不影响intropiid的设置

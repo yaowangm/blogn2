@@ -32,9 +32,13 @@ class BlogService(BaseService):
         if not userid:
             return None
             
+        from src.config.app import validate_app_config
+        config = validate_app_config()
+        avatar_dir = config["avatar_dir"]
+        
         prefix = (userid // 10000) + 1
         avatar_path = f"/avatar/{prefix}/s_{userid}.jpg"
-        real_path = f"../pic/blogn_img/userlogo/{prefix}/s_{userid}.jpg"
+        real_path = os.path.join(avatar_dir, str(prefix), f"s_{userid}.jpg")
         
         # 检查文件是否存在
         if os.path.exists(real_path):
