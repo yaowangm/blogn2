@@ -18,7 +18,7 @@ class TestCommentsAndGuestbookComplete:
     """评论和留言本功能完整测试类 - 真实数据库版本"""
 
     @pytest.mark.integration
-    def test_article_comment_workflow_create(self, test_client, real_sync_session_with_commit):
+    def test_article_comment_workflow_create(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试文章评论创建工作流程"""
         # 1. 创建测试用户
         user = User(
@@ -29,6 +29,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -42,6 +43,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_project(project.id)  # 跟踪项目ID
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -58,6 +60,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_article(article.id)  # 跟踪文章ID
         
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
@@ -91,7 +94,7 @@ class TestCommentsAndGuestbookComplete:
         assert comment.status == 1
 
     @pytest.mark.integration
-    def test_article_comment_workflow_get(self, test_client, real_sync_session_with_commit):
+    def test_article_comment_workflow_get(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试文章评论获取工作流程"""
         # 1. 创建测试用户
         user = User(
@@ -167,7 +170,7 @@ class TestCommentsAndGuestbookComplete:
         assert comment_data["user_id"] == 0
 
     @pytest.mark.integration
-    def test_guestbook_workflow_create(self, test_client, real_sync_session_with_commit):
+    def test_guestbook_workflow_create(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试留言本创建工作流程"""
         # 1. 创建测试用户
         user = User(
@@ -212,7 +215,7 @@ class TestCommentsAndGuestbookComplete:
         assert message.rootid == 0  # 主贴的rootid为0
 
     @pytest.mark.integration
-    def test_guestbook_workflow_reply(self, test_client, real_sync_session_with_commit):
+    def test_guestbook_workflow_reply(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试留言本回复工作流程"""
         # 1. 创建测试用户
         user = User(
@@ -275,7 +278,7 @@ class TestCommentsAndGuestbookComplete:
         assert reply.projectitemid == 0  # 留言本
 
     @pytest.mark.integration
-    def test_guestbook_workflow_get(self, test_client, real_sync_session_with_commit):
+    def test_guestbook_workflow_get(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试留言本获取工作流程"""
         # 1. 创建测试用户
         user = User(
@@ -327,7 +330,7 @@ class TestCommentsAndGuestbookComplete:
         assert main_post["content"] == "这是一条测试留言内容"
 
     @pytest.mark.integration
-    def test_comment_permissions_anonymous_allowed(self, test_client, real_sync_session_with_commit):
+    def test_comment_permissions_anonymous_allowed(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试评论权限验证 - 允许匿名评论"""
         # 创建测试用户
         user = User(
@@ -382,7 +385,7 @@ class TestCommentsAndGuestbookComplete:
         assert response.status_code == 200
 
     @pytest.mark.integration
-    def test_comment_permissions_login_required(self, test_client, real_sync_session_with_commit):
+    def test_comment_permissions_login_required(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试评论权限验证 - 需要登录"""
         # 创建测试用户
         user = User(
@@ -437,7 +440,7 @@ class TestCommentsAndGuestbookComplete:
         assert response.status_code == 401  # 需要登录
 
     @pytest.mark.integration
-    def test_comment_permissions_disabled(self, test_client, real_sync_session_with_commit):
+    def test_comment_permissions_disabled(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试评论权限验证 - 评论被禁用"""
         # 创建测试用户
         user = User(
@@ -492,7 +495,7 @@ class TestCommentsAndGuestbookComplete:
         assert response.status_code == 403  # 评论被禁用
 
     @pytest.mark.integration
-    def test_data_validation(self, test_client, real_sync_session_with_commit):
+    def test_data_validation(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试数据验证"""
         # 创建测试用户
         user = User(
