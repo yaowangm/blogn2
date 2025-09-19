@@ -318,6 +318,7 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 获取生成的用户ID
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         
         # 创建主贴
         main_message = Post(
@@ -336,6 +337,7 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(main_message)
         real_sync_session_with_commit.flush()
+        test_data_tracker.add_message(main_message.id)  # 跟踪主贴ID
         
         # 创建跟贴
         reply1 = Post(
@@ -370,6 +372,10 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(reply2)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        
+        # 跟踪跟贴ID
+        test_data_tracker.add_message(reply1.id)
+        test_data_tracker.add_message(reply2.id)
         
         # 临时提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
@@ -421,6 +427,7 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 获取生成的用户ID
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         
         # 创建测试项目
         project = Project(
@@ -432,6 +439,7 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 获取生成的项目ID
+        test_data_tracker.add_project(project.id)  # 跟踪项目ID
         
         # 创建测试文章
         article = ProjectItem(
@@ -446,6 +454,7 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 获取生成的文章ID
+        test_data_tracker.add_article(article.id)  # 跟踪文章ID
         
         # 创建文章评论（应该被包含）- 使用当前时间确保是最新的
         from datetime import timezone
@@ -484,6 +493,10 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(guestbook_message)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        
+        # 跟踪评论和留言ID
+        test_data_tracker.add_comment(article_comment.id)
+        test_data_tracker.add_message(guestbook_message.id)
         
         # 临时提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
