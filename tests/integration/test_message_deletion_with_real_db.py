@@ -189,6 +189,7 @@ class TestMessageDeletionWithRealDB:
         )
         real_sync_session_with_commit.add(regular_user)
         real_sync_session_with_commit.flush()
+        test_data_tracker.add_user(regular_user.id)  # 跟踪普通用户ID
         
         # 2. 创建留言
         message = Post(
@@ -207,6 +208,7 @@ class TestMessageDeletionWithRealDB:
         )
         real_sync_session_with_commit.add(message)
         real_sync_session_with_commit.flush()  # 刷新以获取ID，但不提交
+        test_data_tracker.add_message(message.id)  # 跟踪留言ID
         
         # 3. 普通用户尝试删除留言
         response = test_client.delete(f"/api/messages/{message.id}")
