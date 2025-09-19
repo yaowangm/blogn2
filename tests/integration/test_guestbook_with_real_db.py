@@ -53,6 +53,9 @@ class TestGuestbookWithRealDB:
         assert data["content"] == "这是一条测试留言内容"
         assert data["user_id"] == 0
         
+        # 跟踪留言ID
+        test_data_tracker.add_message(data["message_id"])
+        
         # 验证留言已保存到数据库
         message_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == data["message_id"])
@@ -79,6 +82,7 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         
         # 测试创建登录用户留言
         message_data = {
@@ -96,6 +100,9 @@ class TestGuestbookWithRealDB:
         data = response.json()
         assert data["success"] is True
         assert data["user_id"] == user.id
+        
+        # 跟踪留言ID
+        test_data_tracker.add_message(data["message_id"])
         
         # 验证留言已保存到数据库
         message_result = real_sync_session_with_commit.exec(
