@@ -25,7 +25,7 @@ class TestMessageDeletionWithRealDB:
     """留言删除功能测试类 - 真实数据库版本"""
 
     @pytest.mark.integration
-    def test_delete_main_message_as_admin(self, test_client, real_sync_session):
+    def test_delete_main_message_as_admin(self, test_client, real_sync_session_with_commit):
         """测试管理员删除主贴（包括所有跟贴）"""
         # 1. 创建管理员用户
         admin_user = User(
@@ -35,8 +35,8 @@ class TestMessageDeletionWithRealDB:
             regtime=datetime(2024, 1, 1, 10, 0, 0),
             state=1  # 管理员状态
         )
-        real_sync_session.add(admin_user)
-        real_sync_session.flush()
+        real_sync_session_with_commit.add(admin_user)
+        real_sync_session_with_commit.flush()
         
         # 2. 创建主贴
         main_message = Post(
@@ -53,8 +53,8 @@ class TestMessageDeletionWithRealDB:
             rootid=0,  # 主贴
             replycount=0
         )
-        real_sync_session.add(main_message)
-        real_sync_session.flush()
+        real_sync_session_with_commit.add(main_message)
+        real_sync_session_with_commit.flush()
         
         # 3. 创建跟贴
         reply1 = Post(
@@ -71,7 +71,7 @@ class TestMessageDeletionWithRealDB:
             rootid=main_message.id,  # 跟贴
             replycount=0
         )
-        real_sync_session.add(reply1)
+        real_sync_session_with_commit.add(reply1)
         
         reply2 = Post(
             folderid=0,
@@ -87,16 +87,16 @@ class TestMessageDeletionWithRealDB:
             rootid=main_message.id,  # 跟贴
             replycount=0
         )
-        real_sync_session.add(reply2)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(reply2)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID，但不提交
         
         # 4. 验证留言已创建
-        main_result = real_sync_session.exec(
+        main_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == main_message.id)
         )
         assert main_result.first() is not None
         
-        replies_result = real_sync_session.exec(
+        replies_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.rootid == main_message.id)
         )
         replies = replies_result.all()
@@ -111,13 +111,13 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
         
         # 6. 验证留言未被删除
-        main_result = real_sync_session.exec(
+        main_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == main_message.id)
         )
         assert main_result.first() is not None
 
     @pytest.mark.integration
-    def test_delete_reply_message_as_admin(self, test_client, real_sync_session):
+    def test_delete_reply_message_as_admin(self, test_client, real_sync_session_with_commit):
         """测试管理员删除跟贴"""
         # 1. 创建管理员用户
         admin_user = User(
@@ -127,8 +127,8 @@ class TestMessageDeletionWithRealDB:
             regtime=datetime(2024, 1, 1, 10, 0, 0),
             state=1  # 管理员状态
         )
-        real_sync_session.add(admin_user)
-        real_sync_session.flush()
+        real_sync_session_with_commit.add(admin_user)
+        real_sync_session_with_commit.flush()
         
         # 2. 创建主贴
         main_message = Post(
@@ -145,8 +145,8 @@ class TestMessageDeletionWithRealDB:
             rootid=0,  # 主贴
             replycount=0
         )
-        real_sync_session.add(main_message)
-        real_sync_session.flush()
+        real_sync_session_with_commit.add(main_message)
+        real_sync_session_with_commit.flush()
         
         # 3. 创建跟贴
         reply = Post(
@@ -163,8 +163,8 @@ class TestMessageDeletionWithRealDB:
             rootid=main_message.id,  # 跟贴
             replycount=0
         )
-        real_sync_session.add(reply)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(reply)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID，但不提交
         
         # 4. 删除跟贴
         response = test_client.delete(f"/api/messages/{reply.id}")
@@ -175,7 +175,7 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
 
     @pytest.mark.integration
-    def test_delete_message_as_regular_user(self, test_client, real_sync_session):
+    def test_delete_message_as_regular_user(self, test_client, real_sync_session_with_commit):
         """测试普通用户尝试删除留言（权限验证）"""
         # 1. 创建普通用户
         regular_user = User(
@@ -185,8 +185,8 @@ class TestMessageDeletionWithRealDB:
             regtime=datetime(2024, 1, 1, 10, 0, 0),
             state=0  # 普通用户状态
         )
-        real_sync_session.add(regular_user)
-        real_sync_session.flush()
+        real_sync_session_with_commit.add(regular_user)
+        real_sync_session_with_commit.flush()
         
         # 2. 创建留言
         message = Post(
@@ -203,8 +203,8 @@ class TestMessageDeletionWithRealDB:
             rootid=0,  # 主贴
             replycount=0
         )
-        real_sync_session.add(message)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(message)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID，但不提交
         
         # 3. 普通用户尝试删除留言
         response = test_client.delete(f"/api/messages/{message.id}")
@@ -215,7 +215,7 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
 
     @pytest.mark.integration
-    def test_delete_message_anonymous_user(self, test_client, real_sync_session):
+    def test_delete_message_anonymous_user(self, test_client, real_sync_session_with_commit):
         """测试匿名用户尝试删除留言（认证验证）"""
         # 1. 创建留言
         message = Post(
@@ -232,8 +232,8 @@ class TestMessageDeletionWithRealDB:
             rootid=0,  # 主贴
             replycount=0
         )
-        real_sync_session.add(message)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(message)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID，但不提交
         
         # 2. 匿名用户尝试删除留言
         response = test_client.delete(f"/api/messages/{message.id}")
@@ -244,7 +244,7 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
 
     @pytest.mark.integration
-    def test_delete_nonexistent_message(self, test_client, real_sync_session):
+    def test_delete_nonexistent_message(self, test_client, real_sync_session_with_commit):
         """测试删除不存在的留言"""
         # 1. 创建管理员用户
         admin_user = User(
@@ -254,8 +254,8 @@ class TestMessageDeletionWithRealDB:
             regtime=datetime(2024, 1, 1, 10, 0, 0),
             state=1  # 管理员状态
         )
-        real_sync_session.add(admin_user)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(admin_user)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID，但不提交
         
         # 2. 尝试删除不存在的留言
         response = test_client.delete("/api/messages/99999")
@@ -266,7 +266,7 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
 
     @pytest.mark.integration
-    def test_delete_article_comment(self, test_client, real_sync_session):
+    def test_delete_article_comment(self, test_client, real_sync_session_with_commit):
         """测试删除文章评论（非留言本）"""
         # 1. 创建管理员用户
         admin_user = User(
@@ -276,8 +276,8 @@ class TestMessageDeletionWithRealDB:
             regtime=datetime(2024, 1, 1, 10, 0, 0),
             state=1  # 管理员状态
         )
-        real_sync_session.add(admin_user)
-        real_sync_session.flush()
+        real_sync_session_with_commit.add(admin_user)
+        real_sync_session_with_commit.flush()
         
         # 2. 创建测试项目
         project = Project(
@@ -287,8 +287,8 @@ class TestMessageDeletionWithRealDB:
             state=0,
             accesscount=0
         )
-        real_sync_session.add(project)
-        real_sync_session.flush()
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.flush()
         
         # 3. 创建测试文章
         article = ProjectItem(
@@ -301,8 +301,8 @@ class TestMessageDeletionWithRealDB:
             status=1,
             allowpost=1
         )
-        real_sync_session.add(article)
-        real_sync_session.flush()
+        real_sync_session_with_commit.add(article)
+        real_sync_session_with_commit.flush()
         
         # 4. 创建文章评论
         comment = Post(
@@ -319,8 +319,8 @@ class TestMessageDeletionWithRealDB:
             rootid=0,  # 主评论
             replycount=0
         )
-        real_sync_session.add(comment)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(comment)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID，但不提交
         
         # 5. 尝试删除文章评论
         response = test_client.delete(f"/api/messages/{comment.id}")
@@ -331,7 +331,7 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
 
     @pytest.mark.integration
-    def test_delete_message_validation(self, test_client, real_sync_session):
+    def test_delete_message_validation(self, test_client, real_sync_session_with_commit):
         """测试删除留言的参数验证"""
         # 1. 测试无效的message_id格式
         response = test_client.delete("/api/messages/invalid_id")
@@ -352,7 +352,7 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
 
     @pytest.mark.integration
-    def test_delete_message_direct_repository(self, test_client, real_sync_session):
+    def test_delete_message_direct_repository(self, test_client, real_sync_session_with_commit):
         """测试直接使用Repository删除留言（绕过认证）"""
         from src.repositories.post_repository import PostRepository
         from src.database import get_async_session
@@ -372,8 +372,8 @@ class TestMessageDeletionWithRealDB:
             rootid=0,  # 主贴
             replycount=0
         )
-        real_sync_session.add(main_message)
-        real_sync_session.flush()
+        real_sync_session_with_commit.add(main_message)
+        real_sync_session_with_commit.flush()
         
         # 2. 创建跟贴
         reply = Post(
@@ -390,16 +390,16 @@ class TestMessageDeletionWithRealDB:
             rootid=main_message.id,  # 跟贴
             replycount=0
         )
-        real_sync_session.add(reply)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(reply)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID，但不提交
         
         # 3. 验证留言已创建
-        main_result = real_sync_session.exec(
+        main_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == main_message.id)
         )
         assert main_result.first() is not None
         
-        reply_result = real_sync_session.exec(
+        reply_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == reply.id)
         )
         assert reply_result.first() is not None
@@ -421,7 +421,7 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
 
     @pytest.mark.integration
-    def test_delete_message_error_handling(self, test_client, real_sync_session):
+    def test_delete_message_error_handling(self, test_client, real_sync_session_with_commit):
         """测试删除留言的错误处理"""
         # 1. 测试删除不存在的留言
         response = test_client.delete("/api/messages/99999")
@@ -445,8 +445,8 @@ class TestMessageDeletionWithRealDB:
             rootid=0,  # 主贴
             replycount=0
         )
-        real_sync_session.add(message)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(message)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID，但不提交
         
         # 尝试删除已删除的留言
         response = test_client.delete(f"/api/messages/{message.id}")
@@ -455,7 +455,7 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
 
     @pytest.mark.integration
-    def test_delete_message_permission_scenarios(self, test_client, real_sync_session):
+    def test_delete_message_permission_scenarios(self, test_client, real_sync_session_with_commit):
         """测试删除留言的权限场景"""
         # 1. 创建不同状态的用户
         admin_user = User(
@@ -465,7 +465,7 @@ class TestMessageDeletionWithRealDB:
             regtime=datetime(2024, 1, 1, 10, 0, 0),
             state=1  # 管理员
         )
-        real_sync_session.add(admin_user)
+        real_sync_session_with_commit.add(admin_user)
         
         regular_user = User(
             name="regular_user",
@@ -474,7 +474,7 @@ class TestMessageDeletionWithRealDB:
             regtime=datetime(2024, 1, 1, 10, 0, 0),
             state=0  # 普通用户
         )
-        real_sync_session.add(regular_user)
+        real_sync_session_with_commit.add(regular_user)
         
         # 2. 创建留言
         message = Post(
@@ -491,8 +491,8 @@ class TestMessageDeletionWithRealDB:
             rootid=0,  # 主贴
             replycount=0
         )
-        real_sync_session.add(message)
-        real_sync_session.flush()  # 刷新以获取ID，但不提交
+        real_sync_session_with_commit.add(message)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID，但不提交
         
         # 3. 测试各种权限场景
         # 由于测试环境没有完整的认证系统，我们主要测试API端点的响应
@@ -504,7 +504,7 @@ class TestMessageDeletionWithRealDB:
         assert "需要登录才能删除留言" in data["detail"]
         
         # 4. 验证留言仍然存在
-        message_result = real_sync_session.exec(
+        message_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == message.id)
         )
         assert message_result.first() is not None

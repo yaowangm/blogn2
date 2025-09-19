@@ -19,6 +19,159 @@ load_dotenv()
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+def cleanup_test_data(engine):
+    """清理测试数据"""
+    from sqlmodel import Session
+    from sqlalchemy import text
+    session = Session(engine)
+    try:
+        print("🧹 开始清理测试数据...")
+        # 删除测试用户
+        result1 = session.execute(text("DELETE FROM users WHERE name LIKE '%test%' OR email LIKE '%test%'"))
+        print(f"🗑️ 删除了 {result1.rowcount} 个测试用户")
+        # 删除测试项目
+        result2 = session.execute(text("DELETE FROM project WHERE name LIKE '%Test%' OR name LIKE '%test%'"))
+        print(f"🗑️ 删除了 {result2.rowcount} 个测试项目")
+        # 删除测试文章
+        result3 = session.execute(text("DELETE FROM projectitem WHERE name LIKE '%Test%' OR name LIKE '%test%'"))
+        print(f"🗑️ 删除了 {result3.rowcount} 个测试文章")
+        # 删除测试评论
+        result4 = session.execute(text("DELETE FROM post WHERE content LIKE '%测试%' OR content LIKE '%test%' OR subject LIKE '%测试%' OR subject LIKE '%test%'"))
+        print(f"🗑️ 删除了 {result4.rowcount} 个测试评论")
+        session.commit()
+        print("✅ 测试数据清理完成")
+    except Exception as e:
+        print(f"❌ 清理测试数据时出错: {e}")
+        session.rollback()
+    finally:
+        session.close()
+
+class UnifiedDatabaseManager:
+    """统一的数据库连接和事务管理器"""
+    
+    def __init__(self, sync_engine, async_engine):
+        self.sync_engine = sync_engine
+        self.async_engine = async_engine
+        self._transaction = None
+        self._async_transaction = None
+    
+    def begin_transaction(self):
+        """开始事务"""
+        # 创建同步会话并开始事务
+        self.sync_session = Session(self.sync_engine)
+        self._transaction = self.sync_session.begin()
+        
+        # 创建异步会话并开始事务
+        from sqlmodel.ext.asyncio.session import AsyncSession
+        from sqlalchemy.orm import sessionmaker
+        async_session_factory = sessionmaker(
+            self.async_engine,
+            class_=AsyncSession,
+            expire_on_commit=False
+        )
+        self.async_session = async_session_factory()
+        # 使用同步方式开始异步事务
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # 如果事件循环正在运行，创建任务
+                task = asyncio.create_task(self.async_session.begin())
+                self._async_transaction = task
+            else:
+                # 如果事件循环没有运行，直接运行
+                self._async_transaction = loop.run_until_complete(self.async_session.begin())
+        except RuntimeError:
+            # 如果没有事件循环，创建新的
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                self._async_transaction = loop.run_until_complete(self.async_session.begin())
+            finally:
+                loop.close()
+    
+    def commit(self):
+        """提交事务"""
+        if self._transaction:
+            self._transaction.commit()
+        if self._async_transaction:
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    asyncio.create_task(self._async_transaction.commit())
+                else:
+                    loop.run_until_complete(self._async_transaction.commit())
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(self._async_transaction.commit())
+                finally:
+                    loop.close()
+    
+    def rollback(self):
+        """回滚事务"""
+        if self._transaction:
+            try:
+                self._transaction.rollback()
+            except Exception:
+                pass
+        if self._async_transaction:
+            try:
+                import asyncio
+                # 如果是任务，等待完成
+                if asyncio.iscoroutine(self._async_transaction):
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        asyncio.create_task(self._async_transaction.rollback())
+                    else:
+                        loop.run_until_complete(self._async_transaction.rollback())
+                else:
+                    # 如果是事务对象，直接回滚
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        asyncio.create_task(self._async_transaction.rollback())
+                    else:
+                        loop.run_until_complete(self._async_transaction.rollback())
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    if asyncio.iscoroutine(self._async_transaction):
+                        loop.run_until_complete(self._async_transaction.rollback())
+                    else:
+                        loop.run_until_complete(self._async_transaction.rollback())
+                finally:
+                    loop.close()
+            except Exception:
+                pass
+    
+    def close(self):
+        """关闭连接"""
+        if hasattr(self, 'sync_session'):
+            try:
+                self.sync_session.close()
+            except Exception:
+                pass
+        if hasattr(self, 'async_session'):
+            try:
+                import asyncio
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    asyncio.create_task(self.async_session.close())
+                else:
+                    loop.run_until_complete(self.async_session.close())
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(self.async_session.close())
+                finally:
+                    loop.close()
+            except Exception:
+                pass
+
 from fastapi.testclient import TestClient
 from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.pool import StaticPool
@@ -132,26 +285,48 @@ def real_sync_session(real_sync_engine):
                 pass
 
 @pytest.fixture
-def real_sync_session_with_commit(real_sync_engine):
-    """创建真实PostgreSQL同步会话 - 允许提交但测试后回滚所有更改"""
-    session = Session(real_sync_engine)
+def unified_db_manager(real_sync_engine, real_async_engine):
+    """创建统一的数据库管理器"""
+    manager = UnifiedDatabaseManager(real_sync_engine, real_async_engine)
     try:
-        # 不开始事务，允许直接提交
-        yield session
+        # 开始事务
+        manager.begin_transaction()
+        yield manager
     finally:
-        # 测试结束后回滚所有更改
+        # 回滚事务并关闭连接
         try:
-            session.rollback()
+            manager.rollback()
         except Exception:
-            # 忽略回滚时的异常
             pass
-        finally:
-            # 确保会话被正确关闭
-            try:
-                session.close()
-            except Exception:
-                # 忽略关闭时的异常
-                pass
+        try:
+            manager.close()
+        except Exception:
+            pass
+        # 手动清理测试数据作为备用方案
+        try:
+            cleanup_test_data(real_sync_engine)
+        except Exception:
+            pass
+
+@pytest.fixture(autouse=True)
+def cleanup_after_test(real_sync_engine):
+    """自动清理测试数据 - 在每个测试后运行"""
+    yield
+    # 测试结束后清理数据
+    try:
+        cleanup_test_data(real_sync_engine)
+    except Exception:
+        pass
+
+@pytest.fixture
+def real_sync_session_with_commit(unified_db_manager):
+    """创建真实PostgreSQL同步会话 - 使用统一事务管理"""
+    yield unified_db_manager.sync_session
+
+@pytest.fixture
+def real_async_session_with_commit(unified_db_manager):
+    """创建真实PostgreSQL异步会话 - 使用统一事务管理"""
+    yield unified_db_manager.async_session
 
 @pytest.fixture
 def mock_async_session():
@@ -186,7 +361,7 @@ async def real_async_session(real_async_engine):
 
 @pytest.fixture
 async def real_async_session_with_commit(real_async_engine):
-    """创建真实PostgreSQL异步会话 - 允许提交但使用保存点回滚"""
+    """创建真实PostgreSQL异步会话 - 使用事务回滚"""
     from sqlmodel.ext.asyncio.session import AsyncSession
     from sqlalchemy.orm import sessionmaker
     
@@ -200,19 +375,20 @@ async def real_async_session_with_commit(real_async_engine):
     async with async_session_factory() as session:
         # 开始事务
         await session.begin()
-        # 创建保存点
-        savepoint = await session.begin_nested()
         try:
             yield session
         finally:
-            # 回滚到保存点
-            await savepoint.rollback()
+            # 回滚整个事务
+            try:
+                await session.rollback()
+            except Exception:
+                pass
 
 
 
 @pytest.fixture
-def test_client(real_async_engine):
-    """创建测试客户端 - 使用相同的数据库引擎"""
+def test_client(unified_db_manager):
+    """创建测试客户端 - 使用统一数据库管理器"""
     # 临时替换应用的数据库引擎和会话工厂
     from src.database import async_engine, async_session
     from src.main import app
@@ -223,11 +399,11 @@ def test_client(real_async_engine):
     original_engine = async_engine
     original_session = async_session
     
-    # 替换为测试引擎和会话工厂
+    # 替换为统一管理器的异步引擎和会话
     import src.database
-    src.database.async_engine = real_async_engine
+    src.database.async_engine = unified_db_manager.async_engine
     src.database.async_session = sessionmaker(
-        real_async_engine,
+        unified_db_manager.async_engine,
         class_=AsyncSession,
         expire_on_commit=False
     )

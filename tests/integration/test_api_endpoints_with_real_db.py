@@ -42,7 +42,7 @@ class TestAPIEndpointsWithRealDB:
         assert response.status_code == 404
 
     @pytest.mark.integration
-    def test_get_user_summary_with_real_db(self, test_client, real_sync_session):
+    def test_get_user_summary_with_real_db(self, test_client, real_sync_session_with_commit):
         """测试获取用户摘要 - 使用真实数据库"""
         # 创建测试用户数据
         user1 = User(
@@ -60,8 +60,8 @@ class TestAPIEndpointsWithRealDB:
             regtime=datetime(2024, 1, 2, 10, 0, 0)
         )
         
-        real_sync_session.add(user1)
-        real_sync_session.add(user2)
+        real_sync_session_with_commit.add(user1)
+        real_sync_session_with_commit.add(user2)
         # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/users/summary")
@@ -72,7 +72,7 @@ class TestAPIEndpointsWithRealDB:
         assert data["total_users"] >= 2
 
     @pytest.mark.integration
-    def test_get_user_count_with_real_db(self, test_client, real_sync_session):
+    def test_get_user_count_with_real_db(self, test_client, real_sync_session_with_commit):
         """测试获取用户总数 - 使用真实数据库"""
         # 确保有测试数据
         user = User(
@@ -82,7 +82,7 @@ class TestAPIEndpointsWithRealDB:
             password="hashed_password",
             regtime=datetime(2024, 1, 3, 10, 0, 0)
         )
-        real_sync_session.add(user)
+        real_sync_session_with_commit.add(user)
         # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/users/count")
@@ -93,12 +93,12 @@ class TestAPIEndpointsWithRealDB:
         assert data["count"] >= 1
 
     @pytest.mark.integration
-    def test_get_user_by_id_with_real_db(self, test_client, real_sync_session):
+    def test_get_user_by_id_with_real_db(self, test_client, real_sync_session_with_commit):
         """测试根据ID获取用户 - 使用真实数据库"""
         # 使用一个已存在的用户ID进行测试
         # 查询数据库中的第一个用户
         from sqlmodel import select
-        existing_user = real_sync_session.exec(select(User)).first()
+        existing_user = real_sync_session_with_commit.exec(select(User)).first()
         if existing_user:
             user_id = existing_user.id
             response = test_client.get(f"/api/users/{user_id}")
@@ -118,7 +118,7 @@ class TestAPIEndpointsWithRealDB:
         assert response.status_code == 404
 
     @pytest.mark.integration
-    def test_get_recent_blogs_with_real_db(self, test_client, real_sync_session):
+    def test_get_recent_blogs_with_real_db(self, test_client, real_sync_session_with_commit):
         """测试获取最新博客 - 使用真实数据库"""
         # 创建测试项目
         project = Project(
@@ -129,7 +129,7 @@ class TestAPIEndpointsWithRealDB:
             state=0,
             accesscount=10
         )
-        real_sync_session.add(project)
+        real_sync_session_with_commit.add(project)
         # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/blogs/recent")
@@ -139,7 +139,7 @@ class TestAPIEndpointsWithRealDB:
         assert isinstance(data, list)
 
     @pytest.mark.integration
-    def test_get_popular_blogs_with_real_db(self, test_client, real_sync_session):
+    def test_get_popular_blogs_with_real_db(self, test_client, real_sync_session_with_commit):
         """测试获取热门博客 - 使用真实数据库"""
         # 创建测试项目
         project = Project(
@@ -150,7 +150,7 @@ class TestAPIEndpointsWithRealDB:
             state=0,
             accesscount=100
         )
-        real_sync_session.add(project)
+        real_sync_session_with_commit.add(project)
         # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/blogs/popular")
@@ -160,7 +160,7 @@ class TestAPIEndpointsWithRealDB:
         assert isinstance(data, list)
 
     @pytest.mark.integration
-    def test_get_about_content_with_real_db(self, test_client, real_sync_session):
+    def test_get_about_content_with_real_db(self, test_client, real_sync_session_with_commit):
         """测试获取关于内容 - 使用真实数据库"""
         # 创建测试项目项
         project_item = ProjectItem(
@@ -173,7 +173,7 @@ class TestAPIEndpointsWithRealDB:
             createtime=datetime(2024, 1, 1, 10, 0, 0),
             status=1
         )
-        real_sync_session.add(project_item)
+        real_sync_session_with_commit.add(project_item)
         # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/blogs/about")
@@ -186,7 +186,7 @@ class TestAPIEndpointsWithRealDB:
         assert data["title"] == "Why Blogn"
 
     @pytest.mark.integration
-    def test_get_site_metadata_with_real_db(self, test_client, real_sync_session):
+    def test_get_site_metadata_with_real_db(self, test_client, real_sync_session_with_commit):
         """测试获取站点元数据 - 使用真实数据库"""
         # 确保有用户数据
         user = User(
@@ -196,7 +196,7 @@ class TestAPIEndpointsWithRealDB:
             password="hashed_password",
             regtime=datetime(2024, 1, 5, 10, 0, 0)
         )
-        real_sync_session.add(user)
+        real_sync_session_with_commit.add(user)
         # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/metadata/")
