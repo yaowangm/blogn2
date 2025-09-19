@@ -284,6 +284,7 @@ class TestMessageDeletionWithRealDB:
         )
         real_sync_session_with_commit.add(admin_user)
         real_sync_session_with_commit.flush()
+        test_data_tracker.add_user(admin_user.id)  # 跟踪管理员用户ID
         
         # 2. 创建测试项目
         project = Project(
@@ -295,6 +296,7 @@ class TestMessageDeletionWithRealDB:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()
+        test_data_tracker.add_project(project.id)  # 跟踪项目ID
         
         # 3. 创建测试文章
         article = ProjectItem(
@@ -309,6 +311,7 @@ class TestMessageDeletionWithRealDB:
         )
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()
+        test_data_tracker.add_article(article.id)  # 跟踪文章ID
         
         # 4. 创建文章评论
         comment = Post(
@@ -327,6 +330,7 @@ class TestMessageDeletionWithRealDB:
         )
         real_sync_session_with_commit.add(comment)
         real_sync_session_with_commit.flush()  # 刷新以获取ID，但不提交
+        test_data_tracker.add_comment(comment.id)  # 跟踪评论ID
         
         # 5. 尝试删除文章评论
         response = test_client.delete(f"/api/messages/{comment.id}")
