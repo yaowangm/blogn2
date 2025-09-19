@@ -135,6 +135,8 @@ class TestAPIEndpointsWithRealDB:
             accesscount=10
         )
         real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_project(project.id)  # 跟踪项目ID
         # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/blogs/recent")
