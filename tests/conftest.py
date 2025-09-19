@@ -366,18 +366,37 @@ def unified_db_manager(real_sync_engine, real_async_engine):
 
 @pytest.fixture(autouse=True)
 def cleanup_after_test(real_sync_engine):
-    """自动清理测试数据 - 在每个测试后运行"""
+    """自动清理测试数据 - 在每个测试后运行（备用方案）"""
     yield
-    # 测试结束后清理数据
+    # 注意：由于使用了事务回滚，这个清理逻辑主要是备用方案
+    # 只有在事务回滚失败时才会执行
     try:
         cleanup_test_data(real_sync_engine)
     except Exception:
         pass
 
 @pytest.fixture
-def real_sync_session_with_commit(unified_db_manager):
-    """创建真实PostgreSQL同步会话 - 使用统一事务管理"""
-    yield unified_db_manager.sync_session
+def real_sync_session_with_commit(real_sync_engine):
+    """创建真实PostgreSQL同步会话 - 使用事务回滚（不提交）"""
+    session = Session(real_sync_engine)
+    try:
+        # 开始事务
+        session.begin()
+        yield session
+    finally:
+        # 回滚事务，不提交更改
+        try:
+            session.rollback()
+        except Exception:
+            # 忽略回滚时的异常
+            pass
+        finally:
+            # 确保会话被正确关闭
+            try:
+                session.close()
+            except Exception:
+                # 忽略关闭时的异常
+                pass
 
 @pytest.fixture
 def real_async_session_with_commit(unified_db_manager):
