@@ -102,6 +102,7 @@ class TestArticleCommentsWithRealDB:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 获取生成的用户ID
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         
         # 创建测试项目
         project = Project(
@@ -113,6 +114,7 @@ class TestArticleCommentsWithRealDB:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 获取生成的项目ID
+        test_data_tracker.add_project(project.id)  # 跟踪项目ID
         
         # 创建测试文章（只允许登录用户评论）
         article = ProjectItem(
@@ -127,6 +129,7 @@ class TestArticleCommentsWithRealDB:
         )
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_article(article.id)  # 跟踪文章ID
         
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
