@@ -261,6 +261,7 @@ class TestMessageDeletionWithRealDB:
         )
         real_sync_session_with_commit.add(admin_user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID，但不提交
+        test_data_tracker.add_user(admin_user.id)  # 跟踪管理员用户ID
         
         # 2. 尝试删除不存在的留言
         response = test_client.delete("/api/messages/99999")
