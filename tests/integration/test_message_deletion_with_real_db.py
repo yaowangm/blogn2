@@ -384,6 +384,7 @@ class TestMessageDeletionWithRealDB:
         )
         real_sync_session_with_commit.add(main_message)
         real_sync_session_with_commit.flush()
+        test_data_tracker.add_message(main_message.id)  # 跟踪主贴ID
         
         # 2. 创建跟贴
         reply = Post(
@@ -402,6 +403,7 @@ class TestMessageDeletionWithRealDB:
         )
         real_sync_session_with_commit.add(reply)
         real_sync_session_with_commit.flush()  # 刷新以获取ID，但不提交
+        test_data_tracker.add_message(reply.id)  # 跟踪跟贴ID
         
         # 3. 验证留言已创建
         main_result = real_sync_session_with_commit.exec(
