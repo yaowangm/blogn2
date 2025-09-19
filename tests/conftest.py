@@ -52,12 +52,15 @@ def cleanup_test_data(engine):
         """))
         print(f"🗑️ 删除了 {result3.rowcount} 个测试文章")
         
-        # 删除测试评论和留言（只清理真正的测试数据）
+        # 删除测试评论和留言（更全面的清理策略）
         result4 = session.execute(text("""
             DELETE FROM post WHERE 
                 (content LIKE '%测试%' OR content LIKE '%test%' OR 
                  subject LIKE '%测试%' OR subject LIKE '%test%' OR
-                 content LIKE '%Test%' OR subject LIKE '%Test%') AND
+                 content LIKE '%Test%' OR subject LIKE '%Test%' OR
+                 content LIKE '%留言本%' OR subject LIKE '%留言本%' OR
+                 content LIKE '%主贴%' OR subject LIKE '%主贴%' OR
+                 content LIKE '%留言%' OR subject LIKE '%留言%') AND
                 (posttime > NOW() - INTERVAL '1 day' OR 
                  posttime = '2024-01-01 10:00:00' OR 
                  posttime = '2024-01-01 11:00:00' OR 
@@ -65,7 +68,13 @@ def cleanup_test_data(engine):
                  posttime = '2024-01-01 11:01:00' OR
                  posttime = '2024-01-01 11:02:00' OR
                  posttime = '2024-01-01 11:03:00' OR
-                 posttime = '2024-01-01 11:04:00')
+                 posttime = '2024-01-01 11:04:00' OR
+                 posttime = '2024-01-01 11:05:00' OR
+                 posttime = '2024-01-01 11:06:00' OR
+                 posttime = '2024-01-01 11:07:00' OR
+                 posttime = '2024-01-01 11:08:00' OR
+                 posttime = '2024-01-01 11:09:00' OR
+                 posttime = '2024-01-01 11:10:00')
         """))
         print(f"🗑️ 删除了 {result4.rowcount} 个测试评论和留言")
         
