@@ -105,6 +105,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -118,6 +119,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_project(project.id)  # 跟踪项目ID
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -134,6 +136,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_article(article.id)  # 跟踪文章ID
         
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
@@ -155,6 +158,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(comment)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_comment(comment.id)  # 跟踪评论ID
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -181,6 +185,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -201,6 +206,9 @@ class TestCommentsAndGuestbookComplete:
         assert data["success"] is True
         assert "message_id" in data
         message_id = data["message_id"]
+        
+        # 跟踪留言ID
+        test_data_tracker.add_message(message_id)
         
         # 3. 验证留言已保存到数据库
         message_result = real_sync_session_with_commit.exec(
