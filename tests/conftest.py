@@ -41,7 +41,15 @@ def cleanup_test_data(engine):
         print(f"🗑️ 删除了 {result2.rowcount} 个测试项目")
         
         # 删除测试文章
-        result3 = session.execute(text("DELETE FROM projectitem WHERE name LIKE '%Test%' OR name LIKE '%test%'"))
+        result3 = session.execute(text("""
+            DELETE FROM projectitem WHERE 
+                name LIKE '%Test%' OR name LIKE '%test%' OR
+                name LIKE '%Article%' OR name LIKE '%Comment%' OR
+                name LIKE '%Message%' OR name LIKE '%Guest%' OR
+                name LIKE '%Anonymous%' OR name LIKE '%Login%' OR
+                name LIKE '%Required%' OR name LIKE '%Disabled%' OR
+                id > 9000
+        """))
         print(f"🗑️ 删除了 {result3.rowcount} 个测试文章")
         
         # 删除测试评论和留言（更全面的清理）
@@ -52,7 +60,7 @@ def cleanup_test_data(engine):
                 content LIKE '%Test%' OR subject LIKE '%Test%' OR
                 content LIKE '%这是%' OR content LIKE '%跟贴%' OR
                 content LIKE '%主贴%' OR content LIKE '%留言本%' OR
-                content LIKE '%文章评论%' OR id > 3500000
+                content LIKE '%文章评论%'
         """))
         print(f"🗑️ 删除了 {result4.rowcount} 个测试评论和留言")
         
