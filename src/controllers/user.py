@@ -6,10 +6,12 @@
 """
 
 from typing import List, Dict, Any, Optional
+import os
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database import User
+from src.database import User, get_async_session
 from src.models.user_response import (
     UserPublicResponse, UserPrivateResponse, UserListResponse, 
     UserSummaryResponse, UserProfileResponse,
@@ -211,6 +213,118 @@ async def get_user_by_id(
     
     # 使用安全的响应模型创建响应
     return create_user_profile_response(user_data, permissions)
+
+@router.post("/users/set-intro")
+@handle_api_errors("设置个人介绍失败")
+@require_auth()
+async def set_user_intro(
+    request_data: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    设置用户个人介绍
+    
+    将指定文章设为用户的个人介绍，并复制文章的附件图片为头像
+    
+    Args:
+        request_data: 包含文章ID的数据 {"article_id": 123}
+        current_user: 当前登录用户信息
+        session: 数据库会话
+        
+    Returns:
+        Dict[str, Any]: 设置结果
+        
+    Raises:
+        HTTPException: 当文章不存在或无权限时
+    """
+    from src.repositories.project_item_repository import ProjectItemRepository
+    from src.repositories.user_repository import UserRepository
+    from src.services.user_service import UserService
+    from src.utils.image_utils import ImageProcessor
+    
+    article_id = request_data.get("article_id")
+    if not article_id:
+        raise HTTPException(status_code=400, detail="文章ID不能为空")
+    
+    try:
+        # 获取文章信息
+        project_item_repo = ProjectItemRepository(session)
+        article = await project_item_repo.get_by_id(article_id)
+        
+        if not article:
+            raise HTTPException(status_code=404, detail="文章不存在")
+        
+        # 检查权限：只有文章作者可以设置
+        if article.userid != current_user["id"]:
+            raise HTTPException(status_code=403, detail="无权限设置此文章为个人介绍")
+        
+        # 检查文章是否有附件图片
+        if not article.attachment:
+            raise HTTPException(status_code=400, detail="此文章没有附件图片，无法设为个人介绍")
+        
+        # 更新用户的intropiid字段
+        user_repo = UserRepository(session)
+        await user_repo.update_intropiid(current_user["id"], article_id)
+        
+        # 处理头像图片复制和resize
+        try:
+            # 获取上传目录和头像目录配置
+            from src.config.app import get_upload_dir
+            upload_dir = get_upload_dir()
+            avatar_dir = "../pic/blogn_img/userlogo"
+            
+            # 构建源文件路径
+            source_path = os.path.join(upload_dir, article.attachment)
+            
+            if not os.path.exists(source_path):
+                raise HTTPException(status_code=404, detail="附件图片文件不存在")
+            
+            # 创建头像目录（如果不存在）
+            user_id = current_user["id"]
+            prefix = (user_id // 10000) + 1
+            avatar_user_dir = os.path.join(avatar_dir, str(prefix))
+            os.makedirs(avatar_user_dir, exist_ok=True)
+            
+            # 生成头像文件名
+            avatar_filename = f"s_{user_id}.jpg"
+            avatar_path = os.path.join(avatar_user_dir, avatar_filename)
+            
+            # 复制并resize图片
+            image_processor = ImageProcessor()
+            await image_processor.resize_and_save_image(
+                source_path=source_path,
+                target_path=avatar_path,
+                max_size=(200, 200)  # 头像最大尺寸
+            )
+            
+            # 同时创建小尺寸头像（如果需要的话）
+            small_avatar_filename = f"s_{user_id}.jpg"  # 小尺寸使用相同文件名
+            small_avatar_path = os.path.join(avatar_user_dir, small_avatar_filename)
+            
+            # 如果小尺寸头像不存在，也创建一个
+            if not os.path.exists(small_avatar_path):
+                await image_processor.resize_and_save_image(
+                    source_path=source_path,
+                    target_path=small_avatar_path,
+                    max_size=(100, 100)  # 小尺寸头像
+                )
+            
+        except Exception as e:
+            # 如果图片处理失败，记录错误但不影响intropiid的设置
+            print(f"Warning: Failed to process avatar image: {e}")
+        
+        return {
+            "success": True,
+            "message": "个人介绍设置成功",
+            "article_id": article_id,
+            "article_title": article.name
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"设置个人介绍失败: {str(e)}")
 
 @router.post("/users/{user_id}/reset-password")
 @handle_api_errors("重置密码失败")

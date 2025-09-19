@@ -123,6 +123,33 @@ class UserRepository:
             await self.session.rollback()
             return False
 
+    async def update_intropiid(self, user_id: int, intropiid: int) -> bool:
+        """
+        更新用户的intropiid（个人介绍文章ID）
+        
+        Args:
+            user_id: 用户ID
+            intropiid: 个人介绍文章ID
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        try:
+            # 获取用户
+            user = await self.get_by_id(user_id)
+            if not user:
+                return False
+            
+            # 更新intropiid
+            user.intropiid = intropiid
+            await self.session.commit()
+            
+            return True
+            
+        except Exception as e:
+            await self.session.rollback()
+            return False
+
     async def update_email(self, user_id: int, new_email: str) -> bool:
         """
         更新用户邮箱
