@@ -62,6 +62,9 @@ class TestAPIEndpointsWithRealDB:
         
         real_sync_session_with_commit.add(user1)
         real_sync_session_with_commit.add(user2)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_user(user1.id)  # 跟踪用户ID
+        test_data_tracker.add_user(user2.id)  # 跟踪用户ID
         # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/users/summary")
@@ -83,6 +86,8 @@ class TestAPIEndpointsWithRealDB:
             regtime=datetime(2024, 1, 3, 10, 0, 0)
         )
         real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/users/count")
