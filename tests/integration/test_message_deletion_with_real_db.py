@@ -459,6 +459,7 @@ class TestMessageDeletionWithRealDB:
         )
         real_sync_session_with_commit.add(message)
         real_sync_session_with_commit.flush()  # 刷新以获取ID，但不提交
+        test_data_tracker.add_message(message.id)  # 跟踪留言ID
         
         # 尝试删除已删除的留言
         response = test_client.delete(f"/api/messages/{message.id}")
@@ -478,6 +479,8 @@ class TestMessageDeletionWithRealDB:
             state=1  # 管理员
         )
         real_sync_session_with_commit.add(admin_user)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_user(admin_user.id)  # 跟踪管理员用户ID
         
         regular_user = User(
             name="regular_user",
@@ -487,6 +490,8 @@ class TestMessageDeletionWithRealDB:
             state=0  # 普通用户
         )
         real_sync_session_with_commit.add(regular_user)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_user(regular_user.id)  # 跟踪普通用户ID
         
         # 2. 创建留言
         message = Post(
@@ -505,6 +510,7 @@ class TestMessageDeletionWithRealDB:
         )
         real_sync_session_with_commit.add(message)
         real_sync_session_with_commit.flush()  # 刷新以获取ID，但不提交
+        test_data_tracker.add_message(message.id)  # 跟踪留言ID
         
         # 3. 测试各种权限场景
         # 由于测试环境没有完整的认证系统，我们主要测试API端点的响应
