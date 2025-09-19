@@ -173,7 +173,6 @@ class TestAPIEndpointsWithRealDB:
         """测试获取关于内容 - 使用真实数据库"""
         # 创建测试项目项
         project_item = ProjectItem(
-            id=486,
             projectid=1,
             name="About Page",
             comment="This is the about page content",
@@ -183,6 +182,8 @@ class TestAPIEndpointsWithRealDB:
             status=1
         )
         real_sync_session_with_commit.add(project_item)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_article(project_item.id)  # 跟踪文章ID
         # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/blogs/about")
@@ -206,6 +207,8 @@ class TestAPIEndpointsWithRealDB:
             regtime=datetime(2024, 1, 5, 10, 0, 0)
         )
         real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/metadata/")
