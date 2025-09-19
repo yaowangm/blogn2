@@ -1,5 +1,6 @@
 from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
+from src.utils.database_utils import DatabaseUtils
 from typing import List, Optional, Tuple
 from src.models.user import User
 
@@ -93,7 +94,6 @@ class UserRepository:
             
         except Exception as e:
             await self.session.rollback()
-            print(f"更新密码失败: {e}")
             return False
     
     async def update_projectid(self, user_id: int, project_id: int) -> bool:
@@ -121,7 +121,6 @@ class UserRepository:
             
         except Exception as e:
             await self.session.rollback()
-            print(f"更新projectid失败: {e}")
             return False
 
     async def update_email(self, user_id: int, new_email: str) -> bool:
@@ -154,7 +153,6 @@ class UserRepository:
             
         except Exception as e:
             await self.session.rollback()
-            print(f"更新邮箱失败: {e}")
             return False
 
     async def increment_point(self, user_id: int, points: int = 10) -> None:
@@ -294,5 +292,4 @@ class UserRepository:
             return True
         except Exception as e:
             await self.session.rollback()
-            print(f"Error updating user state: {e}")
             return False 

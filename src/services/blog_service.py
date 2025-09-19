@@ -126,7 +126,6 @@ class BlogService(BaseService):
             return formatted_comments
         except Exception as e:
             # 如果查询失败，返回空列表
-            print(f"Warning: Could not fetch comments: {e}")
             return []
     
     async def get_about_content(self) -> Dict[str, Any]:
@@ -166,7 +165,6 @@ class BlogService(BaseService):
             }
         except Exception as e:
             # 如果查询失败，返回默认内容
-            print(f"Warning: Could not fetch about content: {e}")
             return {
                 "title": "Why Blogn",
                 "content": "内容暂不可用",
@@ -217,7 +215,6 @@ class BlogService(BaseService):
             return formatted_messages
         except Exception as e:
             # 如果查询失败，返回空列表
-            print(f"Warning: Could not fetch messages: {e}")
             return []
 
     async def get_messages_list(self, page: int = 1, limit: int = 10) -> Dict[str, Any]:
@@ -273,7 +270,6 @@ class BlogService(BaseService):
             }
         except Exception as e:
             # 如果查询失败，返回空数据
-            print(f"Warning: Could not fetch messages list: {e}")
             return {
                 "messages": [],
                 "total": 0,
@@ -319,7 +315,6 @@ class BlogService(BaseService):
             raise e
         except Exception as e:
             # 其他查询失败，返回空数据
-            print(f"Warning: Could not fetch thread {thread_id}: {e}")
             return {
                 "messages": [],
                 "thread_id": thread_id
@@ -388,7 +383,6 @@ class BlogService(BaseService):
             }
         except Exception as e:
             # 如果查询失败，返回空列表
-            print(f"Warning: Could not fetch latest posts: {e}")
             return {
                 "posts": [],
                 "total": 0,

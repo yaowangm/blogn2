@@ -165,5 +165,4 @@ class ProjectRepository:
             
         except Exception as e:
             await self.session.rollback()
-            print(f"更新项目失败: {str(e)}")
             return None 

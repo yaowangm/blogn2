@@ -152,8 +152,6 @@ function showError(message) {
  * @param {string} message - 成功消息
  */
 function showSuccess(message) {
-    console.log('页面成功:', message);
-    
     // 可以在这里添加全局成功提示UI
     // 例如：显示一个toast通知
 }

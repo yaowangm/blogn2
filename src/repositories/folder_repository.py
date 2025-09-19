@@ -50,7 +50,6 @@ class FolderRepository:
             return False
         except Exception as e:
             await self.session.rollback()
-            print(f"Error incrementing record count: {e}")
             return False
     
     async def decrement_record_count(self, folder_id: int) -> bool:
@@ -72,5 +71,4 @@ class FolderRepository:
             return False
         except Exception as e:
             await self.session.rollback()
-            print(f"Error decrementing record count: {e}")
             return False

@@ -386,7 +386,6 @@ class HeaderComponent extends BaseComponent {
             searchMenuItem.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                // TODO: 实现搜索功能
                 userMenu.classList.remove('active');
             });
         }
@@ -638,14 +637,12 @@ class HeaderComponent extends BaseComponent {
     loadTokenManager() {
         // 检查token-manager是否已经加载
         if (window.tokenManager) {
-            // console.log('TokenManager already loaded');
             return;
         }
 
         // 检查是否已经有token-manager脚本
         const existingScript = document.querySelector('script[src="/static/js/services/token-manager.js"]');
         if (existingScript) {
-            // console.log('TokenManager script already exists');
             return;
         }
 
@@ -653,7 +650,7 @@ class HeaderComponent extends BaseComponent {
         const script = document.createElement('script');
         script.src = '/static/js/services/token-manager.js';
         script.onload = () => {
-            // console.log('TokenManager loaded successfully');
+            // TokenManager加载成功
         };
         script.onerror = () => {
             console.error('Failed to load token-manager.js');

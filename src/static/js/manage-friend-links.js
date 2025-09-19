@@ -1,6 +1,15 @@
 /**
- * 管理友情链接页面脚本
- * 提供友情链接的增删改查功能
+ * 友情链接管理页面脚本
+ * 
+ * 提供完整的友情链接管理功能，包括：
+ * - 友情链接的增删改查操作
+ * - 权限验证（仅博客所有者和管理员可管理）
+ * - 数量限制控制（最多20个链接）
+ * - 模态框表单交互
+ * - 实时数据更新和缓存清理
+ * 
+ * @author Blogn Team
+ * @version 1.0.0
  */
 class FriendLinksManager {
     constructor() {
@@ -12,6 +21,15 @@ class FriendLinksManager {
         this.init();
     }
     
+    /**
+     * 初始化友情链接管理器
+     * 
+     * 执行以下初始化步骤：
+     * 1. 从URL参数获取项目ID
+     * 2. 验证用户权限
+     * 3. 绑定事件监听器
+     * 4. 加载友情链接数据
+     */
     init() {
         // 获取项目ID
         this.projectId = this.getProjectIdFromUrl();

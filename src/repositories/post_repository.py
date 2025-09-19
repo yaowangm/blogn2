@@ -363,7 +363,8 @@ class PostRepository:
                 await self.session.flush()
                 await self.session.commit()
         except Exception as e:
-            print(f"Error updating main post stats: {e}")
+            # 统计更新失败，静默处理
+            pass
     
     async def count_comments(self) -> int:
         """统计评论数量（排除留言本）"""
@@ -602,7 +603,8 @@ class PostRepository:
                 
                 await self.session.flush()
         except Exception as e:
-            print(f"Error updating main post stats after delete: {e}")
+            # 统计更新失败，静默处理
+            pass
     
     async def _update_main_comment_stats_after_delete(self, main_comment_id: int):
         """删除回复后更新主评论的统计信息"""
@@ -642,7 +644,8 @@ class PostRepository:
                 
                 await self.session.flush()
         except Exception as e:
-            print(f"Error updating main comment stats after delete: {e}")
+            # 统计更新失败，静默处理
+            pass
     
     async def _update_article_comment_stats_after_delete(self, project_item_id: int):
         """删除评论后更新博文的评论统计信息"""
@@ -664,7 +667,8 @@ class PostRepository:
                 
                 await self.session.flush()
         except Exception as e:
-            print(f"Error updating article comment stats after delete: {e}")
+            # 统计更新失败，静默处理
+            pass
     
     async def update_articles_folder_to_uncategorized(self, folder_id: int) -> int:
         """将指定分类下的所有文章设置为未分类
@@ -697,5 +701,4 @@ class PostRepository:
             
         except Exception as e:
             await self.session.rollback()
-            print(f"Error updating articles folder to uncategorized: {e}")
             return 0 

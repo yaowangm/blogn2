@@ -8,7 +8,18 @@ from src.services.base_service import BaseService
 class UserService(BaseService):
     """用户业务逻辑服务类
     
-    提供用户相关的业务逻辑处理，包括用户查询、统计、分页等功能。
+    提供完整的用户管理业务逻辑，包括：
+    - 用户信息查询和统计
+    - 分页列表和搜索功能
+    - 用户状态管理（冻结/恢复）
+    - 密码和邮箱更新
+    - 数据格式化和安全处理
+    
+    设计原则：
+    - 业务逻辑与数据访问分离
+    - 统一的错误处理和验证
+    - 敏感信息的安全处理
+    - 支持缓存和性能优化
     """
     
     def __init__(self, user_repo: UserRepository, project_repo: Optional[ProjectRepository] = None):

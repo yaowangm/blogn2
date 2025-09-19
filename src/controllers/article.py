@@ -748,7 +748,6 @@ async def delete_article_images(attachment_path: str, article_id: int, session: 
             full_path = os.path.join(upload_dir, attachment_path)
             if os.path.exists(full_path):
                 os.remove(full_path)
-                print(f"Deleted main attachment: {full_path}")
         
         # 删除其他附件图片
         from src.repositories.attachment_repository import AttachmentRepository
@@ -760,11 +759,10 @@ async def delete_article_images(attachment_path: str, article_id: int, session: 
                 full_path = os.path.join(upload_dir, attachment.linkstr)
                 if os.path.exists(full_path):
                     os.remove(full_path)
-                    print(f"Deleted attachment: {full_path}")
         
         # 删除附件记录（无论是否有附件都要执行删除操作）
         await attachment_repo.delete_by_project_item_id(article_id)
             
     except Exception as e:
-        print(f"Error deleting article images: {e}")
-        # 不抛出异常，因为文件删除失败不应该阻止数据库删除
+        # 文件删除失败不应该阻止数据库删除，静默处理
+        pass

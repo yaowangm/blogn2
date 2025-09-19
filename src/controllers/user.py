@@ -5,10 +5,10 @@
 请参考 DEVELOPMENT_RULES.md 了解完整的开发规则。
 """
 
-from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Dict, Any, Optional
 
-from src.services.user_service import UserService
+from fastapi import APIRouter, Depends, HTTPException
+
 from src.database import User
 from src.models.user_response import (
     UserPublicResponse, UserPrivateResponse, UserListResponse, 
@@ -17,12 +17,15 @@ from src.models.user_response import (
     create_user_list_response, create_user_summary_response,
     create_user_profile_response
 )
-from src.utils.error_handlers import handle_api_errors
-from src.utils.dependencies import get_user_service
+from src.services.user_service import UserService
 from src.utils.auth_dependencies import get_optional_current_user, get_current_user
 from src.utils.cache import cache_user_profile, cache_user_blogs, cache_user_summary, cache_user_count, cache_new_users
-from src.utils.permission_manager import permission_manager
+from src.utils.dependencies import get_user_service
+from src.utils.error_handlers import handle_api_errors
 from src.utils.permission_decorators import require_auth
+from src.utils.permission_manager import permission_manager
+from src.utils.permission_utils import PermissionUtils
+from src.utils.response_utils import ResponseUtils
 
 # 创建用户API路由器
 router = APIRouter()
@@ -243,8 +246,8 @@ async def reset_user_password(
         raise HTTPException(status_code=404, detail="用户不存在")
     
     # 权限检查：管理员可以重置任何用户的密码，普通用户只能重置自己的密码
-    if current_user.get("state") != 10 and current_user.get("id") != user_id:
-        raise HTTPException(status_code=403, detail="无权限重置该用户的密码")
+    if not PermissionUtils.can_manage_resource(current_user, user_id):
+        raise ResponseUtils.forbidden_response("无权限重置该用户的密码")
     
     # 验证新密码
     new_password = password_data.get("new_password")
@@ -289,8 +292,8 @@ async def update_user_email(
         raise HTTPException(status_code=404, detail="用户不存在")
     
     # 权限检查：管理员可以修改任何用户的邮箱，普通用户只能修改自己的邮箱
-    if current_user.get("state") != 10 and current_user.get("id") != user_id:
-        raise HTTPException(status_code=403, detail="无权限修改该用户的邮箱")
+    if not PermissionUtils.can_manage_resource(current_user, user_id):
+        raise ResponseUtils.forbidden_response("无权限修改该用户的邮箱")
     
     # 验证新邮箱
     new_email = email_data.get("new_email")

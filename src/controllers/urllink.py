@@ -1,13 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel.ext.asyncio.session import AsyncSession
-from src.database import get_async_session
-from src.repositories.urllink_repository import UrlLinkRepository
-from src.models.urllink import UrlLink
-from src.utils.auth_dependencies import get_current_user
-from src.utils.permission_decorators import require_auth
 from typing import List, Dict, Any, Optional
-from src.utils.cache import cache_project_friend_links, cache_all_friend_links
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from src.database import get_async_session
+from src.models.urllink import UrlLink
+from src.repositories.urllink_repository import UrlLinkRepository
+from src.utils.auth_dependencies import get_current_user
+from src.utils.cache import cache_project_friend_links, cache_all_friend_links
+from src.utils.permission_decorators import require_auth
+from src.utils.permission_utils import PermissionUtils
+from src.utils.response_utils import ResponseUtils
 
 router = APIRouter(tags=["友情链接"])
 
@@ -244,8 +248,8 @@ async def _check_friend_link_permission(
     Returns:
         bool: 是否有权限
     """
-    # 管理员有所有权限（state为10表示管理员）
-    if current_user.get("state") == 10:
+    # 管理员有所有权限
+    if PermissionUtils.is_admin(current_user):
         return True
     
     # 检查是否为项目所有者
@@ -255,4 +259,4 @@ async def _check_friend_link_permission(
     if not project:
         return False
     
-    return current_user.get("id") == project.userid
+    return PermissionUtils.is_owner(current_user, project.userid)

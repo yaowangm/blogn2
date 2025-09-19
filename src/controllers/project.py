@@ -658,10 +658,10 @@ async def create_post(
         try:
             from src.services.broadcast_service import BroadcastService
             broadcast_service = BroadcastService(session)
-            broadcast_result = await broadcast_service.broadcast_new_article(project_id, created_post.id)
-            print(f"广播结果: {broadcast_result}")  # 调试信息
+            await broadcast_service.broadcast_new_article(project_id, created_post.id)
         except Exception as e:
-            print(f"广播失败: {str(e)}")  # 广播失败不影响文章创建
+            # 广播失败不影响文章创建，静默处理
+            pass
         
         return {
             "id": created_post.id,

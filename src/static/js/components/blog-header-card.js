@@ -727,7 +727,6 @@ class BlogHeaderCard extends BaseComponent {
 
             if (response.ok) {
                 const result = await response.json();
-                console.log(result.message);
                 
                 // 重新加载订阅状态
                 await this.loadSubscriptionStatus();

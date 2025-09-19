@@ -1,7 +1,23 @@
 """
 全局统计服务
 
-管理glovar表中的全局统计数据，包括用户数量、项目数量、项目项数量等。
+管理glovar表中的全局统计数据，提供统一的统计信息管理功能。
+
+主要功能：
+- 用户数量统计（usercount）
+- 项目数量统计（projectcount）  
+- 项目项数量统计（projectitemcount）
+- 统计数据的增量和减量更新
+- 从实际数据库数据同步统计信息
+
+使用场景：
+- 首页统计信息显示
+- 管理员面板数据概览
+- 数据一致性维护
+
+注意：
+- 统计更新失败时会静默处理，不影响主要业务逻辑
+- 支持从实际数据库数据重新计算统计值，用于数据修复
 """
 
 from sqlmodel import select, update
@@ -60,7 +76,7 @@ class GlobalStatsService:
             return True
         except Exception as e:
             await self.session.rollback()
-            print(f"Error setting stat value {varname}={value}: {e}")
+            # 统计更新失败，静默处理
             return False
     
     async def increment_stat(self, varname: str, amount: int = 1) -> bool:
@@ -78,7 +94,7 @@ class GlobalStatsService:
             new_value = current_value + amount
             return await self.set_stat_value(varname, new_value)
         except Exception as e:
-            print(f"Error incrementing stat {varname}: {e}")
+            # 统计增加失败，静默处理
             return False
     
     async def decrement_stat(self, varname: str, amount: int = 1) -> bool:
@@ -96,7 +112,7 @@ class GlobalStatsService:
             new_value = max(current_value - amount, 0)  # 确保不会变成负数
             return await self.set_stat_value(varname, new_value)
         except Exception as e:
-            print(f"Error decrementing stat {varname}: {e}")
+            # 统计减少失败，静默处理
             return False
     
     async def update_user_count(self, increment: bool = True) -> bool:
@@ -188,5 +204,5 @@ class GlobalStatsService:
             
             return True
         except Exception as e:
-            print(f"Error syncing stats from database: {e}")
+            # 统计同步失败，静默处理
             return False
