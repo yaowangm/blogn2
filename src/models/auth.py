@@ -39,6 +39,7 @@ class UserInfo(BaseModel):
     role: str
     lastupdate: Optional[datetime] = None
     iplog: Optional[str] = None
+    avatar_url: Optional[str] = None
 
 class LogoutResponse(BaseModel):
     """登出响应模型"""

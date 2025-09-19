@@ -272,7 +272,7 @@ async def set_user_intro(
             # 获取上传目录和头像目录配置
             from src.config.app import get_upload_dir
             upload_dir = get_upload_dir()
-            avatar_dir = "../pic/blogn_img/userlogo"
+            avatar_dir = "/home/wy/blogn2/pic/blogn_img/userlogo"
             
             # 构建源文件路径
             source_path = os.path.join(upload_dir, article.attachment)
@@ -298,17 +298,8 @@ async def set_user_intro(
                 max_size=(200, 200)  # 头像最大尺寸
             )
             
-            # 同时创建小尺寸头像（如果需要的话）
-            small_avatar_filename = f"s_{user_id}.jpg"  # 小尺寸使用相同文件名
-            small_avatar_path = os.path.join(avatar_user_dir, small_avatar_filename)
-            
-            # 如果小尺寸头像不存在，也创建一个
-            if not os.path.exists(small_avatar_path):
-                await image_processor.resize_and_save_image(
-                    source_path=source_path,
-                    target_path=small_avatar_path,
-                    max_size=(100, 100)  # 小尺寸头像
-                )
+            print(f"Avatar created at: {avatar_path}")
+            print(f"File exists: {os.path.exists(avatar_path)}")
             
         except Exception as e:
             # 如果图片处理失败，记录错误但不影响intropiid的设置

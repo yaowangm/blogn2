@@ -321,8 +321,8 @@ class BlogProfileCard extends BaseComponent {
         let avatarPath = null;
         if (this.userData.id) {
             const prefix = Math.floor(this.userData.id / 10000) + 1;
-            // 用户资料卡片使用大头像：/avatar/prefix/userid.jpg
-            avatarPath = `/avatar/${prefix}/${this.userData.id}.jpg`;
+            // 用户资料卡片使用大头像：/avatar/prefix/s_userid.jpg
+            avatarPath = `/avatar/${prefix}/s_${this.userData.id}.jpg`;
         }
 
         const blogLink = this.projectId ? `/blog/${this.projectId}` : '#';
