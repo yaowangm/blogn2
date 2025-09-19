@@ -106,7 +106,10 @@ class TestBlogService:
         
         expected_path = "/avatar/2/s_12345.jpg"
         assert result == expected_path
-        mock_exists.assert_called_once_with("../pic/blogn_img/userlogo/2/s_12345.jpg")
+        # 检查是否被调用，但不限制调用次数，因为配置加载也会调用
+        assert mock_exists.called
+        # 检查最后一次调用是否是正确的路径
+        assert mock_exists.call_args[0][0] == "../pic/blogn_img/userlogo/2/s_12345.jpg"
     
     @pytest.mark.unit
     @patch('os.path.exists')
@@ -117,7 +120,10 @@ class TestBlogService:
         result = blog_service._check_avatar_exists(12345)
         
         assert result is None
-        mock_exists.assert_called_once_with("../pic/blogn_img/userlogo/2/s_12345.jpg")
+        # 检查是否被调用，但不限制调用次数，因为配置加载也会调用
+        assert mock_exists.called
+        # 检查最后一次调用是否是正确的路径
+        assert mock_exists.call_args[0][0] == "../pic/blogn_img/userlogo/2/s_12345.jpg"
     
     @pytest.mark.unit
     def test_check_avatar_exists_no_userid(self, blog_service):
