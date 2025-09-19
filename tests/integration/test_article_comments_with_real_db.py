@@ -56,7 +56,7 @@ class TestArticleCommentsWithRealDB:
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
         
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 测试创建匿名评论
@@ -125,7 +125,7 @@ class TestArticleCommentsWithRealDB:
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
         
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 模拟登录用户（这里需要实际的认证机制，暂时跳过认证检查）
@@ -182,7 +182,7 @@ class TestArticleCommentsWithRealDB:
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
         
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 尝试创建评论
@@ -238,7 +238,7 @@ class TestArticleCommentsWithRealDB:
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
         
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 尝试创建空内容评论
@@ -345,7 +345,7 @@ class TestArticleCommentsWithRealDB:
         )
         real_sync_session_with_commit.add(comment2)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 获取评论列表
@@ -433,7 +433,7 @@ class TestArticleCommentsWithRealDB:
             )
             real_sync_session_with_commit.add(comment)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 测试第一页（每页3条）
@@ -498,7 +498,7 @@ class TestArticleCommentsWithRealDB:
             )
             real_sync_session_with_commit.add(comment)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 测试第二页

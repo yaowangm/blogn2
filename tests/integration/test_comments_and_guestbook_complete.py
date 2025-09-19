@@ -29,7 +29,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 2. 创建测试项目
@@ -42,7 +42,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 3. 创建测试文章（允许匿名评论）
@@ -59,7 +59,7 @@ class TestCommentsAndGuestbookComplete:
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
         
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 4. 测试创建匿名评论
@@ -102,7 +102,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 2. 创建测试项目
@@ -115,7 +115,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 3. 创建测试文章（允许匿名评论）
@@ -132,7 +132,7 @@ class TestCommentsAndGuestbookComplete:
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
         
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 4. 创建测试评论
@@ -152,7 +152,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(comment)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 5. 测试获取评论列表
@@ -178,7 +178,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 2. 测试创建匿名留言
@@ -223,7 +223,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 2. 创建测试留言
@@ -243,7 +243,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(message)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 3. 测试创建跟贴
@@ -286,7 +286,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 2. 创建测试留言
@@ -306,7 +306,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(message)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 3. 测试获取主题留言
@@ -338,7 +338,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 创建测试项目
@@ -351,7 +351,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 测试1: 允许匿名评论的文章
@@ -367,7 +367,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(article1)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         comment_data = {
@@ -393,7 +393,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 创建测试项目
@@ -406,7 +406,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 测试2: 只允许登录用户评论的文章
@@ -422,7 +422,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(article2)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         comment_data = {
@@ -448,7 +448,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 创建测试项目
@@ -461,7 +461,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 测试3: 禁用评论的文章
@@ -477,7 +477,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(article3)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         comment_data = {
@@ -503,7 +503,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 创建测试项目
@@ -516,7 +516,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 创建测试文章
@@ -533,7 +533,7 @@ class TestCommentsAndGuestbookComplete:
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
         
-        # 临时提交数据，让API调用能找到
+        # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
         # 测试1: 空内容评论

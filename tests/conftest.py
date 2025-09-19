@@ -361,27 +361,9 @@ def cleanup_after_test(real_sync_engine):
         pass
 
 @pytest.fixture
-def real_sync_session_with_commit(real_sync_engine):
-    """创建真实PostgreSQL同步会话 - 使用事务回滚（不提交）"""
-    session = Session(real_sync_engine)
-    try:
-        # 开始事务
-        session.begin()
-        yield session
-    finally:
-        # 回滚事务，不提交更改
-        try:
-            session.rollback()
-        except Exception:
-            # 忽略回滚时的异常
-            pass
-        finally:
-            # 确保会话被正确关闭
-            try:
-                session.close()
-            except Exception:
-                # 忽略关闭时的异常
-                pass
+def real_sync_session_with_commit(unified_db_manager):
+    """创建真实PostgreSQL同步会话 - 使用统一数据库管理"""
+    yield unified_db_manager.sync_session
 
 @pytest.fixture
 def real_async_session_with_commit(unified_db_manager):
@@ -448,43 +430,21 @@ async def real_async_session_with_commit(real_async_engine):
 
 @pytest.fixture
 def test_client(unified_db_manager):
-    """创建测试客户端 - 使用统一数据库管理器"""
-    # 临时替换应用的数据库引擎和会话工厂
+    """创建测试客户端 - 使用统一数据库管理"""
     from src.database import async_engine, async_session
     from src.main import app
-    from sqlalchemy.orm import sessionmaker
-    from sqlmodel.ext.asyncio.session import AsyncSession
     
     # 保存原始引擎和会话工厂
     original_engine = async_engine
     original_session = async_session
     
-    # 替换为统一管理器的异步引擎和会话
+    # 创建会话工厂函数
+    def create_test_async_session():
+        return unified_db_manager.async_session
+    
+    # 替换为测试引擎和会话工厂
     import src.database
     src.database.async_engine = unified_db_manager.async_engine
-    
-    # 创建测试专用的会话工厂，确保在事务中
-    def create_test_async_session():
-        session = AsyncSession(unified_db_manager.async_engine, expire_on_commit=False)
-        # 开始事务
-        import asyncio
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # 在运行的事件循环中，直接调用begin()
-                session.begin()
-            else:
-                # 在非运行的事件循环中，使用run_until_complete
-                loop.run_until_complete(session.begin())
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                loop.run_until_complete(session.begin())
-            finally:
-                loop.close()
-        return session
-    
     src.database.async_session = create_test_async_session
     
     client = None
