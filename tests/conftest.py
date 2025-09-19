@@ -8,6 +8,7 @@ import asyncio
 import os
 import sys
 from pathlib import Path
+from typing import Generator, Set, Dict, Any
 from typing import AsyncGenerator, Generator
 from unittest.mock import AsyncMock, MagicMock
 from dotenv import load_dotenv
@@ -15,9 +16,193 @@ from dotenv import load_dotenv
 # 加载环境变量
 load_dotenv()
 
+class TestDataTracker:
+    """测试数据跟踪器 - 记录测试过程中创建的数据ID"""
+    
+    def __init__(self):
+        self.user_ids: Set[int] = set()
+        self.project_ids: Set[int] = set()
+        self.article_ids: Set[int] = set()
+        self.comment_ids: Set[int] = set()
+        self.message_ids: Set[int] = set()
+        self.attachment_ids: Set[int] = set()
+        self.folder_ids: Set[int] = set()
+        self.urllink_ids: Set[int] = set()
+        self.subscription_ids: Set[int] = set()
+    
+    def add_user(self, user_id: int):
+        """记录用户ID"""
+        self.user_ids.add(user_id)
+    
+    def add_project(self, project_id: int):
+        """记录项目ID"""
+        self.project_ids.add(project_id)
+    
+    def add_article(self, article_id: int):
+        """记录文章ID"""
+        self.article_ids.add(article_id)
+    
+    def add_comment(self, comment_id: int):
+        """记录评论ID"""
+        self.comment_ids.add(comment_id)
+    
+    def add_message(self, message_id: int):
+        """记录留言ID"""
+        self.message_ids.add(message_id)
+    
+    def add_attachment(self, attachment_id: int):
+        """记录附件ID"""
+        self.attachment_ids.add(attachment_id)
+    
+    def add_folder(self, folder_id: int):
+        """记录分类ID"""
+        self.folder_ids.add(folder_id)
+    
+    def add_urllink(self, urllink_id: int):
+        """记录友情链接ID"""
+        self.urllink_ids.add(urllink_id)
+    
+    def add_subscription(self, subscription_id: int):
+        """记录订阅ID"""
+        self.subscription_ids.add(subscription_id)
+    
+    def clear(self):
+        """清空所有记录的ID"""
+        self.user_ids.clear()
+        self.project_ids.clear()
+        self.article_ids.clear()
+        self.comment_ids.clear()
+        self.message_ids.clear()
+        self.attachment_ids.clear()
+        self.folder_ids.clear()
+        self.urllink_ids.clear()
+        self.subscription_ids.clear()
+    
+    def has_data(self) -> bool:
+        """检查是否有记录的数据"""
+        return any([
+            self.user_ids, self.project_ids, self.article_ids, 
+            self.comment_ids, self.message_ids, self.attachment_ids,
+            self.folder_ids, self.urllink_ids, self.subscription_ids
+        ])
+
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+def cleanup_test_data_by_ids(tracker: TestDataTracker):
+    """基于ID精确清理测试数据"""
+    if not tracker.has_data():
+        print("🧹 没有测试数据需要清理")
+        return
+    
+    print("🧹 开始基于ID清理测试数据...")
+    
+    # 使用真实数据库连接
+    from sqlmodel import create_engine, text
+    from sqlalchemy import create_engine as create_sync_engine
+    
+    # 创建同步引擎
+    sync_engine = create_sync_engine(REAL_SYNC_DATABASE_URL, echo=False)
+    
+    try:
+        with sync_engine.connect() as conn:
+            # 开始事务
+            trans = conn.begin()
+            
+            try:
+                total_deleted = 0
+                
+                # 按依赖关系顺序删除数据
+                if tracker.comment_ids or tracker.message_ids:
+                    # 删除评论和留言
+                    all_post_ids = tracker.comment_ids | tracker.message_ids
+                    if all_post_ids:
+                        placeholders = ','.join(map(str, all_post_ids))
+                        query = f"DELETE FROM post WHERE id IN ({placeholders})"
+                        result = conn.execute(text(query))
+                        deleted_count = result.rowcount
+                        total_deleted += deleted_count
+                        print(f"🗑️ 删除了 {deleted_count} 个测试评论和留言")
+                
+                if tracker.article_ids:
+                    # 删除文章
+                    placeholders = ','.join(map(str, tracker.article_ids))
+                    query = f"DELETE FROM projectitem WHERE id IN ({placeholders})"
+                    result = conn.execute(text(query))
+                    deleted_count = result.rowcount
+                    total_deleted += deleted_count
+                    print(f"🗑️ 删除了 {deleted_count} 个测试文章")
+                
+                if tracker.attachment_ids:
+                    # 删除附件
+                    placeholders = ','.join(map(str, tracker.attachment_ids))
+                    query = f"DELETE FROM attachment WHERE id IN ({placeholders})"
+                    result = conn.execute(text(query))
+                    deleted_count = result.rowcount
+                    total_deleted += deleted_count
+                    print(f"🗑️ 删除了 {deleted_count} 个测试附件")
+                
+                if tracker.subscription_ids:
+                    # 删除订阅
+                    placeholders = ','.join(map(str, tracker.subscription_ids))
+                    query = f"DELETE FROM subscription WHERE id IN ({placeholders})"
+                    result = conn.execute(text(query))
+                    deleted_count = result.rowcount
+                    total_deleted += deleted_count
+                    print(f"🗑️ 删除了 {deleted_count} 个测试订阅")
+                
+                if tracker.project_ids:
+                    # 删除项目
+                    placeholders = ','.join(map(str, tracker.project_ids))
+                    query = f"DELETE FROM project WHERE id IN ({placeholders})"
+                    result = conn.execute(text(query))
+                    deleted_count = result.rowcount
+                    total_deleted += deleted_count
+                    print(f"🗑️ 删除了 {deleted_count} 个测试项目")
+                
+                if tracker.folder_ids:
+                    # 删除分类
+                    placeholders = ','.join(map(str, tracker.folder_ids))
+                    query = f"DELETE FROM folder WHERE id IN ({placeholders})"
+                    result = conn.execute(text(query))
+                    deleted_count = result.rowcount
+                    total_deleted += deleted_count
+                    print(f"🗑️ 删除了 {deleted_count} 个测试分类")
+                
+                if tracker.urllink_ids:
+                    # 删除友情链接
+                    placeholders = ','.join(map(str, tracker.urllink_ids))
+                    query = f"DELETE FROM urllink WHERE id IN ({placeholders})"
+                    result = conn.execute(text(query))
+                    deleted_count = result.rowcount
+                    total_deleted += deleted_count
+                    print(f"🗑️ 删除了 {deleted_count} 个测试友情链接")
+                
+                if tracker.user_ids:
+                    # 删除用户（最后删除，因为其他表可能引用用户）
+                    placeholders = ','.join(map(str, tracker.user_ids))
+                    query = f"DELETE FROM users WHERE id IN ({placeholders})"
+                    result = conn.execute(text(query))
+                    deleted_count = result.rowcount
+                    total_deleted += deleted_count
+                    print(f"🗑️ 删除了 {deleted_count} 个测试用户")
+                
+                # 提交事务
+                trans.commit()
+                print(f"✅ 基于ID的测试数据清理完成，共删除 {total_deleted} 条记录")
+                
+            except Exception as e:
+                # 回滚事务
+                trans.rollback()
+                print(f"❌ 清理测试数据时出错: {e}")
+                raise
+                
+    except Exception as e:
+        print(f"❌ 连接数据库失败: {e}")
+        raise
+    finally:
+        sync_engine.dispose()
 
 def cleanup_test_data(engine):
     """清理测试数据"""
@@ -571,3 +756,11 @@ async def clear_cache_after_each_test():
     except Exception as e:
         # 如果缓存清理失败，继续测试
         pass 
+
+@pytest.fixture
+def test_data_tracker():
+    """测试数据跟踪器"""
+    tracker = TestDataTracker()
+    yield tracker
+    # 测试结束后清理跟踪的数据
+    cleanup_test_data_by_ids(tracker)
