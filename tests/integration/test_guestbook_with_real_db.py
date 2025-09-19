@@ -180,6 +180,7 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         
         # 先创建一个主贴
         main_message = Post(
@@ -198,6 +199,7 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(main_message)
         real_sync_session_with_commit.flush()
+        test_data_tracker.add_message(main_message.id)  # 跟踪主贴ID
         
         # 创建跟贴
         reply_data = {
@@ -215,6 +217,9 @@ class TestGuestbookWithRealDB:
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
+        
+        # 跟踪跟贴ID
+        test_data_tracker.add_message(data["message_id"])
         
         # 验证跟贴已保存到数据库
         reply_result = real_sync_session_with_commit.exec(
@@ -239,6 +244,7 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         
         # 创建测试留言
         message1 = Post(
@@ -273,6 +279,10 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(message2)
         real_sync_session_with_commit.flush()
+        
+        # 跟踪留言ID
+        test_data_tracker.add_message(message1.id)
+        test_data_tracker.add_message(message2.id)
         
         # 获取留言列表
         response = test_client.get("/api/messages")
