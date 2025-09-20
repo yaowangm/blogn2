@@ -80,6 +80,12 @@ class BlogListCard extends BaseComponent {
             this.currentPage = 1; // 重置页码
             this.loadContent();
         });
+        
+        // 监听分页变化事件
+        this.addEventListener('page-change', (event) => {
+            const { page } = event.detail;
+            this.goToPage(page);
+        });
     }
 
     async loadContent(page = 1) {
@@ -156,6 +162,7 @@ class BlogListCard extends BaseComponent {
                 `;
                 return;
             }
+            
             
             const postsHtml = this.posts.map(post => {
                 // 处理不同的数据格式
