@@ -310,14 +310,11 @@ async def set_user_intro(
                 max_size=(200, 200)  # 大头像尺寸
             )
             
-            print(f"Small avatar created at: {small_avatar_path}")
-            print(f"Large avatar created at: {large_avatar_path}")
-            print(f"Small avatar exists: {os.path.exists(small_avatar_path)}")
-            print(f"Large avatar exists: {os.path.exists(large_avatar_path)}")
-            
         except Exception as e:
             # 如果图片处理失败，记录错误但不影响intropiid的设置
-            print(f"Warning: Failed to process avatar image: {e}")
+            # 使用日志记录而不是print
+            import logging
+            logging.warning(f"Failed to process avatar image: {e}")
         
         return {
             "success": True,
