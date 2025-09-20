@@ -137,7 +137,7 @@ class DatabaseUtils:
             bool: 是否成功
         """
         try:
-            await session.delete(instance)
+            session.delete(instance)
             await session.commit()
             return True
         except Exception as e:

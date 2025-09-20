@@ -961,7 +961,7 @@ async def delete_category(
         updated_articles_count = await post_repo.update_articles_folder_to_uncategorized(category_id)
         
         # 删除分类
-        await session.delete(folder)
+        session.delete(folder)
         await session.commit()
         
         # 返回删除结果，包含处理的文章数量
