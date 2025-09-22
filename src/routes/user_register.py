@@ -151,6 +151,11 @@ async def register_user(
         
         session.add(regkey_record)
         
+        # 更新全局用户数量统计
+        from src.services.global_stats_service import GlobalStatsService
+        stats_service = GlobalStatsService(session)
+        await stats_service.update_user_count(increment=True)
+        
         # 提交事务
         await session.commit()
         

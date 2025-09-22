@@ -57,7 +57,8 @@ class TestUrlLinkRepository:
         mock_session.exec.return_value = mock_result
 
         # 执行测试
-        result = await UrlLinkRepository.get_friend_links_by_project(mock_session, 1)
+        repo = UrlLinkRepository(mock_session)
+        result = await repo.get_friend_links_by_project(1)
 
         # 验证结果
         assert len(result) == 3
@@ -79,7 +80,8 @@ class TestUrlLinkRepository:
         mock_session.exec.return_value = mock_result
 
         # 执行测试
-        result = await UrlLinkRepository.get_friend_links_by_project(mock_session, 1)
+        repo = UrlLinkRepository(mock_session)
+        result = await repo.get_friend_links_by_project(1)
 
         # 验证结果
         assert len(result) == 0
@@ -93,7 +95,8 @@ class TestUrlLinkRepository:
         mock_session.exec.return_value = mock_result
 
         # 执行测试
-        result = await UrlLinkRepository.get_all_friend_links(mock_session)
+        repo = UrlLinkRepository(mock_session)
+        result = await repo.get_all_friend_links()
 
         # 验证结果
         assert len(result) == 3
@@ -114,7 +117,8 @@ class TestUrlLinkRepository:
         mock_session.exec.return_value = mock_result
 
         # 执行测试
-        result = await UrlLinkRepository.get_all_friend_links(mock_session)
+        repo = UrlLinkRepository(mock_session)
+        result = await repo.get_all_friend_links()
 
         # 验证结果
         assert len(result) == 0
@@ -132,7 +136,8 @@ class TestUrlLinkRepository:
         mock_session.exec.return_value = mock_result
 
         # 执行测试
-        result = await UrlLinkRepository.get_all_friend_links(mock_session)
+        repo = UrlLinkRepository(mock_session)
+        result = await repo.get_all_friend_links()
 
         # 验证结果
         assert len(result) == 10

@@ -236,6 +236,59 @@
             opacity: 0.5;
         }
 
+        .user-actions {
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .action-button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin: 0 2px;
+        }
+
+        .freeze-button {
+            background-color: #ef4444;
+            color: white;
+        }
+
+        .freeze-button:hover {
+            background-color: #dc2626;
+            transform: translateY(-1px);
+        }
+
+        .restore-button {
+            background-color: #10b981;
+            color: white;
+        }
+
+        .restore-button:hover {
+            background-color: #059669;
+            transform: translateY(-1px);
+        }
+
+        .action-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 0 var(--spacing-4);
@@ -311,6 +364,7 @@
                             <th>注册时间</th>
                             <th>积分</th>
                             <th>博客链接</th>
+                            <th>操作</th>
                         </tr>
                     </thead>
                     <tbody id="usersTableBody">
@@ -513,11 +567,17 @@
                                 '<span style="color: var(--gray-400);">-</span>'
                             }
                         </td>
+                        <td class="user-actions">
+                            ${this.renderUserActions(user)}
+                        </td>
                     `;
                     tbody.appendChild(row);
                 });
 
                 this.setElementVisibility('usersTable', 'table');
+                
+                // 绑定操作按钮事件
+                this.bindActionButtons();
             }
 
             /**
@@ -556,9 +616,36 @@
                 switch (state) {
                     case 10: return '管理员';
                     case 1: return '正常';
+                    case 2: return '冻结';
                     case 0: return '冻结';
                     default: return '未知';
                 }
+            }
+
+            /**
+             * 渲染用户操作按钮
+             * @param {Object} user - 用户对象
+             * @returns {string} 操作按钮HTML
+             */
+            renderUserActions(user) {
+                // 只有非管理员用户才显示冻结/恢复按钮
+                if (user.state === 10) {
+                    return '<span style="color: var(--gray-400);">-</span>';
+                }
+
+                const isFrozen = user.state === 2 || user.state === 0;
+                const buttonText = isFrozen ? '恢复' : '冻结';
+                const buttonClass = isFrozen ? 'action-button restore-button' : 'action-button freeze-button';
+                const action = isFrozen ? 'restore' : 'freeze';
+
+                return `
+                    <button class="${buttonClass}" 
+                            data-user-id="${user.id}" 
+                            data-user-name="${this.escapeHtml(user.name)}"
+                            data-action="${action}">
+                        ${buttonText}
+                    </button>
+                `;
             }
 
             /**
@@ -621,6 +708,26 @@
             }
 
             /**
+             * 绑定操作按钮事件
+             */
+            bindActionButtons() {
+                const actionButtons = document.querySelectorAll('.action-button');
+                actionButtons.forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const userId = e.target.getAttribute('data-user-id');
+                        const userName = e.target.getAttribute('data-user-name');
+                        const action = e.target.getAttribute('data-action');
+                        
+                        if (action === 'freeze') {
+                            this.freezeUser(userId, userName);
+                        } else if (action === 'restore') {
+                            this.restoreUser(userId, userName);
+                        }
+                    });
+                });
+            }
+
+            /**
              * 执行搜索
              */
             performSearch() {
@@ -655,6 +762,116 @@
                 if (searchInput && clearButton) {
                     this.setElementVisibility('clearButton', searchInput.value.trim() ? 'flex' : 'none');
                 }
+            }
+
+            /**
+             * 冻结用户
+             * @param {string} userId - 用户ID
+             * @param {string} userName - 用户名
+             */
+            async freezeUser(userId, userName) {
+                if (!confirm(`确定要冻结用户 "${userName}" 吗？冻结后该用户将无法登录。`)) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/users/${userId}/freeze`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        this.showMessage('用户冻结成功', 'success');
+                        await this.loadUsers(this.currentPage);
+                    } else {
+                        const error = await response.json();
+                        this.showMessage(`冻结失败: ${error.detail || '未知错误'}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('冻结用户失败:', error);
+                    this.showMessage('冻结用户失败，请稍后重试', 'error');
+                }
+            }
+
+            /**
+             * 恢复用户
+             * @param {string} userId - 用户ID
+             * @param {string} userName - 用户名
+             */
+            async restoreUser(userId, userName) {
+                if (!confirm(`确定要恢复用户 "${userName}" 吗？恢复后该用户可以正常登录。`)) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/users/${userId}/restore`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        this.showMessage('用户恢复成功', 'success');
+                        await this.loadUsers(this.currentPage);
+                    } else {
+                        const error = await response.json();
+                        this.showMessage(`恢复失败: ${error.detail || '未知错误'}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('恢复用户失败:', error);
+                    this.showMessage('恢复用户失败，请稍后重试', 'error');
+                }
+            }
+
+            /**
+             * 显示消息
+             * @param {string} message - 消息内容
+             * @param {string} type - 消息类型 (success, error)
+             */
+            showMessage(message, type = 'info') {
+                // 创建消息元素
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message message-${type}`;
+                messageDiv.textContent = message;
+                
+                // 添加样式
+                messageDiv.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 12px 20px;
+                    border-radius: 6px;
+                    color: white;
+                    font-weight: 500;
+                    z-index: 1000;
+                    max-width: 400px;
+                    word-wrap: break-word;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                    animation: slideIn 0.3s ease-out;
+                `;
+
+                if (type === 'success') {
+                    messageDiv.style.backgroundColor = '#10b981';
+                } else if (type === 'error') {
+                    messageDiv.style.backgroundColor = '#ef4444';
+                } else {
+                    messageDiv.style.backgroundColor = '#3b82f6';
+                }
+
+                // 添加到页面
+                document.body.appendChild(messageDiv);
+
+                // 3秒后自动移除
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.parentNode.removeChild(messageDiv);
+                    }
+                }, 3000);
             }
         }
 

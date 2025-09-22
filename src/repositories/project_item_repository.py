@@ -370,3 +370,21 @@ class ProjectItemRepository:
             
             return True
         return False
+    
+    async def count_by_project_id_and_folder(self, project_id: int, folder_id: Optional[int] = None) -> int:
+        """根据项目ID和文件夹ID统计文章数量
+        
+        Args:
+            project_id: 项目ID
+            folder_id: 文件夹ID，None表示所有文章，0表示未分类
+            
+        Returns:
+            int: 文章数量
+        """
+        query = select(func.count(ProjectItem.id)).where(ProjectItem.projectid == project_id)
+        
+        if folder_id is not None:
+            query = query.where(ProjectItem.folderid == folder_id)
+        
+        result = await self.session.exec(query)
+        return result.first() or 0

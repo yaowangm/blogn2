@@ -88,7 +88,7 @@ async def login(
         "role": "admin" if user.state == 10 else "user",
         "lastupdate": user.lastupdate,
         "iplog": user.iplog,
-        "avatar_url": f"/avatar/1/s_{user.id}.jpg"  # 添加头像路径
+        "avatar_url": None  # 不设置默认头像，让前端处理
     }
     
     return LoginResponse(
@@ -157,6 +157,21 @@ async def get_current_user(
             detail="用户不存在"
         )
     
+    # 生成头像URL
+    avatar_url = None
+    if user.id:
+        from src.config.app import validate_app_config
+        config = validate_app_config()
+        avatar_dir = config["avatar_dir"]
+        
+        prefix = (user.id // 10000) + 1
+        avatar_path = f"/avatar/{prefix}/s_{user.id}.jpg"
+        real_path = os.path.join(avatar_dir, str(prefix), f"s_{user.id}.jpg")
+        
+        # 检查文件是否存在
+        if os.path.exists(real_path):
+            avatar_url = avatar_path
+    
     return UserInfo(
         id=user.id,
         name=user.name,
@@ -164,7 +179,8 @@ async def get_current_user(
         state=user.state,
         role="admin" if user.state == 10 else "user",
         lastupdate=user.lastupdate,
-        iplog=user.iplog
+        iplog=user.iplog,
+        avatar_url=avatar_url
     )
 
 @router.get("/verify")

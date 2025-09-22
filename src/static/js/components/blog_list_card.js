@@ -80,6 +80,12 @@ class BlogListCard extends BaseComponent {
             this.currentPage = 1; // 重置页码
             this.loadContent();
         });
+        
+        // 监听分页变化事件
+        this.addEventListener('page-change', (event) => {
+            const { page } = event.detail;
+            this.goToPage(page);
+        });
     }
 
     async loadContent(page = 1) {
@@ -157,6 +163,7 @@ class BlogListCard extends BaseComponent {
                 return;
             }
             
+            
             const postsHtml = this.posts.map(post => {
                 // 处理不同的数据格式
                 const title = post.title || post.name;
@@ -209,65 +216,30 @@ class BlogListCard extends BaseComponent {
     }
 
     renderPagination() {
-        // 即使没有分页数据，也要显示分类信息（如果启用的话）
         let paginationHtml = '';
         
         if (this.totalPages > 1) {
-            paginationHtml = `
+            const pagination = {
+                current_page: this.currentPage,
+                total_pages: this.totalPages,
+                total: this.totalPosts,
+                has_prev: this.currentPage > 1,
+                has_next: this.currentPage < this.totalPages
+            };
+            
+            paginationHtml = `<navigation-card mode="pagination" pagination='${JSON.stringify(pagination)}'></navigation-card>`;
+        }
+        
+        // 添加分类信息（如果启用的话）
+        if (this.showCategoryInfo) {
+            paginationHtml += `
                 <div class="pagination">
-                    <div class="pagination-left">
-                        <button class="nav-btn" onclick="this.getRootNode().host.goToPage(1)" ${this.currentPage === 1 ? 'disabled' : ''}>
-                            <span class="nav-icon">${Icons.firstPage}</span>
-                            <span class="nav-text">首页</span>
-                        </button>
-                        <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.currentPage - 1})" ${this.currentPage === 1 ? 'disabled' : ''}>
-                            <span class="nav-icon">${Icons.prevPage}</span>
-                            <span class="nav-text">上一页</span>
-                        </button>
-                        
-                        <div class="page-info">
-                            <span class="page-text">第 ${this.currentPage} 页，共 ${this.totalPages} 页</span>
-                            <span class="total-text">（共 ${this.totalPosts} 条记录）</span>
-                        </div>
-                        
-                        <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.currentPage + 1})" ${this.currentPage === this.totalPages ? 'disabled' : ''}>
-                            <span class="nav-icon">${Icons.nextPage}</span>
-                            <span class="nav-text">下一页</span>
-                        </button>
-                        <button class="nav-btn" onclick="this.getRootNode().host.goToPage(${this.totalPages})" ${this.currentPage === this.totalPages ? 'disabled' : ''}>
-                            <span class="nav-icon">${Icons.lastPage}</span>
-                            <span class="nav-text">尾页</span>
-                        </button>
-                    </div>
-                    
-                    ${this.showCategoryInfo ? `
-                        <div class="pagination-right">
-                            <div class="category-info">
-                                <span class="category-label">分类：</span>
-                                <span class="category-name">${this.escapeHtml(this.currentCategoryName)}</span>
-                            </div>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        } else {
-            // 即使没有分页，也要显示分类信息（如果启用的话）
-            paginationHtml = `
-                <div class="pagination">
-                    <div class="pagination-left">
-                        <div class="page-info">
-                            <span class="page-text">共 ${this.totalPosts} 条记录</span>
+                    <div class="pagination-right">
+                        <div class="category-info">
+                            <span class="category-label">分类：</span>
+                            <span class="category-name">${this.escapeHtml(this.currentCategoryName)}</span>
                         </div>
                     </div>
-                    
-                    ${this.showCategoryInfo ? `
-                        <div class="pagination-right">
-                            <div class="category-info">
-                                <span class="category-label">分类：</span>
-                                <span class="category-name">${this.escapeHtml(this.currentCategoryName)}</span>
-                            </div>
-                        </div>
-                    ` : ''}
                 </div>
             `;
         }

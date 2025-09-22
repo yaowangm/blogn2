@@ -84,10 +84,10 @@ class AuthService:
                 return None
             
             # 检查用户状态
-            if user.state == 0:
+            if user.state == 0 or user.state == 2:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="账户已被冻结"
+                    detail="该用户已经被冻结"
                 )
             
             # 验证密码

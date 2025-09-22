@@ -183,8 +183,6 @@ class RSSDiscovery {
             const link = document.createElement('link');
             Object.assign(link, linkData);
             head.appendChild(link);
-            
-            console.log(`RSS Discovery: 添加链接 ${linkData.title} -> ${linkData.href}`);
         });
     }
 }

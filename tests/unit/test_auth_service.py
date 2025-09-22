@@ -201,7 +201,7 @@ class TestAuthService:
                 await auth_service.authenticate_user("frozen", "password123", "127.0.0.1")
             
             assert exc_info.value.status_code == 403
-            assert "账户已被冻结" in str(exc_info.value.detail)
+            assert "该用户已经被冻结" in str(exc_info.value.detail)
 
     def test_create_access_token(self, auth_service):
         """测试创建访问令牌"""

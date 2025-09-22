@@ -568,9 +568,46 @@ class CreatePostForm extends BaseComponent {
                     font-family: var(--font-family);
                 }
                 
-                @import url('/static/css/common-components.css');
-                @import url('/static/css/components.css');
-                @import url('/static/css/form-components.css');
+                /* 基础样式变量 */
+                :root {
+                    --primary-color: #3b82f6;
+                    --primary-hover: #2563eb;
+                    --white: #ffffff;
+                    --gray-50: #f9fafb;
+                    --gray-100: #f3f4f6;
+                    --gray-200: #e5e7eb;
+                    --gray-300: #d1d5db;
+                    --gray-400: #9ca3af;
+                    --gray-500: #6b7280;
+                    --gray-600: #4b5563;
+                    --gray-700: #374151;
+                    --gray-800: #1f2937;
+                    --gray-900: #111827;
+                    --error-color: #ef4444;
+                    --success-color: #10b981;
+                    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    --font-size-xs: 0.75rem;
+                    --font-size-sm: 0.875rem;
+                    --font-size-base: 1rem;
+                    --font-size-lg: 1.125rem;
+                    --font-size-xl: 1.25rem;
+                    --spacing-1: 0.25rem;
+                    --spacing-2: 0.5rem;
+                    --spacing-3: 0.75rem;
+                    --spacing-4: 1rem;
+                    --spacing-5: 1.25rem;
+                    --spacing-6: 1.5rem;
+                    --spacing-8: 2rem;
+                    --radius-sm: 0.25rem;
+                    --radius-md: 0.375rem;
+                    --radius-lg: 0.5rem;
+                    --radius-full: 9999px;
+                    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+                    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+                    --transition-fast: all 0.15s ease;
+                    --transition-normal: all 0.3s ease;
+                }
                 
                 .card {
                     background: var(--white);
@@ -703,9 +740,46 @@ class CreatePostForm extends BaseComponent {
                     font-family: var(--font-family);
                 }
                 
-                @import url('/static/css/common-components.css');
-                @import url('/static/css/components.css');
-                @import url('/static/css/form-components.css');
+                /* 基础样式变量 */
+                :root {
+                    --primary-color: #3b82f6;
+                    --primary-hover: #2563eb;
+                    --white: #ffffff;
+                    --gray-50: #f9fafb;
+                    --gray-100: #f3f4f6;
+                    --gray-200: #e5e7eb;
+                    --gray-300: #d1d5db;
+                    --gray-400: #9ca3af;
+                    --gray-500: #6b7280;
+                    --gray-600: #4b5563;
+                    --gray-700: #374151;
+                    --gray-800: #1f2937;
+                    --gray-900: #111827;
+                    --error-color: #ef4444;
+                    --success-color: #10b981;
+                    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    --font-size-xs: 0.75rem;
+                    --font-size-sm: 0.875rem;
+                    --font-size-base: 1rem;
+                    --font-size-lg: 1.125rem;
+                    --font-size-xl: 1.25rem;
+                    --spacing-1: 0.25rem;
+                    --spacing-2: 0.5rem;
+                    --spacing-3: 0.75rem;
+                    --spacing-4: 1rem;
+                    --spacing-5: 1.25rem;
+                    --spacing-6: 1.5rem;
+                    --spacing-8: 2rem;
+                    --radius-sm: 0.25rem;
+                    --radius-md: 0.375rem;
+                    --radius-lg: 0.5rem;
+                    --radius-full: 9999px;
+                    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+                    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+                    --transition-fast: all 0.15s ease;
+                    --transition-normal: all 0.3s ease;
+                }
                 
                 .card {
                     background: var(--white);
@@ -733,6 +807,354 @@ class CreatePostForm extends BaseComponent {
                 
                 .card-body {
                     padding: var(--spacing-6);
+                }
+                
+                /* 表单样式 */
+                .form-group {
+                    margin-bottom: var(--spacing-5);
+                }
+                
+                .form-label {
+                    display: block;
+                    font-weight: 500;
+                    color: var(--gray-700);
+                    margin-bottom: var(--spacing-2);
+                    font-size: var(--font-size-sm);
+                }
+                
+                .form-label.required::after {
+                    content: ' *';
+                    color: var(--error-color);
+                }
+                
+                .form-input,
+                .form-textarea,
+                .form-select {
+                    width: 100%;
+                    padding: var(--spacing-3);
+                    border: 1px solid var(--gray-300);
+                    border-radius: var(--radius-md);
+                    font-size: var(--font-size-sm);
+                    transition: var(--transition-fast);
+                    background: var(--white);
+                    box-sizing: border-box;
+                }
+                
+                .form-input:focus,
+                .form-textarea:focus,
+                .form-select:focus {
+                    outline: none;
+                    border-color: var(--primary-color);
+                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                }
+                
+                .form-textarea {
+                    min-height: 200px;
+                    resize: vertical;
+                    font-family: inherit;
+                }
+                
+                .form-textarea.large {
+                    min-height: 400px;
+                }
+                
+                .form-help {
+                    font-size: var(--font-size-xs);
+                    color: var(--gray-500);
+                    margin-top: var(--spacing-1);
+                }
+                
+                .btn {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: var(--spacing-3) var(--spacing-6);
+                    font-size: var(--font-size-sm);
+                    font-weight: 500;
+                    border-radius: var(--radius-md);
+                    border: 1px solid transparent;
+                    cursor: pointer;
+                    transition: var(--transition-fast);
+                    text-decoration: none;
+                    line-height: 1;
+                }
+                
+                .btn-primary {
+                    background-color: var(--primary-color);
+                    color: var(--white);
+                    border-color: var(--primary-color);
+                }
+                
+                .btn-primary:hover {
+                    background-color: var(--primary-hover);
+                    border-color: var(--primary-hover);
+                }
+                
+                .btn-secondary {
+                    background-color: var(--white);
+                    color: var(--gray-700);
+                    border-color: var(--gray-300);
+                }
+                
+                .btn-secondary:hover {
+                    background-color: var(--gray-50);
+                    border-color: var(--gray-400);
+                }
+                
+                .btn:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+                
+                .error-message,
+                .success-message {
+                    padding: var(--spacing-3) var(--spacing-4);
+                    border-radius: var(--radius-md);
+                    margin-bottom: var(--spacing-4);
+                    font-size: var(--font-size-sm);
+                    display: none;
+                }
+                
+                .error-message {
+                    background-color: #fef2f2;
+                    color: var(--error-color);
+                    border: 1px solid #fecaca;
+                }
+                
+                .success-message {
+                    background-color: #f0fdf4;
+                    color: var(--success-color);
+                    border: 1px solid #bbf7d0;
+                }
+                
+                .form-label-container {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: var(--spacing-2);
+                }
+                
+                .preview-toggle {
+                    display: flex;
+                    gap: var(--spacing-2);
+                }
+                
+                .btn-preview {
+                    padding: var(--spacing-2) var(--spacing-3);
+                    font-size: var(--font-size-xs);
+                    background: var(--gray-100);
+                    color: var(--gray-700);
+                    border: 1px solid var(--gray-300);
+                    border-radius: var(--radius-sm);
+                    cursor: pointer;
+                    transition: var(--transition-fast);
+                }
+                
+                .btn-preview:hover {
+                    background: var(--gray-200);
+                }
+                
+                .content-container {
+                    position: relative;
+                }
+                
+                .content-editor {
+                    width: 100%;
+                    min-height: 400px;
+                    padding: var(--spacing-4);
+                    border: 1px solid var(--gray-300);
+                    border-radius: var(--radius-md);
+                    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                    font-size: var(--font-size-sm);
+                    line-height: 1.5;
+                    resize: vertical;
+                }
+                
+                .content-preview {
+                    width: 100%;
+                    min-height: 400px;
+                    padding: var(--spacing-4);
+                    border: 1px solid var(--gray-300);
+                    border-radius: var(--radius-md);
+                    background: var(--white);
+                    overflow-y: auto;
+                }
+                
+                .markdown-content {
+                    font-family: var(--font-family);
+                    line-height: 1.6;
+                    color: var(--gray-800);
+                }
+                
+                .markdown-content h1,
+                .markdown-content h2,
+                .markdown-content h3,
+                .markdown-content h4,
+                .markdown-content h5,
+                .markdown-content h6 {
+                    margin-top: var(--spacing-6);
+                    margin-bottom: var(--spacing-3);
+                    font-weight: 600;
+                    color: var(--gray-900);
+                }
+                
+                .markdown-content h1 { font-size: var(--font-size-xl); }
+                .markdown-content h2 { font-size: var(--font-size-lg); }
+                .markdown-content h3 { font-size: var(--font-size-base); }
+                
+                .markdown-content p {
+                    margin-bottom: var(--spacing-4);
+                }
+                
+                .markdown-content code {
+                    background: var(--gray-100);
+                    padding: var(--spacing-1) var(--spacing-2);
+                    border-radius: var(--radius-sm);
+                    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                    font-size: var(--font-size-xs);
+                }
+                
+                .markdown-content pre {
+                    background: var(--gray-100);
+                    padding: var(--spacing-4);
+                    border-radius: var(--radius-md);
+                    overflow-x: auto;
+                    margin-bottom: var(--spacing-4);
+                }
+                
+                .markdown-content pre code {
+                    background: none;
+                    padding: 0;
+                }
+                
+                .markdown-content ul,
+                .markdown-content ol {
+                    margin-bottom: var(--spacing-4);
+                    padding-left: var(--spacing-6);
+                }
+                
+                .markdown-content li {
+                    margin-bottom: var(--spacing-1);
+                }
+                
+                .markdown-content blockquote {
+                    border-left: 4px solid var(--primary-color);
+                    padding-left: var(--spacing-4);
+                    margin: var(--spacing-4) 0;
+                    color: var(--gray-600);
+                    font-style: italic;
+                }
+                
+                .markdown-content table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: var(--spacing-4);
+                }
+                
+                .markdown-content th,
+                .markdown-content td {
+                    padding: var(--spacing-2) var(--spacing-3);
+                    border: 1px solid var(--gray-300);
+                    text-align: left;
+                }
+                
+                .markdown-content th {
+                    background: var(--gray-50);
+                    font-weight: 600;
+                }
+                
+                .image-upload-container {
+                    border: 2px dashed var(--gray-300);
+                    border-radius: var(--radius-md);
+                    padding: var(--spacing-6);
+                    text-align: center;
+                    transition: var(--transition-fast);
+                    cursor: pointer;
+                }
+                
+                .image-upload-container:hover {
+                    border-color: var(--primary-color);
+                    background: var(--gray-50);
+                }
+                
+                .image-upload-container.dragover {
+                    border-color: var(--primary-color);
+                    background: rgba(59, 130, 246, 0.05);
+                }
+                
+                .image-upload-icon {
+                    width: 48px;
+                    height: 48px;
+                    margin: 0 auto var(--spacing-3);
+                    color: var(--gray-400);
+                }
+                
+                .image-upload-text {
+                    color: var(--gray-600);
+                    font-size: var(--font-size-sm);
+                    margin-bottom: var(--spacing-2);
+                }
+                
+                .image-upload-hint {
+                    color: var(--gray-500);
+                    font-size: var(--font-size-xs);
+                }
+                
+                .image-preview {
+                    margin-top: var(--spacing-4);
+                    text-align: center;
+                }
+                
+                .image-preview img {
+                    max-width: 100%;
+                    max-height: 200px;
+                    border-radius: var(--radius-md);
+                    box-shadow: var(--shadow-sm);
+                }
+                
+                .image-remove {
+                    margin-top: var(--spacing-2);
+                    padding: var(--spacing-2) var(--spacing-4);
+                    background: var(--error-color);
+                    color: var(--white);
+                    border: none;
+                    border-radius: var(--radius-sm);
+                    cursor: pointer;
+                    font-size: var(--font-size-xs);
+                }
+                
+                .image-remove:hover {
+                    background: #dc2626;
+                }
+                
+                .form-actions {
+                    display: flex;
+                    gap: var(--spacing-3);
+                    justify-content: flex-end;
+                    margin-top: var(--spacing-6);
+                    padding-top: var(--spacing-4);
+                    border-top: 1px solid var(--gray-200);
+                }
+                
+                .loading {
+                    text-align: center;
+                    padding: var(--spacing-8);
+                    color: var(--gray-500);
+                }
+                
+                .loading-spinner {
+                    width: 32px;
+                    height: 32px;
+                    border: 3px solid var(--gray-200);
+                    border-top: 3px solid var(--primary-color);
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                    margin: 0 auto var(--spacing-4);
+                }
+                
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
                 }
                 
             </style>

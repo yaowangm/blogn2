@@ -49,8 +49,12 @@ class SubscriptionRepository:
             # 生成头像路径
             avatar_path = None
             if project_item.userid:
+                # 检查头像文件是否存在
+                import os
                 prefix = (project_item.userid // 10000) + 1
-                avatar_path = f"/avatar/{prefix}/s_{project_item.userid}.jpg"
+                real_path = f"../pic/blogn_img/userlogo/{prefix}/s_{project_item.userid}.jpg"
+                if os.path.exists(real_path):
+                    avatar_path = f"/avatar/{prefix}/s_{project_item.userid}.jpg"
             
             posts.append({
                 "id": project_item.id,
@@ -97,3 +101,39 @@ class SubscriptionRepository:
         )
         result = await self.session.exec(statement)
         return result.first() or 0
+    
+    async def create_broadcast(self, broadcast: Subscription) -> Subscription:
+        """创建广播记录"""
+        self.session.add(broadcast)
+        await self.session.commit()
+        await self.session.refresh(broadcast)
+        return broadcast
+    
+    async def get_broadcast(self, project_id: int, piid: int) -> Optional[Subscription]:
+        """检查是否已经广播过某篇文章给某个订阅者"""
+        statement = select(Subscription).where(
+            Subscription.projectid == project_id,
+            Subscription.piid == piid
+        )
+        result = await self.session.exec(statement)
+        return result.first()
+    
+    async def get_broadcasts_by_project(self, project_id: int) -> List[Subscription]:
+        """获取某个项目的所有广播记录"""
+        statement = select(Subscription).where(Subscription.projectid == project_id)
+        result = await self.session.exec(statement)
+        return result.all()
+    
+    async def delete_broadcast(self, project_id: int, piid: int) -> bool:
+        """删除广播记录"""
+        statement = select(Subscription).where(
+            Subscription.projectid == project_id,
+            Subscription.piid == piid
+        )
+        result = await self.session.exec(statement)
+        broadcast = result.first()
+        if broadcast:
+            await self.session.delete(broadcast)
+            await self.session.commit()
+            return True
+        return False

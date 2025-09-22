@@ -19,7 +19,7 @@ class TestGuestbookWithRealDB:
     """留言本功能测试类 - 真实数据库版本"""
 
     @pytest.mark.integration
-    def test_create_message_anonymous(self, test_client, real_sync_session):
+    def test_create_message_anonymous(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试匿名用户创建留言"""
         # 创建测试用户（用于留言本）
         user = User(
@@ -28,8 +28,9 @@ class TestGuestbookWithRealDB:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         
         # 测试创建匿名留言
         message_data = {
@@ -52,8 +53,11 @@ class TestGuestbookWithRealDB:
         assert data["content"] == "这是一条测试留言内容"
         assert data["user_id"] == 0
         
+        # 跟踪留言ID
+        test_data_tracker.add_message(data["message_id"])
+        
         # 验证留言已保存到数据库
-        message_result = real_sync_session.exec(
+        message_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == data["message_id"])
         )
         message = message_result.first()
@@ -66,7 +70,7 @@ class TestGuestbookWithRealDB:
         assert message.status == 1
 
     @pytest.mark.integration
-    def test_create_message_logged_in(self, test_client, real_sync_session):
+    def test_create_message_logged_in(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试登录用户创建留言"""
         # 创建测试用户
         user = User(
@@ -76,8 +80,9 @@ class TestGuestbookWithRealDB:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         
         # 测试创建登录用户留言
         message_data = {
@@ -96,8 +101,11 @@ class TestGuestbookWithRealDB:
         assert data["success"] is True
         assert data["user_id"] == user.id
         
+        # 跟踪留言ID
+        test_data_tracker.add_message(data["message_id"])
+        
         # 验证留言已保存到数据库
-        message_result = real_sync_session.exec(
+        message_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == data["message_id"])
         )
         message = message_result.first()
@@ -105,7 +113,7 @@ class TestGuestbookWithRealDB:
         assert message.userid == 2002
 
     @pytest.mark.integration
-    def test_create_message_empty_subject(self, test_client, real_sync_session):
+    def test_create_message_empty_subject(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试创建空标题留言（应该失败）"""
         message_data = {
             "subject": "",
@@ -123,7 +131,7 @@ class TestGuestbookWithRealDB:
         assert "留言标题不能为空" in data["detail"]
 
     @pytest.mark.integration
-    def test_create_message_empty_content(self, test_client, real_sync_session):
+    def test_create_message_empty_content(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试创建空内容留言"""
         message_data = {
             "subject": "有标题但无内容",
@@ -141,7 +149,7 @@ class TestGuestbookWithRealDB:
         assert "留言内容不能为空" in data["detail"]
 
     @pytest.mark.integration
-    def test_create_message_long_subject(self, test_client, real_sync_session):
+    def test_create_message_long_subject(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试创建超长标题留言"""
         long_subject = "a" * 201  # 超过200字符限制
         message_data = {
@@ -160,7 +168,7 @@ class TestGuestbookWithRealDB:
         assert "标题不能超过200个字符" in data["detail"]
 
     @pytest.mark.integration
-    def test_create_reply_message(self, test_client, real_sync_session):
+    def test_create_reply_message(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试创建跟贴留言"""
         # 创建测试用户
         user = User(
@@ -170,8 +178,9 @@ class TestGuestbookWithRealDB:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         
         # 先创建一个主贴
         main_message = Post(
@@ -188,8 +197,9 @@ class TestGuestbookWithRealDB:
             rootid=0,  # 主贴的rootid为0
             replycount=0
         )
-        real_sync_session.add(main_message)
-        real_sync_session.flush()
+        real_sync_session_with_commit.add(main_message)
+        real_sync_session_with_commit.flush()
+        test_data_tracker.add_message(main_message.id)  # 跟踪主贴ID
         
         # 创建跟贴
         reply_data = {
@@ -208,8 +218,11 @@ class TestGuestbookWithRealDB:
         data = response.json()
         assert data["success"] is True
         
+        # 跟踪跟贴ID
+        test_data_tracker.add_message(data["message_id"])
+        
         # 验证跟贴已保存到数据库
-        reply_result = real_sync_session.exec(
+        reply_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == data["message_id"])
         )
         reply = reply_result.first()
@@ -219,7 +232,7 @@ class TestGuestbookWithRealDB:
         assert reply.projectitemid == 0  # 留言本
 
     @pytest.mark.integration
-    def test_get_messages_list(self, test_client, real_sync_session):
+    def test_get_messages_list(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试获取留言本列表"""
         # 创建测试用户
         user = User(
@@ -229,8 +242,9 @@ class TestGuestbookWithRealDB:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         
         # 创建测试留言
         message1 = Post(
@@ -247,7 +261,7 @@ class TestGuestbookWithRealDB:
             rootid=0,
             replycount=0
         )
-        real_sync_session.add(message1)
+        real_sync_session_with_commit.add(message1)
         
         message2 = Post(
             folderid=0,
@@ -263,8 +277,12 @@ class TestGuestbookWithRealDB:
             rootid=0,
             replycount=0
         )
-        real_sync_session.add(message2)
-        real_sync_session.flush()
+        real_sync_session_with_commit.add(message2)
+        real_sync_session_with_commit.flush()
+        
+        # 跟踪留言ID
+        test_data_tracker.add_message(message1.id)
+        test_data_tracker.add_message(message2.id)
         
         # 获取留言列表
         response = test_client.get("/api/messages")
@@ -289,7 +307,7 @@ class TestGuestbookWithRealDB:
             assert "post_time" in message
 
     @pytest.mark.integration
-    def test_get_thread_messages(self, test_client, real_sync_session):
+    def test_get_thread_messages(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试获取主题的所有留言（主贴+跟贴）"""
         # 创建测试用户（不指定ID，让数据库自动生成）
         user = User(
@@ -298,8 +316,9 @@ class TestGuestbookWithRealDB:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 获取生成的用户ID
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 获取生成的用户ID
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         
         # 创建主贴
         main_message = Post(
@@ -316,8 +335,9 @@ class TestGuestbookWithRealDB:
             rootid=0,
             replycount=0
         )
-        real_sync_session.add(main_message)
-        real_sync_session.flush()
+        real_sync_session_with_commit.add(main_message)
+        real_sync_session_with_commit.flush()
+        test_data_tracker.add_message(main_message.id)  # 跟踪主贴ID
         
         # 创建跟贴
         reply1 = Post(
@@ -334,7 +354,7 @@ class TestGuestbookWithRealDB:
             rootid=main_message.id,  # 跟贴的rootid为主贴ID
             replycount=0
         )
-        real_sync_session.add(reply1)
+        real_sync_session_with_commit.add(reply1)
         
         reply2 = Post(
             folderid=0,
@@ -350,8 +370,15 @@ class TestGuestbookWithRealDB:
             rootid=main_message.id,  # 跟贴的rootid为主贴ID
             replycount=0
         )
-        real_sync_session.add(reply2)
-        real_sync_session.commit()  # 提交数据让test_client能看到
+        real_sync_session_with_commit.add(reply2)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        
+        # 跟踪跟贴ID
+        test_data_tracker.add_message(reply1.id)
+        test_data_tracker.add_message(reply2.id)
+        
+        # 临时提交数据，让API调用能找到
+        real_sync_session_with_commit.commit()
         
         # 获取主题留言
         response = test_client.get(f"/api/thread/{main_message.id}")
@@ -389,7 +416,7 @@ class TestGuestbookWithRealDB:
         assert "主题" in data["detail"] and "不存在" in data["detail"]
 
     @pytest.mark.integration
-    def test_get_recent_comments(self, test_client, real_sync_session):
+    def test_get_recent_comments(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试获取最近评论（排除留言本）"""
         # 创建测试用户（不指定ID，让数据库自动生成）
         user = User(
@@ -398,8 +425,9 @@ class TestGuestbookWithRealDB:
             password="hashed_password",
             regtime=datetime(2024, 1, 1, 10, 0, 0)
         )
-        real_sync_session.add(user)
-        real_sync_session.flush()  # 获取生成的用户ID
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 获取生成的用户ID
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         
         # 创建测试项目
         project = Project(
@@ -409,8 +437,9 @@ class TestGuestbookWithRealDB:
             state=0,
             accesscount=0
         )
-        real_sync_session.add(project)
-        real_sync_session.flush()  # 获取生成的项目ID
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.flush()  # 获取生成的项目ID
+        test_data_tracker.add_project(project.id)  # 跟踪项目ID
         
         # 创建测试文章
         article = ProjectItem(
@@ -423,8 +452,9 @@ class TestGuestbookWithRealDB:
             status=1,
             allowpost=1
         )
-        real_sync_session.add(article)
-        real_sync_session.flush()  # 获取生成的文章ID
+        real_sync_session_with_commit.add(article)
+        real_sync_session_with_commit.flush()  # 获取生成的文章ID
+        test_data_tracker.add_article(article.id)  # 跟踪文章ID
         
         # 创建文章评论（应该被包含）- 使用当前时间确保是最新的
         from datetime import timezone
@@ -444,7 +474,7 @@ class TestGuestbookWithRealDB:
             rootid=0,
             replycount=0
         )
-        real_sync_session.add(article_comment)
+        real_sync_session_with_commit.add(article_comment)
         
         # 创建留言本留言（应该被排除）
         guestbook_message = Post(
@@ -461,8 +491,15 @@ class TestGuestbookWithRealDB:
             rootid=0,
             replycount=0
         )
-        real_sync_session.add(guestbook_message)
-        real_sync_session.commit()  # 提交数据让test_client能看到
+        real_sync_session_with_commit.add(guestbook_message)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        
+        # 跟踪评论和留言ID
+        test_data_tracker.add_comment(article_comment.id)
+        test_data_tracker.add_message(guestbook_message.id)
+        
+        # 临时提交数据，让API调用能找到
+        real_sync_session_with_commit.commit()
         
         # 获取最近评论
         response = test_client.get("/api/comments/recent?limit=10")

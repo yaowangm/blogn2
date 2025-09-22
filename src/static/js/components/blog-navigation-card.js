@@ -198,7 +198,7 @@ class BlogNavigationCard extends BaseComponent {
         // 构建个人介绍链接
         let aboutLink = `/blog/${this.projectId}/about`; // 默认链接
         if (this.userData && this.userData.intropiid) {
-            aboutLink = `/blog/${this.userData.intropiid}`;
+            aboutLink = `/article/${this.userData.intropiid}`;
         }
 
         return `

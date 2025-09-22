@@ -43,7 +43,7 @@ class BaseComponent extends HTMLElement {
      */
     logError(message, error) {
         console.error(`${message}:`, error);
-        // TODO: 添加错误上报逻辑
+        // 可以在这里添加错误上报逻辑
     }
 
     /**

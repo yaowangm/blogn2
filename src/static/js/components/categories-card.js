@@ -7,12 +7,52 @@ class CategoriesCard extends BaseComponent {
         super();
         this.categories = [];
         this.loading = true;
+        this.isOwner = false;
+        this.projectId = null;
     }
 
 
-    connectedCallback() {
+    async connectedCallback() {
         this.render();
+        await this.checkOwnership();
+        this.render(); // 重新渲染以显示维护按钮
         this.loadData();
+    }
+
+    async checkOwnership() {
+        // 检查UserManager是否可用
+        if (typeof UserManager === 'undefined') {
+            this.isOwner = false;
+            return;
+        }
+
+        // 如果未登录，不是所有者
+        if (!UserManager.isLoggedIn()) {
+            this.isOwner = false;
+            return;
+        }
+
+        // 获取项目ID
+        this.projectId = this.getProjectIdFromUrl();
+        if (!this.projectId) {
+            this.isOwner = false;
+            return;
+        }
+
+        try {
+            // 获取博客信息
+            const response = await fetch(`/api/projects/${this.projectId}`);
+            if (response.ok) {
+                const blogData = await response.json();
+                const currentUser = UserManager.getCurrentUser();
+                this.isOwner = currentUser.id === blogData.userid;
+            } else {
+                this.isOwner = false;
+            }
+        } catch (error) {
+            console.error('检查所有权失败:', error);
+            this.isOwner = false;
+        }
     }
 
     addEventListeners() {
@@ -114,6 +154,8 @@ class CategoriesCard extends BaseComponent {
             this.categories = this.getMockCategories();
         } finally {
             this.loading = false;
+            // 重新检查所有权状态并渲染
+            await this.checkOwnership();
             this.render();
             // 延迟添加事件监听器，确保DOM已经渲染
             setTimeout(() => {
@@ -167,6 +209,9 @@ class CategoriesCard extends BaseComponent {
                     padding: var(--spacing-4) var(--spacing-6);
                     background: var(--gray-50);
                     border-bottom: 1px solid var(--gray-200);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
                 }
 
                 .card-title {
@@ -272,6 +317,28 @@ class CategoriesCard extends BaseComponent {
                     padding: var(--spacing-6);
                     color: var(--gray-500);
                 }
+
+                .maintain-button {
+                    background: var(--primary-color);
+                    color: white;
+                    border: none;
+                    padding: var(--spacing-2) var(--spacing-4);
+                    border-radius: var(--radius-md);
+                    cursor: pointer;
+                    font-size: var(--font-size-xs);
+                    font-weight: 500;
+                    transition: all 0.2s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-1);
+                    margin: var(--spacing-3) var(--spacing-6) var(--spacing-4) var(--spacing-6);
+                }
+
+                .maintain-button:hover {
+                    background: var(--primary-hover);
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
             </style>
 
             <div class="card">
@@ -281,6 +348,7 @@ class CategoriesCard extends BaseComponent {
                         分类列表
                     </h3>
                 </div>
+                ${this.isOwner ? this.renderMaintainButton() : ''}
                 ${this.loading ? this.renderLoading() : 
                   this.categories.length > 0 ? this.renderCategories() : 
                   this.renderEmptyState()}
@@ -355,6 +423,24 @@ class CategoriesCard extends BaseComponent {
     getCurrentFolderId() {
         const url = new URL(window.location);
         return url.searchParams.get('folderid');
+    }
+
+    renderMaintainButton() {
+        return `
+            <button class="maintain-button" onclick="this.getRootNode().host.goToMaintenance()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                维护分类
+            </button>
+        `;
+    }
+
+    goToMaintenance() {
+        if (this.projectId) {
+            window.open(`/blog/${this.projectId}/categories/maintenance`, '_blank');
+        }
     }
 }
 

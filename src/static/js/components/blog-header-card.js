@@ -8,6 +8,8 @@ class BlogHeaderCard extends BaseComponent {
         this.projectId = null;
         this.blogData = null;
         this.loading = true;
+        this.subscriptionStatus = null;
+        this.isCurrentUserBlog = false;
     }
 
     connectedCallback() {
@@ -40,6 +42,13 @@ class BlogHeaderCard extends BaseComponent {
                 // 其他错误，使用模拟数据
                 this.blogData = this.getMockBlogData();
             }
+            
+            // 检查是否为当前用户的博客
+            this.checkIfCurrentUserBlog();
+            
+            // 检查订阅状态
+            await this.loadSubscriptionStatus();
+            
         } catch (error) {
             console.error('Error loading blog data:', error);
             this.blogData = this.getMockBlogData();
@@ -78,6 +87,38 @@ class BlogHeaderCard extends BaseComponent {
     }
 
 
+    /**
+     * 检查是否为当前用户的博客
+     */
+    checkIfCurrentUserBlog() {
+        if (!this.blogData || !UserManager.isLoggedIn()) {
+            this.isCurrentUserBlog = false;
+            return;
+        }
+        
+        const currentUser = UserManager.getCurrentUser();
+        this.isCurrentUserBlog = currentUser.id === this.blogData.userid;
+    }
+
+    /**
+     * 检查是否为管理员
+     */
+    isAdmin() {
+        if (!UserManager.isLoggedIn()) {
+            return false;
+        }
+        
+        const currentUser = UserManager.getCurrentUser();
+        return currentUser.role === 'admin' || currentUser.role === 'administrator';
+    }
+
+    /**
+     * 检查是否可以编辑博客信息
+     */
+    canEditBlog() {
+        return this.isCurrentUserBlog || this.isAdmin();
+    }
+
     getMockBlogData() {
         return {
             id: this.projectId,
@@ -103,8 +144,120 @@ class BlogHeaderCard extends BaseComponent {
                 .stat-number { font-size: var(--font-size-2xl); font-weight: 700; color: var(--primary-color); margin: 0 0 var(--spacing-2) 0; }
                 .stat-label { font-size: var(--font-size-sm); color: var(--gray-600); margin: 0; text-transform: uppercase; letter-spacing: 0.05em; }
                 .blog-meta { display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-4) var(--spacing-6); background: var(--gray-50); border-radius: var(--radius-lg); }
+                .meta-items-left { 
+                    display: flex; 
+                    align-items: center; 
+                    gap: var(--spacing-6); 
+                }
                 .meta-item { display: flex; align-items: center; gap: var(--spacing-2); color: var(--gray-600); font-size: var(--font-size-sm); }
                 .meta-icon { width: 16px; height: 16px; color: var(--gray-500); }
+                .meta-subscription-right { 
+                    display: flex; 
+                    align-items: center; 
+                }
+                .subscription-section { 
+                    margin-top: var(--spacing-4); 
+                    padding: var(--spacing-4); 
+                    background: var(--gray-50); 
+                    border-radius: var(--radius-lg); 
+                    border: 1px solid var(--gray-200);
+                    text-align: center;
+                }
+                .subscription-button { 
+                    background: var(--primary-color); 
+                    color: white; 
+                    border: none; 
+                    padding: var(--spacing-3) var(--spacing-6); 
+                    border-radius: var(--radius-md); 
+                    cursor: pointer; 
+                    font-size: var(--font-size-sm); 
+                    font-weight: 500; 
+                    transition: all 0.2s ease;
+                    display: inline-block;
+                    text-decoration: none;
+                    min-width: 80px;
+                    min-height: 36px;
+                    position: relative;
+                    z-index: 1;
+                }
+                .subscription-button:hover { 
+                    background: #1d4ed8; 
+                    transform: translateY(-1px); 
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                }
+                .subscription-button:disabled { 
+                    background: var(--gray-400); 
+                    cursor: not-allowed; 
+                    transform: none; 
+                    box-shadow: none;
+                }
+                .subscription-button.unsubscribe { 
+                    background: var(--red-500); 
+                }
+                .subscription-button.unsubscribe:hover {
+                    background: #dc2626;
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                }
+                .subscription-button-inline { 
+                    background: var(--primary-color); 
+                    color: white; 
+                    border: none; 
+                    padding: var(--spacing-2) var(--spacing-4); 
+                    border-radius: var(--radius-md); 
+                    cursor: pointer; 
+                    font-size: var(--font-size-xs); 
+                    font-weight: 500; 
+                    transition: all 0.2s ease;
+                    display: inline-block;
+                    text-decoration: none;
+                    min-width: 60px;
+                    min-height: 28px;
+                    position: relative;
+                    z-index: 1;
+                }
+                .subscription-button-inline:hover { 
+                    background: #1d4ed8; 
+                    transform: translateY(-1px); 
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
+                .subscription-button-inline:disabled { 
+                    background: var(--gray-400); 
+                    cursor: not-allowed; 
+                    transform: none; 
+                    box-shadow: none;
+                }
+                .subscription-button-inline.unsubscribe {
+                    background: var(--red-500);
+                }
+                .subscription-button-inline.unsubscribe:hover {
+                    background: #dc2626;
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
+                .edit-blog-button { 
+                    background: var(--gray-600); 
+                    color: white; 
+                    border: none; 
+                    padding: var(--spacing-2) var(--spacing-4); 
+                    border-radius: var(--radius-md); 
+                    cursor: pointer; 
+                    font-size: var(--font-size-xs); 
+                    font-weight: 500; 
+                    transition: all 0.2s ease;
+                    display: inline-block;
+                    text-decoration: none;
+                    min-width: 80px;
+                    min-height: 28px;
+                    margin-right: var(--spacing-2);
+                    position: relative;
+                    z-index: 1;
+                }
+                .edit-blog-button:hover { 
+                    background: var(--gray-700); 
+                    transform: translateY(-1px); 
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
             </style>
 
             <div class="card">
@@ -151,17 +304,23 @@ class BlogHeaderCard extends BaseComponent {
                     </div>
                 </div>
                 <div class="blog-meta">
-                    <div class="meta-item">
-                        <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
-                        </svg>
-                        <span>创建于 ${createDate}</span>
+                    <div class="meta-items-left">
+                        <div class="meta-item">
+                            <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
+                            </svg>
+                            <span>创建于 ${createDate}</span>
+                        </div>
+                        <div class="meta-item">
+                            <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
+                            </svg>
+                            <span>更新于 ${updateDate}</span>
+                        </div>
                     </div>
-                    <div class="meta-item">
-                        <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
-                        </svg>
-                        <span>更新于 ${updateDate}</span>
+                    <div class="meta-subscription-right">
+                        ${this.renderEditButton()}
+                        ${this.renderSubscriptionButton()}
                     </div>
                 </div>
             </div>
@@ -170,6 +329,104 @@ class BlogHeaderCard extends BaseComponent {
 
     renderError() {
         return `<div class="error"><div>加载失败</div></div>`;
+    }
+
+    /**
+     * 渲染编辑博客信息按钮
+     */
+    renderEditButton() {
+        // 检查UserManager是否可用
+        if (typeof UserManager === 'undefined') {
+            return '';
+        }
+
+        // 如果未登录，不显示编辑按钮
+        if (!UserManager.isLoggedIn()) {
+            return '';
+        }
+
+        // 如果不可以编辑博客，不显示编辑按钮
+        if (!this.canEditBlog()) {
+            return '';
+        }
+
+        return `<button class="edit-blog-button" onclick="this.getRootNode().host.showEditModal()">修改博客信息</button>`;
+    }
+
+    /**
+     * 渲染订阅按钮（内联版本）
+     */
+    renderSubscriptionButton() {
+        // 检查UserManager是否可用
+        if (typeof UserManager === 'undefined') {
+            console.error('UserManager not available in renderSubscriptionButton');
+            return '';
+        }
+
+        // 如果未登录，不显示订阅按钮
+        if (!UserManager.isLoggedIn()) {
+            return '';
+        }
+
+        // 如果是当前用户的博客，不显示订阅按钮
+        if (this.isCurrentUserBlog) {
+            return '';
+        }
+
+        // 如果订阅状态未加载，显示加载中
+        if (this.subscriptionStatus === null) {
+            return `<button class="subscription-button-inline" disabled>加载中...</button>`;
+        }
+
+        // 根据订阅状态显示相应按钮
+        const isSubscribed = this.subscriptionStatus.is_subscribed;
+        const buttonText = isSubscribed ? '取消订阅' : '订阅';
+        const buttonClass = isSubscribed ? 'subscription-button-inline unsubscribe' : 'subscription-button-inline';
+
+        return `<button class="${buttonClass}" onclick="this.getRootNode().host.handleSubscription()">${buttonText}</button>`;
+    }
+
+    /**
+     * 渲染订阅区域（保留原方法以兼容）
+     */
+    renderSubscriptionSection() {
+        // 检查UserManager是否可用
+        if (typeof UserManager === 'undefined') {
+            console.error('UserManager not available in renderSubscriptionSection');
+            return '';
+        }
+
+        // 如果未登录，不显示订阅区域
+        if (!UserManager.isLoggedIn()) {
+            return '';
+        }
+
+        // 如果是当前用户的博客，不显示订阅区域
+        if (this.isCurrentUserBlog) {
+            return '';
+        }
+
+        // 如果订阅状态未加载，显示加载中
+        if (this.subscriptionStatus === null) {
+            return `
+                <div class="subscription-section">
+                    <button class="subscription-button" disabled>加载中...</button>
+                </div>
+            `;
+        }
+
+        // 根据订阅状态显示相应按钮
+        const isSubscribed = this.subscriptionStatus.is_subscribed;
+        const buttonText = isSubscribed ? '取消订阅' : '订阅';
+        const buttonClass = isSubscribed ? 'subscription-button unsubscribe' : 'subscription-button';
+
+        return `
+            <div class="subscription-section">
+                <button class="${buttonClass}" onclick="this.getRootNode().host.handleSubscription()">
+                    ${buttonText}
+                </button>
+            </div>
+        `;
     }
 
     getDaysSinceCreation() {
@@ -190,6 +447,297 @@ class BlogHeaderCard extends BaseComponent {
         if (this.blogData && this.blogData.name) {
             const blogName = this.blogData.name;
             document.title = `${blogName} - BlogN`;
+        }
+    }
+
+    /**
+     * 加载订阅状态
+     */
+    async loadSubscriptionStatus() {
+        try {
+            // 检查UserManager是否可用
+            if (typeof UserManager === 'undefined') {
+                console.error('UserManager not available');
+                this.subscriptionStatus = null;
+                return;
+            }
+
+            // 检查用户是否登录
+            if (!UserManager.isLoggedIn()) {
+                this.subscriptionStatus = null;
+                return;
+            }
+
+            // 检查是否是当前用户的博客
+            const currentUser = UserManager.getCurrentUser();
+            if (currentUser && currentUser.projectid == this.projectId) {
+                this.isCurrentUserBlog = true;
+                this.subscriptionStatus = null;
+                return;
+            }
+
+            // 获取订阅状态
+            const headers = UserManager.createHeaders();
+            const response = await fetch(`/api/subscriptions/status/${this.projectId}`, { headers });
+            
+            if (response.ok) {
+                this.subscriptionStatus = await response.json();
+            } else {
+                console.error('Failed to load subscription status:', response.status, response.statusText);
+                const errorText = await response.text();
+                console.error('Error response:', errorText);
+                this.subscriptionStatus = null;
+            }
+        } catch (error) {
+            console.error('Error loading subscription status:', error);
+            this.subscriptionStatus = null;
+        }
+    }
+
+    /**
+     * 处理订阅操作
+     */
+    /**
+     * 显示编辑博客信息模态框
+     */
+    showEditModal() {
+        if (!this.canEditBlog()) {
+            alert('您没有权限编辑此博客');
+            return;
+        }
+
+        // 设置全局引用，以便模态框中的按钮可以访问组件实例
+        window.blogHeaderComponent = this;
+
+        // 创建模态框
+        const modal = document.createElement('div');
+        modal.className = 'edit-blog-modal';
+        modal.innerHTML = `
+            <div class="modal-overlay" onclick="this.parentElement.remove(); window.blogHeaderComponent = null;">
+                <div class="modal-content" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>修改博客信息</h3>
+                        <button class="modal-close" onclick="this.closest('.edit-blog-modal').remove(); window.blogHeaderComponent = null;">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="edit-blog-form">
+                            <div class="form-group">
+                                <label for="blog-name">博客名称</label>
+                                <input type="text" id="blog-name" name="name" value="${this.escapeHtml(this.blogData.name || '')}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="blog-description">博客描述</label>
+                                <textarea id="blog-description" name="comment" rows="4" required>${this.escapeHtml(this.blogData.comment || '')}</textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-cancel" onclick="this.closest('.edit-blog-modal').remove(); window.blogHeaderComponent = null;">取消</button>
+                        <button type="button" class="btn-save" onclick="window.blogHeaderComponent.saveBlogInfo()">保存</button>
+                    </div>
+                </div>
+            </div>
+            <style>
+                .edit-blog-modal {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    z-index: 1000;
+                }
+                .modal-overlay {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .modal-content {
+                    background: white;
+                    border-radius: 8px;
+                    width: 90%;
+                    max-width: 500px;
+                    max-height: 90vh;
+                    overflow-y: auto;
+                }
+                .modal-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 20px;
+                    border-bottom: 1px solid #e5e7eb;
+                }
+                .modal-header h3 {
+                    margin: 0;
+                    font-size: 18px;
+                    font-weight: 600;
+                }
+                .modal-close {
+                    background: none;
+                    border: none;
+                    font-size: 24px;
+                    cursor: pointer;
+                    color: #6b7280;
+                }
+                .modal-body {
+                    padding: 20px;
+                }
+                .form-group {
+                    margin-bottom: 20px;
+                }
+                .form-group label {
+                    display: block;
+                    margin-bottom: 5px;
+                    font-weight: 500;
+                    color: #374151;
+                }
+                .form-group input,
+                .form-group textarea {
+                    width: 100%;
+                    padding: 8px 12px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 4px;
+                    font-size: 14px;
+                    box-sizing: border-box;
+                }
+                .form-group textarea {
+                    resize: vertical;
+                    min-height: 80px;
+                }
+                .modal-footer {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 10px;
+                    padding: 20px;
+                    border-top: 1px solid #e5e7eb;
+                }
+                .btn-cancel,
+                .btn-save {
+                    padding: 8px 16px;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                }
+                .btn-cancel {
+                    background: #f3f4f6;
+                    color: #374151;
+                }
+                .btn-save {
+                    background: #3b82f6;
+                    color: white;
+                }
+                .btn-cancel:hover {
+                    background: #e5e7eb;
+                }
+                .btn-save:hover {
+                    background: #2563eb;
+                }
+            </style>
+        `;
+
+        document.body.appendChild(modal);
+    }
+
+    /**
+     * 保存博客信息
+     */
+    async saveBlogInfo() {
+        const form = document.getElementById('edit-blog-form');
+        if (!form) return;
+
+        const formData = new FormData(form);
+        const blogData = {
+            name: formData.get('name'),
+            comment: formData.get('comment')
+        };
+
+        try {
+            const response = await fetch(`/api/projects/${this.projectId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${UserManager.getAccessToken()}`
+                },
+                body: JSON.stringify(blogData)
+            });
+
+            if (response.ok) {
+                // 更新本地数据
+                this.blogData.name = blogData.name;
+                this.blogData.comment = blogData.comment;
+                
+                // 重新渲染
+                this.render();
+                
+                // 关闭模态框
+                const modal = document.querySelector('.edit-blog-modal');
+                if (modal) {
+                    modal.remove();
+                }
+                
+                // 清理全局引用
+                window.blogHeaderComponent = null;
+                
+                alert('博客信息更新成功');
+            } else {
+                const error = await response.json();
+                alert(error.detail || '更新失败');
+            }
+        } catch (error) {
+            console.error('Save blog info error:', error);
+            alert('保存失败，请重试');
+        }
+    }
+
+    async handleSubscription() {
+        if (!UserManager.isLoggedIn()) {
+            alert('请先登录');
+            return;
+        }
+
+        if (this.isCurrentUserBlog) {
+            alert('不能订阅自己的博客');
+            return;
+        }
+
+        try {
+            const headers = UserManager.createHeaders();
+            let response;
+            
+            if (this.subscriptionStatus && this.subscriptionStatus.is_subscribed) {
+                // 取消订阅
+                response = await fetch(`/api/subscriptions/unsubscribe/${this.projectId}`, {
+                    method: 'DELETE',
+                    headers
+                });
+            } else {
+                // 订阅
+                response = await fetch(`/api/subscriptions/subscribe/${this.projectId}`, {
+                    method: 'POST',
+                    headers
+                });
+            }
+
+            if (response.ok) {
+                const result = await response.json();
+                
+                // 重新加载订阅状态
+                await this.loadSubscriptionStatus();
+                this.render();
+            } else {
+                const error = await response.json();
+                alert(error.detail || '操作失败');
+            }
+        } catch (error) {
+            console.error('Subscription error:', error);
+            alert('操作失败，请重试');
         }
     }
 }

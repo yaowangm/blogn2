@@ -135,4 +135,34 @@ class ProjectRepository:
             await self.session.commit()
             await self.session.refresh(project)
             return True
-        return False 
+        return False
+
+    async def update_project(self, project_id: int, update_data: dict) -> Optional[Project]:
+        """
+        更新项目信息
+        
+        Args:
+            project_id: 项目ID
+            update_data: 要更新的数据
+            
+        Returns:
+            Optional[Project]: 更新后的项目对象，如果失败返回None
+        """
+        try:
+            project = await self.get_by_id(project_id)
+            if not project:
+                return None
+            
+            # 更新字段
+            for key, value in update_data.items():
+                if hasattr(project, key):
+                    setattr(project, key, value)
+            
+            # 保存更改
+            await self.session.commit()
+            await self.session.refresh(project)
+            return project
+            
+        except Exception as e:
+            await self.session.rollback()
+            return None 

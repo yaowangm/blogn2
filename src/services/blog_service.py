@@ -32,9 +32,13 @@ class BlogService(BaseService):
         if not userid:
             return None
             
+        from src.config.app import validate_app_config
+        config = validate_app_config()
+        avatar_dir = config["avatar_dir"]
+        
         prefix = (userid // 10000) + 1
         avatar_path = f"/avatar/{prefix}/s_{userid}.jpg"
-        real_path = f"../pic/blogn_img/userlogo/{prefix}/s_{userid}.jpg"
+        real_path = os.path.join(avatar_dir, str(prefix), f"s_{userid}.jpg")
         
         # 检查文件是否存在
         if os.path.exists(real_path):
@@ -126,7 +130,6 @@ class BlogService(BaseService):
             return formatted_comments
         except Exception as e:
             # 如果查询失败，返回空列表
-            print(f"Warning: Could not fetch comments: {e}")
             return []
     
     async def get_about_content(self) -> Dict[str, Any]:
@@ -166,7 +169,6 @@ class BlogService(BaseService):
             }
         except Exception as e:
             # 如果查询失败，返回默认内容
-            print(f"Warning: Could not fetch about content: {e}")
             return {
                 "title": "Why Blogn",
                 "content": "内容暂不可用",
@@ -217,7 +219,6 @@ class BlogService(BaseService):
             return formatted_messages
         except Exception as e:
             # 如果查询失败，返回空列表
-            print(f"Warning: Could not fetch messages: {e}")
             return []
 
     async def get_messages_list(self, page: int = 1, limit: int = 10) -> Dict[str, Any]:
@@ -273,7 +274,6 @@ class BlogService(BaseService):
             }
         except Exception as e:
             # 如果查询失败，返回空数据
-            print(f"Warning: Could not fetch messages list: {e}")
             return {
                 "messages": [],
                 "total": 0,
@@ -319,7 +319,6 @@ class BlogService(BaseService):
             raise e
         except Exception as e:
             # 其他查询失败，返回空数据
-            print(f"Warning: Could not fetch thread {thread_id}: {e}")
             return {
                 "messages": [],
                 "thread_id": thread_id
@@ -388,7 +387,6 @@ class BlogService(BaseService):
             }
         except Exception as e:
             # 如果查询失败，返回空列表
-            print(f"Warning: Could not fetch latest posts: {e}")
             return {
                 "posts": [],
                 "total": 0,

@@ -124,6 +124,10 @@ class ArticleHeaderCard extends BaseComponent {
         // 检查是否显示工具栏
         const showToolbar = this.isAdmin || this.isAuthor;
         
+        // 检查是否显示"设为个人介绍"按钮
+        // 只有当前用户是文章作者且文章有附件图片时才显示
+        const showSetIntroButton = this.isAuthor && this.articleData.attachment;
+        
         this.shadowRoot.innerHTML = `
             <div class="card article-header-card">
                 <div class="card-body">
@@ -179,6 +183,12 @@ class ArticleHeaderCard extends BaseComponent {
                     
                     ${showToolbar ? `
                         <div class="article-toolbar">
+                            ${showSetIntroButton ? `
+                                <button class="btn btn-success btn-sm" id="set-intro-btn">
+                                    <i class="icon-user"></i>
+                                    设为个人介绍
+                                </button>
+                            ` : ''}
                             <button class="btn btn-primary btn-sm" id="edit-article-btn">
                                 <i class="icon-edit"></i>
                                 修改文章
@@ -220,9 +230,14 @@ class ArticleHeaderCard extends BaseComponent {
      * 绑定工具栏事件
      */
     bindToolbarEvents() {
+        const setIntroBtn = this.shadowRoot.getElementById('set-intro-btn');
         const editBtn = this.shadowRoot.getElementById('edit-article-btn');
         const deleteBtn = this.shadowRoot.getElementById('delete-article-btn');
         const permanentDeleteBtn = this.shadowRoot.getElementById('permanent-delete-article-btn');
+        
+        if (setIntroBtn) {
+            setIntroBtn.addEventListener('click', () => this.handleSetIntro());
+        }
         
         if (editBtn) {
             editBtn.addEventListener('click', () => this.handleEditArticle());
@@ -234,6 +249,53 @@ class ArticleHeaderCard extends BaseComponent {
         
         if (permanentDeleteBtn) {
             permanentDeleteBtn.addEventListener('click', () => this.handlePermanentDeleteArticle());
+        }
+    }
+
+    /**
+     * 处理设为个人介绍
+     */
+    async handleSetIntro() {
+        if (!this.articleId) {
+            this.showError('无法获取文章ID');
+            return;
+        }
+        
+        if (!this.articleData.attachment) {
+            alert('此文章没有附件图片，无法设为个人介绍');
+            return;
+        }
+        
+        // 确认操作
+        if (!confirm('确定要将此文章设为个人介绍吗？\n\n此操作将：\n1. 将此文章设为您的个人介绍\n2. 将文章的附件图片复制为您的头像图片\n3. 如果已有头像，将被新图片覆盖')) {
+            return;
+        }
+        
+        try {
+            const headers = UserManager.createHeaders({
+                'Content-Type': 'application/json'
+            });
+            
+            const response = await fetch(`/api/users/set-intro`, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    article_id: this.articleId
+                })
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                alert('个人介绍设置成功！');
+                // 刷新页面以显示更新后的信息
+                window.location.reload();
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || '设置个人介绍失败');
+            }
+        } catch (error) {
+            this.logError('Failed to set intro', error);
+            alert('设置个人介绍失败: ' + error.message);
         }
     }
 
@@ -465,6 +527,15 @@ class ArticleHeaderCard extends BaseComponent {
                 
                 .article-toolbar .btn-warning:hover {
                     background-color: #d97706 !important;
+                }
+                
+                .article-toolbar .btn-success {
+                    background-color: #059669 !important;
+                    color: white !important;
+                }
+                
+                .article-toolbar .btn-success:hover {
+                    background-color: #047857 !important;
                 }
                 
                 .article-toolbar .btn i {

@@ -1,5 +1,6 @@
 from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
+from src.utils.database_utils import DatabaseUtils
 from typing import List, Optional, Tuple
 from src.models.user import User
 
@@ -93,7 +94,6 @@ class UserRepository:
             
         except Exception as e:
             await self.session.rollback()
-            print(f"更新密码失败: {e}")
             return False
     
     async def update_projectid(self, user_id: int, project_id: int) -> bool:
@@ -121,7 +121,65 @@ class UserRepository:
             
         except Exception as e:
             await self.session.rollback()
-            print(f"更新projectid失败: {e}")
+            return False
+
+    async def update_intropiid(self, user_id: int, intropiid: int) -> bool:
+        """
+        更新用户的intropiid（个人介绍文章ID）
+        
+        Args:
+            user_id: 用户ID
+            intropiid: 个人介绍文章ID
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        try:
+            # 获取用户
+            user = await self.get_by_id(user_id)
+            if not user:
+                return False
+            
+            # 更新intropiid
+            user.intropiid = intropiid
+            await self.session.commit()
+            
+            return True
+            
+        except Exception as e:
+            await self.session.rollback()
+            return False
+
+    async def update_email(self, user_id: int, new_email: str) -> bool:
+        """
+        更新用户邮箱
+        
+        Args:
+            user_id: 用户ID
+            new_email: 新邮箱地址
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        try:
+            # 检查邮箱是否已被其他用户使用
+            existing_user = await self.get_by_email(new_email)
+            if existing_user and existing_user.id != user_id:
+                return False
+            
+            # 获取用户
+            user = await self.get_by_id(user_id)
+            if not user:
+                return False
+            
+            # 更新邮箱
+            user.email = new_email
+            await self.session.commit()
+            
+            return True
+            
+        except Exception as e:
+            await self.session.rollback()
             return False
 
     async def increment_point(self, user_id: int, points: int = 10) -> None:
@@ -237,4 +295,28 @@ class UserRepository:
             .limit(limit)
         )
         result = await self.session.exec(statement)
-        return result.all() 
+        return result.all()
+
+    async def update_user_state(self, user_id: int, state: int) -> bool:
+        """
+        更新用户状态
+        
+        Args:
+            user_id: 用户ID
+            state: 新状态 (1=正常, 2=冻结, 10=管理员)
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        try:
+            user = await self.get_by_id(user_id)
+            if not user:
+                return False
+            
+            user.state = state
+            self.session.add(user)
+            await self.session.commit()
+            return True
+        except Exception as e:
+            await self.session.rollback()
+            return False 

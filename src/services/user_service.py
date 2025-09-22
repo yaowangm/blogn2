@@ -8,7 +8,18 @@ from src.services.base_service import BaseService
 class UserService(BaseService):
     """用户业务逻辑服务类
     
-    提供用户相关的业务逻辑处理，包括用户查询、统计、分页等功能。
+    提供完整的用户管理业务逻辑，包括：
+    - 用户信息查询和统计
+    - 分页列表和搜索功能
+    - 用户状态管理（冻结/恢复）
+    - 密码和邮箱更新
+    - 数据格式化和安全处理
+    
+    设计原则：
+    - 业务逻辑与数据访问分离
+    - 统一的错误处理和验证
+    - 敏感信息的安全处理
+    - 支持缓存和性能优化
     """
     
     def __init__(self, user_repo: UserRepository, project_repo: Optional[ProjectRepository] = None):
@@ -146,4 +157,72 @@ class UserService(BaseService):
         # 更新密码
         success = await self.user_repo.update_password(user_id, hashed_password)
         if not success:
-            raise Exception("密码更新失败") 
+            raise Exception("密码更新失败")
+
+    async def update_user_email(self, user_id: int, new_email: str) -> None:
+        """
+        更新用户邮箱
+        
+        Args:
+            user_id: 用户ID
+            new_email: 新邮箱地址
+            
+        Raises:
+            Exception: 当更新失败时
+        """
+        # 验证邮箱格式
+        if not self._is_valid_email(new_email):
+            raise Exception("邮箱格式不正确")
+        
+        # 检查用户是否存在
+        user = await self.user_repo.get_by_id(user_id)
+        if not user:
+            raise Exception("用户不存在")
+        
+        # 检查邮箱是否已被其他用户使用
+        existing_user = await self.user_repo.get_by_email(new_email)
+        if existing_user and existing_user.id != user_id:
+            raise Exception("该邮箱已被其他用户使用")
+        
+        # 更新邮箱
+        success = await self.user_repo.update_email(user_id, new_email)
+        if not success:
+            raise Exception("邮箱更新失败")
+    
+    def _is_valid_email(self, email: str) -> bool:
+        """
+        验证邮箱格式
+        
+        Args:
+            email: 邮箱地址
+            
+        Returns:
+            bool: 邮箱格式是否有效
+        """
+        import re
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return re.match(pattern, email) is not None
+
+    async def freeze_user(self, user_id: int) -> bool:
+        """
+        冻结用户
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            bool: 冻结是否成功
+        """
+        return await self.user_repo.update_user_state(user_id, 2)
+
+    async def restore_user(self, user_id: int) -> bool:
+        """
+        恢复用户
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            bool: 恢复是否成功
+        """
+        return await self.user_repo.update_user_state(user_id, 1) 

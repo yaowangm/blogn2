@@ -51,8 +51,10 @@ class TestUrlLinkController:
     async def test_get_project_friend_links_success(self, mock_session, mock_url_links):
         """测试成功获取指定项目的友情链接"""
         # 模拟友情链接仓库
-        with patch('src.controllers.urllink.UrlLinkRepository.get_friend_links_by_project') as mock_method:
-            mock_method.return_value = mock_url_links
+        with patch('src.controllers.urllink.UrlLinkRepository') as mock_repo_class:
+            mock_repo = AsyncMock()
+            mock_repo.get_friend_links_by_project.return_value = mock_url_links
+            mock_repo_class.return_value = mock_repo
 
             # 执行测试
             result = await get_project_friend_links(1, mock_session)
@@ -66,14 +68,16 @@ class TestUrlLinkController:
             assert result[2].subject == "测试链接3"
 
             # 验证方法调用
-            mock_method.assert_called_once_with(mock_session, 1)
+            mock_repo.get_friend_links_by_project.assert_called_once_with(1)
 
     @pytest.mark.asyncio
     async def test_get_project_friend_links_empty(self, mock_session):
         """测试获取空友情链接列表"""
         # 模拟友情链接仓库返回空列表
-        with patch('src.controllers.urllink.UrlLinkRepository.get_friend_links_by_project') as mock_method:
-            mock_method.return_value = []
+        with patch('src.controllers.urllink.UrlLinkRepository') as mock_repo_class:
+            mock_repo = AsyncMock()
+            mock_repo.get_friend_links_by_project.return_value = []
+            mock_repo_class.return_value = mock_repo
 
             # 执行测试
             result = await get_project_friend_links(1, mock_session)
@@ -85,8 +89,10 @@ class TestUrlLinkController:
     async def test_get_project_friend_links_exception_handling(self, mock_session):
         """测试异常处理"""
         # 模拟友情链接仓库抛出异常
-        with patch('src.controllers.urllink.UrlLinkRepository.get_friend_links_by_project') as mock_method:
-            mock_method.side_effect = Exception("数据库错误")
+        with patch('src.controllers.urllink.UrlLinkRepository') as mock_repo_class:
+            mock_repo = AsyncMock()
+            mock_repo.get_friend_links_by_project.side_effect = Exception("数据库错误")
+            mock_repo_class.return_value = mock_repo
 
             # 执行测试 - 应该返回空列表而不是抛出异常
             result = await get_project_friend_links(1, mock_session)
@@ -98,8 +104,10 @@ class TestUrlLinkController:
     async def test_get_all_friend_links_success(self, mock_session, mock_url_links):
         """测试成功获取所有友情链接"""
         # 模拟友情链接仓库
-        with patch('src.controllers.urllink.UrlLinkRepository.get_all_friend_links') as mock_method:
-            mock_method.return_value = mock_url_links
+        with patch('src.controllers.urllink.UrlLinkRepository') as mock_repo_class:
+            mock_repo = AsyncMock()
+            mock_repo.get_all_friend_links.return_value = mock_url_links
+            mock_repo_class.return_value = mock_repo
 
             # 执行测试
             result = await get_all_friend_links(mock_session)
@@ -112,14 +120,16 @@ class TestUrlLinkController:
             assert result[2].subject == "测试链接3"
 
             # 验证方法调用
-            mock_method.assert_called_once_with(mock_session)
+            mock_repo.get_all_friend_links.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_all_friend_links_empty(self, mock_session):
         """测试获取空友情链接列表"""
         # 模拟友情链接仓库返回空列表
-        with patch('src.controllers.urllink.UrlLinkRepository.get_all_friend_links') as mock_method:
-            mock_method.return_value = []
+        with patch('src.controllers.urllink.UrlLinkRepository') as mock_repo_class:
+            mock_repo = AsyncMock()
+            mock_repo.get_all_friend_links.return_value = []
+            mock_repo_class.return_value = mock_repo
 
             # 执行测试
             result = await get_all_friend_links(mock_session)
@@ -131,8 +141,10 @@ class TestUrlLinkController:
     async def test_get_all_friend_links_exception_handling(self, mock_session):
         """测试异常处理"""
         # 模拟友情链接仓库抛出异常
-        with patch('src.controllers.urllink.UrlLinkRepository.get_all_friend_links') as mock_method:
-            mock_method.side_effect = Exception("数据库错误")
+        with patch('src.controllers.urllink.UrlLinkRepository') as mock_repo_class:
+            mock_repo = AsyncMock()
+            mock_repo.get_all_friend_links.side_effect = Exception("数据库错误")
+            mock_repo_class.return_value = mock_repo
 
             # 执行测试 - 应该返回空列表而不是抛出异常
             result = await get_all_friend_links(mock_session)
@@ -150,8 +162,10 @@ class TestUrlLinkController:
             UrlLink(id=2, subject="链接2", linkstr="https://example2.com", ordernum=2)
         ]
 
-        with patch('src.controllers.urllink.UrlLinkRepository.get_friend_links_by_project') as mock_method:
-            mock_method.return_value = unordered_links
+        with patch('src.controllers.urllink.UrlLinkRepository') as mock_repo_class:
+            mock_repo = AsyncMock()
+            mock_repo.get_friend_links_by_project.return_value = unordered_links
+            mock_repo_class.return_value = mock_repo
 
             # 执行测试
             result = await get_project_friend_links(1, mock_session)
@@ -172,8 +186,10 @@ class TestUrlLinkController:
             for i in range(1, 15)  # 14个链接
         ]
 
-        with patch('src.controllers.urllink.UrlLinkRepository.get_friend_links_by_project') as mock_method:
-            mock_method.return_value = many_links[:10]  # 只返回前10个
+        with patch('src.controllers.urllink.UrlLinkRepository') as mock_repo_class:
+            mock_repo = AsyncMock()
+            mock_repo.get_friend_links_by_project.return_value = many_links[:10]  # 只返回前10个
+            mock_repo_class.return_value = mock_repo
 
             # 执行测试
             result = await get_project_friend_links(1, mock_session)
