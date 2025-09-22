@@ -16,10 +16,7 @@ class NavigationCard extends BaseComponent {
     
     disconnectedCallback() {
         // 清理事件监听器，避免内存泄漏
-        if (this.shadowRoot) {
-            this.shadowRoot.removeEventListener('click', this.handleClick);
-            this.shadowRoot.removeEventListener('keydown', this.handleKeydown);
-        }
+        this.removePaginationEventListeners();
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
@@ -178,6 +175,9 @@ class NavigationCard extends BaseComponent {
             return;
         }
 
+        // 先移除旧的事件监听器，避免重复绑定
+        this.removePaginationEventListeners();
+
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
@@ -333,7 +333,18 @@ class NavigationCard extends BaseComponent {
         return `转到第${text}页`;
     }
 
+    removePaginationEventListeners() {
+        // 移除旧的事件监听器，避免重复绑定
+        if (this.shadowRoot && this.handleClick && this.handleKeydown) {
+            this.shadowRoot.removeEventListener('click', this.handleClick);
+            this.shadowRoot.removeEventListener('keydown', this.handleKeydown);
+        }
+    }
+
     attachPaginationEventListeners() {
+        // 先移除旧的事件监听器
+        this.removePaginationEventListeners();
+        
         // 绑定事件处理器到实例方法，便于清理
         this.handleClick = (e) => {
             if (e.target.classList.contains('pagination-btn') && e.target.hasAttribute('data-action')) {
