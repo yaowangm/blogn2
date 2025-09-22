@@ -403,20 +403,13 @@ class NavigationCard extends BaseComponent {
         }
         
         // 触发自定义事件，使用composed: true让事件能够穿越Shadow DOM边界
+        // 事件会自动冒泡到document，无需重复触发
         const event = new CustomEvent('page-change', {
             detail: { page },
             bubbles: true,
             composed: true
         });
         this.dispatchEvent(event);
-        
-        // 同时在document上触发事件（保持向后兼容）
-        const docEvent = new CustomEvent('page-change', {
-            detail: { page },
-            bubbles: true,
-            composed: true
-        });
-        document.dispatchEvent(docEvent);
     }
 }
 
