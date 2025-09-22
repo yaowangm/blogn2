@@ -19,6 +19,16 @@ class ProjectItemRepository:
         self.session.add(project_item)
         await self.session.flush()  # 获取生成的ID
         await self.session.refresh(project_item)  # 刷新对象以获取完整数据
+        
+        # 更新统计信息
+        try:
+            from src.services.stats_service import StatsService
+            stats_service = StatsService(self.session)
+            await stats_service.handle_article_creation(project_item)
+        except Exception as e:
+            # 统计更新失败不影响文章创建，静默处理
+            pass
+        
         return project_item
     
     async def count(self) -> int:
@@ -317,6 +327,15 @@ class ProjectItemRepository:
         """
         project_item = await self.get_by_id(project_item_id)
         if project_item:
+            # 更新统计信息
+            try:
+                from src.services.stats_service import StatsService
+                stats_service = StatsService(self.session)
+                await stats_service.handle_article_deletion(project_item)
+            except Exception as e:
+                # 统计更新失败不影响文章删除，静默处理
+                pass
+            
             await self.session.delete(project_item)
             await self.session.commit()
             return True

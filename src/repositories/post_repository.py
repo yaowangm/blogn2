@@ -384,6 +384,16 @@ class PostRepository:
         await self.session.flush()  # 获取生成的ID
         await self.session.refresh(post)  # 刷新对象以获取完整数据
         await self.session.commit()  # 提交事务
+        
+        # 更新统计信息
+        try:
+            from src.services.stats_service import StatsService
+            stats_service = StatsService(self.session)
+            await stats_service.handle_comment_creation(post)
+        except Exception as e:
+            # 统计更新失败不影响评论创建，静默处理
+            pass
+        
         return post
     
     async def delete(self, post_id: int) -> bool:
@@ -394,6 +404,15 @@ class PostRepository:
         
         if not post:
             return False
+        
+        # 更新统计信息
+        try:
+            from src.services.stats_service import StatsService
+            stats_service = StatsService(self.session)
+            await stats_service.handle_comment_deletion(post)
+        except Exception as e:
+            # 统计更新失败不影响评论删除，静默处理
+            pass
         
         await self.session.delete(post)
         return True
