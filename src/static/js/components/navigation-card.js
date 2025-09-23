@@ -16,10 +16,7 @@ class NavigationCard extends BaseComponent {
     
     disconnectedCallback() {
         // 清理事件监听器，避免内存泄漏
-        if (this.shadowRoot) {
-            this.shadowRoot.removeEventListener('click', this.handleClick);
-            this.shadowRoot.removeEventListener('keydown', this.handleKeydown);
-        }
+        this.removePaginationEventListeners();
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
@@ -178,6 +175,9 @@ class NavigationCard extends BaseComponent {
             return;
         }
 
+        // 先移除旧的事件监听器，避免重复绑定
+        this.removePaginationEventListeners();
+
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
@@ -333,7 +333,18 @@ class NavigationCard extends BaseComponent {
         return `转到第${text}页`;
     }
 
+    removePaginationEventListeners() {
+        // 移除旧的事件监听器，避免重复绑定
+        if (this.shadowRoot && this.handleClick && this.handleKeydown) {
+            this.shadowRoot.removeEventListener('click', this.handleClick);
+            this.shadowRoot.removeEventListener('keydown', this.handleKeydown);
+        }
+    }
+
     attachPaginationEventListeners() {
+        // 先移除旧的事件监听器
+        this.removePaginationEventListeners();
+        
         // 绑定事件处理器到实例方法，便于清理
         this.handleClick = (e) => {
             if (e.target.classList.contains('pagination-btn') && e.target.hasAttribute('data-action')) {
@@ -392,20 +403,13 @@ class NavigationCard extends BaseComponent {
         }
         
         // 触发自定义事件，使用composed: true让事件能够穿越Shadow DOM边界
+        // 事件会自动冒泡到document，无需重复触发
         const event = new CustomEvent('page-change', {
             detail: { page },
             bubbles: true,
             composed: true
         });
         this.dispatchEvent(event);
-        
-        // 同时在document上触发事件（保持向后兼容）
-        const docEvent = new CustomEvent('page-change', {
-            detail: { page },
-            bubbles: true,
-            composed: true
-        });
-        document.dispatchEvent(docEvent);
     }
 }
 

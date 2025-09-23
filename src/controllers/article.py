@@ -78,6 +78,16 @@ async def get_article_detail(
         if article.itemtype == ArticleStatus.DELETED and not permission_manager.can_manage_system(current_user):
             raise HTTPException(status_code=404, detail=ErrorMessages.ARTICLE_DELETED)
         
+        # 更新文章访问计数（异步执行，不影响响应速度）
+        try:
+            await project_item_repo.increment_access_count(article_id)
+            # 同时更新项目的访问计数
+            if article.projectid:
+                await project_repo.increment_access_count(article.projectid)
+        except Exception as e:
+            # 访问计数更新失败不影响文章查看，静默处理
+            pass
+        
         # 获取作者信息
         author = None
         if article.userid:
@@ -423,16 +433,14 @@ async def update_article(
             new_folder_id = 0
         
         if old_folder_id != new_folder_id:
-            from src.repositories.folder_repository import FolderRepository
-            folder_repo = FolderRepository(session)
-            
-            # 如果旧分类存在且不是未分类（0），减少旧分类的文章数量
-            if old_folder_id and old_folder_id != 0:
-                await folder_repo.decrement_record_count(old_folder_id)
-            
-            # 如果新分类存在且不是未分类（0），增加新分类的文章数量
-            if new_folder_id and new_folder_id != 0:
-                await folder_repo.increment_record_count(new_folder_id)
+            # 使用统计服务更新分类统计
+            try:
+                from src.services.stats_service import StatsService
+                stats_service = StatsService(session)
+                await stats_service.handle_article_folder_change(article, old_folder_id, new_folder_id)
+            except Exception as e:
+                # 统计更新失败不影响文章更新，静默处理
+                pass
         
         # 更新文章数据
         from datetime import datetime

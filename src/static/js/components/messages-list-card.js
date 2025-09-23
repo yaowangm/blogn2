@@ -17,13 +17,8 @@ class MessagesListCard extends BaseComponent {
     }
 
     setupPaginationListener() {
-        // 监听分页导航组件的页面变化事件
-        document.addEventListener('page-change', (event) => {
-            if (event.detail && event.detail.page) {
-                this.currentPage = event.detail.page;
-                this.loadMessages();
-            }
-        });
+        // 分页事件通过setPagination回调函数处理，无需额外监听
+        // 移除了重复的document.addEventListener('page-change', ...)
     }
 
     async loadMessages() {
