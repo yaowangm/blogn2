@@ -7,6 +7,7 @@
 
 import asyncio
 import logging
+import numpy as np
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -58,7 +59,6 @@ class VectorizationUpdateService:
             bool: 更新是否成功
         """
         try:
-            logger.info(f"开始更新文章 {article_id} 的向量...")
             
             # 获取向量化服务
             vectorization_service = await self._get_vectorization_service()
@@ -68,36 +68,43 @@ class VectorizationUpdateService:
                 logger.warning(f"向量化服务不可用，跳过文章 {article_id} 的向量化更新")
                 return False
             
-            # 向量化标题和内容
+            # 向量化标题
             title_vector = await vectorization_service.vectorize_text(title or "")
-            content_vector = await vectorization_service.vectorize_text(content or "")
             
-            # 计算文本统计信息
+            # 处理长文本分段
+            content_segments = await self._process_long_text(content or "", vectorization_service)
+            segment_count = len(content_segments)
+            max_segment_length = max([seg['length'] for seg in content_segments]) if content_segments else 0
             total_text_length = len(content or "")
-            segment_count = 1
-            max_segment_length = len(content or "")
+            
+            # 聚合内容向量（使用所有片段的加权平均）
+            if content_segments:
+                content_vector = await self._aggregate_segment_vectors(content_segments)
+            else:
+                content_vector = await vectorization_service.vectorize_text(content or "")
             
             # 检查是否已存在向量记录
             existing_vector = await self._get_existing_article_vector(article_id)
             
             if existing_vector:
                 # 更新现有记录
-                await self._update_existing_article_vector(
+                article_vector_id = await self._update_existing_article_vector(
                     article_id, title, content, title_vector, content_vector,
                     total_text_length, segment_count, max_segment_length
                 )
-                logger.info(f"文章 {article_id} 向量已更新")
             else:
                 # 创建新记录
-                await self._create_new_article_vector(
+                article_vector_id = await self._create_new_article_vector(
                     article_id, title, content, title_vector, content_vector,
                     total_text_length, segment_count, max_segment_length
                 )
-                logger.info(f"文章 {article_id} 向量已创建")
+            
+            # 保存片段向量
+            if content_segments and article_vector_id:
+                await self._save_content_segments(article_vector_id, content_segments)
             
             # 提交事务
             await self.session.commit()
-            logger.info(f"文章 {article_id} 向量化事务已提交")
             
             return True
             
@@ -129,7 +136,7 @@ class VectorizationUpdateService:
         self, article_id: int, title: str, content: str,
         title_vector: Any, content_vector: Any,
         total_text_length: int, segment_count: int, max_segment_length: int
-    ):
+    ) -> int:
         """更新现有的文章向量记录"""
         # 将向量转换为JSON格式
         title_vector_json = self._vector_to_json(title_vector)
@@ -158,12 +165,18 @@ class VectorizationUpdateService:
             "max_segment_length": max_segment_length,
             "updated_at": TimeUtils.now_utc()
         })
+        
+        # 获取article_vector_id
+        get_id_query = text("SELECT id FROM article_vectors WHERE projectitem_id = :article_id")
+        result = await self.session.execute(get_id_query, {"article_id": article_id})
+        row = result.fetchone()
+        return row[0] if row else None
     
     async def _create_new_article_vector(
         self, article_id: int, title: str, content: str,
         title_vector: Any, content_vector: Any,
         total_text_length: int, segment_count: int, max_segment_length: int
-    ):
+    ) -> int:
         """创建新的文章向量记录"""
         # 将向量转换为JSON格式
         title_vector_json = self._vector_to_json(title_vector)
@@ -196,6 +209,12 @@ class VectorizationUpdateService:
             "created_at": TimeUtils.now_utc(),
             "updated_at": TimeUtils.now_utc()
         })
+        
+        # 获取新创建的article_vector_id
+        get_id_query = text("SELECT id FROM article_vectors WHERE projectitem_id = :article_id")
+        result = await self.session.execute(get_id_query, {"article_id": article_id})
+        row = result.fetchone()
+        return row[0] if row else None
     
     async def delete_article_vectors(self, article_id: int) -> bool:
         """
@@ -208,7 +227,6 @@ class VectorizationUpdateService:
             bool: 删除是否成功
         """
         try:
-            logger.info(f"开始删除文章 {article_id} 的向量...")
             
             # 删除文章向量记录（级联删除片段向量）
             query = text("""
@@ -217,7 +235,6 @@ class VectorizationUpdateService:
             """)
             
             await self.session.execute(query, {"article_id": article_id})
-            logger.info(f"文章 {article_id} 向量已删除")
             
             return True
             
@@ -239,7 +256,6 @@ class VectorizationUpdateService:
         failed_count = 0
         failed_articles = []
         
-        logger.info(f"开始批量更新 {len(article_ids)} 篇文章的向量...")
         
         for article_id in article_ids:
             try:
@@ -275,7 +291,6 @@ class VectorizationUpdateService:
             "failed_articles": failed_articles
         }
         
-        logger.info(f"批量更新完成: {result}")
         return result
     
     async def _get_article_info(self, article_id: int) -> Optional[Dict]:
@@ -355,6 +370,243 @@ class VectorizationUpdateService:
                 "vectorized": False,
                 "message": "文章尚未向量化"
             }
+    
+    async def _process_long_text(self, text: str, vectorization_service) -> List[Dict]:
+        """
+        处理长文本分段
+        
+        Args:
+            text: 原始文本
+            vectorization_service: 向量化服务
+            
+        Returns:
+            List[Dict]: 分段信息列表
+        """
+        if not text or len(text.strip()) < 100:
+            # 短文本不需要分段
+            return []
+        
+        # 使用滑动窗口分割文本
+        segments = self._split_text_with_sliding_window(text)
+        
+        # 向量化每个片段
+        segment_results = []
+        for i, segment in enumerate(segments):
+            try:
+                vector = await vectorization_service.vectorize_text(segment['text'])
+                segment_results.append({
+                    'index': i,
+                    'text': segment['text'],
+                    'vector': vector,
+                    'length': segment['length'],
+                    'start_pos': segment['start_pos'],
+                    'end_pos': segment['end_pos'],
+                    'confidence_score': 1.0,  # 默认置信度
+                    'is_key_segment': self._is_key_segment(segment['text']),
+                    'semantic_density': self._calculate_semantic_density(segment['text']),
+                    'keyword_density': self._calculate_keyword_density(segment['text'])
+                })
+            except Exception as e:
+                logger.warning(f"片段 {i} 向量化失败: {e}")
+                continue
+        
+        return segment_results
+    
+    def _split_text_with_sliding_window(self, text: str, window_size: int = 400, step_size: int = 200) -> List[Dict]:
+        """
+        使用滑动窗口分割文本
+        
+        Args:
+            text: 原始文本
+            window_size: 窗口大小（字符数）
+            step_size: 步长（字符数）
+            
+        Returns:
+            List[Dict]: 分段信息
+        """
+        if len(text) <= window_size:
+            return [{
+                'text': text,
+                'length': len(text),
+                'start_pos': 0,
+                'end_pos': len(text)
+            }]
+        
+        segments = []
+        start = 0
+        
+        while start < len(text):
+            end = min(start + window_size, len(text))
+            
+            # 尝试在句号、问号、感叹号处分割
+            if end < len(text):
+                for i in range(end, start + window_size // 2, -1):
+                    if text[i] in '。！？\n':
+                        end = i + 1
+                        break
+            
+            segment_text = text[start:end].strip()
+            if segment_text:
+                segments.append({
+                    'text': segment_text,
+                    'length': len(segment_text),
+                    'start_pos': start,
+                    'end_pos': end
+                })
+            
+            start += step_size
+        
+        return segments
+    
+    def _is_key_segment(self, text: str) -> bool:
+        """
+        判断是否为关键片段
+        
+        Args:
+            text: 片段文本
+            
+        Returns:
+            bool: 是否为关键片段
+        """
+        # 简单的关键词检测
+        key_indicators = ['重要', '关键', '核心', '主要', '总结', '结论', '要点']
+        return any(indicator in text for indicator in key_indicators)
+    
+    def _calculate_semantic_density(self, text: str) -> float:
+        """
+        计算语义密度
+        
+        Args:
+            text: 片段文本
+            
+        Returns:
+            float: 语义密度 (0-1)
+        """
+        # 简单的语义密度计算：基于词汇多样性
+        words = text.split()
+        unique_words = set(words)
+        return len(unique_words) / len(words) if words else 0.0
+    
+    def _calculate_keyword_density(self, text: str) -> float:
+        """
+        计算关键词密度
+        
+        Args:
+            text: 片段文本
+            
+        Returns:
+            float: 关键词密度 (0-1)
+        """
+        # 简单的关键词密度计算
+        keywords = ['技术', '方法', '实现', '系统', '算法', '数据', '分析', '研究']
+        word_count = len(text.split())
+        keyword_count = sum(1 for keyword in keywords if keyword in text)
+        return keyword_count / word_count if word_count > 0 else 0.0
+    
+    async def _aggregate_segment_vectors(self, segments: List[Dict]) -> np.ndarray:
+        """
+        聚合片段向量
+        
+        Args:
+            segments: 片段列表
+            
+        Returns:
+            np.ndarray: 聚合后的向量
+        """
+        if not segments:
+            return np.zeros(768)
+        
+        vectors = [seg['vector'] for seg in segments]
+        weights = []
+        
+        for seg in segments:
+            # 计算权重：基于置信度、语义密度、关键词密度等
+            weight = (
+                seg['confidence_score'] * 0.3 +
+                seg['semantic_density'] * 0.25 +
+                seg['keyword_density'] * 0.2 +
+                (1.2 if seg['is_key_segment'] else 1.0) * 0.15 +
+                self._position_weight(seg['index'], len(segments)) * 0.1
+            )
+            weights.append(weight)
+        
+        # 归一化权重
+        weights = np.array(weights)
+        weights = weights / np.sum(weights)
+        
+        # 加权平均
+        return np.average(vectors, axis=0, weights=weights)
+    
+    def _position_weight(self, index: int, total: int) -> float:
+        """
+        计算位置权重（开头和结尾的片段权重更高）
+        
+        Args:
+            index: 片段索引
+            total: 总片段数
+            
+        Returns:
+            float: 位置权重
+        """
+        if total <= 1:
+            return 1.0
+        
+        # 开头和结尾权重更高
+        if index == 0 or index == total - 1:
+            return 1.2
+        elif index < total * 0.1 or index > total * 0.9:
+            return 1.1
+        else:
+            return 1.0
+    
+    async def _save_content_segments(self, article_vector_id: int, segments: List[Dict]):
+        """
+        保存内容片段向量
+        
+        Args:
+            article_vector_id: 文章向量ID
+            segments: 片段列表
+        """
+        # 先删除现有的片段向量
+        delete_query = text("""
+            DELETE FROM content_segment_vectors 
+            WHERE article_vector_id = :article_vector_id
+        """)
+        await self.session.execute(delete_query, {"article_vector_id": article_vector_id})
+        
+        # 插入新的片段向量
+        for segment in segments:
+            segment_vector_json = self._vector_to_json(segment['vector'])
+            
+            insert_query = text("""
+                INSERT INTO content_segment_vectors (
+                    article_vector_id, segment_index, segment_text, segment_vector,
+                    segment_length, start_char_pos, end_char_pos,
+                    confidence_score, semantic_density, keyword_density,
+                    is_key_segment, segment_type, created_at
+                ) VALUES (
+                    :article_vector_id, :segment_index, :segment_text, :segment_vector,
+                    :segment_length, :start_char_pos, :end_char_pos,
+                    :confidence_score, :semantic_density, :keyword_density,
+                    :is_key_segment, :segment_type, :created_at
+                )
+            """)
+            
+            await self.session.execute(insert_query, {
+                "article_vector_id": article_vector_id,
+                "segment_index": segment['index'],
+                "segment_text": segment['text'],
+                "segment_vector": segment_vector_json,
+                "segment_length": segment['length'],
+                "start_char_pos": segment['start_pos'],
+                "end_char_pos": segment['end_pos'],
+                "confidence_score": segment['confidence_score'],
+                "semantic_density": segment['semantic_density'],
+                "keyword_density": segment['keyword_density'],
+                "is_key_segment": segment['is_key_segment'],
+                "segment_type": "body",
+                "created_at": TimeUtils.now_utc()
+            })
 
 
 # 全局向量化更新服务实例

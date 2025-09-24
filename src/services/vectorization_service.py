@@ -42,7 +42,6 @@ class BERTVectorizationService:
     async def load_model(self):
         """异步加载BERT模型"""
         if BERTVectorizationService._model_loaded:
-            print(f"✅ BERT模型已加载，跳过重复加载")
             return
         
         # 调试代码：如果模型已经加载过，不应该再次加载
@@ -51,7 +50,6 @@ class BERTVectorizationService:
             assert False, "模型重复加载：模型已经被加载过，不应该再次加载！"
         
         if BERTVectorizationService._loading:
-            print(f"⏳ BERT模型正在加载中，等待完成...")
             # 等待加载完成
             while BERTVectorizationService._loading:
                 await asyncio.sleep(0.1)
@@ -138,7 +136,6 @@ class BERTVectorizationService:
             return vector
             
         except Exception as e:
-            print(f"❌ 文本向量化失败: {e}")
             return np.zeros(768)
     
     def _vectorize_sync(self, text: str) -> np.ndarray:
@@ -165,7 +162,6 @@ class BERTVectorizationService:
             return vector[0]  # 返回768维向量
             
         except Exception as e:
-            print(f"❌ 向量化处理失败: {e}")
             return np.zeros(768)
     
     async def vectorize_batch(self, texts: List[str]) -> List[np.ndarray]:
@@ -195,7 +191,6 @@ class BERTVectorizationService:
             return vectors
             
         except Exception as e:
-            print(f"❌ 批量向量化失败: {e}")
             return [np.zeros(768) for _ in texts]
     
     def _vectorize_batch_sync(self, texts: List[str]) -> List[np.ndarray]:
@@ -230,7 +225,6 @@ class BERTVectorizationService:
             return vectors
             
         except Exception as e:
-            print(f"❌ 批量向量化处理失败: {e}")
             return [np.zeros(768) for _ in texts]
     
     def _preprocess_text(self, text: str) -> str:
