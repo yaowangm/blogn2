@@ -24,14 +24,14 @@ if not DATABASE_URL:
 # 创建异步引擎
 async_engine = create_async_engine(
     DATABASE_URL,
-    echo=True,  # 在开发环境中显示SQL语句
+    echo=False,  # 关闭SQL语句输出
     future=True
 )
 
 # 创建同步引擎（用于创建表）
 sync_engine = create_engine(
     DATABASE_URL.replace("+asyncpg", "+psycopg2"),
-    echo=True
+    echo=False  # 关闭SQL语句输出
 )
 
 # 创建异步会话工厂
