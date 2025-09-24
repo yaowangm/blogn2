@@ -71,12 +71,16 @@ class VectorizationUpdateService:
             # 向量化标题
             title_vector = await vectorization_service.vectorize_text(title or "")
             
-            # 直接向量化整个内容，不使用分段
+            # 向量化整个内容作为整体向量
             content_vector = await vectorization_service.vectorize_text(content or "")
-            segment_count = 1
-            max_segment_length = len(content or "")
+            
+            # 处理长文本分段
+            content_segments = await self._process_long_text(content or "", vectorization_service)
+            
+            # 计算统计信息
             total_text_length = len(content or "")
-            content_segments = []
+            segment_count = len(content_segments) if content_segments else 1
+            max_segment_length = max(len(seg['text']) for seg in content_segments) if content_segments else total_text_length
             
             # 检查是否已存在向量记录
             existing_vector = await self._get_existing_article_vector(article_id)
@@ -377,7 +381,7 @@ class VectorizationUpdateService:
         Returns:
             List[Dict]: 分段信息列表
         """
-        if not text or len(text.strip()) < 100:
+        if not text or len(text.strip()) < 50:
             # 短文本不需要分段
             return []
         
