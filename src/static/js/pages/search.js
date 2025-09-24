@@ -165,9 +165,11 @@ class SearchPage {
         searchResults.style.display = 'block';
         noResultsState.style.display = 'none';
 
-        // 更新结果数量
+        // 更新结果数量和搜索信息
         const total = data.total || 0;
-        resultsCount.textContent = `找到 ${total} 个结果`;
+        const searchMethod = data.search_method || 'unknown';
+        const searchTime = data.search_time || 0;
+        resultsCount.textContent = `找到 ${total} 个结果 (${searchMethod}, ${searchTime}ms)`;
 
         if (total === 0) {
             this.showNoResults();
@@ -194,10 +196,12 @@ class SearchPage {
 
         const title = this.escapeHtml(result.title || result.subject || '无标题');
         const content = this.escapeHtml(this.truncateText(result.content || result.comment || '', 200));
-        const author = this.escapeHtml(result.author_name || result.user_name || '未知作者');
+        const author = this.escapeHtml(result.author || '未知作者');
         const date = this.formatDate(result.created_at || result.posttime);
         const type = result.type || 'article';
         const typeText = type === 'comment' ? '评论' : '文章';
+        const relevanceScore = result.relevance_score || 0;
+        const similarityPercent = Math.round(relevanceScore * 100);
 
         div.innerHTML = `
             <div class="result-title">${title}</div>
@@ -215,6 +219,13 @@ class SearchPage {
                         <polyline points="12,6 12,12 16,14"></polyline>
                     </svg>
                     ${date}
+                </div>
+                <div class="result-similarity">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 12l2 2 4-4"></path>
+                        <circle cx="12" cy="12" r="10"></circle>
+                    </svg>
+                    相似度: ${similarityPercent}%
                 </div>
                 <div class="result-tag">${typeText}</div>
             </div>
