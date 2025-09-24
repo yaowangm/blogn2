@@ -36,6 +36,7 @@ async def search_content(
     """
     try:
         # 使用预加载的模型缓存，如果失败则使用降级方案
+        search_method = "bert"  # 默认使用BERT搜索
         try:
             vectorization_service = get_cached_model()
             search_service = HierarchicalSearchService(vectorization_service, session)
@@ -64,6 +65,10 @@ async def search_content(
             limit=limit
         )
         
+        # 检查搜索结果，判断是否因为模型错误导致返回零向量
+        if results.get("total", 0) == 0 and results.get("items", []) == []:
+            search_method = "bert_zero_vector"  # BERT模型出错返回零向量
+        
         return {
             "query": q,
             "type": type,
@@ -73,7 +78,8 @@ async def search_content(
             "total": results.get("total", 0),
             "results": results.get("items", []),
             "has_more": results.get("has_more", False),
-            "search_time": results.get("search_time", 0)
+            "search_time": results.get("search_time", 0),
+            "search_method": search_method
         }
         
     except HTTPException:
