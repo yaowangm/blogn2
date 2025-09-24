@@ -88,7 +88,7 @@ class HierarchicalSearchService:
                 # 如果向量表不存在，使用传统文本搜索
                 return await self._search_articles_fallback(query, sort_by, page, limit)
             
-            # 使用向量搜索
+            # 使用向量搜索，结合关键词匹配加分
             sql = f"""
             SELECT 
                 pi.id,
@@ -96,7 +96,14 @@ class HierarchicalSearchService:
                 pi.comment as content,
                 u.name as author,
                 pi.createtime,
-                (1 - (av.content_vector <=> '{query_vector_json}'::vector)) as relevance_score
+                (
+                    (1 - (av.content_vector <=> '{query_vector_json}'::vector)) +
+                    CASE 
+                        WHEN LOWER(pi.name) LIKE LOWER('%{query}%') THEN 0.1
+                        WHEN LOWER(pi.comment) LIKE LOWER('%{query}%') THEN 0.05
+                        ELSE 0
+                    END
+                ) as relevance_score
             FROM article_vectors av
             LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
             LEFT JOIN users u ON pi.userid = u.id
