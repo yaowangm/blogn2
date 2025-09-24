@@ -98,7 +98,8 @@ async def search_content(
             "results": results.get("items", []),
             "has_more": results.get("has_more", False),
             "search_time": results.get("search_time", 0),
-            "search_method": search_method
+            "search_method": search_method,
+            "dynamic_threshold": results.get("dynamic_threshold", 0.6)
         }
         
     except HTTPException:

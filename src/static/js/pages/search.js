@@ -170,7 +170,9 @@ class SearchPage {
         const searchMethod = data.search_method || 'unknown';
         const searchTime = data.search_time || 0;
         const query = data.query || this.currentQuery || '';
-        resultsCount.textContent = `找到 ${total} 个结果 (${searchMethod}, ${searchTime}ms) | 关键词：${query}`;
+        const dynamicThreshold = data.dynamic_threshold || 0.6;
+        const thresholdPercent = Math.round(dynamicThreshold * 100);
+        resultsCount.textContent = `找到 ${total} 个结果 (${searchMethod}, ${searchTime}ms) | 关键词：${query} | 阈值：${thresholdPercent}%`;
 
         if (total === 0) {
             this.showNoResults();

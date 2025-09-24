@@ -17,6 +17,52 @@ class HierarchicalSearchService:
         self.vectorization_service = vectorization_service
         self.session = session
     
+    def calculate_dynamic_threshold(self, query: str, query_vector_json: str) -> float:
+        """
+        计算动态阈值
+        
+        Args:
+            query: 搜索查询
+            query_vector_json: 查询向量JSON字符串
+            
+        Returns:
+            float: 动态阈值
+        """
+        base_threshold = 0.6
+        
+        # 根据查询长度调整阈值
+        query_length = len(query.strip())
+        if query_length <= 2:  # 短查询，提高阈值
+            length_factor = 0.1
+        elif query_length <= 5:  # 中等查询
+            length_factor = 0.0
+        else:  # 长查询，降低阈值
+            length_factor = -0.05
+        
+        # 根据查询复杂度调整阈值
+        # 简单启发式：包含多个词的查询降低阈值
+        word_count = len(query.split())
+        if word_count >= 3:  # 复杂查询
+            complexity_factor = -0.05
+        else:
+            complexity_factor = 0.0
+        
+        # 根据查询类型调整阈值
+        # 检查是否包含数字、特殊字符等
+        has_numbers = any(char.isdigit() for char in query)
+        has_special = any(char in '!@#$%^&*()' for char in query)
+        
+        if has_numbers or has_special:  # 精确查询，提高阈值
+            precision_factor = 0.05
+        else:
+            precision_factor = 0.0
+        
+        # 计算最终阈值
+        dynamic_threshold = base_threshold + length_factor + complexity_factor + precision_factor
+        
+        # 确保阈值在合理范围内
+        return max(0.3, min(0.8, dynamic_threshold))
+    
     async def search(self, query: str, search_type: str = "all", 
                     sort_by: str = "relevance", page: int = 1, limit: int = 10) -> Dict[str, Any]:
         """
@@ -54,7 +100,8 @@ class HierarchicalSearchService:
                 "items": results.get("items", []),
                 "total": results.get("total", 0),
                 "has_more": results.get("has_more", False),
-                "search_time": search_time
+                "search_time": search_time,
+                "dynamic_threshold": results.get("dynamic_threshold", 0.6)
             }
             
         except Exception as e:
@@ -86,7 +133,10 @@ class HierarchicalSearchService:
             if not table_exists:
                 return await self._search_articles_fallback(query, sort_by, page, limit)
             
-            # 使用内容段匹配策略：阈值过滤 + 累积相似度
+            # 计算动态阈值
+            dynamic_threshold = self.calculate_dynamic_threshold(query, query_vector_json)
+            
+            # 使用内容段匹配策略：动态阈值过滤 + 累积相似度
             sql = f"""
             SELECT 
                 pi.id,
@@ -97,7 +147,7 @@ class HierarchicalSearchService:
                 COALESCE(
                     SUM(
                         CASE 
-                            WHEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= 0.6 
+                            WHEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= {dynamic_threshold} 
                             THEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector))
                             ELSE 0
                         END
@@ -112,7 +162,7 @@ class HierarchicalSearchService:
             HAVING COALESCE(
                 SUM(
                     CASE 
-                        WHEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= 0.6 
+                        WHEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= {dynamic_threshold} 
                         THEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector))
                         ELSE 0
                     END
@@ -121,7 +171,7 @@ class HierarchicalSearchService:
             ORDER BY COALESCE(
                 SUM(
                     CASE 
-                        WHEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= 0.6 
+                        WHEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= {dynamic_threshold} 
                         THEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector))
                         ELSE 0
                     END
@@ -146,7 +196,7 @@ class HierarchicalSearchService:
                 HAVING COALESCE(
                     SUM(
                         CASE 
-                            WHEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= 0.6 
+                            WHEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= {dynamic_threshold} 
                             THEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector))
                             ELSE 0
                         END
@@ -160,7 +210,8 @@ class HierarchicalSearchService:
             return {
                 "items": [self._format_article_result(item) for item in items],
                 "total": total,
-                "has_more": (offset + len(items)) < total
+                "has_more": (offset + len(items)) < total,
+                "dynamic_threshold": dynamic_threshold
             }
             
         except Exception as e:
@@ -170,6 +221,9 @@ class HierarchicalSearchService:
     async def _search_articles_fallback(self, query: str, sort_by: str, page: int, limit: int) -> Dict[str, Any]:
         """文章搜索降级方案（传统文本搜索）"""
         offset = (page - 1) * limit
+        
+        # 计算动态阈值（即使使用fallback也要返回）
+        dynamic_threshold = self.calculate_dynamic_threshold(query, "")
         
         # 构建搜索条件
         search_condition = f"pi.name ILIKE '%{query}%' OR pi.comment ILIKE '%{query}%'"
@@ -218,7 +272,8 @@ class HierarchicalSearchService:
         return {
             "items": [self._format_article_result(item) for item in items],
             "total": total,
-            "has_more": (offset + len(items)) < total
+            "has_more": (offset + len(items)) < total,
+            "dynamic_threshold": dynamic_threshold
         }
     
     async def _search_comments(self, query_vector_json: str, sort_by: str, page: int, limit: int, query: str = "") -> Dict[str, Any]:
@@ -351,7 +406,8 @@ class HierarchicalSearchService:
         return {
             "items": all_items,
             "total": articles_result.get("total", 0) + comments_result.get("total", 0),
-            "has_more": len(all_items) == limit
+            "has_more": len(all_items) == limit,
+            "dynamic_threshold": articles_result.get("dynamic_threshold", 0.6)
         }
     
     def _vector_to_json(self, vector: np.ndarray) -> str:
