@@ -5,7 +5,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from src.database import get_async_session
 from src.utils.auth_dependencies import get_optional_current_user
