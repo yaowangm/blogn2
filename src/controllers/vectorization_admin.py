@@ -315,3 +315,106 @@ async def reindex_articles_background(article_ids: List[int]):
             
     except Exception as e:
         print(f"后台重新索引失败: {e}")
+
+
+# 普通用户向量化API端点
+@router.post("/vectorization/update/{article_id}")
+async def update_my_article_vectorization(
+    article_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    更新自己文章的向量化
+    
+    权限要求：登录用户，只能更新自己的文章
+    
+    Args:
+        article_id: 文章ID
+        session: 数据库会话
+        current_user: 当前登录用户信息
+        
+    Returns:
+        Dict[str, Any]: 更新结果
+    """
+    try:
+        vectorization_service = get_vectorization_update_service(session)
+        
+        # 获取文章信息并检查权限
+        from src.repositories.project_item_repository import ProjectItemRepository
+        project_item_repo = ProjectItemRepository(session)
+        article = await project_item_repo.get_by_id(article_id)
+        
+        if not article:
+            raise HTTPException(status_code=404, detail="文章不存在")
+        
+        # 检查用户是否有权限更新这篇文章
+        # 管理员可以更新任何文章，普通用户只能更新自己的文章
+        if not permission_manager.can_manage_system(current_user):
+            if article.userid != current_user.get("id"):
+                raise HTTPException(status_code=403, detail="只能更新自己的文章")
+        
+        # 更新向量
+        success = await vectorization_service.update_article_vectors(
+            article_id, article.name, article.comment
+        )
+        
+        if success:
+            return {
+                "message": "向量化更新成功",
+                "article_id": article_id,
+                "title": article.name
+            }
+        else:
+            raise HTTPException(status_code=500, detail="向量化更新失败")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"向量化更新失败: {str(e)}")
+
+
+@router.get("/vectorization/status/{article_id}")
+async def get_my_article_vectorization_status(
+    article_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    获取自己文章的向量化状态
+    
+    权限要求：登录用户，只能查看自己的文章
+    
+    Args:
+        article_id: 文章ID
+        session: 数据库会话
+        current_user: 当前登录用户信息
+        
+    Returns:
+        Dict[str, Any]: 向量化状态信息
+    """
+    try:
+        # 获取文章信息并检查权限
+        from src.repositories.project_item_repository import ProjectItemRepository
+        project_item_repo = ProjectItemRepository(session)
+        article = await project_item_repo.get_by_id(article_id)
+        
+        if not article:
+            raise HTTPException(status_code=404, detail="文章不存在")
+        
+        # 检查用户是否有权限查看这篇文章
+        if not permission_manager.can_manage_system(current_user):
+            if article.userid != current_user.get("id"):
+                raise HTTPException(status_code=403, detail="只能查看自己的文章")
+        
+        vectorization_service = get_vectorization_update_service(session)
+        
+        # 获取向量化状态
+        status = await vectorization_service.get_vectorization_status(article_id)
+        
+        return status
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取向量化状态失败: {str(e)}")

@@ -30,12 +30,18 @@ class VectorizationUpdateService:
         """获取向量化服务实例"""
         if self.vectorization_service is None:
             try:
-                # 只使用已经加载的模型缓存，不尝试重新加载
+                # 尝试使用预加载的模型缓存
                 self.vectorization_service = get_cached_model()
             except RuntimeError:
-                # 如果缓存未初始化，返回None表示无法进行向量化
-                logger.warning("模型缓存未初始化，跳过向量化更新")
-                return None
+                # 如果缓存未初始化，尝试直接创建新的向量化服务
+                logger.warning("模型缓存未初始化，尝试直接创建向量化服务")
+                try:
+                    from src.services.vectorization_service import BERTVectorizationService
+                    self.vectorization_service = BERTVectorizationService()
+                    # 不在这里加载模型，让向量化时再加载
+                except Exception as e:
+                    logger.error(f"创建向量化服务失败: {e}")
+                    return None
         
         return self.vectorization_service
     
@@ -89,6 +95,10 @@ class VectorizationUpdateService:
                 )
                 logger.info(f"文章 {article_id} 向量已创建")
             
+            # 提交事务
+            await self.session.commit()
+            logger.info(f"文章 {article_id} 向量化事务已提交")
+            
             return True
             
         except Exception as e:
@@ -103,7 +113,7 @@ class VectorizationUpdateService:
             WHERE projectitem_id = :article_id
         """)
         
-        result = await self.session.exec(query, {"article_id": article_id})
+        result = await self.session.execute(query, {"article_id": article_id})
         row = result.fetchone()
         
         if row:
@@ -138,7 +148,7 @@ class VectorizationUpdateService:
             WHERE projectitem_id = :article_id
         """)
         
-        await self.session.exec(query, {
+        await self.session.execute(query, {
             "article_id": article_id,
             "title_vector": title_vector_json,
             "title_text": title,
@@ -171,7 +181,7 @@ class VectorizationUpdateService:
             )
         """)
         
-        await self.session.exec(query, {
+        await self.session.execute(query, {
             "article_id": article_id,
             "title_vector": title_vector_json,
             "title_text": title,
@@ -206,7 +216,7 @@ class VectorizationUpdateService:
                 WHERE projectitem_id = :article_id
             """)
             
-            await self.session.exec(query, {"article_id": article_id})
+            await self.session.execute(query, {"article_id": article_id})
             logger.info(f"文章 {article_id} 向量已删除")
             
             return True
@@ -276,7 +286,7 @@ class VectorizationUpdateService:
             WHERE id = :article_id
         """)
         
-        result = await self.session.exec(query, {"article_id": article_id})
+        result = await self.session.execute(query, {"article_id": article_id})
         row = result.fetchone()
         
         if row:
@@ -324,7 +334,7 @@ class VectorizationUpdateService:
             WHERE av.projectitem_id = :article_id
         """)
         
-        result = await self.session.exec(query, {"article_id": article_id})
+        result = await self.session.execute(query, {"article_id": article_id})
         row = result.fetchone()
         
         if row:
