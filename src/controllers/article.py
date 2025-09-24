@@ -579,6 +579,24 @@ async def update_article(
         await clear_article_detail_cache(article_id)
         await clear_article_comments_cache(article_id)
         
+        # 异步更新向量化索引
+        try:
+            from src.services.vectorization_update_service import get_vectorization_update_service
+            vectorization_service = get_vectorization_update_service(session)
+            
+            # 获取更新后的文章内容
+            updated_title = article_data.get("name", updated_article.name)
+            updated_content = article_data.get("comment", updated_article.comment)
+            
+            # 异步更新向量
+            await vectorization_service.update_article_vectors(
+                article_id, updated_title, updated_content
+            )
+            
+        except Exception as e:
+            # 向量化更新失败不影响文章更新成功
+            print(f"向量化更新失败: {e}")
+        
         return {"message": "文章更新成功"}
         
     except HTTPException:
@@ -648,6 +666,18 @@ async def delete_article(
         # 失效相关缓存
         await clear_article_detail_cache(article_id)
         await clear_article_comments_cache(article_id)
+        
+        # 异步删除向量化索引
+        try:
+            from src.services.vectorization_update_service import get_vectorization_update_service
+            vectorization_service = get_vectorization_update_service(session)
+            
+            # 删除向量
+            await vectorization_service.delete_article_vectors(article_id)
+            
+        except Exception as e:
+            # 向量化删除失败不影响文章删除成功
+            print(f"向量化删除失败: {e}")
         
         return {"message": "文章删除成功"}
         

@@ -663,6 +663,20 @@ async def create_post(
             # 广播失败不影响文章创建，静默处理
             pass
         
+        # 异步创建向量化索引
+        try:
+            from src.services.vectorization_update_service import get_vectorization_update_service
+            vectorization_service = get_vectorization_update_service(session)
+            
+            # 创建向量
+            await vectorization_service.update_article_vectors(
+                created_post.id, created_post.name, created_post.comment
+            )
+            
+        except Exception as e:
+            # 向量化创建失败不影响文章创建成功
+            print(f"向量化创建失败: {e}")
+        
         return {
             "id": created_post.id,
             "name": created_post.name,
