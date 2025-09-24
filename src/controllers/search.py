@@ -79,7 +79,7 @@ async def search_content(
                     
         except Exception as e:
             # 搜索过程中出现异常，说明模型有问题
-            search_method = "bert_model_error"
+            search_method = "bert_search_error"
             results = {
                 "items": [],
                 "total": 0,
