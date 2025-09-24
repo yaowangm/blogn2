@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能搜索 - BlogN2</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <style>
+        .search-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-6) var(--spacing-4);
+        }
+
+        .search-header {
+            text-align: center;
+            margin-bottom: var(--spacing-8);
+        }
+
+        .search-title {
+            font-size: var(--font-size-3xl);
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: var(--spacing-2);
+        }
+
+        .search-subtitle {
+            font-size: var(--font-size-lg);
+            color: var(--gray-600);
+            margin-bottom: var(--spacing-6);
+        }
+
+        .search-form {
+            max-width: 600px;
+            margin: 0 auto var(--spacing-8);
+        }
+
+        .search-input-group {
+            position: relative;
+            display: flex;
+            gap: var(--spacing-2);
+        }
+
+        .search-input {
+            flex: 1;
+            padding: var(--spacing-4) var(--spacing-5);
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            font-size: var(--font-size-lg);
+            transition: var(--transition-fast);
+            background: var(--white);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px var(--primary-color-10);
+        }
+
+        .search-button {
+            padding: var(--spacing-4) var(--spacing-6);
+            background: var(--primary-color);
+            color: var(--white);
+            border: none;
+            border-radius: var(--radius-lg);
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+
+        .search-button:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .search-button:disabled {
+            background: var(--gray-400);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .search-filters {
+            display: flex;
+            gap: var(--spacing-4);
+            justify-content: center;
+            margin-bottom: var(--spacing-6);
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+
+        .filter-label {
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+
+        .filter-select {
+            padding: var(--spacing-2) var(--spacing-3);
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            background: var(--white);
+            color: var(--gray-700);
+            font-size: var(--font-size-sm);
+        }
+
+        .search-results {
+            margin-top: var(--spacing-8);
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-6);
+            padding-bottom: var(--spacing-4);
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .results-count {
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .results-sort {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+
+        .sort-label {
+            font-size: var(--font-size-sm);
+            color: var(--gray-600);
+        }
+
+        .sort-select {
+            padding: var(--spacing-2) var(--spacing-3);
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            background: var(--white);
+            color: var(--gray-700);
+            font-size: var(--font-size-sm);
+        }
+
+        .result-item {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-6);
+            margin-bottom: var(--spacing-4);
+            transition: var(--transition-fast);
+            cursor: pointer;
+        }
+
+        .result-item:hover {
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .result-title {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: var(--spacing-2);
+            line-height: 1.4;
+        }
+
+        .result-meta {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-4);
+            margin-bottom: var(--spacing-3);
+            font-size: var(--font-size-sm);
+            color: var(--gray-600);
+        }
+
+        .result-author {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+
+        .result-date {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+
+        .result-content {
+            color: var(--gray-700);
+            line-height: 1.6;
+            margin-bottom: var(--spacing-3);
+        }
+
+        .result-tags {
+            display: flex;
+            gap: var(--spacing-2);
+            flex-wrap: wrap;
+        }
+
+        .result-tag {
+            background: var(--gray-100);
+            color: var(--gray-700);
+            padding: var(--spacing-1) var(--spacing-2);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: 500;
+        }
+
+        .loading {
+            text-align: center;
+            padding: var(--spacing-8);
+            color: var(--gray-600);
+        }
+
+        .no-results {
+            text-align: center;
+            padding: var(--spacing-8);
+            color: var(--gray-600);
+        }
+
+        .error-message {
+            background: var(--red-50);
+            border: 1px solid var(--red-200);
+            color: var(--red-700);
+            padding: var(--spacing-4);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-4);
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: var(--spacing-2);
+            margin-top: var(--spacing-8);
+        }
+
+        .pagination-button {
+            padding: var(--spacing-2) var(--spacing-4);
+            border: 1px solid var(--gray-300);
+            background: var(--white);
+            color: var(--gray-700);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .pagination-button:hover:not(:disabled) {
+            background: var(--gray-50);
+            border-color: var(--gray-400);
+        }
+
+        .pagination-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-button.active {
+            background: var(--primary-color);
+            color: var(--white);
+            border-color: var(--primary-color);
+        }
+
+        @media (max-width: 768px) {
+            .search-container {
+                padding: var(--spacing-4) var(--spacing-3);
+            }
+
+            .search-input-group {
+                flex-direction: column;
+            }
+
+            .search-filters {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .results-header {
+                flex-direction: column;
+                gap: var(--spacing-3);
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶栏组件 -->
+    <header-component></header-component>
+
+    <!-- 搜索页面内容 -->
+    <main class="main-content">
+        <div class="search-container">
+            <!-- 搜索标题 -->
+            <div class="search-header">
+                <h1 class="search-title">智能搜索</h1>
+                <p class="search-subtitle">使用AI语义搜索，找到最相关的内容</p>
+            </div>
+
+            <!-- 搜索表单 -->
+            <form class="search-form" id="searchForm">
+                <div class="search-input-group">
+                    <input 
+                        type="text" 
+                        class="search-input" 
+                        id="searchInput" 
+                        placeholder="输入关键词进行智能搜索..."
+                        autocomplete="off"
+                    >
+                    <button type="submit" class="search-button" id="searchButton">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                        搜索
+                    </button>
+                </div>
+            </form>
+
+            <!-- 搜索过滤器 -->
+            <div class="search-filters">
+                <div class="filter-group">
+                    <label class="filter-label" for="searchType">搜索类型:</label>
+                    <select class="filter-select" id="searchType">
+                        <option value="all">全部内容</option>
+                        <option value="articles">仅文章</option>
+                        <option value="comments">仅评论</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label" for="sortBy">排序方式:</label>
+                    <select class="filter-select" id="sortBy">
+                        <option value="relevance">相关度</option>
+                        <option value="date">发布时间</option>
+                        <option value="popularity">热度</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 搜索结果区域 -->
+            <div class="search-results" id="searchResults" style="display: none;">
+                <div class="results-header">
+                    <div class="results-count" id="resultsCount">找到 0 个结果</div>
+                    <div class="results-sort">
+                        <span class="sort-label">排序:</span>
+                        <select class="sort-select" id="resultsSort">
+                            <option value="relevance">相关度</option>
+                            <option value="date">发布时间</option>
+                            <option value="popularity">热度</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="results-list" id="resultsList"></div>
+                <div class="pagination" id="pagination" style="display: none;"></div>
+            </div>
+
+            <!-- 加载状态 -->
+            <div class="loading" id="loadingState" style="display: none;">
+                <div>正在搜索中...</div>
+            </div>
+
+            <!-- 无结果状态 -->
+            <div class="no-results" id="noResultsState" style="display: none;">
+                <div>没有找到相关结果，请尝试其他关键词</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底栏组件 -->
+    <footer-component></footer-component>
+
+    <!-- 图标库 -->
+    <script src="/static/js/components/icons.js"></script>
+    
+    <!-- 用户管理工具 -->
+    <script src="/static/js/utils/user-manager.js"></script>
+    
+    <!-- Web Components -->
+    <script src="/static/js/utils/html-utils.js"></script>
+    <script src="/static/js/components/base-component.js"></script>
+    <script src="/static/js/components/header-component.js"></script>
+    <script src="/static/js/components/footer-component.js"></script>
+    
+    <!-- 搜索页面脚本 -->
+    <script src="/static/js/pages/search.js"></script>
+</body>
+</html>

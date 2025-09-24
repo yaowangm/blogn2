@@ -387,6 +387,8 @@ class HeaderComponent extends BaseComponent {
                 e.preventDefault();
                 e.stopPropagation();
                 userMenu.classList.remove('active');
+                // 打开搜索页面
+                window.open('/search', '_blank');
             });
         }
 

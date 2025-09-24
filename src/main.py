@@ -35,6 +35,7 @@ from src.config.cache import cache_settings, validate_cache_config
 from src.utils.middleware_handlers import MiddlewareHandler
 from src.utils.api_handlers import APIHandler
 from src.utils.page_handlers import PageHandler
+from src.services.model_cache import initialize_model_cache
 
 
 @asynccontextmanager
@@ -54,6 +55,9 @@ async def lifespan(app: FastAPI):
         print("✅ 缓存系统初始化成功")
     else:
         print("⚠️  缓存系统初始化失败，将使用无缓存模式")
+    
+    # 预加载BERT模型
+    await initialize_model_cache()
     
     yield
     
