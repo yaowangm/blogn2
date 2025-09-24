@@ -37,11 +37,15 @@ async def search_content(
     try:
         # 使用预加载的模型缓存，如果失败则使用降级方案
         search_method = "bert"  # 默认使用BERT搜索
+        model_error = False  # 标记模型是否出错
+        
         try:
             vectorization_service = get_cached_model()
             search_service = HierarchicalSearchService(vectorization_service, session)
         except RuntimeError:
             # 模型缓存未初始化，使用降级方案
+            search_method = "bert_model_error"  # 模型加载失败
+            model_error = True
             from src.services.vectorization_service import BERTVectorizationService
             vectorization_service = BERTVectorizationService()
             search_service = HierarchicalSearchService(vectorization_service, session)
@@ -57,17 +61,32 @@ async def search_content(
             raise HTTPException(status_code=400, detail="排序方式必须是 relevance, date 或 popularity")
         
         # 执行搜索
-        results = await search_service.search(
-            query=q.strip(),
-            search_type=type,
-            sort_by=sort,
-            page=page,
-            limit=limit
-        )
-        
-        # 检查搜索结果，判断是否因为模型错误导致返回零向量
-        if results.get("total", 0) == 0 and results.get("items", []) == []:
-            search_method = "bert_zero_vector"  # BERT模型出错返回零向量
+        try:
+            results = await search_service.search(
+                query=q.strip(),
+                search_type=type,
+                sort_by=sort,
+                page=page,
+                limit=limit
+            )
+            
+            # 检查搜索结果，判断是否因为模型错误导致返回零向量
+            if results.get("total", 0) == 0 and results.get("items", []) == []:
+                if model_error:
+                    search_method = "bert_model_error"  # 模型出错导致零向量
+                else:
+                    search_method = "bert_no_results"  # 模型正常但没有匹配结果
+                    
+        except Exception as e:
+            # 搜索过程中出现异常，说明模型有问题
+            search_method = "bert_model_error"
+            results = {
+                "items": [],
+                "total": 0,
+                "has_more": False,
+                "search_time": 0.0,
+                "error": str(e)
+            }
         
         return {
             "query": q,
