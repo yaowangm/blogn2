@@ -3,7 +3,7 @@
 实现基于BERT向量的智能搜索功能
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import Optional, Dict, Any, List
 
@@ -16,6 +16,7 @@ router = APIRouter()
 
 @router.get("/search")
 async def search_content(
+    request: Request,
     q: str = Query(..., description="搜索关键词"),
     type: str = Query("all", description="搜索类型: all/articles/comments"),
     sort: str = Query("relevance", description="排序方式: relevance/date/popularity"),

@@ -45,6 +45,11 @@ class BERTVectorizationService:
             print(f"✅ BERT模型已加载，跳过重复加载")
             return
         
+        # 调试代码：如果模型已经加载过，不应该再次加载
+        if hasattr(BERTVectorizationService, '_loading_attempted') and BERTVectorizationService._loading_attempted:
+            print("❌ 模型重复加载检测：模型已经被加载过，不应该再次加载！")
+            assert False, "模型重复加载：模型已经被加载过，不应该再次加载！"
+        
         if BERTVectorizationService._loading:
             print(f"⏳ BERT模型正在加载中，等待完成...")
             # 等待加载完成
@@ -53,6 +58,7 @@ class BERTVectorizationService:
             return
         
         BERTVectorizationService._loading = True
+        BERTVectorizationService._loading_attempted = True  # 标记已尝试加载
         try:
             print(f"🔄 正在加载BERT模型: {self.model_name}")
             
@@ -69,6 +75,10 @@ class BERTVectorizationService:
             raise
         finally:
             BERTVectorizationService._loading = False
+    
+    def is_model_loaded(self):
+        """检查模型是否已加载"""
+        return BERTVectorizationService._model_loaded
     
     def _load_model_sync(self):
         """同步加载模型（在后台线程中执行）"""

@@ -61,12 +61,22 @@ async def lifespan(app: FastAPI):
     else:
         print("⚠️  缓存系统初始化失败，将使用无缓存模式")
     
-    # 预加载BERT模型
-    await initialize_model_cache()
+    # 预加载BERT模型并存储到应用状态中
+    model_cache = await initialize_model_cache()
+    if model_cache is not None:
+        # 将模型缓存存储到FastAPI应用状态中
+        app.state.model_cache = model_cache
+        print("✅ BERT模型缓存初始化成功，已存储到应用状态")
+    else:
+        print("⚠️  BERT模型缓存初始化失败，搜索功能将使用降级方案")
+        app.state.model_cache = None
     
     yield
     
-    # 关闭事件：清理资源（如需要）
+    # 关闭事件：清理资源
+    if hasattr(app.state, 'model_cache'):
+        print("🧹 清理模型缓存...")
+        app.state.model_cache = None
 
 
 # 创建FastAPI应用实例
