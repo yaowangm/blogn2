@@ -166,3 +166,29 @@ class ProjectRepository:
         except Exception as e:
             await self.session.rollback()
             return None 
+    
+    async def increment_access_count(self, project_id: int) -> bool:
+        """
+        增加项目的访问次数
+        
+        Args:
+            project_id: 项目ID
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        try:
+            # 使用SQLModel的方式更新，避免原始SQL的同步问题
+            from src.utils.time_utils import TimeUtils
+            
+            project = await self.get_by_id(project_id)
+            if project:
+                project.accesscount = (project.accesscount or 0) + 1
+                project.updatetime = TimeUtils.now_utc()
+                self.session.add(project)
+                await self.session.commit()
+                return True
+            else:
+                return False
+        except Exception as e:
+            return False

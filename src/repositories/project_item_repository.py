@@ -407,3 +407,29 @@ class ProjectItemRepository:
         
         result = await self.session.exec(query)
         return result.first() or 0
+    
+    async def increment_access_count(self, project_item_id: int) -> bool:
+        """
+        增加文章访问次数
+        
+        Args:
+            project_item_id: 文章ID
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        try:
+            # 使用SQLModel的方式更新，避免原始SQL的同步问题
+            from src.utils.time_utils import TimeUtils
+            
+            project_item = await self.get_by_id(project_item_id)
+            if project_item:
+                project_item.accesscount = (project_item.accesscount or 0) + 1
+                project_item.updatetime = TimeUtils.now_utc()
+                self.session.add(project_item)
+                await self.session.commit()
+                return True
+            else:
+                return False
+        except Exception as e:
+            return False

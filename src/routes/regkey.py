@@ -167,7 +167,7 @@ async def exchange_regkey(
     except HTTPException:
         raise
     except Exception as e:
-        session.rollback()
+        await session.rollback()
         raise HTTPException(status_code=500, detail=f"兑换注册码失败: {str(e)}")
 
 
@@ -256,5 +256,5 @@ async def use_regkey(
     except HTTPException:
         raise
     except Exception as e:
-        session.rollback()
+        await session.rollback()
         raise HTTPException(status_code=500, detail=f"使用注册码失败: {str(e)}")
