@@ -71,17 +71,12 @@ class VectorizationUpdateService:
             # 向量化标题
             title_vector = await vectorization_service.vectorize_text(title or "")
             
-            # 处理长文本分段
-            content_segments = await self._process_long_text(content or "", vectorization_service)
-            segment_count = len(content_segments)
-            max_segment_length = max([seg['length'] for seg in content_segments]) if content_segments else 0
+            # 直接向量化整个内容，不使用分段
+            content_vector = await vectorization_service.vectorize_text(content or "")
+            segment_count = 1
+            max_segment_length = len(content or "")
             total_text_length = len(content or "")
-            
-            # 聚合内容向量（使用所有片段的加权平均）
-            if content_segments:
-                content_vector = await self._aggregate_segment_vectors(content_segments)
-            else:
-                content_vector = await vectorization_service.vectorize_text(content or "")
+            content_segments = []
             
             # 检查是否已存在向量记录
             existing_vector = await self._get_existing_article_vector(article_id)
@@ -517,25 +512,9 @@ class VectorizationUpdateService:
             return np.zeros(768)
         
         vectors = [seg['vector'] for seg in segments]
-        weights = []
         
-        for seg in segments:
-            # 计算权重：基于置信度、语义密度、关键词密度等
-            weight = (
-                seg['confidence_score'] * 0.3 +
-                seg['semantic_density'] * 0.25 +
-                seg['keyword_density'] * 0.2 +
-                (1.2 if seg['is_key_segment'] else 1.0) * 0.15 +
-                self._position_weight(seg['index'], len(segments)) * 0.1
-            )
-            weights.append(weight)
-        
-        # 归一化权重
-        weights = np.array(weights)
-        weights = weights / np.sum(weights)
-        
-        # 加权平均
-        return np.average(vectors, axis=0, weights=weights)
+        # 使用简单的平均聚合，避免复杂的权重计算
+        return np.mean(vectors, axis=0)
     
     def _position_weight(self, index: int, total: int) -> float:
         """
