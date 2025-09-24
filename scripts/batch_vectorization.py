@@ -48,13 +48,17 @@ class BatchVectorization:
     """批量向量化处理器"""
     
     def __init__(self, process_id: int, queue: Queue, progress_counter: Value, 
-                 total_count: Value, start_time: Value, clear_tables: bool = False):
+                 total_count: Value, start_time: Value, clear_tables: bool = False,
+                 articles_only: bool = False, comments_only: bool = False, total_processes: int = 1):
         self.process_id = process_id
         self.queue = queue
         self.progress_counter = progress_counter
         self.total_count = total_count
         self.start_time = start_time
         self.clear_tables = clear_tables
+        self.articles_only = articles_only
+        self.comments_only = comments_only
+        self.total_processes = total_processes
         self.vectorization_service = None
         self.update_service = None
         
@@ -167,15 +171,20 @@ class BatchVectorization:
         """向量化评论"""
         logger.info(f"进程 {self.process_id}: 开始向量化评论，起始ID: {start_id}")
         
-        # 获取需要向量化的评论
+        # 获取需要向量化的评论，按进程ID分配数据范围
+        # 使用模运算确保不同进程处理不同的数据
         query = text("""
-            SELECT id, subject, comment, userid, posttime, projectitem_id
+            SELECT id, subject, content, userid, posttime, projectitemid
             FROM post 
-            WHERE status = 1 AND id > :start_id
+            WHERE status = 1 AND id > :start_id AND id % :total_processes = :process_id
             ORDER BY id
         """)
         
-        result = await session.execute(query, {"start_id": start_id})
+        result = await session.execute(query, {
+            "start_id": start_id,
+            "total_processes": self.total_processes,
+            "process_id": self.process_id
+        })
         comments = result.fetchall()
         
         if not comments:
@@ -272,11 +281,14 @@ class BatchVectorization:
             # 获取恢复点
             max_article_id, max_comment_id = await self._get_resume_point(session)
             
-            # 向量化文章
-            await self._vectorize_articles(session, max_article_id)
+            # 根据参数决定处理内容
+            if not self.comments_only:
+                # 向量化文章
+                await self._vectorize_articles(session, max_article_id)
             
-            # 向量化评论
-            await self._vectorize_comments(session, max_comment_id)
+            if not self.articles_only:
+                # 向量化评论
+                await self._vectorize_comments(session, max_comment_id)
             
             logger.info(f"进程 {self.process_id}: 完成所有任务")
             
@@ -287,7 +299,8 @@ class BatchVectorization:
             raise
 
 def worker_process(process_id: int, queue: Queue, progress_counter: Value, 
-                  total_count: Value, start_time: Value, clear_tables: bool = False):
+                  total_count: Value, start_time: Value, clear_tables: bool = False,
+                  articles_only: bool = False, comments_only: bool = False, total_processes: int = 1):
     """工作进程函数"""
     try:
         # 设置进程标题
@@ -314,7 +327,8 @@ def worker_process(process_id: int, queue: Queue, progress_counter: Value,
         
         # 创建批量向量化处理器
         processor = BatchVectorization(
-            process_id, queue, progress_counter, total_count, start_time, clear_tables
+            process_id, queue, progress_counter, total_count, start_time, clear_tables,
+            articles_only, comments_only, total_processes
         )
         
         try:
@@ -368,19 +382,27 @@ def main():
     # 计算总记录数
     async def count_total_records():
         async for session in get_async_session():
-            # 计算文章数量
-            result = await session.exec(text("""
-                SELECT COUNT(*) FROM projectitem WHERE status = 1
-            """))
-            article_count = result.fetchone()[0]
+            total = 0
+            article_count = 0
+            comment_count = 0
             
-            # 计算评论数量
-            result = await session.exec(text("""
-                SELECT COUNT(*) FROM post WHERE status = 1
-            """))
-            comment_count = result.fetchone()[0]
+            # 根据参数计算相应的记录数
+            if not args.comments_only:
+                # 计算文章数量
+                result = await session.exec(text("""
+                    SELECT COUNT(*) FROM projectitem WHERE status = 1
+                """))
+                article_count = result.fetchone()[0]
+                total += article_count
             
-            total = article_count + comment_count
+            if not args.articles_only:
+                # 计算评论数量
+                result = await session.exec(text("""
+                    SELECT COUNT(*) FROM post WHERE status = 1
+                """))
+                comment_count = result.fetchone()[0]
+                total += comment_count
+            
             with total_count.get_lock():
                 total_count.value = total
             
@@ -397,7 +419,8 @@ def main():
     for i in range(args.processes):
         p = Process(
             target=worker_process,
-            args=(i, queue, progress_counter, total_count, start_time, args.clear_tables)
+            args=(i, queue, progress_counter, total_count, start_time, args.clear_tables,
+                  args.articles_only, args.comments_only, args.processes)
         )
         p.start()
         processes.append(p)

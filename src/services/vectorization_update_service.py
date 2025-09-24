@@ -591,6 +591,193 @@ class VectorizationUpdateService:
                 "created_at": TimeUtils.now_utc()
             })
 
+    async def update_comment_vectors(self, comment_id: int, subject: str, content: str, projectitem_id: int) -> bool:
+        """
+        更新评论向量
+        
+        Args:
+            comment_id: 评论ID
+            subject: 评论标题
+            content: 评论内容
+            projectitem_id: 关联的文章ID
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        try:
+            # 获取向量化服务
+            vectorization_service = await self._get_vectorization_service()
+            
+            # 如果向量化服务不可用，跳过向量化更新
+            if vectorization_service is None:
+                logger.warning(f"向量化服务不可用，跳过评论 {comment_id} 的向量化更新")
+                return False
+            
+            # 向量化标题
+            title_vector = await vectorization_service.vectorize_text(subject or "")
+            
+            # 向量化内容
+            content_vector = await vectorization_service.vectorize_text(content or "")
+            
+            # 计算统计信息
+            total_text_length = len(content or "")
+            segment_count = 1  # 评论不分段
+            max_segment_length = total_text_length
+            
+            # 检查是否已存在向量记录
+            existing_vector = await self._get_existing_comment_vector(comment_id)
+            
+            if existing_vector:
+                # 更新现有记录
+                await self._update_existing_comment_vector(
+                    comment_id, subject, content, title_vector, content_vector,
+                    total_text_length, segment_count, max_segment_length, projectitem_id
+                )
+            else:
+                # 创建新记录
+                await self._create_new_comment_vector(
+                    comment_id, subject, content, title_vector, content_vector,
+                    total_text_length, segment_count, max_segment_length, projectitem_id
+                )
+            
+            # 提交事务
+            await self.session.commit()
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"更新评论 {comment_id} 向量失败: {e}")
+            # 回滚事务
+            try:
+                await self.session.rollback()
+            except Exception as rollback_error:
+                logger.error(f"回滚事务失败: {rollback_error}")
+            return False
+
+    async def _get_existing_comment_vector(self, comment_id: int) -> Optional[Dict]:
+        """获取现有的评论向量记录"""
+        try:
+            query = text("""
+                SELECT id, post_id, title_vector, content_vector, title_text, content_text,
+                       segment_count, vectorization_method, total_text_length, max_segment_length,
+                       avg_confidence, created_at, updated_at
+                FROM comment_vectors 
+                WHERE post_id = :comment_id
+            """)
+            result = await self.session.execute(query, {"comment_id": comment_id})
+            row = result.fetchone()
+            
+            if row:
+                return {
+                    "id": row[0],
+                    "post_id": row[1],
+                    "title_vector": row[2],
+                    "content_vector": row[3],
+                    "title_text": row[4],
+                    "content_text": row[5],
+                    "segment_count": row[6],
+                    "vectorization_method": row[7],
+                    "total_text_length": row[8],
+                    "max_segment_length": row[9],
+                    "avg_confidence": row[10],
+                    "created_at": row[11],
+                    "updated_at": row[12]
+                }
+            return None
+        except Exception as e:
+            logger.error(f"获取评论 {comment_id} 现有向量记录失败: {e}")
+            # 回滚事务
+            try:
+                await self.session.rollback()
+            except Exception as rollback_error:
+                logger.error(f"回滚事务失败: {rollback_error}")
+            return None
+
+    async def _update_existing_comment_vector(self, comment_id: int, subject: str, content: str,
+                                           title_vector: np.ndarray, content_vector: np.ndarray,
+                                           total_text_length: int, segment_count: int,
+                                           max_segment_length: int, projectitem_id: int):
+        """更新现有的评论向量记录"""
+        try:
+            query = text("""
+                UPDATE comment_vectors 
+                SET title_vector = :title_vector,
+                    content_vector = :content_vector,
+                    title_text = :title_text,
+                    content_text = :content_text,
+                    segment_count = :segment_count,
+                    vectorization_method = :vectorization_method,
+                    total_text_length = :total_text_length,
+                    max_segment_length = :max_segment_length,
+                    avg_confidence = :avg_confidence,
+                    updated_at = :updated_at
+                WHERE post_id = :comment_id
+            """)
+            
+            await self.session.execute(query, {
+                "comment_id": comment_id,
+                "title_vector": f"[{','.join(map(str, title_vector.tolist()))}]",
+                "content_vector": f"[{','.join(map(str, content_vector.tolist()))}]",
+                "title_text": subject or "",
+                "content_text": content or "",
+                "segment_count": segment_count,
+                "vectorization_method": "bert",
+                "total_text_length": total_text_length,
+                "max_segment_length": max_segment_length,
+                "avg_confidence": 1.0,
+                "updated_at": TimeUtils.now_utc()
+            })
+            
+        except Exception as e:
+            logger.error(f"更新评论 {comment_id} 向量记录失败: {e}")
+            # 回滚事务
+            try:
+                await self.session.rollback()
+            except Exception as rollback_error:
+                logger.error(f"回滚事务失败: {rollback_error}")
+            raise
+
+    async def _create_new_comment_vector(self, comment_id: int, subject: str, content: str,
+                                       title_vector: np.ndarray, content_vector: np.ndarray,
+                                       total_text_length: int, segment_count: int,
+                                       max_segment_length: int, projectitem_id: int):
+        """创建新的评论向量记录"""
+        try:
+            query = text("""
+                INSERT INTO comment_vectors 
+                (post_id, title_vector, content_vector, title_text, content_text,
+                 segment_count, vectorization_method, total_text_length, max_segment_length,
+                 avg_confidence, created_at, updated_at)
+                VALUES 
+                (:comment_id, :title_vector, :content_vector, :title_text, :content_text,
+                 :segment_count, :vectorization_method, :total_text_length, :max_segment_length,
+                 :avg_confidence, :created_at, :updated_at)
+            """)
+            
+            await self.session.execute(query, {
+                "comment_id": comment_id,
+                "title_vector": f"[{','.join(map(str, title_vector.tolist()))}]",
+                "content_vector": f"[{','.join(map(str, content_vector.tolist()))}]",
+                "title_text": subject or "",
+                "content_text": content or "",
+                "segment_count": segment_count,
+                "vectorization_method": "bert",
+                "total_text_length": total_text_length,
+                "max_segment_length": max_segment_length,
+                "avg_confidence": 1.0,
+                "created_at": TimeUtils.now_utc(),
+                "updated_at": TimeUtils.now_utc()
+            })
+            
+        except Exception as e:
+            logger.error(f"创建评论 {comment_id} 向量记录失败: {e}")
+            # 回滚事务
+            try:
+                await self.session.rollback()
+            except Exception as rollback_error:
+                logger.error(f"回滚事务失败: {rollback_error}")
+            raise
+
 
 # 全局向量化更新服务实例
 _vectorization_update_service = None
