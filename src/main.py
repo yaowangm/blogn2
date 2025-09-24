@@ -19,10 +19,15 @@ BlogN2 FastAPI 主应用
 import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
+import warnings
 
 # 添加项目根目录到Python路径，确保模块导入正确
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+# 抑制已知的警告
+warnings.filterwarnings("ignore", message="torch.utils._pytree._register_pytree_node is deprecated")
+warnings.filterwarnings("ignore", message="The `use_auth_token` argument is deprecated")
 
 from fastapi import FastAPI
 import uvicorn
