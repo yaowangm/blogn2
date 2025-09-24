@@ -297,9 +297,9 @@ class HierarchicalSearchService:
     
     async def _search_all(self, query_vector_json: str, sort_by: str, page: int, limit: int, query: str = "") -> Dict[str, Any]:
         """搜索所有内容"""
-        # 分别搜索文章和评论
-        articles_result = await self._search_articles(query_vector_json, sort_by, page, limit // 2, query)
-        comments_result = await self._search_comments(query_vector_json, sort_by, page, limit // 2, query)
+        # 分别搜索文章和评论，使用更大的limit确保有足够的结果
+        articles_result = await self._search_articles(query_vector_json, sort_by, page, limit, query)
+        comments_result = await self._search_comments(query_vector_json, sort_by, page, limit, query)
         
         # 合并结果
         all_items = articles_result.get("items", []) + comments_result.get("items", [])
