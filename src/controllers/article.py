@@ -78,16 +78,6 @@ async def get_article_detail(
         if article.itemtype == ArticleStatus.DELETED and not permission_manager.can_manage_system(current_user):
             raise HTTPException(status_code=404, detail=ErrorMessages.ARTICLE_DELETED)
         
-        # 更新文章访问计数（异步执行，不影响响应速度）
-        try:
-            await project_item_repo.increment_access_count(article_id)
-            # 同时更新项目的访问计数
-            if article.projectid:
-                await project_repo.increment_access_count(article.projectid)
-        except Exception as e:
-            # 访问计数更新失败不影响文章查看，静默处理
-            pass
-        
         # 获取作者信息
         author = None
         if article.userid:
