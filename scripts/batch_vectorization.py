@@ -125,15 +125,20 @@ class BatchVectorization:
         """向量化文章"""
         logger.info(f"进程 {self.process_id}: 开始向量化文章，起始ID: {start_id}")
         
-        # 获取需要向量化的文章
+        # 获取需要向量化的文章，按进程ID分配数据范围
+        # 使用模运算确保不同进程处理不同的数据
         query = text("""
             SELECT id, name, comment, userid, createtime
             FROM projectitem 
-            WHERE status = 1 AND id > :start_id
+            WHERE status = 1 AND id > :start_id AND id % :total_processes = :process_id
             ORDER BY id
         """)
         
-        result = await session.execute(query, {"start_id": start_id})
+        result = await session.execute(query, {
+            "start_id": start_id,
+            "total_processes": self.total_processes,
+            "process_id": self.process_id
+        })
         articles = result.fetchall()
         
         if not articles:
