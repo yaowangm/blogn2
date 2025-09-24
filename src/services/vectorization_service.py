@@ -10,6 +10,11 @@ from typing import List, Dict, Any
 import torch
 from transformers import AutoTokenizer, AutoModel
 import re
+import warnings
+
+# 抑制已知的警告
+warnings.filterwarnings("ignore", message="torch.utils._pytree._register_pytree_node is deprecated")
+warnings.filterwarnings("ignore", message="The `use_auth_token` argument is deprecated")
 
 class BERTVectorizationService:
     """BERT向量化服务（单例模式）"""
@@ -72,12 +77,12 @@ class BERTVectorizationService:
             BERTVectorizationService._tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name,
                 local_files_only=True,
-                use_auth_token=False
+                token=False
             )
             BERTVectorizationService._model = AutoModel.from_pretrained(
                 self.model_name,
                 local_files_only=True,
-                use_auth_token=False
+                token=False
             )
             BERTVectorizationService._model.eval()
             BERTVectorizationService._model.to(self.device)
