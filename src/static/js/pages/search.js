@@ -169,7 +169,8 @@ class SearchPage {
         const total = data.total || 0;
         const searchMethod = data.search_method || 'unknown';
         const searchTime = data.search_time || 0;
-        resultsCount.textContent = `找到 ${total} 个结果 (${searchMethod}, ${searchTime}ms)`;
+        const query = data.query || this.currentQuery || '';
+        resultsCount.textContent = `找到 ${total} 个结果 (${searchMethod}, ${searchTime}ms) | 关键词：${query}`;
 
         if (total === 0) {
             this.showNoResults();
@@ -190,10 +191,6 @@ class SearchPage {
     }
 
     createResultElement(result, index) {
-        const div = document.createElement('div');
-        div.className = 'result-item';
-        div.onclick = () => this.openResult(result);
-
         const title = this.escapeHtml(result.title || result.subject || '无标题');
         const content = this.escapeHtml(this.truncateText(result.content || result.comment || '', 200));
         const author = this.escapeHtml(result.author || '未知作者');
@@ -203,38 +200,56 @@ class SearchPage {
         const relevanceScore = result.relevance_score || 0;
         const similarityPercent = Math.round(relevanceScore * 100);
 
+        // 生成链接URL
+        let href = '#';
+        if (type === 'comment') {
+            const articleId = result.projectitem_id || result.article_id;
+            if (articleId) {
+                href = `/article/${articleId}`;
+            }
+        } else {
+            const articleId = result.id || result.projectitem_id;
+            if (articleId) {
+                href = `/article/${articleId}`;
+            }
+        }
+
+        const div = document.createElement('div');
+        div.className = 'result-item';
         div.innerHTML = `
-            <div class="result-title">${title}</div>
-            <div class="result-meta">
-                <div class="result-author">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                    ${author}
+            <a href="${href}" target="_blank" class="result-link">
+                <div class="result-title">${title}</div>
+                <div class="result-meta">
+                    <div class="result-author">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        ${author}
+                    </div>
+                    <div class="result-date">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12,6 12,12 16,14"></polyline>
+                        </svg>
+                        ${date}
+                    </div>
+                    <div class="result-similarity">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 12l2 2 4-4"></path>
+                            <circle cx="12" cy="12" r="10"></circle>
+                        </svg>
+                        相似度: ${similarityPercent}%
+                    </div>
+                    <div class="result-tag">${typeText}</div>
                 </div>
-                <div class="result-date">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12,6 12,12 16,14"></polyline>
-                    </svg>
-                    ${date}
-                </div>
-                <div class="result-similarity">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M9 12l2 2 4-4"></path>
-                        <circle cx="12" cy="12" r="10"></circle>
-                    </svg>
-                    相似度: ${similarityPercent}%
-                </div>
-                <div class="result-tag">${typeText}</div>
-            </div>
-            <div class="result-content">${content}</div>
-            ${result.tags && result.tags.length > 0 ? `
-                <div class="result-tags">
-                    ${result.tags.map(tag => `<span class="result-tag">${this.escapeHtml(tag)}</span>`).join('')}
-                </div>
-            ` : ''}
+                <div class="result-content">${content}</div>
+                ${result.tags && result.tags.length > 0 ? `
+                    <div class="result-tags">
+                        ${result.tags.map(tag => `<span class="result-tag">${this.escapeHtml(tag)}</span>`).join('')}
+                    </div>
+                ` : ''}
+            </a>
         `;
 
         return div;

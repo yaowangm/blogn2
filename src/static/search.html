@@ -155,16 +155,28 @@
             background: var(--white);
             border: 1px solid var(--gray-200);
             border-radius: var(--radius-lg);
-            padding: var(--spacing-6);
             margin-bottom: var(--spacing-4);
             transition: var(--transition-fast);
-            cursor: pointer;
+            overflow: hidden;
         }
 
         .result-item:hover {
             border-color: var(--primary-color);
             box-shadow: var(--shadow-md);
             transform: translateY(-2px);
+        }
+
+        .result-link {
+            display: block;
+            padding: var(--spacing-6);
+            text-decoration: none;
+            color: inherit;
+            transition: var(--transition-fast);
+        }
+
+        .result-link:hover {
+            text-decoration: none;
+            color: inherit;
         }
 
         .result-title {
