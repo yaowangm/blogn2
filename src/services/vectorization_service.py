@@ -84,17 +84,24 @@ class BERTVectorizationService:
         """同步加载模型（在后台线程中执行）"""
         try:
             # 强制使用本地缓存，不检查网络
+            # 设置环境变量强制使用 PyTorch
+            import os
+            os.environ['TRANSFORMERS_OFFLINE'] = '1'
+            
+            # 直接指定本地模型路径
+            model_path = "/home/wy/.cache/huggingface/hub/models--bert-base-chinese/snapshots/8f23c25b06e129b6c986331a13d8d025a92cf0ea"
+            
             BERTVectorizationService._tokenizer = AutoTokenizer.from_pretrained(
-                self.model_name,
+                model_path,
                 local_files_only=True,
                 token=False,
-                cache_dir="/home/wy/.cache/huggingface"
+                use_fast=True
             )
             BERTVectorizationService._model = AutoModel.from_pretrained(
-                self.model_name,
+                model_path,
                 local_files_only=True,
                 token=False,
-                cache_dir="/home/wy/.cache/huggingface"
+                torch_dtype=torch.float32
             )
             BERTVectorizationService._model.eval()
             BERTVectorizationService._model.to(self.device)
