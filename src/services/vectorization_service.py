@@ -87,12 +87,14 @@ class BERTVectorizationService:
             BERTVectorizationService._tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name,
                 local_files_only=True,
-                token=False
+                token=False,
+                cache_dir="/home/wy/.cache/huggingface"
             )
             BERTVectorizationService._model = AutoModel.from_pretrained(
                 self.model_name,
                 local_files_only=True,
-                token=False
+                token=False,
+                cache_dir="/home/wy/.cache/huggingface"
             )
             BERTVectorizationService._model.eval()
             BERTVectorizationService._model.to(self.device)
