@@ -6,32 +6,31 @@
 import time
 import json
 import numpy as np
-from typing import Dict, Any
+from typing import Dict, Any, List
+from sqlalchemy import text
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import text
-from src.services.vectorization_service import BERTVectorizationService
 
 class HierarchicalSearchService:
     """分层搜索服务"""
     
-    def __init__(self, vectorization_service: BERTVectorizationService, session: AsyncSession):
+    def __init__(self, vectorization_service, session: AsyncSession):
         self.vectorization_service = vectorization_service
         self.session = session
     
     async def search(self, query: str, search_type: str = "all", 
                     sort_by: str = "relevance", page: int = 1, limit: int = 10) -> Dict[str, Any]:
         """
-        执行智能搜索
+        执行搜索
         
         Args:
-            query: 搜索关键词
+            query: 搜索查询
             search_type: 搜索类型 (all/articles/comments)
             sort_by: 排序方式 (relevance/date/popularity)
             page: 页码
-            limit: 每页结果数量
+            limit: 每页结果数
             
         Returns:
-            搜索结果字典
+            Dict: 搜索结果
         """
         start_time = time.time()
         
@@ -85,10 +84,9 @@ class HierarchicalSearchService:
             table_exists = result.fetchone()[0]
             
             if not table_exists:
-                # 如果向量表不存在，使用传统文本搜索
                 return await self._search_articles_fallback(query, sort_by, page, limit)
             
-            # 使用纯向量搜索，依赖BERT的语义理解能力
+            # 使用内容段匹配策略：阈值过滤 + 累积相似度
             sql = f"""
             SELECT 
                 pi.id,
@@ -96,12 +94,39 @@ class HierarchicalSearchService:
                 pi.comment as content,
                 u.name as author,
                 pi.createtime,
-                (1 - (av.content_vector <=> '{query_vector_json}'::vector)) as relevance_score
+                COALESCE(
+                    SUM(
+                        CASE 
+                            WHEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= 0.6 
+                            THEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector))
+                            ELSE 0
+                        END
+                    ), 0
+                ) as relevance_score
             FROM article_vectors av
             LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
             LEFT JOIN users u ON pi.userid = u.id
+            LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
             WHERE pi.status = 1
-            ORDER BY relevance_score DESC
+            GROUP BY pi.id, pi.name, pi.comment, u.name, pi.createtime
+            HAVING COALESCE(
+                SUM(
+                    CASE 
+                        WHEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= 0.6 
+                        THEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector))
+                        ELSE 0
+                    END
+                ), 0
+            ) > 0
+            ORDER BY COALESCE(
+                SUM(
+                    CASE 
+                        WHEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= 0.6 
+                        THEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector))
+                        ELSE 0
+                    END
+                ), 0
+            ) DESC
             LIMIT {limit} OFFSET {offset}
             """
             
@@ -109,11 +134,25 @@ class HierarchicalSearchService:
             items = result.fetchall()
             
             # 获取总数
-            count_sql = """
+            count_sql = f"""
             SELECT COUNT(*)
-            FROM article_vectors av
-            LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
-            WHERE pi.status = 1
+            FROM (
+                SELECT pi.id
+                FROM article_vectors av
+                LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
+                LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
+                WHERE pi.status = 1
+                GROUP BY pi.id
+                HAVING COALESCE(
+                    SUM(
+                        CASE 
+                            WHEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= 0.6 
+                            THEN (1 - (csv.segment_vector <=> '{query_vector_json}'::vector))
+                            ELSE 0
+                        END
+                    ), 0
+                ) > 0
+            ) as matching_articles
             """
             count_result = await self.session.exec(text(count_sql))
             total = count_result.fetchone()[0]
@@ -125,7 +164,6 @@ class HierarchicalSearchService:
             }
             
         except Exception as e:
-            print(f"文章搜索错误: {e}")
             # 降级到传统搜索
             return await self._search_articles_fallback(query, sort_by, page, limit)
     
