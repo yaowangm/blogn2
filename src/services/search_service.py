@@ -118,6 +118,11 @@ class HierarchicalSearchService:
             count_result = await self.session.exec(text(count_sql))
             total = count_result.fetchone()[0]
             
+            # 如果向量搜索没有结果，降级到传统文本搜索
+            if total == 0:
+                print("向量搜索无结果，降级到传统文本搜索")
+                return await self._search_articles_fallback(query, sort_by, page, limit)
+            
             return {
                 "items": [self._format_article_result(item) for item in items],
                 "total": total,
