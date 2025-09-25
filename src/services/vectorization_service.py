@@ -11,6 +11,10 @@ import torch
 from sentence_transformers import SentenceTransformer
 import re
 import warnings
+import os
+
+# 禁用sentence-transformers的进度条
+os.environ['SENTENCE_TRANSFORMERS_DISABLE_PROGRESS_BAR'] = '1'
 
 # 抑制已知的警告
 warnings.filterwarnings("ignore", message="torch.utils._pytree._register_pytree_node is deprecated")
@@ -131,8 +135,8 @@ class BERTVectorizationService:
     def _vectorize_sync(self, text: str) -> np.ndarray:
         """同步向量化（在后台线程中执行）"""
         try:
-            # 使用sentence-transformers进行向量化
-            vector = BERTVectorizationService._model.encode(text)
+            # 使用sentence-transformers进行向量化，禁用进度条
+            vector = BERTVectorizationService._model.encode(text, show_progress_bar=False)
             
             # sentence-transformers已经返回numpy数组，无需额外处理
             return vector
@@ -172,8 +176,8 @@ class BERTVectorizationService:
     def _vectorize_batch_sync(self, texts: List[str]) -> List[np.ndarray]:
         """同步批量向量化（在后台线程中执行）"""
         try:
-            # 使用sentence-transformers进行批量向量化
-            vectors = BERTVectorizationService._model.encode(texts)
+            # 使用sentence-transformers进行批量向量化，禁用进度条
+            vectors = BERTVectorizationService._model.encode(texts, show_progress_bar=False)
             
             # sentence-transformers返回的是numpy数组，需要转换为列表
             if len(vectors.shape) == 1:

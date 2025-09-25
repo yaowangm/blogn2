@@ -20,6 +20,9 @@ warnings.filterwarnings('ignore', category=UserWarning, module='transformers')
 import time
 import sys
 import os
+
+# 禁用sentence-transformers的进度条
+os.environ['SENTENCE_TRANSFORMERS_DISABLE_PROGRESS_BAR'] = '1'
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 from multiprocessing import Process, Queue, Value
@@ -96,7 +99,7 @@ class BatchVectorization:
         
         for table in tables:
             try:
-                await session.execute(text(f"DELETE FROM {table}"))
+                await session.exec(text(f"DELETE FROM {table}"))
                 logger.info(f"进程 {self.process_id}: 已清空表 {table}")
             except Exception as e:
                 logger.warning(f"进程 {self.process_id}: 清空表 {table} 失败: {e}")
@@ -112,14 +115,14 @@ class BatchVectorization:
                 SELECT COALESCE(MAX(projectitem_id), 0) 
                 FROM article_vectors
             """))
-            max_article_id = result.fetchone()[0]
+            max_article_id = result.scalars().first()
             
             # 获取评论向量化的最大ID
             result = await session.execute(text("""
                 SELECT COALESCE(MAX(post_id), 0) 
                 FROM comment_vectors
             """))
-            max_comment_id = result.fetchone()[0]
+            max_comment_id = result.scalars().first()
             
             return max_article_id, max_comment_id
         except Exception as e:
@@ -148,9 +151,9 @@ class BatchVectorization:
         # 构建查询条件
         if self.article_id_list is not None:
             query = text("""
-                SELECT id, name, comment, userid, createtime
+                SELECT id, name, comment, userid, createtime, status
                 FROM projectitem 
-                WHERE status = 1 AND id = ANY(:article_ids)
+                WHERE id = ANY(:article_ids)
                 ORDER BY id
             """)
             query_params = {
@@ -191,10 +194,38 @@ class BatchVectorization:
             logger.info(f"进程 {self.process_id}: 没有需要向量化的文章")
             return
         
+        # 过滤文章：只处理状态为1或2的文章，跳过状态为0的文章
+        valid_articles = []
+        skipped_articles = []
+        
+        for article in articles:
+            if self.article_id_list is not None:
+                # 对于指定文章ID的情况，检查状态
+                article_id, title, content, user_id, create_time, status = article
+                if status == 0:
+                    skipped_articles.append((article_id, status))
+                else:
+                    valid_articles.append((article_id, title, content, user_id, create_time))
+            else:
+                # 对于其他情况，直接使用（已经通过WHERE条件过滤了状态）
+                article_id, title, content, user_id, create_time = article
+                valid_articles.append((article_id, title, content, user_id, create_time))
+        
+        # 记录跳过的文章
+        if skipped_articles:
+            for article_id, status in skipped_articles:
+                logger.warning(f"进程 {self.process_id}: 跳过文章 {article_id}（状态: {status}）")
+        
+        if not valid_articles:
+            logger.info(f"进程 {self.process_id}: 没有有效的文章需要向量化")
+            return
+        
+        logger.info(f"进程 {self.process_id}: 找到 {len(valid_articles)} 篇有效文章，跳过 {len(skipped_articles)} 篇无效文章")
+        
         update_service = await self._get_update_service(session)
         processed = 0
         
-        for article in articles:
+        for article in valid_articles:
             try:
                 article_id, title, content, user_id, create_time = article
                 
@@ -298,8 +329,7 @@ class BatchVectorization:
             # 为每个进程创建独立的数据库连接
             async for session in get_async_session():
                 try:
-                    # 清空向量表（如果需要）
-                    await self._clear_vector_tables(session)
+                    # 向量表已在主进程中清空，这里不需要再清空
                     
                     # 获取恢复点
                     max_article_id, max_comment_id = await self._get_resume_point(session)
@@ -331,8 +361,7 @@ class BatchVectorization:
         try:
             logger.info(f"进程 {self.process_id}: 开始运行（独立连接）")
             
-            # 清空向量表（如果需要）
-            await self._clear_vector_tables(session)
+            # 向量表已在主进程中清空，这里不需要再清空
             
             # 获取恢复点
             max_article_id, max_comment_id = await self._get_resume_point(session)
@@ -359,6 +388,10 @@ def worker_process(process_id: int, queue: Queue, progress_counter: Value,
                   articles_only: bool = False, comments_only: bool = False, total_processes: int = 1,
                   user_id: int = None, article_id_list: list = None):
     """工作进程函数"""
+    # 在每个子进程中禁用进度条
+    import os
+    os.environ['SENTENCE_TRANSFORMERS_DISABLE_PROGRESS_BAR'] = '1'
+    
     try:
         # 设置进程标题
         import setproctitle
@@ -488,28 +521,30 @@ def main():
                 # 计算文章数量
                 if article_id_list is not None:
                     # 只计算指定文章ID列表的数量
-                    result = await session.execute(text("""
+                    from sqlalchemy import bindparam
+                    result = await session.exec(text("""
                         SELECT COUNT(*) FROM projectitem WHERE status = 1 AND id = ANY(:article_ids)
-                    """), {"article_ids": article_id_list})
+                    """).bindparams(bindparam("article_ids", article_id_list)))
                 elif args.user_id is not None:
                     # 只计算指定用户的文章数量
-                    result = await session.execute(text("""
+                    from sqlalchemy import bindparam
+                    result = await session.exec(text("""
                         SELECT COUNT(*) FROM projectitem WHERE status = 1 AND userid = :user_id
-                    """), {"user_id": args.user_id})
+                    """).bindparams(bindparam("user_id", args.user_id)))
                 else:
                     # 计算所有用户的文章数量
-                    result = await session.execute(text("""
+                    result = await session.exec(text("""
                         SELECT COUNT(*) FROM projectitem WHERE status = 1
                     """))
-                article_count = result.fetchone()[0]
+                article_count = result.scalars().first()
                 total += article_count
             
             if not args.articles_only:
                 # 计算评论数量
-                result = await session.execute(text("""
+                result = await session.exec(text("""
                     SELECT COUNT(*) FROM post WHERE status = 1
                 """))
-                comment_count = result.fetchone()[0]
+                comment_count = result.scalars().first()
                 total += comment_count
             
             with total_count.get_lock():
@@ -525,6 +560,11 @@ def main():
     
     # 运行计数任务
     asyncio.run(count_total_records())
+    
+    # 如果需要清空向量表，在主进程中清空（避免并发问题）
+    if args.clear_tables:
+        logger.info("在主进程中清空向量表...")
+        clear_vector_tables_sync()
     
     # 创建工作进程
     processes = []
@@ -568,6 +608,111 @@ def main():
         avg_time = elapsed_time / completed
         logger.info(f"平均每条记录: {avg_time:.2f}秒")
     logger.info("=" * 60)
+
+def clear_vector_tables_sync():
+    """在主进程中同步清空向量表"""
+    import psycopg2
+    from dotenv import load_dotenv
+    import os
+    
+    load_dotenv()
+    
+    # 从环境变量获取数据库连接信息
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        logger.error("未找到DATABASE_URL环境变量")
+        return
+    
+    # 解析数据库URL
+    # postgresql+asyncpg://wy:passw0rd@localhost:5432/blogn
+    url_parts = database_url.replace("postgresql+asyncpg://", "").split("@")
+    if len(url_parts) != 2:
+        logger.error("无效的DATABASE_URL格式")
+        return
+    
+    user_pass = url_parts[0].split(":")
+    host_db = url_parts[1].split("/")
+    
+    if len(user_pass) != 2 or len(host_db) != 2:
+        logger.error("无效的DATABASE_URL格式")
+        return
+    
+    user, password = user_pass
+    host_port, database = host_db
+    host, port = host_port.split(":") if ":" in host_port else (host_port, "5432")
+    
+    try:
+        # 使用psycopg2同步连接
+        conn = psycopg2.connect(
+            host=host,
+            port=port,
+            database=database,
+            user=user,
+            password=password
+        )
+        cur = conn.cursor()
+        
+        logger.info("开始清空向量表...")
+        
+        # 清空所有向量表
+        tables = [
+            'content_segment_vectors',
+            'article_vectors', 
+            'comment_vectors'
+        ]
+        
+        for table in tables:
+            try:
+                cur.execute(f"DELETE FROM {table}")
+                logger.info(f"已清空表 {table}")
+            except Exception as e:
+                logger.warning(f"清空表 {table} 失败: {e}")
+        
+        conn.commit()
+        logger.info("向量表清空完成")
+        
+    except Exception as e:
+        logger.error(f"清空向量表时出错: {e}")
+        if 'conn' in locals():
+            conn.rollback()
+    finally:
+        if 'cur' in locals():
+            cur.close()
+        if 'conn' in locals():
+            conn.close()
+
+async def clear_vector_tables_main():
+    """在主进程中清空向量表"""
+    from src.database import get_async_session
+    
+    async for session in get_async_session():
+        try:
+            logger.info("开始清空向量表...")
+            
+            # 清空所有向量表
+            tables = [
+                'content_segment_vectors',
+                'article_vectors', 
+                'comment_vectors'
+            ]
+            
+            for table in tables:
+                try:
+                    await session.exec(text(f"DELETE FROM {table}"))
+                    logger.info(f"已清空表 {table}")
+                except Exception as e:
+                    logger.warning(f"清空表 {table} 失败: {e}")
+            
+            await session.commit()
+            logger.info("向量表清空完成")
+            break
+            
+        except Exception as e:
+            logger.error(f"清空向量表时出错: {e}")
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
 
 if __name__ == "__main__":
     main()
