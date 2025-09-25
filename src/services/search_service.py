@@ -143,14 +143,14 @@ class HierarchicalSearchService:
             
             sql = f"""
             WITH all_scores AS (
-                -- 标题相似度
+                -- 标题相似度（乘以0.7）
                 SELECT 
                     av.projectitem_id,
                     pi.name,
                     pi.comment,
                     u.name as author,
                     pi.createtime,
-                    (1 - (av.title_vector <=> '{query_vector_json}'::vector)) as similarity
+                    (1 - (av.title_vector <=> '{query_vector_json}'::vector)) * 0.7 as similarity
                 FROM article_vectors av
                 LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
                 LEFT JOIN users u ON pi.userid = u.id
@@ -158,7 +158,7 @@ class HierarchicalSearchService:
                 
                 UNION ALL
                 
-                -- 段相似度
+                -- 段相似度（不变）
                 SELECT 
                     av.projectitem_id,
                     pi.name,

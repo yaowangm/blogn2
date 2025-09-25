@@ -411,9 +411,12 @@ class VectorizationUpdateService:
         
         return segment_results
     
-    def _split_text_with_sliding_window(self, text: str, window_size: int = 400, step_size: int = 200) -> List[Dict]:
+    def _split_text_with_sliding_window(self, text: str, window_size: int = 150, step_size: int = 75) -> List[Dict]:
         """
-        使用滑动窗口分割文本
+        使用改进的分段策略分割文本：
+        1. 优先按段落划分（双换行符）
+        2. 如果段落长度超出窗口大小，尝试在句号、问号、感叹号、换行符处分割
+        3. 如果找不到合适的分割点，强制分段
         
         Args:
             text: 原始文本
@@ -432,19 +435,57 @@ class VectorizationUpdateService:
             }]
         
         segments = []
+        
+        # 第一步：按段落分割（双换行符）
+        paragraphs = text.split('\n\n')
+        
+        for paragraph in paragraphs:
+            paragraph = paragraph.strip()
+            if not paragraph:
+                continue
+                
+            if len(paragraph) <= window_size:
+                # 段落长度合适，直接作为一个段
+                segments.append({
+                    'text': paragraph,
+                    'length': len(paragraph),
+                    'start_pos': text.find(paragraph),
+                    'end_pos': text.find(paragraph) + len(paragraph)
+                })
+            else:
+                # 段落太长，需要进一步分割
+                sub_segments = self._split_long_paragraph(paragraph, window_size, step_size)
+                segments.extend(sub_segments)
+        
+        return segments
+    
+    def _split_long_paragraph(self, paragraph: str, window_size: int, step_size: int) -> List[Dict]:
+        """
+        分割长段落
+        
+        Args:
+            paragraph: 长段落文本
+            window_size: 窗口大小
+            step_size: 步长
+            
+        Returns:
+            List[Dict]: 分段信息
+        """
+        segments = []
         start = 0
         
-        while start < len(text):
-            end = min(start + window_size, len(text))
+        while start < len(paragraph):
+            end = min(start + window_size, len(paragraph))
             
-            # 尝试在句号、问号、感叹号处分割
-            if end < len(text):
+            # 尝试在句号、问号、感叹号、换行符处分割
+            if end < len(paragraph):
+                # 从窗口末尾向前搜索合适的分割点
                 for i in range(end, start + window_size // 2, -1):
-                    if text[i] in '。！？\n':
+                    if paragraph[i] in '。！？\n':
                         end = i + 1
                         break
             
-            segment_text = text[start:end].strip()
+            segment_text = paragraph[start:end].strip()
             if segment_text:
                 segments.append({
                     'text': segment_text,
