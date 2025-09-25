@@ -128,13 +128,6 @@ class BatchVectorization:
     
     async def _vectorize_articles(self, session, start_id: int = 0):
         """向量化文章"""
-        if self.article_id_list is not None:
-            logger.info(f"进程 {self.process_id}: 开始向量化指定文章ID列表: {self.article_id_list}")
-        elif self.user_id is not None:
-            logger.info(f"进程 {self.process_id}: 开始向量化用户 {self.user_id} 的文章，起始ID: {start_id}")
-        else:
-            logger.info(f"进程 {self.process_id}: 开始向量化文章，起始ID: {start_id}")
-        
         # 构建查询条件
         if self.article_id_list is not None:
             # 如果指定了文章ID列表，只处理这些文章
@@ -146,6 +139,14 @@ class BatchVectorization:
                 logger.info(f"进程 {self.process_id}: 没有分配给该进程的文章")
                 return
             
+            logger.info(f"进程 {self.process_id}: 开始向量化指定文章ID列表: {process_articles} (共{len(process_articles)}个)")
+        elif self.user_id is not None:
+            logger.info(f"进程 {self.process_id}: 开始向量化用户 {self.user_id} 的文章，起始ID: {start_id}")
+        else:
+            logger.info(f"进程 {self.process_id}: 开始向量化文章，起始ID: {start_id}")
+        
+        # 构建查询条件
+        if self.article_id_list is not None:
             query = text("""
                 SELECT id, name, comment, userid, createtime
                 FROM projectitem 
