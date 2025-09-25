@@ -554,7 +554,7 @@ class VectorizationUpdateService:
             np.ndarray: 聚合后的向量
         """
         if not segments:
-            return np.zeros(768)
+            return np.zeros(384)
         
         vectors = [seg['vector'] for seg in segments]
         

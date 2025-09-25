@@ -14,7 +14,7 @@ BERT模型 → pgvector → PostgreSQL → 混合搜索
 ```
 
 ### 1.2 核心组件
-- **BERT模型**: `google-bert-base-chinese` (768维向量)
+- **多语言模型**: `paraphrase-multilingual-MiniLM-L12-v2` (384维向量)
 - **向量数据库**: PostgreSQL + pgvector扩展
 - **文本处理**: 滑动窗口 + 向量聚合
 - **搜索策略**: 分层检索（文章级 + 片段级）
@@ -30,11 +30,11 @@ CREATE TABLE article_vectors (
     projectitem_id INTEGER UNIQUE REFERENCES projectitem(id),
     
     -- 标题向量（直接存储）
-    title_vector VECTOR(768),
+    title_vector VECTOR(384),
     title_text TEXT,
     
     -- 内容向量（聚合后的最终向量）
-    content_vector VECTOR(768),
+    content_vector VECTOR(384),
     content_text TEXT,
     
     -- 多片段元数据
@@ -74,7 +74,7 @@ CREATE TABLE content_segment_vectors (
     
     -- 片段内容
     segment_text TEXT,
-    segment_vector VECTOR(768),
+    segment_vector VECTOR(384),
     
     -- 片段统计
     segment_length INTEGER,
@@ -119,8 +119,8 @@ CREATE TABLE comment_vectors (
     post_id INTEGER UNIQUE REFERENCES post(id),
     
     -- 评论向量
-    title_vector VECTOR(768),
-    content_vector VECTOR(768),
+    title_vector VECTOR(384),
+    content_vector VECTOR(384),
     title_text TEXT,
     content_text TEXT,
     
@@ -245,7 +245,7 @@ class TextPreprocessor:
 ```python
 class BERTVectorizationService:
     def __init__(self):
-        self.model_name = "google-bert-base-chinese"
+        self.model_name = "paraphrase-multilingual-MiniLM-L12-v2"
         self.model = None
         self.tokenizer = None
         self.device = "cpu"  # 无GPU环境
@@ -281,7 +281,7 @@ class BERTVectorizationService:
             # 使用[CLS] token的向量
             vector = outputs.last_hidden_state[:, 0, :].numpy()
         
-        return vector[0]  # 返回768维向量
+        return vector[0]  # 返回384维向量
 ```
 
 ### 4.2 批量处理服务
@@ -712,7 +712,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 # config/vector_search.py
 class VectorSearchConfig:
     # BERT模型配置
-    MODEL_NAME = "google-bert-base-chinese"
+    MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
     MAX_LENGTH = 512
     BATCH_SIZE = 32
     

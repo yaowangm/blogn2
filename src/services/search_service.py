@@ -448,7 +448,7 @@ class HierarchicalSearchService:
         try:
             return np.array(json.loads(json_str))
         except:
-            return np.zeros(768)
+            return np.zeros(384)
     
     def _format_article_result(self, item: tuple) -> Dict[str, Any]:
         """格式化文章搜索结果"""

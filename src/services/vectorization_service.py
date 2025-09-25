@@ -8,7 +8,7 @@ import json
 import numpy as np
 from typing import List, Dict, Any
 import torch
-from transformers import AutoTokenizer, AutoModel
+from sentence_transformers import SentenceTransformer
 import re
 import warnings
 
@@ -34,7 +34,7 @@ class BERTVectorizationService:
         if hasattr(self, '_initialized'):
             return
         
-        self.model_name = "bert-base-chinese"
+        self.model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.max_length = 512
         self._initialized = True
@@ -79,34 +79,24 @@ class BERTVectorizationService:
         return BERTVectorizationService._model_loaded
     
     def _load_model_sync(self):
-        """同步加载模型（在后台线程中执行）"""
+        """同步加载sentence-transformers模型（在后台线程中执行）"""
         try:
-            # 强制使用本地缓存，不检查网络
-            # 设置环境变量强制使用 PyTorch
-            import os
-            os.environ['TRANSFORMERS_OFFLINE'] = '1'
+            # 尝试从本地缓存加载
+            try:
+                model_path = "/home/wy/.cache/modelscope/hub/models/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+                BERTVectorizationService._model = SentenceTransformer(model_path)
+                print(f"📦 已加载模型: {self.model_name} (设备: {self.device}) - 使用本地缓存")
+            except:
+                # 如果本地加载失败，从Hugging Face下载
+                BERTVectorizationService._model = SentenceTransformer(self.model_name)
+                print(f"📦 已加载模型: {self.model_name} (设备: {self.device}) - 从Hugging Face下载")
             
-            # 直接指定本地模型路径
-            model_path = "/home/wy/.cache/huggingface/hub/models--bert-base-chinese/snapshots/8f23c25b06e129b6c986331a13d8d025a92cf0ea"
+            BERTVectorizationService._model_loaded = True
             
-            BERTVectorizationService._tokenizer = AutoTokenizer.from_pretrained(
-                model_path,
-                local_files_only=True,
-                token=False,
-                use_fast=True
-            )
-            BERTVectorizationService._model = AutoModel.from_pretrained(
-                model_path,
-                local_files_only=True,
-                token=False,
-                torch_dtype=torch.float32
-            )
-            BERTVectorizationService._model.eval()
-            BERTVectorizationService._model.to(self.device)
-            print(f"📦 已加载模型: {self.model_name} (设备: {self.device}) - 使用本地缓存")
         except Exception as e:
             print(f"❌ 模型加载失败: {e}")
             print(f"💡 提示: 请确保模型已下载到本地缓存")
+            BERTVectorizationService._loading = False
             raise
     
     async def vectorize_text(self, text: str) -> np.ndarray:
@@ -117,13 +107,13 @@ class BERTVectorizationService:
             text: 输入文本
             
         Returns:
-            768维向量
+            384维向量
         """
         if not BERTVectorizationService._model_loaded:
             await self.load_model()
         
         if not text or not text.strip():
-            return np.zeros(768)
+            return np.zeros(384)
         
         try:
             # 预处理文本
@@ -136,39 +126,19 @@ class BERTVectorizationService:
             return vector
             
         except Exception as e:
-            return np.zeros(768)
+            return np.zeros(384)
     
     def _vectorize_sync(self, text: str) -> np.ndarray:
         """同步向量化（在后台线程中执行）"""
         try:
-            # 分词和编码
-            inputs = BERTVectorizationService._tokenizer(
-                text,
-                return_tensors="pt",
-                max_length=self.max_length,
-                truncation=True,
-                padding=True
-            )
+            # 使用sentence-transformers进行向量化
+            vector = BERTVectorizationService._model.encode(text)
             
-            # 移动到设备
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-            
-            # 生成向量
-            with torch.no_grad():
-                outputs = BERTVectorizationService._model(**inputs)
-                # 使用[CLS] token的向量作为句子向量
-                vector = outputs.last_hidden_state[:, 0, :].cpu().numpy()
-            
-            # 归一化向量以提高相似度计算准确性
-            vector = vector[0]  # 获取768维向量
-            vector_norm = np.linalg.norm(vector)
-            if vector_norm > 0:
-                vector = vector / vector_norm
-            
+            # sentence-transformers已经返回numpy数组，无需额外处理
             return vector
             
         except Exception as e:
-            return np.zeros(768)
+            return np.zeros(384)
     
     async def vectorize_batch(self, texts: List[str]) -> List[np.ndarray]:
         """
@@ -197,41 +167,24 @@ class BERTVectorizationService:
             return vectors
             
         except Exception as e:
-            return [np.zeros(768) for _ in texts]
+            return [np.zeros(384) for _ in texts]
     
     def _vectorize_batch_sync(self, texts: List[str]) -> List[np.ndarray]:
         """同步批量向量化（在后台线程中执行）"""
         try:
-            vectors = []
+            # 使用sentence-transformers进行批量向量化
+            vectors = BERTVectorizationService._model.encode(texts)
             
-            # 分批处理，避免内存溢出
-            batch_size = 8
-            for i in range(0, len(texts), batch_size):
-                batch_texts = texts[i:i + batch_size]
-                
-                # 分词和编码
-                inputs = BERTVectorizationService._tokenizer(
-                    batch_texts,
-                    return_tensors="pt",
-                    max_length=self.max_length,
-                    truncation=True,
-                    padding=True
-                )
-                
-                # 移动到设备
-                inputs = {k: v.to(self.device) for k, v in inputs.items()}
-                
-                # 生成向量
-                with torch.no_grad():
-                    outputs = BERTVectorizationService._model(**inputs)
-                    # 使用[CLS] token的向量
-                    batch_vectors = outputs.last_hidden_state[:, 0, :].cpu().numpy()
-                    vectors.extend(batch_vectors)
-            
-            return vectors
+            # sentence-transformers返回的是numpy数组，需要转换为列表
+            if len(vectors.shape) == 1:
+                # 单个文本的情况
+                return [vectors]
+            else:
+                # 多个文本的情况
+                return [vectors[i] for i in range(len(vectors))]
             
         except Exception as e:
-            return [np.zeros(768) for _ in texts]
+            return [np.zeros(384) for _ in texts]
     
     def _preprocess_text(self, text: str) -> str:
         """
@@ -278,7 +231,7 @@ class BERTVectorizationService:
         try:
             return np.array(json.loads(json_str))
         except:
-            return np.zeros(768)
+            return np.zeros(384)
     
     async def get_model_info(self) -> Dict[str, Any]:
         """获取模型信息"""
@@ -287,7 +240,7 @@ class BERTVectorizationService:
             "model_loaded": BERTVectorizationService._model_loaded,
             "max_length": self.max_length,
             "device": self.device,
-            "vector_dimension": 768
+            "vector_dimension": 384
         }
 
 # 依赖注入函数
