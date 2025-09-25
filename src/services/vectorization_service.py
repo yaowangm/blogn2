@@ -159,7 +159,13 @@ class BERTVectorizationService:
                 # 使用[CLS] token的向量作为句子向量
                 vector = outputs.last_hidden_state[:, 0, :].cpu().numpy()
             
-            return vector[0]  # 返回768维向量
+            # 归一化向量以提高相似度计算准确性
+            vector = vector[0]  # 获取768维向量
+            vector_norm = np.linalg.norm(vector)
+            if vector_norm > 0:
+                vector = vector / vector_norm
+            
+            return vector
             
         except Exception as e:
             return np.zeros(768)
@@ -243,8 +249,8 @@ class BERTVectorizationService:
         # 1. 清理HTML标签
         text = re.sub(r'<[^>]+>', '', text)
         
-        # 2. 清理特殊字符
-        text = re.sub(r'[^\w\s\u4e00-\u9fff]', ' ', text)
+        # 2. 清理特殊字符，保留中文、英文、数字和基本标点
+        text = re.sub(r'[^\w\s\u4e00-\u9fff，。！？；：""''（）【】]', ' ', text)
         
         # 3. 统一换行符
         text = text.replace('\r\n', '\n').replace('\r', '\n')
@@ -252,7 +258,12 @@ class BERTVectorizationService:
         # 4. 清理多余空白
         text = re.sub(r'\s+', ' ', text)
         
-        # 5. 截断过长的文本
+        # 5. 对于短文本，添加一些上下文信息
+        if len(text.strip()) < 10:
+            # 短文本可能缺乏足够的语义信息，保持原样
+            pass
+        
+        # 6. 截断过长的文本
         if len(text) > 2000:  # 限制文本长度
             text = text[:2000]
         

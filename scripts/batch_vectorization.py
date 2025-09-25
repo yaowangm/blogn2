@@ -49,7 +49,8 @@ class BatchVectorization:
     
     def __init__(self, process_id: int, queue: Queue, progress_counter: Value, 
                  total_count: Value, start_time: Value, clear_tables: bool = False,
-                 articles_only: bool = False, comments_only: bool = False, total_processes: int = 1):
+                 articles_only: bool = False, comments_only: bool = False, total_processes: int = 1,
+                 user_id: int = None, article_id_list: list = None):
         self.process_id = process_id
         self.queue = queue
         self.progress_counter = progress_counter
@@ -59,14 +60,18 @@ class BatchVectorization:
         self.articles_only = articles_only
         self.comments_only = comments_only
         self.total_processes = total_processes
+        self.user_id = user_id
+        self.article_id_list = article_id_list
         self.vectorization_service = None
         self.update_service = None
         
     async def _get_vectorization_service(self) -> BERTVectorizationService:
         """获取向量化服务实例"""
         if self.vectorization_service is None:
+            # 确保使用修复后的向量化服务（包含向量归一化）
             self.vectorization_service = BERTVectorizationService()
             await self.vectorization_service.load_model()
+            logger.info(f"进程 {self.process_id}: 已加载修复后的向量化服务（包含向量归一化）")
         return self.vectorization_service
     
     async def _get_update_service(self, session) -> VectorizationUpdateService:
@@ -123,22 +128,62 @@ class BatchVectorization:
     
     async def _vectorize_articles(self, session, start_id: int = 0):
         """向量化文章"""
-        logger.info(f"进程 {self.process_id}: 开始向量化文章，起始ID: {start_id}")
+        if self.article_id_list is not None:
+            logger.info(f"进程 {self.process_id}: 开始向量化指定文章ID列表: {self.article_id_list}")
+        elif self.user_id is not None:
+            logger.info(f"进程 {self.process_id}: 开始向量化用户 {self.user_id} 的文章，起始ID: {start_id}")
+        else:
+            logger.info(f"进程 {self.process_id}: 开始向量化文章，起始ID: {start_id}")
         
-        # 获取需要向量化的文章，按进程ID分配数据范围
-        # 使用模运算确保不同进程处理不同的数据
-        query = text("""
-            SELECT id, name, comment, userid, createtime
-            FROM projectitem 
-            WHERE status = 1 AND id > :start_id AND id % :total_processes = :process_id
-            ORDER BY id
-        """)
+        # 构建查询条件
+        if self.article_id_list is not None:
+            # 如果指定了文章ID列表，只处理这些文章
+            # 将文章ID列表分配给不同的进程
+            process_articles = [aid for i, aid in enumerate(self.article_id_list) 
+                              if i % self.total_processes == self.process_id]
+            
+            if not process_articles:
+                logger.info(f"进程 {self.process_id}: 没有分配给该进程的文章")
+                return
+            
+            query = text("""
+                SELECT id, name, comment, userid, createtime
+                FROM projectitem 
+                WHERE status = 1 AND id = ANY(:article_ids)
+                ORDER BY id
+            """)
+            query_params = {
+                "article_ids": process_articles
+            }
+        elif self.user_id is not None:
+            # 如果指定了用户ID，只处理该用户的文章
+            query = text("""
+                SELECT id, name, comment, userid, createtime
+                FROM projectitem 
+                WHERE status = 1 AND userid = :user_id AND id > :start_id AND id % :total_processes = :process_id
+                ORDER BY id
+            """)
+            query_params = {
+                "user_id": self.user_id,
+                "start_id": start_id,
+                "total_processes": self.total_processes,
+                "process_id": self.process_id
+            }
+        else:
+            # 处理所有用户的文章
+            query = text("""
+                SELECT id, name, comment, userid, createtime
+                FROM projectitem 
+                WHERE status = 1 AND id > :start_id AND id % :total_processes = :process_id
+                ORDER BY id
+            """)
+            query_params = {
+                "start_id": start_id,
+                "total_processes": self.total_processes,
+                "process_id": self.process_id
+            }
         
-        result = await session.execute(query, {
-            "start_id": start_id,
-            "total_processes": self.total_processes,
-            "process_id": self.process_id
-        })
+        result = await session.execute(query, query_params)
         articles = result.fetchall()
         
         if not articles:
@@ -305,7 +350,8 @@ class BatchVectorization:
 
 def worker_process(process_id: int, queue: Queue, progress_counter: Value, 
                   total_count: Value, start_time: Value, clear_tables: bool = False,
-                  articles_only: bool = False, comments_only: bool = False, total_processes: int = 1):
+                  articles_only: bool = False, comments_only: bool = False, total_processes: int = 1,
+                  user_id: int = None, article_id_list: list = None):
     """工作进程函数"""
     try:
         # 设置进程标题
@@ -333,7 +379,7 @@ def worker_process(process_id: int, queue: Queue, progress_counter: Value,
         # 创建批量向量化处理器
         processor = BatchVectorization(
             process_id, queue, progress_counter, total_count, start_time, clear_tables,
-            articles_only, comments_only, total_processes
+            articles_only, comments_only, total_processes, user_id, article_id_list
         )
         
         try:
@@ -365,8 +411,44 @@ def main():
                        help='只向量化文章')
     parser.add_argument('--comments-only', action='store_true',
                        help='只向量化评论')
+    parser.add_argument('--user-id', type=int, default=None,
+                       help='指定用户ID，只向量化该用户的文章（与--comments-only互斥）')
+    parser.add_argument('--article-ids', type=str, default=None,
+                       help='指定文章ID列表，格式：1,2,3,4,5（与--comments-only和--user-id互斥）')
     
     args = parser.parse_args()
+    
+    # 参数验证
+    if args.user_id is not None and args.comments_only:
+        logger.error("错误: --user-id 和 --comments-only 不能同时使用")
+        sys.exit(1)
+    
+    if args.user_id is not None and args.user_id <= 0:
+        logger.error("错误: --user-id 必须是正整数")
+        sys.exit(1)
+    
+    if args.article_ids is not None and args.comments_only:
+        logger.error("错误: --article-ids 和 --comments-only 不能同时使用")
+        sys.exit(1)
+    
+    if args.article_ids is not None and args.user_id is not None:
+        logger.error("错误: --article-ids 和 --user-id 不能同时使用")
+        sys.exit(1)
+    
+    # 解析文章ID列表
+    article_id_list = None
+    if args.article_ids is not None:
+        try:
+            article_id_list = [int(x.strip()) for x in args.article_ids.split(',') if x.strip()]
+            if not article_id_list:
+                logger.error("错误: --article-ids 不能为空")
+                sys.exit(1)
+            if any(id <= 0 for id in article_id_list):
+                logger.error("错误: 文章ID必须是正整数")
+                sys.exit(1)
+        except ValueError:
+            logger.error("错误: --article-ids 格式不正确，应为：1,2,3,4,5")
+            sys.exit(1)
     
     # 设置信号处理器
     signal.signal(signal.SIGINT, signal_handler)
@@ -377,6 +459,10 @@ def main():
     logger.info(f"进程数量: {args.processes}")
     logger.info(f"清空向量表: {args.clear_tables}")
     logger.info(f"恢复模式: {args.resume}")
+    if args.user_id is not None:
+        logger.info(f"指定用户ID: {args.user_id}")
+    if args.article_ids is not None:
+        logger.info(f"指定文章ID: {article_id_list}")
     logger.info("=" * 60)
     
     # 创建共享变量
@@ -394,15 +480,27 @@ def main():
             # 根据参数计算相应的记录数
             if not args.comments_only:
                 # 计算文章数量
-                result = await session.exec(text("""
-                    SELECT COUNT(*) FROM projectitem WHERE status = 1
-                """))
+                if article_id_list is not None:
+                    # 只计算指定文章ID列表的数量
+                    result = await session.execute(text("""
+                        SELECT COUNT(*) FROM projectitem WHERE status = 1 AND id = ANY(:article_ids)
+                    """), {"article_ids": article_id_list})
+                elif args.user_id is not None:
+                    # 只计算指定用户的文章数量
+                    result = await session.execute(text("""
+                        SELECT COUNT(*) FROM projectitem WHERE status = 1 AND userid = :user_id
+                    """), {"user_id": args.user_id})
+                else:
+                    # 计算所有用户的文章数量
+                    result = await session.execute(text("""
+                        SELECT COUNT(*) FROM projectitem WHERE status = 1
+                    """))
                 article_count = result.fetchone()[0]
                 total += article_count
             
             if not args.articles_only:
                 # 计算评论数量
-                result = await session.exec(text("""
+                result = await session.execute(text("""
                     SELECT COUNT(*) FROM post WHERE status = 1
                 """))
                 comment_count = result.fetchone()[0]
@@ -411,7 +509,12 @@ def main():
             with total_count.get_lock():
                 total_count.value = total
             
-            logger.info(f"总记录数: {total} (文章: {article_count}, 评论: {comment_count})")
+            if article_id_list is not None:
+                logger.info(f"指定文章ID {article_id_list} 的记录数: {total} (文章: {article_count}, 评论: {comment_count})")
+            elif args.user_id is not None:
+                logger.info(f"用户 {args.user_id} 的记录数: {total} (文章: {article_count}, 评论: {comment_count})")
+            else:
+                logger.info(f"总记录数: {total} (文章: {article_count}, 评论: {comment_count})")
             break
     
     # 运行计数任务
@@ -425,7 +528,7 @@ def main():
         p = Process(
             target=worker_process,
             args=(i, queue, progress_counter, total_count, start_time, args.clear_tables,
-                  args.articles_only, args.comments_only, args.processes)
+                  args.articles_only, args.comments_only, args.processes, args.user_id, article_id_list)
         )
         p.start()
         processes.append(p)

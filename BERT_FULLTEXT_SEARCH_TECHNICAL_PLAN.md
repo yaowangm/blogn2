@@ -314,6 +314,15 @@ class BatchVectorizationService:
 ## 5. 搜索服务
 
 ### 5.1 分层搜索策略
+
+#### 5.1.1 相似度计算策略
+在基于BERT的全文检索中，我们采用**最大段相似度**策略而非段相似度之和，原因如下：
+
+1. **语义匹配的准确性**: 最大段相似度能够准确识别文档中最相关的片段，避免不相关片段对整体相似度的干扰
+2. **避免长度偏差**: 段相似度之和会导致长文档在搜索中具有不公平的优势，即使其相关性较低
+3. **提高搜索精度**: 最大段相似度更符合用户期望，即找到包含最相关内容片段的文档
+4. **计算效率**: 使用`MIN()`函数和窗口函数可以高效地找到最佳匹配片段
+
 ```python
 class HierarchicalSearchService:
     def __init__(self, db_session):
@@ -356,31 +365,85 @@ class HierarchicalSearchService:
         return result.fetchall()
     
     async def detailed_search(self, candidates: List[Dict], query_vector: np.ndarray) -> List[Dict]:
-        """详细搜索（基于片段向量）"""
+        """详细搜索（基于片段向量，使用最大段相似度）"""
         candidate_ids = [c['projectitem_id'] for c in candidates]
         
         query = """
-        SELECT DISTINCT ON (av.projectitem_id)
-            av.projectitem_id,
-            csv.segment_index,
-            csv.segment_text,
-            csv.start_char_pos,
-            csv.end_char_pos,
-            (csv.segment_vector <=> %s) AS segment_distance
-        FROM article_vectors av
-        JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
-        WHERE av.projectitem_id = ANY(%s)
-            AND csv.confidence_score > 0.8
-        ORDER BY av.projectitem_id, segment_distance
+        WITH best_segments AS (
+            SELECT 
+                av.projectitem_id,
+                csv.segment_index,
+                csv.segment_text,
+                csv.start_char_pos,
+                csv.end_char_pos,
+                (csv.segment_vector <=> %s) AS segment_distance,
+                ROW_NUMBER() OVER (PARTITION BY av.projectitem_id ORDER BY (csv.segment_vector <=> %s)) as rn
+            FROM article_vectors av
+            JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
+            WHERE av.projectitem_id = ANY(%s)
+                AND csv.confidence_score > 0.8
+        )
+        SELECT 
+            projectitem_id,
+            segment_index,
+            segment_text,
+            start_char_pos,
+            end_char_pos,
+            segment_distance
+        FROM best_segments
+        WHERE rn = 1
+        ORDER BY segment_distance
         """
         
         result = await self.db.execute(query, [
+            self.vector_to_json(query_vector),
             self.vector_to_json(query_vector),
             candidate_ids
         ])
         
         return result.fetchall()
 ```
+
+#### 5.1.2 性能优化查询
+为了高效计算最大段相似度，我们使用以下优化策略：
+
+```sql
+-- 优化后的最大段相似度查询
+WITH ranked_segments AS (
+    SELECT 
+        av.projectitem_id,
+        csv.segment_index,
+        csv.segment_text,
+        csv.start_char_pos,
+        csv.end_char_pos,
+        (csv.segment_vector <=> %s) AS segment_distance,
+        ROW_NUMBER() OVER (
+            PARTITION BY av.projectitem_id 
+            ORDER BY (csv.segment_vector <=> %s)
+        ) as similarity_rank
+    FROM article_vectors av
+    JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
+    WHERE csv.confidence_score >= 0.8
+        AND av.projectitem_id = ANY(%s)
+)
+SELECT 
+    projectitem_id,
+    segment_index,
+    segment_text,
+    start_char_pos,
+    end_char_pos,
+    segment_distance
+FROM ranked_segments
+WHERE similarity_rank = 1
+ORDER BY segment_distance
+LIMIT %s;
+```
+
+**性能优化要点**：
+- 使用`ROW_NUMBER()`窗口函数避免子查询
+- 在`ORDER BY`子句中直接计算相似度，利用索引
+- 通过`PARTITION BY`确保每个文档只返回最佳片段
+- 添加`confidence_score`过滤条件提高质量
 
 ### 5.2 混合搜索
 ```python
@@ -389,7 +452,7 @@ class HybridSearchService:
                            article_weight: float = 0.6,
                            segment_weight: float = 0.4,
                            limit: int = 10) -> List[Dict]:
-        """混合搜索：结合文章级和片段级相似度"""
+        """混合搜索：结合文章级和片段级相似度，使用最大段相似度"""
         query = """
         WITH article_scores AS (
             SELECT 
