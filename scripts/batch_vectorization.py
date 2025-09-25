@@ -219,6 +219,11 @@ class BatchVectorization:
     
     async def _vectorize_comments(self, session, start_id: int = 0):
         """向量化评论"""
+        # 如果指定了文章ID列表，跳过评论处理（因为只处理指定文章）
+        if self.article_id_list is not None:
+            logger.info(f"进程 {self.process_id}: 跳过评论处理（指定了文章ID列表）")
+            return
+            
         logger.info(f"进程 {self.process_id}: 开始向量化评论，起始ID: {start_id}")
         
         # 获取需要向量化的评论，按进程ID分配数据范围
