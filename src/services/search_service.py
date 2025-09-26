@@ -127,63 +127,21 @@ class HierarchicalSearchService:
         # 降低阈值到0.5，以便能够找到更多相关结果
         adjusted_threshold = max(0.5, dynamic_threshold * 0.6)
         
+        # 优化后的SQL：直接使用内容段相似度，避免UNION ALL和复杂GROUP BY
         sql = f"""
-            WITH all_scores AS (
-                -- 标题相似度（乘以0.7）
-                SELECT 
-                    av.projectitem_id,
-                    pi.name,
-                    pi.comment,
-                    u.name as author,
-                    pi.createtime,
-                    (1 - (av.title_vector <=> '{query_vector_json}'::vector)) * 0.7 as similarity
-                FROM article_vectors av
-                LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
-                LEFT JOIN users u ON pi.userid = u.id
-                WHERE pi.status = 1
-                
-                UNION ALL
-                
-                -- 段相似度（不变）
-                SELECT 
-                    av.projectitem_id,
-                    pi.name,
-                    pi.comment,
-                    u.name as author,
-                    pi.createtime,
-                    (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) as similarity
-                FROM article_vectors av
-                LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
-                LEFT JOIN users u ON pi.userid = u.id
-                LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
-                WHERE pi.status = 1
-            ),
-            max_similarities AS (
-                SELECT 
-                    projectitem_id,
-                    name,
-                    comment,
-                    author,
-                    createtime,
-                    MAX(
-                        CASE 
-                            WHEN similarity >= {adjusted_threshold} 
-                            THEN similarity
-                            ELSE 0
-                        END
-                    ) as relevance_score
-                FROM all_scores
-                GROUP BY projectitem_id, name, comment, author, createtime
-            )
             SELECT 
-                projectitem_id as id,
-                name as title,
-                comment as content,
-                author,
-                createtime,
-                relevance_score
-            FROM max_similarities
-            WHERE relevance_score > 0
+                av.projectitem_id as id,
+                pi.name as title,
+                pi.comment as content,
+                u.name as author,
+                pi.createtime,
+                (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) as relevance_score
+            FROM article_vectors av
+            LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
+            LEFT JOIN users u ON pi.userid = u.id
+            LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
+            WHERE pi.status = 1
+            AND (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
             ORDER BY relevance_score DESC
             LIMIT {limit} OFFSET {offset}
             """
@@ -191,33 +149,14 @@ class HierarchicalSearchService:
         result = await self.session.exec(text(sql))
         items = result.fetchall()
         
-        # 获取总数
+        # 获取总数 - 简化查询
         count_sql = f"""
-        WITH segment_scores AS (
-            SELECT 
-                av.projectitem_id,
-                (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) as segment_similarity
-            FROM article_vectors av
-            LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
-            LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
-            WHERE pi.status = 1
-        ),
-        max_similarities AS (
-            SELECT 
-                projectitem_id,
-                MAX(
-                    CASE 
-                        WHEN segment_similarity >= {dynamic_threshold} 
-                        THEN segment_similarity
-                        ELSE 0
-                    END
-                ) as relevance_score
-            FROM segment_scores
-            GROUP BY projectitem_id
-        )
-        SELECT COUNT(*)
-        FROM max_similarities
-        WHERE relevance_score > 0
+        SELECT COUNT(DISTINCT av.projectitem_id)
+        FROM article_vectors av
+        LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
+        LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
+        WHERE pi.status = 1
+        AND (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
         """
         count_result = await self.session.exec(text(count_sql))
         total = count_result.fetchone()[0]
