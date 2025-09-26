@@ -98,7 +98,7 @@ class SimilarityAnalyzer:
             # 获取文章的内容段
             for article in articles:
                 segments_sql = f"""
-                    SELECT csv.segment_text, csv.segment_vector
+                    SELECT csv.id, csv.segment_text, csv.segment_vector, csv.segment_index
                     FROM article_vectors av
                     LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
                     WHERE av.projectitem_id = {article['id']}
@@ -109,8 +109,10 @@ class SimilarityAnalyzer:
                 segments = []
                 for row in result:
                     segments.append({
-                        'text': row[0] or '',
-                        'vector': row[1]  # 这是存储的向量
+                        'id': row[0],  # 段落在数据库中的ID
+                        'text': row[1] or '',
+                        'vector': row[2],  # 这是存储的向量
+                        'index': row[3]  # 段落在文章中的索引
                     })
                 
                 article['segments'] = segments
@@ -186,7 +188,8 @@ class SimilarityAnalyzer:
                 contains_keyword = keyword.lower() in segment['text'].lower()
                 
                 segment_info = {
-                    'index': i,
+                    'id': segment['id'],  # 段落在数据库中的ID
+                    'index': segment['index'],  # 段落在文章中的实际索引
                     'similarity': segment_similarity,
                     'text': segment['text'][:100] + '...' if len(segment['text']) > 100 else segment['text'],
                     'contains_keyword': contains_keyword
@@ -201,11 +204,12 @@ class SimilarityAnalyzer:
         # 显示排序后的段落相似度
         for i, segment_info in enumerate(segment_results):
             keyword_mark = " 🔍" if segment_info['contains_keyword'] else ""
-            print(f"  📄 原段落{segment_info['index']+1}相似度: {segment_info['similarity']:.4f}{keyword_mark}")
+            print(f"  📄 原段落{segment_info['index']+1}相似度: {segment_info['similarity']:.4f} (ID:{segment_info['id']}){keyword_mark}")
         
         # 更新结果中的段落信息（按相似度排序）
         for i, segment_info in enumerate(segment_results):
             results['similarities'][f'segment_{i}'] = {
+                'id': segment_info['id'],
                 'original_index': segment_info['index'],
                 'similarity': segment_info['similarity'],
                 'text': segment_info['text'],
