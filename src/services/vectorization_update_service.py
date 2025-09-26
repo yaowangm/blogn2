@@ -390,7 +390,15 @@ class VectorizationUpdateService:
         
         # 向量化每个片段
         segment_results = []
+        skipped_count = 0
+        
         for i, segment in enumerate(segments):
+            # 检查是否应该跳过该段落
+            if self._should_skip_segment(segment['text']):
+                skipped_count += 1
+                logger.debug(f"跳过段落 {i}: '{segment['text'][:50]}...' (长度: {len(segment['text'])})")
+                continue
+                
             try:
                 vector = await vectorization_service.vectorize_text(segment['text'])
                 segment_results.append({
@@ -408,6 +416,9 @@ class VectorizationUpdateService:
             except Exception as e:
                 logger.warning(f"片段 {i} 向量化失败: {e}")
                 continue
+        
+        if skipped_count > 0:
+            logger.info(f"跳过了 {skipped_count} 个无效段落（长度<3或纯标点符号）")
         
         return segment_results
     
@@ -442,6 +453,10 @@ class VectorizationUpdateService:
         for paragraph in paragraphs:
             paragraph = paragraph.strip()
             if not paragraph:
+                continue
+            
+            # 在分割阶段就过滤掉无效段落
+            if self._should_skip_segment(paragraph):
                 continue
                 
             if len(paragraph) <= window_size:
@@ -486,7 +501,7 @@ class VectorizationUpdateService:
                         break
             
             segment_text = paragraph[start:end].strip()
-            if segment_text:
+            if segment_text and not self._should_skip_segment(segment_text):
                 segments.append({
                     'text': segment_text,
                     'length': len(segment_text),
@@ -498,6 +513,42 @@ class VectorizationUpdateService:
         
         return segments
     
+    def _should_skip_segment(self, text: str) -> bool:
+        """
+        判断是否应该跳过该段落
+        
+        Args:
+            text: 段落文本
+            
+        Returns:
+            bool: 是否应该跳过
+        """
+        if not text:
+            return True
+            
+        # 去除首尾空白字符
+        text = text.strip()
+        
+        # 1. 长度小于3的段落
+        if len(text) < 3:
+            return True
+            
+        # 2. 完全由标点符号组成的段落
+        import string
+        import re
+        
+        # 中英文标点符号
+        punctuation_chars = string.punctuation + '，。！？；：""''（）【】《》〈〉「」『』〔〕…—·'
+        
+        # 检查是否只包含标点符号、空白字符和换行符
+        # 使用更精确的正则表达式，避免误判中文字符
+        text_without_punctuation = re.sub(r'[' + re.escape(punctuation_chars) + r'\s\n\r\t]', '', text)
+        
+        if len(text_without_punctuation) == 0:
+            return True
+            
+        return False
+
     def _is_key_segment(self, text: str) -> bool:
         """
         判断是否为关键片段
