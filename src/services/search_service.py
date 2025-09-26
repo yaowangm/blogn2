@@ -128,8 +128,9 @@ class HierarchicalSearchService:
         adjusted_threshold = max(0.5, dynamic_threshold * 0.6)
         
         # 优化后的SQL：直接使用内容段相似度，避免UNION ALL和复杂GROUP BY
+        # 使用DISTINCT ON去重，确保每篇文章只返回最高相似度的记录
         sql = f"""
-            SELECT 
+            SELECT DISTINCT ON (av.projectitem_id)
                 av.projectitem_id as id,
                 pi.name as title,
                 pi.comment as content,
@@ -142,7 +143,7 @@ class HierarchicalSearchService:
             LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
             WHERE pi.status = 1
             AND (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
-            ORDER BY relevance_score DESC
+            ORDER BY av.projectitem_id, relevance_score DESC
             LIMIT {limit} OFFSET {offset}
             """
         
