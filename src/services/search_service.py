@@ -123,9 +123,9 @@ class HierarchicalSearchService:
         # 计算动态阈值
         dynamic_threshold = self.calculate_dynamic_threshold(query, query_vector_json)
         
-        # 使用纯语义搜索，但大幅降低阈值以提高召回率
-        # 降低阈值到0.5，以便能够找到更多相关结果
-        adjusted_threshold = max(0.5, dynamic_threshold * 0.6)
+        # 使用纯语义搜索，确保阈值不低于60%
+        # 直接使用动态阈值，不再进一步降低
+        adjusted_threshold = dynamic_threshold
         
         # 优化后的SQL：直接使用内容段相似度，避免UNION ALL和复杂GROUP BY
         # 使用DISTINCT ON去重，确保每篇文章只返回最高相似度的记录
@@ -143,7 +143,7 @@ class HierarchicalSearchService:
             LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
             WHERE pi.status = 1
             AND (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
-            ORDER BY av.projectitem_id, relevance_score DESC
+            ORDER BY av.projectitem_id, (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) DESC
             LIMIT {limit} OFFSET {offset}
             """
         
