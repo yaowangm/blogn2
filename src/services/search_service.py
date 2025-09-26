@@ -120,28 +120,14 @@ class HierarchicalSearchService:
         """搜索文章"""
         offset = (page - 1) * limit
         
-        try:
-            # 检查向量表是否存在
-            check_sql = """
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_name = 'article_vectors'
-            );
-            """
-            result = await self.session.exec(text(check_sql))
-            table_exists = result.fetchone()[0]
-            
-            if not table_exists:
-                return await self._search_articles_fallback(query, sort_by, page, limit)
-            
-            # 计算动态阈值
-            dynamic_threshold = self.calculate_dynamic_threshold(query, query_vector_json)
-            
-            # 使用纯语义搜索，但大幅降低阈值以提高召回率
-            # 降低阈值到0.5，以便能够找到更多相关结果
-            adjusted_threshold = max(0.5, dynamic_threshold * 0.6)
-            
-            sql = f"""
+        # 计算动态阈值
+        dynamic_threshold = self.calculate_dynamic_threshold(query, query_vector_json)
+        
+        # 使用纯语义搜索，但大幅降低阈值以提高召回率
+        # 降低阈值到0.5，以便能够找到更多相关结果
+        adjusted_threshold = max(0.5, dynamic_threshold * 0.6)
+        
+        sql = f"""
             WITH all_scores AS (
                 -- 标题相似度（乘以0.7）
                 SELECT 
@@ -201,103 +187,41 @@ class HierarchicalSearchService:
             ORDER BY relevance_score DESC
             LIMIT {limit} OFFSET {offset}
             """
-            
-            result = await self.session.exec(text(sql))
-            items = result.fetchall()
-            
-            # 获取总数
-            count_sql = f"""
-            WITH segment_scores AS (
-                SELECT 
-                    av.projectitem_id,
-                    (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) as segment_similarity
-                FROM article_vectors av
-                LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
-                LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
-                WHERE pi.status = 1
-            ),
-            max_similarities AS (
-                SELECT 
-                    projectitem_id,
-                    MAX(
-                        CASE 
-                            WHEN segment_similarity >= {dynamic_threshold} 
-                            THEN segment_similarity
-                            ELSE 0
-                        END
-                    ) as relevance_score
-                FROM segment_scores
-                GROUP BY projectitem_id
-            )
-            SELECT COUNT(*)
-            FROM max_similarities
-            WHERE relevance_score > 0
-            """
-            count_result = await self.session.exec(text(count_sql))
-            total = count_result.fetchone()[0]
-            
-            return {
-                "items": [self._format_article_result(item) for item in items],
-                "total": total,
-                "has_more": (offset + len(items)) < total,
-                "dynamic_threshold": dynamic_threshold
-            }
-            
-        except Exception as e:
-            # 降级到传统搜索
-            return await self._search_articles_fallback(query, sort_by, page, limit)
-    
-    async def _search_articles_fallback(self, query: str, sort_by: str, page: int, limit: int) -> Dict[str, Any]:
-        """文章搜索降级方案（传统文本搜索）"""
-        offset = (page - 1) * limit
-        
-        # 计算动态阈值（即使使用fallback也要返回）
-        dynamic_threshold = self.calculate_dynamic_threshold(query, "")
-        
-        # 构建搜索条件
-        search_condition = f"pi.name ILIKE '%{query}%' OR pi.comment ILIKE '%{query}%'"
-        
-        # 构建排序条件
-        if sort_by == "date":
-            order_clause = "pi.createtime DESC"
-        elif sort_by == "popularity":
-            order_clause = "pi.accesscount DESC"
-        else:  # relevance
-            order_clause = f"""
-                CASE 
-                    WHEN pi.name ILIKE '%{query}%' THEN 3
-                    WHEN pi.comment ILIKE '%{query}%' THEN 2
-                    ELSE 1
-                END DESC
-            """
-        
-        sql = f"""
-        SELECT 
-            pi.id,
-            pi.name as title,
-            pi.comment as content,
-            u.name as author,
-            pi.createtime,
-            1.0 as relevance_score
-        FROM projectitem pi
-        LEFT JOIN users u ON pi.userid = u.id
-        WHERE pi.status = 1 AND ({search_condition})
-        ORDER BY {order_clause}
-        LIMIT {limit} OFFSET {offset}
-        """
         
         result = await self.session.exec(text(sql))
         items = result.fetchall()
         
         # 获取总数
         count_sql = f"""
+        WITH segment_scores AS (
+            SELECT 
+                av.projectitem_id,
+                (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) as segment_similarity
+            FROM article_vectors av
+            LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
+            LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
+            WHERE pi.status = 1
+        ),
+        max_similarities AS (
+            SELECT 
+                projectitem_id,
+                MAX(
+                    CASE 
+                        WHEN segment_similarity >= {dynamic_threshold} 
+                        THEN segment_similarity
+                        ELSE 0
+                    END
+                ) as relevance_score
+            FROM segment_scores
+            GROUP BY projectitem_id
+        )
         SELECT COUNT(*)
-        FROM projectitem pi
-        WHERE pi.status = 1 AND ({search_condition})
+        FROM max_similarities
+        WHERE relevance_score > 0
         """
         count_result = await self.session.exec(text(count_sql))
         total = count_result.fetchone()[0]
-        
+            
         return {
             "items": [self._format_article_result(item) for item in items],
             "total": total,
@@ -305,27 +229,13 @@ class HierarchicalSearchService:
             "dynamic_threshold": dynamic_threshold
         }
     
+    
     async def _search_comments(self, query_vector_json: str, sort_by: str, page: int, limit: int, query: str = "") -> Dict[str, Any]:
         """搜索评论"""
         offset = (page - 1) * limit
         
-        try:
-            # 检查评论向量表是否存在
-            check_sql = """
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_name = 'comment_vectors'
-            );
-            """
-            result = await self.session.exec(text(check_sql))
-            table_exists = result.fetchone()[0]
-            
-            if not table_exists:
-                # 如果向量表不存在，使用传统文本搜索
-                return await self._search_comments_fallback(query, sort_by, page, limit)
-            
-            # 使用向量搜索
-            sql = f"""
+        # 使用向量搜索
+        sql = f"""
             SELECT 
                 p.id,
                 p.subject as title,
@@ -340,73 +250,16 @@ class HierarchicalSearchService:
             ORDER BY relevance_score DESC
             LIMIT {limit} OFFSET {offset}
             """
-            
-            result = await self.session.exec(text(sql))
-            items = result.fetchall()
-            
-            # 获取总数
-            count_sql = """
-            SELECT COUNT(*)
-            FROM comment_vectors cv
-            LEFT JOIN post p ON cv.post_id = p.id
-            WHERE p.status = 1
-            """
-            count_result = await self.session.exec(text(count_sql))
-            total = count_result.fetchone()[0]
-            
-            return {
-                "items": [self._format_comment_result(item) for item in items],
-                "total": total,
-                "has_more": (offset + len(items)) < total
-            }
-            
-        except Exception as e:
-            print(f"评论搜索错误: {e}")
-            # 降级到传统搜索
-            return await self._search_comments_fallback(query, sort_by, page, limit)
-    
-    async def _search_comments_fallback(self, query: str, sort_by: str, page: int, limit: int) -> Dict[str, Any]:
-        """评论搜索降级方案（传统文本搜索）"""
-        offset = (page - 1) * limit
-        
-        # 构建搜索条件
-        search_condition = f"p.subject ILIKE '%{query}%' OR p.content ILIKE '%{query}%'"
-        
-        # 构建排序条件
-        if sort_by == "date":
-            order_clause = "p.createtime DESC"
-        else:  # relevance
-            order_clause = f"""
-                CASE 
-                    WHEN p.subject ILIKE '%{query}%' THEN 3
-                    WHEN p.content ILIKE '%{query}%' THEN 2
-                    ELSE 1
-                END DESC
-            """
-        
-        sql = f"""
-        SELECT 
-            p.id,
-            p.subject as title,
-            p.content,
-            u.name as author,
-            p.posttime,
-            1.0 as relevance_score
-        FROM post p
-        LEFT JOIN users u ON p.userid = u.id
-        WHERE p.status = 1 AND ({search_condition})
-        ORDER BY {order_clause}
-        LIMIT {limit} OFFSET {offset}
-        """
         
         result = await self.session.exec(text(sql))
         items = result.fetchall()
         
         # 获取总数
-        count_sql = f"""
+        count_sql = """
         SELECT COUNT(*)
-        FROM post p
-        WHERE p.status = 1 AND ({search_condition})
+        FROM comment_vectors cv
+        LEFT JOIN post p ON cv.post_id = p.id
+        WHERE p.status = 1
         """
         count_result = await self.session.exec(text(count_sql))
         total = count_result.fetchone()[0]
@@ -416,6 +269,7 @@ class HierarchicalSearchService:
             "total": total,
             "has_more": (offset + len(items)) < total
         }
+    
     
     async def _search_all(self, query_vector_json: str, sort_by: str, page: int, limit: int, query: str = "") -> Dict[str, Any]:
         """搜索所有内容"""
