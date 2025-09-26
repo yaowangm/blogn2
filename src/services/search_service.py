@@ -129,6 +129,10 @@ class HierarchicalSearchService:
         
         # 优化后的SQL：直接使用内容段相似度，避免UNION ALL和复杂GROUP BY
         # 使用DISTINCT ON去重，确保每篇文章只返回最高相似度的记录
+        # 过滤掉过短的段落：长度小于3个字符或小于关键词长度的段落
+        keyword_length = len(query.strip()) if query else 0
+        min_segment_length = max(3, keyword_length)
+        
         sql = f"""
             SELECT DISTINCT ON (av.projectitem_id)
                 av.projectitem_id as id,
@@ -143,6 +147,7 @@ class HierarchicalSearchService:
             LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
             WHERE pi.status = 1
             AND (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
+            AND LENGTH(TRIM(csv.segment_text)) >= {min_segment_length}
             ORDER BY av.projectitem_id, (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) DESC
             LIMIT {limit} OFFSET {offset}
             """
@@ -150,7 +155,7 @@ class HierarchicalSearchService:
         result = await self.session.exec(text(sql))
         items = result.fetchall()
         
-        # 获取总数 - 简化查询
+        # 获取总数 - 简化查询，使用相同的过滤条件
         count_sql = f"""
         SELECT COUNT(DISTINCT av.projectitem_id)
         FROM article_vectors av
@@ -158,6 +163,7 @@ class HierarchicalSearchService:
         LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
         WHERE pi.status = 1
         AND (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
+        AND LENGTH(TRIM(csv.segment_text)) >= {min_segment_length}
         """
         count_result = await self.session.exec(text(count_sql))
         total = count_result.fetchone()[0]
