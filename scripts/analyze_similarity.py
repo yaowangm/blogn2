@@ -64,16 +64,19 @@ class SimilarityAnalyzer:
     def get_article_data(self, article_ids: List[int]) -> List[Dict[str, Any]]:
         """获取文章数据"""
         with self.engine.connect() as conn:
-            # 获取文章基本信息
+            # 获取文章基本信息和向量数据
             articles_sql = f"""
                 SELECT 
                     pi.id,
                     pi.name as title,
                     pi.comment as content,
                     u.name as author,
-                    pi.createtime
+                    pi.createtime,
+                    av.title_vector,
+                    av.content_vector
                 FROM projectitem pi
                 LEFT JOIN users u ON pi.userid = u.id
+                LEFT JOIN article_vectors av ON pi.id = av.projectitem_id
                 WHERE pi.id = ANY(ARRAY{article_ids})
                 AND pi.status = 1
                 ORDER BY pi.id
@@ -87,7 +90,9 @@ class SimilarityAnalyzer:
                     'title': row[1] or '',
                     'content': row[2] or '',
                     'author': row[3] or '',
-                    'createtime': row[4]
+                    'createtime': row[4],
+                    'title_vector': row[5],  # 标题向量
+                    'content_vector': row[6]  # 内容向量
                 })
             
             # 获取文章的内容段
@@ -137,7 +142,38 @@ class SimilarityAnalyzer:
             }
             print(f"  📝 标题相似度: {title_similarity:.4f}")
         
-        # 2. 计算与每个内容段的相似度
+        # 2. 计算内容相似度（使用article_vectors表中的content_vector）
+        if article['content_vector']:
+            # 将存储的向量数组转换为numpy数组
+            try:
+                # 如果content_vector是字符串，需要先解析
+                if isinstance(article['content_vector'], str):
+                    import json
+                    content_vector = np.array(json.loads(article['content_vector']))
+                else:
+                    # 如果已经是数组格式，直接转换
+                    content_vector = np.array(article['content_vector'], dtype=float)
+                
+                content_similarity = self.calculate_similarity(keyword_vector, content_vector)
+                results['similarities']['content'] = {
+                    'similarity': content_similarity,
+                    'text': "Content vector from article_vectors table"
+                }
+                print(f"  📚 内容相似度: {content_similarity:.4f}")
+            except Exception as e:
+                print(f"  ⚠️  内容向量解析失败: {e}")
+                results['similarities']['content'] = {
+                    'similarity': 0.0,
+                    'text': "Content vector parsing failed"
+                }
+        else:
+            print(f"  ⚠️  无内容向量数据")
+            results['similarities']['content'] = {
+                'similarity': 0.0,
+                'text': "No content vector found"
+            }
+        
+        # 3. 计算与每个内容段的相似度
         segment_similarities = []
         segment_results = []
         
@@ -165,7 +201,7 @@ class SimilarityAnalyzer:
         # 显示排序后的段落相似度
         for i, segment_info in enumerate(segment_results):
             keyword_mark = " 🔍" if segment_info['contains_keyword'] else ""
-            print(f"  📄 段落{segment_info['index']+1}相似度: {segment_info['similarity']:.4f}{keyword_mark}")
+            print(f"  📄 原段落{segment_info['index']+1}相似度: {segment_info['similarity']:.4f}{keyword_mark}")
         
         # 更新结果中的段落信息（按相似度排序）
         for i, segment_info in enumerate(segment_results):
@@ -176,7 +212,7 @@ class SimilarityAnalyzer:
                 'contains_keyword': segment_info['contains_keyword']
             }
         
-        # 3. 计算整体相似度（所有段落相似度的最大值）
+        # 4. 计算整体相似度（所有段落相似度的最大值）
         if segment_similarities:
             overall_similarity = max(segment_similarities)
             results['similarities']['overall'] = {
