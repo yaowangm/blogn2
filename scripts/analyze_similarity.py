@@ -158,13 +158,14 @@ class SimilarityAnalyzer:
                 
                 segment_similarities.append(segment_similarity)
                 segment_results.append(segment_info)
-                
-                # 标记包含关键词的段落
-                keyword_mark = " 🔍" if contains_keyword else ""
-                print(f"  📄 段落{i+1}相似度: {segment_similarity:.4f}{keyword_mark}")
         
         # 按相似度从大到小排序段落
         segment_results.sort(key=lambda x: x['similarity'], reverse=True)
+        
+        # 显示排序后的段落相似度
+        for i, segment_info in enumerate(segment_results):
+            keyword_mark = " 🔍" if segment_info['contains_keyword'] else ""
+            print(f"  📄 段落{segment_info['index']+1}相似度: {segment_info['similarity']:.4f}{keyword_mark}")
         
         # 更新结果中的段落信息（按相似度排序）
         for i, segment_info in enumerate(segment_results):
