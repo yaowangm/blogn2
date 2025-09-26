@@ -29,7 +29,7 @@ class HierarchicalSearchService:
             float: 动态阈值
         """
         # 调整基础阈值，使其更适合中文查询
-        base_threshold = 0.55
+        base_threshold = 0.45
         
         # 根据查询长度调整阈值
         query_length = len(query.strip())
@@ -61,8 +61,8 @@ class HierarchicalSearchService:
         # 计算最终阈值
         dynamic_threshold = base_threshold + length_factor + complexity_factor + precision_factor
         
-        # 确保阈值在合理范围内，但提高最低阈值
-        return max(0.6, min(0.9, dynamic_threshold))
+        # 确保阈值在合理范围内
+        return max(0.1, min(0.9, dynamic_threshold))
     
     async def search(self, query: str, search_type: str = "all", 
                     sort_by: str = "relevance", page: int = 1, limit: int = 10) -> Dict[str, Any]:
