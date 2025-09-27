@@ -109,27 +109,36 @@ class VectorizationUpdateService:
             
         except Exception as e:
             logger.error(f"更新文章 {article_id} 向量失败: {e}")
+            # 回滚事务
+            try:
+                await self.session.rollback()
+            except Exception as rollback_error:
+                logger.error(f"回滚事务失败: {rollback_error}")
             return False
     
     async def _get_existing_article_vector(self, article_id: int) -> Optional[Dict]:
         """获取现有的文章向量记录"""
-        query = text("""
-            SELECT id, title_text, content_text, updated_at
-            FROM article_vectors 
-            WHERE projectitem_id = :article_id
-        """)
-        
-        result = await self.session.execute(query, {"article_id": article_id})
-        row = result.fetchone()
-        
-        if row:
-            return {
-                "id": row[0],
-                "title_text": row[1],
-                "content_text": row[2],
-                "updated_at": row[3]
-            }
-        return None
+        try:
+            query = text("""
+                SELECT id, title_text, content_text, updated_at
+                FROM article_vectors 
+                WHERE projectitem_id = :article_id
+            """)
+            
+            result = await self.session.execute(query, {"article_id": article_id})
+            row = result.fetchone()
+            
+            if row:
+                return {
+                    "id": row[0],
+                    "title_text": row[1],
+                    "content_text": row[2],
+                    "updated_at": row[3]
+                }
+            return None
+        except Exception as e:
+            logger.error(f"获取文章 {article_id} 现有向量记录失败: {e}")
+            return None
     
     async def _update_existing_article_vector(
         self, article_id: int, title: str, content: str,
@@ -166,10 +175,14 @@ class VectorizationUpdateService:
         })
         
         # 获取article_vector_id
-        get_id_query = text("SELECT id FROM article_vectors WHERE projectitem_id = :article_id")
-        result = await self.session.execute(get_id_query, {"article_id": article_id})
-        row = result.fetchone()
-        return row[0] if row else None
+        try:
+            get_id_query = text("SELECT id FROM article_vectors WHERE projectitem_id = :article_id")
+            result = await self.session.execute(get_id_query, {"article_id": article_id})
+            row = result.fetchone()
+            return row[0] if row else None
+        except Exception as e:
+            logger.error(f"获取文章 {article_id} 向量ID失败: {e}")
+            return None
     
     async def _create_new_article_vector(
         self, article_id: int, title: str, content: str,
@@ -210,10 +223,14 @@ class VectorizationUpdateService:
         })
         
         # 获取新创建的article_vector_id
-        get_id_query = text("SELECT id FROM article_vectors WHERE projectitem_id = :article_id")
-        result = await self.session.execute(get_id_query, {"article_id": article_id})
-        row = result.fetchone()
-        return row[0] if row else None
+        try:
+            get_id_query = text("SELECT id FROM article_vectors WHERE projectitem_id = :article_id")
+            result = await self.session.execute(get_id_query, {"article_id": article_id})
+            row = result.fetchone()
+            return row[0] if row else None
+        except Exception as e:
+            logger.error(f"获取新创建的文章 {article_id} 向量ID失败: {e}")
+            return None
     
     async def delete_article_vectors(self, article_id: int) -> bool:
         """
@@ -294,22 +311,26 @@ class VectorizationUpdateService:
     
     async def _get_article_info(self, article_id: int) -> Optional[Dict]:
         """获取文章信息"""
-        query = text("""
-            SELECT id, name, comment 
-            FROM projectitem 
-            WHERE id = :article_id
-        """)
-        
-        result = await self.session.execute(query, {"article_id": article_id})
-        row = result.fetchone()
-        
-        if row:
-            return {
-                "id": row[0],
-                "name": row[1],
-                "comment": row[2]
-            }
-        return None
+        try:
+            query = text("""
+                SELECT id, name, comment 
+                FROM projectitem 
+                WHERE id = :article_id
+            """)
+            
+            result = await self.session.execute(query, {"article_id": article_id})
+            row = result.fetchone()
+            
+            if row:
+                return {
+                    "id": row[0],
+                    "name": row[1],
+                    "comment": row[2]
+                }
+            return None
+        except Exception as e:
+            logger.error(f"获取文章 {article_id} 信息失败: {e}")
+            return None
     
     def _vector_to_json(self, vector: Any) -> str:
         """将向量转换为JSON字符串"""
@@ -348,26 +369,33 @@ class VectorizationUpdateService:
             WHERE av.projectitem_id = :article_id
         """)
         
-        result = await self.session.execute(query, {"article_id": article_id})
-        row = result.fetchone()
-        
-        if row:
-            return {
-                "vectorized": True,
-                "vector_id": row[0],
-                "title_text": row[1],
-                "content_text": row[2],
-                "segment_count": row[3],
-                "vectorization_method": row[4],
-                "total_text_length": row[5],
-                "avg_confidence": row[6],
-                "created_at": row[7],
-                "updated_at": row[8]
-            }
-        else:
+        try:
+            result = await self.session.execute(query, {"article_id": article_id})
+            row = result.fetchone()
+            
+            if row:
+                return {
+                    "vectorized": True,
+                    "vector_id": row[0],
+                    "title_text": row[1],
+                    "content_text": row[2],
+                    "segment_count": row[3],
+                    "vectorization_method": row[4],
+                    "total_text_length": row[5],
+                    "avg_confidence": row[6],
+                    "created_at": row[7],
+                    "updated_at": row[8]
+                }
+            else:
+                return {
+                    "vectorized": False,
+                    "message": "文章尚未向量化"
+                }
+        except Exception as e:
+            logger.error(f"获取文章 {article_id} 向量化状态失败: {e}")
             return {
                 "vectorized": False,
-                "message": "文章尚未向量化"
+                "message": f"获取向量化状态失败: {str(e)}"
             }
     
     async def _process_long_text(self, text: str, vectorization_service) -> List[Dict]:
@@ -642,46 +670,51 @@ class VectorizationUpdateService:
             article_vector_id: 文章向量ID
             segments: 片段列表
         """
-        # 先删除现有的片段向量
-        delete_query = text("""
-            DELETE FROM content_segment_vectors 
-            WHERE article_vector_id = :article_vector_id
-        """)
-        await self.session.execute(delete_query, {"article_vector_id": article_vector_id})
-        
-        # 插入新的片段向量
-        for segment in segments:
-            segment_vector_json = self._vector_to_json(segment['vector'])
-            
-            insert_query = text("""
-                INSERT INTO content_segment_vectors (
-                    article_vector_id, segment_index, segment_text, segment_vector,
-                    segment_length, start_char_pos, end_char_pos,
-                    confidence_score, semantic_density, keyword_density,
-                    is_key_segment, segment_type, created_at
-                ) VALUES (
-                    :article_vector_id, :segment_index, :segment_text, :segment_vector,
-                    :segment_length, :start_char_pos, :end_char_pos,
-                    :confidence_score, :semantic_density, :keyword_density,
-                    :is_key_segment, :segment_type, :created_at
-                )
+        try:
+            # 先删除现有的片段向量
+            delete_query = text("""
+                DELETE FROM content_segment_vectors 
+                WHERE article_vector_id = :article_vector_id
             """)
+            await self.session.execute(delete_query, {"article_vector_id": article_vector_id})
             
-            await self.session.execute(insert_query, {
-                "article_vector_id": article_vector_id,
-                "segment_index": segment['index'],
-                "segment_text": segment['text'],
-                "segment_vector": segment_vector_json,
-                "segment_length": segment['length'],
-                "start_char_pos": segment['start_pos'],
-                "end_char_pos": segment['end_pos'],
-                "confidence_score": segment['confidence_score'],
-                "semantic_density": segment['semantic_density'],
-                "keyword_density": segment['keyword_density'],
-                "is_key_segment": segment['is_key_segment'],
-                "segment_type": "body",
-                "created_at": TimeUtils.now_utc()
-            })
+            # 插入新的片段向量
+            for segment in segments:
+                segment_vector_json = self._vector_to_json(segment['vector'])
+                
+                insert_query = text("""
+                    INSERT INTO content_segment_vectors (
+                        article_vector_id, segment_index, segment_text, segment_vector,
+                        segment_length, start_char_pos, end_char_pos,
+                        confidence_score, semantic_density, keyword_density,
+                        is_key_segment, segment_type, created_at
+                    ) VALUES (
+                        :article_vector_id, :segment_index, :segment_text, :segment_vector,
+                        :segment_length, :start_char_pos, :end_char_pos,
+                        :confidence_score, :semantic_density, :keyword_density,
+                        :is_key_segment, :segment_type, :created_at
+                    )
+                """)
+                
+                await self.session.execute(insert_query, {
+                    "article_vector_id": article_vector_id,
+                    "segment_index": segment['index'],
+                    "segment_text": segment['text'],
+                    "segment_vector": segment_vector_json,
+                    "segment_length": segment['length'],
+                    "start_char_pos": segment['start_pos'],
+                    "end_char_pos": segment['end_pos'],
+                    "confidence_score": segment['confidence_score'],
+                    "semantic_density": segment['semantic_density'],
+                    "keyword_density": segment['keyword_density'],
+                    "is_key_segment": segment['is_key_segment'],
+                    "segment_type": "body",
+                    "created_at": TimeUtils.now_utc()
+                })
+        except Exception as e:
+            logger.error(f"保存文章 {article_vector_id} 片段向量失败: {e}")
+            # 重新抛出异常，让上层处理事务回滚
+            raise
 
     async def update_comment_vectors(self, comment_id: int, subject: str, content: str, projectitem_id: int) -> bool:
         """
@@ -806,10 +839,14 @@ class VectorizationUpdateService:
                 WHERE post_id = :comment_id
             """)
             
+            # 将向量转换为JSON格式，与文章向量保持一致
+            title_vector_json = self._vector_to_json(title_vector)
+            content_vector_json = self._vector_to_json(content_vector)
+            
             await self.session.execute(query, {
                 "comment_id": comment_id,
-                "title_vector": f"[{','.join(map(str, title_vector.tolist()))}]",
-                "content_vector": f"[{','.join(map(str, content_vector.tolist()))}]",
+                "title_vector": title_vector_json,
+                "content_vector": content_vector_json,
                 "title_text": subject or "",
                 "content_text": content or "",
                 "segment_count": segment_count,
@@ -846,10 +883,14 @@ class VectorizationUpdateService:
                  :avg_confidence, :created_at, :updated_at)
             """)
             
+            # 将向量转换为JSON格式，与文章向量保持一致
+            title_vector_json = self._vector_to_json(title_vector)
+            content_vector_json = self._vector_to_json(content_vector)
+            
             await self.session.execute(query, {
                 "comment_id": comment_id,
-                "title_vector": f"[{','.join(map(str, title_vector.tolist()))}]",
-                "content_vector": f"[{','.join(map(str, content_vector.tolist()))}]",
+                "title_vector": title_vector_json,
+                "content_vector": content_vector_json,
                 "title_text": subject or "",
                 "content_text": content or "",
                 "segment_count": segment_count,
