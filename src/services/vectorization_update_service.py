@@ -741,11 +741,23 @@ class VectorizationUpdateService:
                 logger.warning(f"向量化服务不可用，跳过评论 {comment_id} 的向量化更新")
                 return False
             
-            # 向量化标题
-            title_vector = await vectorization_service.vectorize_text(subject or "")
+            # 向量化标题（应用过滤原则）
+            title_text = subject or ""
+            if self._should_skip_segment(title_text):
+                # 如果标题应该被跳过，使用空向量
+                title_vector = np.zeros(384)
+                logger.debug(f"跳过评论 {comment_id} 的标题向量化: '{title_text[:50]}...'")
+            else:
+                title_vector = await vectorization_service.vectorize_text(title_text)
             
-            # 向量化内容
-            content_vector = await vectorization_service.vectorize_text(content or "")
+            # 向量化内容（应用过滤原则）
+            content_text = content or ""
+            if self._should_skip_segment(content_text):
+                # 如果内容应该被跳过，使用空向量
+                content_vector = np.zeros(384)
+                logger.debug(f"跳过评论 {comment_id} 的内容向量化: '{content_text[:50]}...'")
+            else:
+                content_vector = await vectorization_service.vectorize_text(content_text)
             
             # 计算统计信息
             total_text_length = len(content or "")

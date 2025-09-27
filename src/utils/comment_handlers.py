@@ -100,30 +100,11 @@ class CommentHandler:
         )
         
         try:
-            # 创建评论
+            # 创建评论（包含向量化处理）
             await post_repo.create(comment)
             
             # 更新文章的评论数
             await project_item_repo.increment_comment_count(article_id)
-            
-            # 向量化评论内容
-            try:
-                from src.services.vectorization_update_service import get_vectorization_update_service
-                vectorization_service = get_vectorization_update_service(session)
-                
-                # 创建评论向量
-                await vectorization_service.update_comment_vectors(
-                    comment.id, 
-                    comment.subject or "", 
-                    comment.content, 
-                    article_id
-                )
-                
-            except Exception as e:
-                # 向量化失败不影响评论创建成功
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"评论 {comment.id} 向量化失败: {e}")
             
             # 提交事务（所有操作在同一个事务中）
             await session.commit()

@@ -228,24 +228,34 @@ async def create_message(
             replycount=0  # 新留言的回复数为0
         )
         
-        await post_repo.create(message)
-        
-        # 如果是跟贴，更新主贴的统计信息
-        if thread_id:
-            await post_repo._update_main_post_stats(thread_id, message.id, user_id)
-        
-        # 清除留言相关缓存
-        await clear_blog_messages_cache()
-        
-        return {
-            "success": True,
-            "message": "留言创建成功",
-            "message_id": message.id,
-            "subject": message.subject,
-            "content": message.content,
-            "user_id": message.userid,
-            "created_at": message.posttime
-        }
+        try:
+            # 创建留言（包含向量化处理）
+            await post_repo.create(message)
+            
+            # 如果是跟贴，更新主贴的统计信息
+            if thread_id:
+                await post_repo._update_main_post_stats(thread_id, message.id, user_id)
+            
+            # 提交事务
+            await session.commit()
+            
+            # 清除留言相关缓存
+            await clear_blog_messages_cache()
+            
+            return {
+                "success": True,
+                "message": "留言创建成功",
+                "message_id": message.id,
+                "subject": message.subject,
+                "content": message.content,
+                "user_id": message.userid,
+                "created_at": message.posttime
+            }
+            
+        except Exception as e:
+            # 回滚事务
+            await session.rollback()
+            raise e
         
     except HTTPException:
         raise
