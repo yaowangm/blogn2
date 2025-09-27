@@ -768,18 +768,41 @@ class VectorizationUpdateService:
                     total_text_length, segment_count, max_segment_length, projectitem_id
                 )
             
-            # 提交事务
-            await self.session.commit()
+            # 注意：不在这里提交事务，由调用方管理事务
+            # 这样可以确保向量化更新与评论创建在同一个事务中
             
             return True
             
         except Exception as e:
             logger.error(f"更新评论 {comment_id} 向量失败: {e}")
-            # 回滚事务
-            try:
-                await self.session.rollback()
-            except Exception as rollback_error:
-                logger.error(f"回滚事务失败: {rollback_error}")
+            return False
+
+    async def delete_comment_vectors(self, comment_id: int) -> bool:
+        """
+        删除评论向量
+        
+        Args:
+            comment_id: 评论ID
+            
+        Returns:
+            bool: 删除是否成功
+        """
+        try:
+            # 删除评论向量记录
+            query = text("""
+                DELETE FROM comment_vectors 
+                WHERE post_id = :comment_id
+            """)
+            
+            await self.session.execute(query, {"comment_id": comment_id})
+            
+            # 注意：不在这里提交事务，由调用方管理事务
+            # 这样可以确保向量化删除与评论删除在同一个事务中
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"删除评论 {comment_id} 向量失败: {e}")
             return False
 
     async def _get_existing_comment_vector(self, comment_id: int) -> Optional[Dict]:

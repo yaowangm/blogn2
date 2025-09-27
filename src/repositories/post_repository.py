@@ -383,7 +383,7 @@ class PostRepository:
         self.session.add(post)
         await self.session.flush()  # 获取生成的ID
         await self.session.refresh(post)  # 刷新对象以获取完整数据
-        await self.session.commit()  # 提交事务
+        # 注意：不在这里提交事务，由调用方管理事务
         
         # 更新统计信息
         try:
@@ -415,6 +415,7 @@ class PostRepository:
             pass
         
         await self.session.delete(post)
+        # 注意：不在这里提交事务，由调用方管理事务
         return True
     
     async def delete_post(self, post_id: int) -> Dict[str, Any]:

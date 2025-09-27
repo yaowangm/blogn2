@@ -99,20 +99,49 @@ class CommentHandler:
             replycount=0  # 新评论的回复数为0
         )
         
-        await post_repo.create(comment)
-        
-        # 更新文章的评论数
-        await project_item_repo.increment_comment_count(article_id)
-        
-        # 失效相关缓存
-        await clear_article_detail_cache(article_id)
-        await clear_article_comments_cache(article_id)
-        
-        return {
-            "success": True,
-            "message": "评论创建成功",
-            "comment_id": comment.id
-        }
+        try:
+            # 创建评论
+            await post_repo.create(comment)
+            
+            # 更新文章的评论数
+            await project_item_repo.increment_comment_count(article_id)
+            
+            # 向量化评论内容
+            try:
+                from src.services.vectorization_update_service import get_vectorization_update_service
+                vectorization_service = get_vectorization_update_service(session)
+                
+                # 创建评论向量
+                await vectorization_service.update_comment_vectors(
+                    comment.id, 
+                    comment.subject or "", 
+                    comment.content, 
+                    article_id
+                )
+                
+            except Exception as e:
+                # 向量化失败不影响评论创建成功
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"评论 {comment.id} 向量化失败: {e}")
+            
+            # 提交事务（所有操作在同一个事务中）
+            await session.commit()
+            
+            # 失效相关缓存
+            await clear_article_detail_cache(article_id)
+            await clear_article_comments_cache(article_id)
+            
+            return {
+                "success": True,
+                "message": "评论创建成功",
+                "comment_id": comment.id
+            }
+            
+        except Exception as e:
+            # 回滚事务
+            await session.rollback()
+            raise e
     
     @staticmethod
     async def delete_comment(
@@ -161,18 +190,41 @@ class CommentHandler:
         if not (is_admin or is_article_author):
             raise HTTPException(status_code=403, detail="无权限删除该评论")
         
-        # 删除评论
-        await post_repo.delete(comment_id)
-        
-        # 更新文章的评论数
-        await project_item_repo.decrement_comment_count(article_id)
-        
-        # 失效相关缓存
-        await clear_article_detail_cache(article_id)
-        await clear_article_comments_cache(article_id)
-        
-        return {
-            "success": True,
-            "message": "评论删除成功"
-        }
+        try:
+            # 删除评论向量化数据
+            try:
+                from src.services.vectorization_update_service import get_vectorization_update_service
+                vectorization_service = get_vectorization_update_service(session)
+                
+                # 删除评论向量
+                await vectorization_service.delete_comment_vectors(comment_id)
+                
+            except Exception as e:
+                # 向量化删除失败不影响评论删除成功
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"删除评论 {comment_id} 向量化数据失败: {e}")
+            
+            # 删除评论
+            await post_repo.delete(comment_id)
+            
+            # 更新文章的评论数
+            await project_item_repo.decrement_comment_count(article_id)
+            
+            # 提交事务（所有操作在同一个事务中）
+            await session.commit()
+            
+            # 失效相关缓存
+            await clear_article_detail_cache(article_id)
+            await clear_article_comments_cache(article_id)
+            
+            return {
+                "success": True,
+                "message": "评论删除成功"
+            }
+            
+        except Exception as e:
+            # 回滚事务
+            await session.rollback()
+            raise e
 
