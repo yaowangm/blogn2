@@ -1,19 +1,46 @@
 """
 搜索服务
-实现基于BERT向量的智能搜索功能
+
+实现基于BERT向量的智能搜索功能，支持文章和评论的语义搜索。
+使用分层搜索策略，结合向量相似度计算和动态阈值调整。
+
+主要功能：
+- 语义搜索（基于BERT向量相似度）
+- 动态阈值调整（根据查询特征）
+- 多类型内容搜索（文章+评论）
+- 结果排序和分页
+
+技术特性：
+- 使用pgvector进行高效向量检索
+- 智能阈值计算提高搜索精度
+- 支持多种排序方式
+- 错误降级处理
 """
 
-import time
 import json
-import numpy as np
+import time
 from typing import Dict, Any, List
+
+import numpy as np
 from sqlalchemy import text
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 class HierarchicalSearchService:
-    """分层搜索服务"""
+    """
+    分层搜索服务
+    
+    基于BERT向量实现智能语义搜索，支持文章和评论的混合搜索。
+    使用动态阈值调整和智能排序提高搜索质量。
+    """
     
     def __init__(self, vectorization_service, session: AsyncSession):
+        """
+        初始化搜索服务
+        
+        Args:
+            vectorization_service: 向量化服务实例
+            session: 数据库会话
+        """
         self.vectorization_service = vectorization_service
         self.session = session
     
@@ -21,14 +48,17 @@ class HierarchicalSearchService:
         """
         计算动态阈值
         
+        根据查询特征动态调整相似度阈值，提高搜索精度。
+        短查询使用更高阈值，复杂查询使用较低阈值。
+        
         Args:
             query: 搜索查询
-            query_vector_json: 查询向量JSON字符串
+            query_vector_json: 查询向量JSON字符串（未使用，保留接口兼容性）
             
         Returns:
-            float: 动态阈值
+            float: 动态阈值 (0.1-0.9)
         """
-        # 调整基础阈值，使其更适合中文查询
+        # 基础阈值，针对中文查询优化
         base_threshold = 0.45
         
         # 根据查询长度调整阈值
@@ -41,7 +71,6 @@ class HierarchicalSearchService:
             length_factor = 0.0
         
         # 根据查询复杂度调整阈值
-        # 简单启发式：包含多个词的查询降低阈值
         word_count = len(query.split())
         if word_count >= 3:  # 复杂查询
             complexity_factor = -0.05
@@ -49,7 +78,6 @@ class HierarchicalSearchService:
             complexity_factor = 0.0
         
         # 根据查询类型调整阈值
-        # 检查是否包含数字、特殊字符等
         has_numbers = any(char.isdigit() for char in query)
         has_special = any(char in '!@#$%^&*()' for char in query)
         
@@ -69,6 +97,8 @@ class HierarchicalSearchService:
         """
         执行搜索
         
+        根据搜索类型执行相应的搜索策略，返回格式化的搜索结果。
+        
         Args:
             query: 搜索查询
             search_type: 搜索类型 (all/articles/comments)
@@ -77,7 +107,7 @@ class HierarchicalSearchService:
             limit: 每页结果数
             
         Returns:
-            Dict: 搜索结果
+            Dict[str, Any]: 搜索结果，包含items、total、has_more等信息
         """
         start_time = time.time()
         
@@ -106,7 +136,11 @@ class HierarchicalSearchService:
             }
             
         except Exception as e:
-            print(f"搜索服务错误: {e}")
+            # 使用logger而不是print
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"搜索服务错误: {e}")
+            
             # 返回空结果而不是抛出异常
             return {
                 "items": [],
@@ -240,18 +274,42 @@ class HierarchicalSearchService:
         }
     
     def _vector_to_json(self, vector: np.ndarray) -> str:
-        """将向量转换为JSON字符串"""
+        """
+        将向量转换为JSON字符串
+        
+        Args:
+            vector: numpy向量数组
+            
+        Returns:
+            str: JSON格式的向量字符串
+        """
         return json.dumps(vector.tolist())
     
     def _json_to_vector(self, json_str: str) -> np.ndarray:
-        """将JSON字符串转换为向量"""
+        """
+        将JSON字符串转换为向量
+        
+        Args:
+            json_str: JSON格式的向量字符串
+            
+        Returns:
+            np.ndarray: 向量数组，失败时返回零向量
+        """
         try:
             return np.array(json.loads(json_str))
-        except:
+        except Exception:
             return np.zeros(384)
     
     def _format_article_result(self, item: tuple) -> Dict[str, Any]:
-        """格式化文章搜索结果"""
+        """
+        格式化文章搜索结果
+        
+        Args:
+            item: 数据库查询结果元组
+            
+        Returns:
+            Dict[str, Any]: 格式化的文章搜索结果
+        """
         return {
             "id": item[0],
             "title": item[1],
@@ -263,7 +321,15 @@ class HierarchicalSearchService:
         }
     
     def _format_comment_result(self, item: tuple) -> Dict[str, Any]:
-        """格式化评论搜索结果"""
+        """
+        格式化评论搜索结果
+        
+        Args:
+            item: 数据库查询结果元组
+            
+        Returns:
+            Dict[str, Any]: 格式化的评论搜索结果
+        """
         return {
             "id": item[0],
             "title": item[1],

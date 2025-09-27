@@ -1,18 +1,33 @@
 """
 BERT向量化服务
-实现基于BERT模型的文本向量化功能
+
+实现基于BERT模型的文本向量化功能，支持单文本和批量文本向量化。
+使用sentence-transformers库提供多语言支持，主要针对中文文本优化。
+
+主要功能：
+- 异步模型加载和向量化
+- 文本预处理和清洗
+- 批量向量化处理
+- 向量格式转换（JSON <-> numpy array）
+
+技术特性：
+- 单例模式确保模型只加载一次
+- 异步处理避免阻塞主线程
+- 自动降级处理（模型加载失败时返回零向量）
+- 支持本地缓存和在线下载
 """
 
 import asyncio
 import json
-import numpy as np
-from typing import List, Dict, Any
-import torch
-from sentence_transformers import SentenceTransformer
+import logging
+import os
 import re
 import warnings
-import os
-import logging
+from typing import List, Dict, Any
+
+import numpy as np
+import torch
+from sentence_transformers import SentenceTransformer
 
 # 设置日志记录器
 logger = logging.getLogger(__name__)
@@ -25,13 +40,17 @@ warnings.filterwarnings("ignore", message="torch.utils._pytree._register_pytree_
 warnings.filterwarnings("ignore", message="The `use_auth_token` argument is deprecated")
 
 class BERTVectorizationService:
-    """BERT向量化服务（单例模式）"""
+    """
+    BERT向量化服务（单例模式）
+    
+    使用sentence-transformers库实现多语言文本向量化，主要针对中文文本优化。
+    采用单例模式确保模型只加载一次，提高性能和资源利用率。
+    """
     
     _instance = None
     _model_loaded = False
     _loading = False
     _model = None
-    _tokenizer = None
     
     def __new__(cls):
         if cls._instance is None:
@@ -42,41 +61,42 @@ class BERTVectorizationService:
         if hasattr(self, '_initialized'):
             return
         
+        # 模型配置
         self.model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.max_length = 512
+        self.vector_dimension = 384
         self._initialized = True
     
     async def load_model(self):
-        """异步加载BERT模型"""
+        """
+        异步加载BERT模型
+        
+        如果模型已经加载或正在加载中，则直接返回。
+        使用后台线程加载模型，避免阻塞主线程。
+        """
         if BERTVectorizationService._model_loaded:
             return
         
-        # 调试代码：如果模型已经加载过，不应该再次加载
-        if hasattr(BERTVectorizationService, '_loading_attempted') and BERTVectorizationService._loading_attempted:
-            logger.error("❌ 模型重复加载检测：模型已经被加载过，不应该再次加载！")
-            assert False, "模型重复加载：模型已经被加载过，不应该再次加载！"
-        
         if BERTVectorizationService._loading:
-            # 等待加载完成
+            # 等待其他线程完成加载
             while BERTVectorizationService._loading:
                 await asyncio.sleep(0.1)
             return
         
         BERTVectorizationService._loading = True
-        BERTVectorizationService._loading_attempted = True  # 标记已尝试加载
         try:
-            logger.info(f"🔄 正在加载BERT模型: {self.model_name}")
+            logger.info(f"正在加载BERT模型: {self.model_name}")
             
             # 在后台线程中加载模型
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(None, self._load_model_sync)
             
             BERTVectorizationService._model_loaded = True
-            logger.info(f"✅ BERT模型加载成功: {self.model_name}")
+            logger.info(f"BERT模型加载成功: {self.model_name}")
             
         except Exception as e:
-            logger.error(f"❌ BERT模型加载失败: {e}")
+            logger.error(f"BERT模型加载失败: {e}")
             BERTVectorizationService._model_loaded = False
             raise
         finally:
@@ -87,23 +107,27 @@ class BERTVectorizationService:
         return BERTVectorizationService._model_loaded
     
     def _load_model_sync(self):
-        """同步加载sentence-transformers模型（在后台线程中执行）"""
+        """
+        同步加载sentence-transformers模型（在后台线程中执行）
+        
+        优先尝试从本地缓存加载，失败时从Hugging Face下载。
+        """
         try:
             # 尝试从本地缓存加载
             try:
                 model_path = "/home/wy/.cache/modelscope/hub/models/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
                 BERTVectorizationService._model = SentenceTransformer(model_path)
-                logger.info(f"📦 已加载模型: {self.model_name} (设备: {self.device}) - 使用本地缓存")
-            except:
+                logger.info(f"已加载模型: {self.model_name} (设备: {self.device}) - 使用本地缓存")
+            except Exception:
                 # 如果本地加载失败，从Hugging Face下载
                 BERTVectorizationService._model = SentenceTransformer(self.model_name)
-                logger.info(f"📦 已加载模型: {self.model_name} (设备: {self.device}) - 从Hugging Face下载")
+                logger.info(f"已加载模型: {self.model_name} (设备: {self.device}) - 从Hugging Face下载")
             
             BERTVectorizationService._model_loaded = True
             
         except Exception as e:
-            logger.error(f"❌ 模型加载失败: {e}")
-            logger.error(f"💡 提示: 请确保模型已下载到本地缓存")
+            logger.error(f"模型加载失败: {e}")
+            logger.error("提示: 请确保模型已下载到本地缓存")
             BERTVectorizationService._loading = False
             raise
     
@@ -115,13 +139,13 @@ class BERTVectorizationService:
             text: 输入文本
             
         Returns:
-            384维向量
+            np.ndarray: 384维向量，失败时返回零向量
         """
         if not BERTVectorizationService._model_loaded:
             await self.load_model()
         
         if not text or not text.strip():
-            return np.zeros(384)
+            return np.zeros(self.vector_dimension)
         
         try:
             # 预处理文本
@@ -134,10 +158,19 @@ class BERTVectorizationService:
             return vector
             
         except Exception as e:
-            return np.zeros(384)
+            logger.warning(f"文本向量化失败: {e}")
+            return np.zeros(self.vector_dimension)
     
     def _vectorize_sync(self, text: str) -> np.ndarray:
-        """同步向量化（在后台线程中执行）"""
+        """
+        同步向量化（在后台线程中执行）
+        
+        Args:
+            text: 预处理后的文本
+            
+        Returns:
+            np.ndarray: 384维向量
+        """
         try:
             # 使用sentence-transformers进行向量化，禁用进度条
             vector = BERTVectorizationService._model.encode(text, show_progress_bar=False)
@@ -146,7 +179,8 @@ class BERTVectorizationService:
             return vector
             
         except Exception as e:
-            return np.zeros(384)
+            logger.warning(f"同步向量化失败: {e}")
+            return np.zeros(self.vector_dimension)
     
     async def vectorize_batch(self, texts: List[str]) -> List[np.ndarray]:
         """
@@ -156,7 +190,7 @@ class BERTVectorizationService:
             texts: 文本列表
             
         Returns:
-            向量列表
+            List[np.ndarray]: 向量列表，失败时返回零向量列表
         """
         if not BERTVectorizationService._model_loaded:
             await self.load_model()
@@ -175,10 +209,19 @@ class BERTVectorizationService:
             return vectors
             
         except Exception as e:
-            return [np.zeros(384) for _ in texts]
+            logger.warning(f"批量向量化失败: {e}")
+            return [np.zeros(self.vector_dimension) for _ in texts]
     
     def _vectorize_batch_sync(self, texts: List[str]) -> List[np.ndarray]:
-        """同步批量向量化（在后台线程中执行）"""
+        """
+        同步批量向量化（在后台线程中执行）
+        
+        Args:
+            texts: 预处理后的文本列表
+            
+        Returns:
+            List[np.ndarray]: 向量列表
+        """
         try:
             # 使用sentence-transformers进行批量向量化，禁用进度条
             vectors = BERTVectorizationService._model.encode(texts, show_progress_bar=False)
@@ -192,17 +235,20 @@ class BERTVectorizationService:
                 return [vectors[i] for i in range(len(vectors))]
             
         except Exception as e:
-            return [np.zeros(384) for _ in texts]
+            logger.warning(f"同步批量向量化失败: {e}")
+            return [np.zeros(self.vector_dimension) for _ in texts]
     
     def _preprocess_text(self, text: str) -> str:
         """
         文本预处理
         
+        清理和标准化输入文本，提高向量化质量。
+        
         Args:
             text: 原始文本
             
         Returns:
-            预处理后的文本
+            str: 预处理后的文本
         """
         if not text:
             return ""
@@ -219,39 +265,63 @@ class BERTVectorizationService:
         # 4. 清理多余空白
         text = re.sub(r'\s+', ' ', text)
         
-        # 5. 对于短文本，添加一些上下文信息
-        if len(text.strip()) < 10:
-            # 短文本可能缺乏足够的语义信息，保持原样
-            pass
-        
-        # 6. 截断过长的文本
-        if len(text) > 2000:  # 限制文本长度
+        # 5. 截断过长的文本（避免内存问题）
+        if len(text) > 2000:
             text = text[:2000]
         
         return text.strip()
     
     def vector_to_json(self, vector: np.ndarray) -> str:
-        """将向量转换为JSON字符串"""
+        """
+        将向量转换为JSON字符串
+        
+        Args:
+            vector: numpy向量数组
+            
+        Returns:
+            str: JSON格式的向量字符串
+        """
         return json.dumps(vector.tolist())
     
     def json_to_vector(self, json_str: str) -> np.ndarray:
-        """将JSON字符串转换为向量"""
+        """
+        将JSON字符串转换为向量
+        
+        Args:
+            json_str: JSON格式的向量字符串
+            
+        Returns:
+            np.ndarray: 向量数组，失败时返回零向量
+        """
         try:
             return np.array(json.loads(json_str))
-        except:
-            return np.zeros(384)
+        except Exception as e:
+            logger.warning(f"JSON向量转换失败: {e}")
+            return np.zeros(self.vector_dimension)
     
     async def get_model_info(self) -> Dict[str, Any]:
-        """获取模型信息"""
+        """
+        获取模型信息
+        
+        Returns:
+            Dict[str, Any]: 模型配置信息
+        """
         return {
             "model_name": self.model_name,
             "model_loaded": BERTVectorizationService._model_loaded,
             "max_length": self.max_length,
             "device": self.device,
-            "vector_dimension": 384
+            "vector_dimension": self.vector_dimension
         }
 
 # 依赖注入函数
 def get_vectorization_service() -> BERTVectorizationService:
-    """获取向量化服务实例"""
+    """
+    获取向量化服务实例
+    
+    使用单例模式，确保全局只有一个向量化服务实例。
+    
+    Returns:
+        BERTVectorizationService: 向量化服务实例
+    """
     return BERTVectorizationService()

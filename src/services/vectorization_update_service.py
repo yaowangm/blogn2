@@ -3,15 +3,31 @@
 
 当文章发布或修改时，自动更新相关的向量化存储表。
 支持增量更新和批量更新，确保搜索索引与内容保持同步。
+
+主要功能：
+- 文章向量化更新（标题+内容+片段）
+- 评论向量化更新
+- 向量数据删除
+- 批量向量化处理
+- 文本分段和过滤
+
+技术特性：
+- 事务安全（与主业务操作在同一事务中）
+- 智能文本分段（滑动窗口）
+- 内容过滤（跳过无效段落）
+- 错误降级处理
 """
 
 import asyncio
+import json
 import logging
-import numpy as np
+import re
+import string
 from typing import List, Dict, Any, Optional
-from datetime import datetime
-from sqlmodel.ext.asyncio.session import AsyncSession
+
+import numpy as np
 from sqlalchemy import text
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.services.vectorization_service import BERTVectorizationService
 from src.services.model_cache import get_cached_model
@@ -21,14 +37,32 @@ logger = logging.getLogger(__name__)
 
 
 class VectorizationUpdateService:
-    """向量化更新服务"""
+    """
+    向量化更新服务
+    
+    负责管理文章和评论的向量化数据更新，包括创建、更新和删除操作。
+    支持智能文本分段和内容过滤，确保向量化质量。
+    """
     
     def __init__(self, session: AsyncSession):
+        """
+        初始化向量化更新服务
+        
+        Args:
+            session: 数据库会话
+        """
         self.session = session
         self.vectorization_service = None
     
-    async def _get_vectorization_service(self) -> BERTVectorizationService:
-        """获取向量化服务实例"""
+    async def _get_vectorization_service(self) -> Optional[BERTVectorizationService]:
+        """
+        获取向量化服务实例
+        
+        优先使用预加载的模型缓存，失败时创建新实例。
+        
+        Returns:
+            Optional[BERTVectorizationService]: 向量化服务实例，失败时返回None
+        """
         if self.vectorization_service is None:
             try:
                 # 尝试使用预加载的模型缓存
@@ -37,7 +71,6 @@ class VectorizationUpdateService:
                 # 如果缓存未初始化，尝试直接创建新的向量化服务
                 logger.warning("模型缓存未初始化，尝试直接创建向量化服务")
                 try:
-                    from src.services.vectorization_service import BERTVectorizationService
                     self.vectorization_service = BERTVectorizationService()
                     # 立即尝试加载模型，避免延迟加载失败
                     await self.vectorization_service.load_model()
@@ -51,6 +84,9 @@ class VectorizationUpdateService:
         """
         更新文章向量
         
+        对文章标题、内容和片段进行向量化，并存储到数据库中。
+        支持增量更新和智能文本分段。
+        
         Args:
             article_id: 文章ID
             title: 文章标题
@@ -60,7 +96,6 @@ class VectorizationUpdateService:
             bool: 更新是否成功
         """
         try:
-            
             # 获取向量化服务
             vectorization_service = await self._get_vectorization_service()
             
@@ -69,10 +104,8 @@ class VectorizationUpdateService:
                 logger.warning(f"向量化服务不可用，跳过文章 {article_id} 的向量化更新")
                 return False
             
-            # 向量化标题
+            # 向量化标题和内容
             title_vector = await vectorization_service.vectorize_text(title or "")
-            
-            # 向量化整个内容作为整体向量
             content_vector = await vectorization_service.vectorize_text(content or "")
             
             # 处理长文本分段
@@ -118,7 +151,15 @@ class VectorizationUpdateService:
             return False
     
     async def _get_existing_article_vector(self, article_id: int) -> Optional[Dict]:
-        """获取现有的文章向量记录"""
+        """
+        获取现有的文章向量记录
+        
+        Args:
+            article_id: 文章ID
+            
+        Returns:
+            Optional[Dict]: 现有向量记录，不存在时返回None
+        """
         try:
             query = text("""
                 SELECT id, title_text, content_text, updated_at
@@ -336,10 +377,15 @@ class VectorizationUpdateService:
             return None
     
     def _vector_to_json(self, vector: Any) -> str:
-        """将向量转换为JSON字符串"""
-        import json
-        import numpy as np
+        """
+        将向量转换为JSON字符串
         
+        Args:
+            vector: 向量数据（numpy数组、列表或元组）
+            
+        Returns:
+            str: JSON格式的向量字符串
+        """
         if hasattr(vector, 'tolist'):
             return json.dumps(vector.tolist())
         elif isinstance(vector, (list, tuple)):
@@ -548,6 +594,8 @@ class VectorizationUpdateService:
         """
         判断是否应该跳过该段落
         
+        过滤掉过短或只包含标点符号的段落，提高向量化质量。
+        
         Args:
             text: 段落文本
             
@@ -565,14 +613,10 @@ class VectorizationUpdateService:
             return True
             
         # 2. 完全由标点符号组成的段落
-        import string
-        import re
-        
         # 中英文标点符号
         punctuation_chars = string.punctuation + '，。！？；：""''（）【】《》〈〉「」『』〔〕…—·'
         
         # 检查是否只包含标点符号、空白字符和换行符
-        # 使用更精确的正则表达式，避免误判中文字符
         text_without_punctuation = re.sub(r'[' + re.escape(punctuation_chars) + r'\s\n\r\t]', '', text)
         
         if len(text_without_punctuation) == 0:
@@ -584,13 +628,14 @@ class VectorizationUpdateService:
         """
         判断是否为关键片段
         
+        基于关键词检测判断片段的重要性。
+        
         Args:
             text: 片段文本
             
         Returns:
             bool: 是否为关键片段
         """
-        # 简单的关键词检测
         key_indicators = ['重要', '关键', '核心', '主要', '总结', '结论', '要点']
         return any(indicator in text for indicator in key_indicators)
     
@@ -598,13 +643,14 @@ class VectorizationUpdateService:
         """
         计算语义密度
         
+        基于词汇多样性计算片段的语义丰富程度。
+        
         Args:
             text: 片段文本
             
         Returns:
             float: 语义密度 (0-1)
         """
-        # 简单的语义密度计算：基于词汇多样性
         words = text.split()
         unique_words = set(words)
         return len(unique_words) / len(words) if words else 0.0
@@ -613,13 +659,14 @@ class VectorizationUpdateService:
         """
         计算关键词密度
         
+        基于技术关键词计算片段的技术含量。
+        
         Args:
             text: 片段文本
             
         Returns:
             float: 关键词密度 (0-1)
         """
-        # 简单的关键词密度计算
         keywords = ['技术', '方法', '实现', '系统', '算法', '数据', '分析', '研究']
         word_count = len(text.split())
         keyword_count = sum(1 for keyword in keywords if keyword in text)
@@ -954,8 +1001,17 @@ class VectorizationUpdateService:
 _vectorization_services = {}
 
 def get_vectorization_update_service(session: AsyncSession) -> VectorizationUpdateService:
-    """获取向量化更新服务实例（支持实例复用）"""
-    # 使用session的id作为缓存键，避免重复创建相同session的服务
+    """
+    获取向量化更新服务实例（支持实例复用）
+    
+    使用session的id作为缓存键，避免重复创建相同session的服务实例。
+    
+    Args:
+        session: 数据库会话
+        
+    Returns:
+        VectorizationUpdateService: 向量化更新服务实例
+    """
     session_id = id(session)
     
     if session_id not in _vectorization_services:

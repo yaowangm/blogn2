@@ -2,25 +2,30 @@
 """
 文章相似度分析脚本
 
+用于分析关键词与文章内容的相似度，帮助理解向量化效果和搜索质量。
+
+主要功能：
+- 计算关键词与文章标题的相似度
+- 计算关键词与文章每个内容段的相似度
+- 计算关键词与文章的整体相似度
+- 使用sentence-transformers模型进行向量化
+- 提供详细的相似度分析报告
+
 用法:
     python analyze_similarity.py "关键词" "{1,2,3,4,5}"
-
-功能:
-    - 计算关键词与文章标题的相似度
-    - 计算关键词与文章每个内容段的相似度
-    - 计算关键词与文章的整体相似度
-    - 使用sentence-transformers模型进行向量化
+    python analyze_similarity.py "机器学习" "{1,2,3}" --threshold 0.7
 """
 
-import asyncio
-import sys
 import argparse
+import asyncio
 import json
-from typing import List, Dict, Any, Tuple
-import numpy as np
-from sqlmodel import create_engine, text
-from dotenv import load_dotenv
 import os
+import sys
+from typing import List, Dict, Any, Tuple
+
+import numpy as np
+from dotenv import load_dotenv
+from sqlmodel import create_engine, text
 
 # 添加项目根目录到Python路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -31,19 +36,39 @@ from src.services.vectorization_service import BERTVectorizationService
 load_dotenv()
 
 class SimilarityAnalyzer:
+    """
+    相似度分析器
+    
+    用于分析关键词与文章内容的相似度，提供详细的相似度分析报告。
+    """
+    
     def __init__(self, database_url: str):
-        """初始化相似度分析器"""
+        """
+        初始化相似度分析器
+        
+        Args:
+            database_url: 数据库连接URL
+        """
         self.engine = create_engine(database_url)
         self.vectorization_service = None
         
     async def load_model(self):
         """加载向量化服务"""
-        print("🔄 正在加载BERT模型...")
+        print("正在加载BERT模型...")
         self.vectorization_service = BERTVectorizationService()
-        print("✅ BERT模型加载成功")
+        await self.vectorization_service.load_model()
+        print("BERT模型加载成功")
         
     async def vectorize_text(self, text: str) -> np.ndarray:
-        """向量化文本"""
+        """
+        向量化文本
+        
+        Args:
+            text: 输入文本
+            
+        Returns:
+            np.ndarray: 向量化结果
+        """
         if self.vectorization_service is None:
             raise ValueError("向量化服务未加载，请先调用load_model()")
         return await self.vectorization_service.vectorize_text(text)

@@ -5,36 +5,46 @@
 用于将现有的文章和评论数据批量向量化，填充向量表。
 支持多进程、进度显示、中断恢复等功能。
 
+主要功能：
+- 多进程并行向量化处理
+- 支持文章和评论的独立处理
+- 进度显示和中断恢复
+- 灵活的过滤和筛选选项
+- 完整的错误处理和日志记录
+
 使用方法:
     python scripts/batch_vectorization.py --processes 4 --clear-tables
     python scripts/batch_vectorization.py --processes 8 --resume
+    python scripts/batch_vectorization.py --articles-only --user-id 123
+    python scripts/batch_vectorization.py --article-ids 1,2,3,4,5
 """
 
-import asyncio
 import argparse
+import asyncio
 import logging
+import os
+import signal
+import sys
+import time
 import warnings
+from datetime import datetime
+from multiprocessing import Process, Queue, Value
+from typing import List, Dict, Any, Optional, Tuple
 
 # 忽略transformers库的弃用警告
 warnings.filterwarnings('ignore', category=UserWarning, module='transformers')
-import time
-import sys
-import os
 
 # 禁用sentence-transformers的进度条
 os.environ['SENTENCE_TRANSFORMERS_DISABLE_PROGRESS_BAR'] = '1'
-from typing import List, Dict, Any, Optional, Tuple
-from datetime import datetime
-from multiprocessing import Process, Queue, Value
-import signal
 
 # 添加项目根目录到Python路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from sqlalchemy import text
+
 from src.database import get_async_session
 from src.services.vectorization_service import BERTVectorizationService
 from src.services.vectorization_update_service import VectorizationUpdateService
-from sqlalchemy import text
 
 # 配置日志
 logging.basicConfig(
@@ -48,12 +58,33 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class BatchVectorization:
-    """批量向量化处理器"""
+    """
+    批量向量化处理器
+    
+    负责处理文章和评论的批量向量化任务，支持多进程并行处理。
+    提供进度跟踪、错误处理和恢复功能。
+    """
     
     def __init__(self, process_id: int, queue: Queue, progress_counter: Value, 
                  total_count: Value, start_time: Value, clear_tables: bool = False,
                  articles_only: bool = False, comments_only: bool = False, total_processes: int = 1,
                  user_id: int = None, article_id_list: list = None):
+        """
+        初始化批量向量化处理器
+        
+        Args:
+            process_id: 进程ID
+            queue: 进程间通信队列
+            progress_counter: 进度计数器
+            total_count: 总记录数
+            start_time: 开始时间
+            clear_tables: 是否清空向量表
+            articles_only: 是否只处理文章
+            comments_only: 是否只处理评论
+            total_processes: 总进程数
+            user_id: 指定用户ID
+            article_id_list: 指定文章ID列表
+        """
         self.process_id = process_id
         self.queue = queue
         self.progress_counter = progress_counter
@@ -69,16 +100,28 @@ class BatchVectorization:
         self.update_service = None
         
     async def _get_vectorization_service(self) -> BERTVectorizationService:
-        """获取向量化服务实例"""
+        """
+        获取向量化服务实例
+        
+        Returns:
+            BERTVectorizationService: 向量化服务实例
+        """
         if self.vectorization_service is None:
-            # 确保使用修复后的向量化服务（包含向量归一化）
             self.vectorization_service = BERTVectorizationService()
             await self.vectorization_service.load_model()
-            logger.info(f"进程 {self.process_id}: 已加载修复后的向量化服务（包含向量归一化）")
+            logger.info(f"进程 {self.process_id}: 已加载向量化服务")
         return self.vectorization_service
     
     async def _get_update_service(self, session) -> VectorizationUpdateService:
-        """获取向量化更新服务实例"""
+        """
+        获取向量化更新服务实例
+        
+        Args:
+            session: 数据库会话
+            
+        Returns:
+            VectorizationUpdateService: 向量化更新服务实例
+        """
         if self.update_service is None:
             self.update_service = VectorizationUpdateService(session)
         return self.update_service
