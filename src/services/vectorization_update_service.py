@@ -39,9 +39,10 @@ class VectorizationUpdateService:
                 try:
                     from src.services.vectorization_service import BERTVectorizationService
                     self.vectorization_service = BERTVectorizationService()
-                    # 不在这里加载模型，让向量化时再加载
+                    # 立即尝试加载模型，避免延迟加载失败
+                    await self.vectorization_service.load_model()
                 except Exception as e:
-                    logger.error(f"创建向量化服务失败: {e}")
+                    logger.error(f"创建或加载向量化服务失败: {e}")
                     return None
         
         return self.vectorization_service
@@ -912,9 +913,15 @@ class VectorizationUpdateService:
             raise
 
 
-# 全局向量化更新服务实例
-_vectorization_update_service = None
+# 全局向量化更新服务实例缓存
+_vectorization_services = {}
 
 def get_vectorization_update_service(session: AsyncSession) -> VectorizationUpdateService:
-    """获取向量化更新服务实例"""
-    return VectorizationUpdateService(session)
+    """获取向量化更新服务实例（支持实例复用）"""
+    # 使用session的id作为缓存键，避免重复创建相同session的服务
+    session_id = id(session)
+    
+    if session_id not in _vectorization_services:
+        _vectorization_services[session_id] = VectorizationUpdateService(session)
+    
+    return _vectorization_services[session_id]

@@ -651,19 +651,7 @@ async def create_post(
         stats_service = GlobalStatsService(session)
         await stats_service.update_project_item_count(increment=True)
         
-        # 提交事务（所有操作在同一个事务中）
-        await session.commit()
-        
-        # 广播新文章给所有订阅者
-        try:
-            from src.services.broadcast_service import BroadcastService
-            broadcast_service = BroadcastService(session)
-            await broadcast_service.broadcast_new_article(project_id, created_post.id)
-        except Exception as e:
-            # 广播失败不影响文章创建，静默处理
-            pass
-        
-        # 异步创建向量化索引
+        # 在主事务提交前进行向量化处理
         try:
             from src.services.vectorization_update_service import get_vectorization_update_service
             vectorization_service = get_vectorization_update_service(session)
@@ -675,7 +663,21 @@ async def create_post(
             
         except Exception as e:
             # 向量化创建失败不影响文章创建成功
-            print(f"向量化创建失败: {e}")
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"向量化创建失败: {e}")
+        
+        # 提交事务（所有操作在同一个事务中）
+        await session.commit()
+        
+        # 广播新文章给所有订阅者
+        try:
+            from src.services.broadcast_service import BroadcastService
+            broadcast_service = BroadcastService(session)
+            await broadcast_service.broadcast_new_article(project_id, created_post.id)
+        except Exception as e:
+            # 广播失败不影响文章创建，静默处理
+            pass
         
         return {
             "id": created_post.id,

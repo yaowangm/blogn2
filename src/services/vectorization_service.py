@@ -12,6 +12,10 @@ from sentence_transformers import SentenceTransformer
 import re
 import warnings
 import os
+import logging
+
+# 设置日志记录器
+logger = logging.getLogger(__name__)
 
 # 禁用sentence-transformers的进度条
 os.environ['SENTENCE_TRANSFORMERS_DISABLE_PROGRESS_BAR'] = '1'
@@ -50,7 +54,7 @@ class BERTVectorizationService:
         
         # 调试代码：如果模型已经加载过，不应该再次加载
         if hasattr(BERTVectorizationService, '_loading_attempted') and BERTVectorizationService._loading_attempted:
-            print("❌ 模型重复加载检测：模型已经被加载过，不应该再次加载！")
+            logger.error("❌ 模型重复加载检测：模型已经被加载过，不应该再次加载！")
             assert False, "模型重复加载：模型已经被加载过，不应该再次加载！"
         
         if BERTVectorizationService._loading:
@@ -62,17 +66,17 @@ class BERTVectorizationService:
         BERTVectorizationService._loading = True
         BERTVectorizationService._loading_attempted = True  # 标记已尝试加载
         try:
-            print(f"🔄 正在加载BERT模型: {self.model_name}")
+            logger.info(f"🔄 正在加载BERT模型: {self.model_name}")
             
             # 在后台线程中加载模型
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(None, self._load_model_sync)
             
             BERTVectorizationService._model_loaded = True
-            print(f"✅ BERT模型加载成功: {self.model_name}")
+            logger.info(f"✅ BERT模型加载成功: {self.model_name}")
             
         except Exception as e:
-            print(f"❌ BERT模型加载失败: {e}")
+            logger.error(f"❌ BERT模型加载失败: {e}")
             BERTVectorizationService._model_loaded = False
             raise
         finally:
@@ -89,17 +93,17 @@ class BERTVectorizationService:
             try:
                 model_path = "/home/wy/.cache/modelscope/hub/models/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
                 BERTVectorizationService._model = SentenceTransformer(model_path)
-                print(f"📦 已加载模型: {self.model_name} (设备: {self.device}) - 使用本地缓存")
+                logger.info(f"📦 已加载模型: {self.model_name} (设备: {self.device}) - 使用本地缓存")
             except:
                 # 如果本地加载失败，从Hugging Face下载
                 BERTVectorizationService._model = SentenceTransformer(self.model_name)
-                print(f"📦 已加载模型: {self.model_name} (设备: {self.device}) - 从Hugging Face下载")
+                logger.info(f"📦 已加载模型: {self.model_name} (设备: {self.device}) - 从Hugging Face下载")
             
             BERTVectorizationService._model_loaded = True
             
         except Exception as e:
-            print(f"❌ 模型加载失败: {e}")
-            print(f"💡 提示: 请确保模型已下载到本地缓存")
+            logger.error(f"❌ 模型加载失败: {e}")
+            logger.error(f"💡 提示: 请确保模型已下载到本地缓存")
             BERTVectorizationService._loading = False
             raise
     
