@@ -84,7 +84,7 @@ class TestBERTVectorizationPerformance:
             article_ids = [article.id for article in self.test_articles]
             if article_ids:
                 # 删除文章向量
-                await self.session.exec(text("""
+                await self.session.execute(text("""
                     DELETE FROM article_vectors WHERE projectitem_id = ANY(:article_ids)
                 """), {"article_ids": article_ids})
                 

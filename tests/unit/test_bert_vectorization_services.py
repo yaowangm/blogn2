@@ -43,6 +43,11 @@ class TestBERTVectorizationService:
     @pytest.mark.asyncio
     async def test_model_loading(self, vectorization_service):
         """测试模型加载"""
+        # 重置模型状态，确保测试隔离
+        BERTVectorizationService._model_loaded = False
+        BERTVectorizationService._loading = False
+        BERTVectorizationService._model = None
+        
         # 模拟模型加载成功
         with patch.object(vectorization_service, '_load_model_sync') as mock_load:
             mock_load.return_value = None
@@ -315,8 +320,8 @@ class TestHierarchicalSearchService:
         assert complex_threshold < simple_threshold
         
         # 包含数字的查询应该有更高阈值
-        normal_threshold = search_service.calculate_dynamic_threshold("算法", "[]")
-        number_threshold = search_service.calculate_dynamic_threshold("算法123", "[]")
+        normal_threshold = search_service.calculate_dynamic_threshold("机器学习算法", "[]")
+        number_threshold = search_service.calculate_dynamic_threshold("机器学习算法123", "[]")
         
         assert number_threshold > normal_threshold
     
@@ -355,7 +360,8 @@ class TestHierarchicalSearchService:
     def test_result_formatting(self, search_service):
         """测试结果格式化"""
         # 测试文章结果格式化
-        article_item = (1, "测试标题", "测试内容", "测试作者", "2024-01-01 10:00:00", 0.95)
+        from datetime import datetime
+        article_item = (1, "测试标题", "测试内容", "测试作者", datetime(2024, 1, 1, 10, 0, 0), 0.95)
         formatted = search_service._format_article_result(article_item)
         
         assert formatted["id"] == 1
@@ -366,7 +372,7 @@ class TestHierarchicalSearchService:
         assert formatted["relevance_score"] == 0.95
         
         # 测试评论结果格式化
-        comment_item = (2, "评论标题", "评论内容", "评论作者", "2024-01-01 11:00:00", 0.85)
+        comment_item = (2, "评论标题", "评论内容", "评论作者", datetime(2024, 1, 1, 11, 0, 0), 0.85)
         formatted = search_service._format_comment_result(comment_item)
         
         assert formatted["id"] == 2

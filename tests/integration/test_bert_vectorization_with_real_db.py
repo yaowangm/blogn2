@@ -89,12 +89,12 @@ class TestBERTVectorizationIntegration:
         """清理向量化相关数据"""
         try:
             # 删除文章向量
-            await self.session.exec(text("""
+            await self.session.execute(text("""
                 DELETE FROM article_vectors WHERE projectitem_id = :article_id
             """), {"article_id": self.test_article_id})
             
             # 删除评论向量
-            await self.session.exec(text("""
+            await self.session.execute(text("""
                 DELETE FROM comment_vectors WHERE post_id = :comment_id
             """), {"comment_id": self.test_comment_id})
             
@@ -105,6 +105,11 @@ class TestBERTVectorizationIntegration:
     @pytest.mark.asyncio
     async def test_vectorization_service_basic_functionality(self):
         """测试向量化服务基本功能"""
+        # 重置模型状态，确保测试隔离
+        BERTVectorizationService._model_loaded = False
+        BERTVectorizationService._loading = False
+        BERTVectorizationService._model = None
+        
         # 创建向量化服务
         vectorization_service = BERTVectorizationService()
         
@@ -146,13 +151,13 @@ class TestBERTVectorizationIntegration:
         success = await update_service.update_article_vectors(
             self.test_article_id,
             "机器学习基础教程",
-            "这是一篇关于机器学习基础知识的详细教程，包含算法原理、实现方法和实际应用案例。"
+            "这是一篇关于机器学习基础知识的详细教程，包含算法原理、实现方法和实际应用案例。机器学习是人工智能的一个重要分支，它通过算法和统计模型使计算机系统能够自动学习和改进性能。深度学习作为机器学习的子领域，使用多层神经网络来模拟人脑的工作方式，在图像识别、自然语言处理等领域取得了突破性进展。"
         )
         
         assert success == True
         
         # 验证文章向量是否创建
-        result = await self.session.exec(text("""
+        result = await self.session.execute(text("""
             SELECT id, title_text, content_text, segment_count
             FROM article_vectors 
             WHERE projectitem_id = :article_id
@@ -161,11 +166,11 @@ class TestBERTVectorizationIntegration:
         article_vector = result.fetchone()
         assert article_vector is not None
         assert article_vector[1] == "机器学习基础教程"
-        assert article_vector[2] == "这是一篇关于机器学习基础知识的详细教程，包含算法原理、实现方法和实际应用案例。"
+        assert article_vector[2] == "这是一篇关于机器学习基础知识的详细教程，包含算法原理、实现方法和实际应用案例。机器学习是人工智能的一个重要分支，它通过算法和统计模型使计算机系统能够自动学习和改进性能。深度学习作为机器学习的子领域，使用多层神经网络来模拟人脑的工作方式，在图像识别、自然语言处理等领域取得了突破性进展。"
         assert article_vector[3] >= 1  # 至少有一个片段
         
         # 验证片段向量是否创建
-        segment_result = await self.session.exec(text("""
+        segment_result = await self.session.execute(text("""
             SELECT COUNT(*) FROM content_segment_vectors 
             WHERE article_vector_id = :article_vector_id
         """), {"article_vector_id": article_vector[0]})
@@ -190,7 +195,7 @@ class TestBERTVectorizationIntegration:
         assert success == True
         
         # 验证评论向量是否创建
-        result = await self.session.exec(text("""
+        result = await self.session.execute(text("""
             SELECT id, title_text, content_text, segment_count
             FROM comment_vectors 
             WHERE post_id = :comment_id
@@ -295,6 +300,11 @@ class TestBERTVectorizationIntegration:
     @pytest.mark.asyncio
     async def test_vectorization_quality(self):
         """测试向量化质量"""
+        # 重置模型状态，确保测试隔离
+        BERTVectorizationService._model_loaded = False
+        BERTVectorizationService._loading = False
+        BERTVectorizationService._model = None
+        
         vectorization_service = BERTVectorizationService()
         await vectorization_service.load_model()
         
@@ -410,7 +420,7 @@ class TestBERTVectorizationIntegration:
         
         # 验证向量是否创建
         for article_id in article_ids:
-            vector_result = await self.session.exec(text("""
+            vector_result = await self.session.execute(text("""
                 SELECT COUNT(*) FROM article_vectors 
                 WHERE projectitem_id = :article_id
             """), {"article_id": article_id})
@@ -468,13 +478,13 @@ class TestBERTVectorizationIntegration:
         await self.session.commit()
         
         # 验证数据存在
-        article_count = await self.session.exec(text("""
+        article_count = await self.session.execute(text("""
             SELECT COUNT(*) FROM article_vectors 
             WHERE projectitem_id = :article_id
         """), {"article_id": self.test_article_id})
         assert article_count.fetchone()[0] == 1
         
-        comment_count = await self.session.exec(text("""
+        comment_count = await self.session.execute(text("""
             SELECT COUNT(*) FROM comment_vectors 
             WHERE post_id = :comment_id
         """), {"comment_id": self.test_comment_id})
@@ -490,13 +500,13 @@ class TestBERTVectorizationIntegration:
         await self.session.commit()
         
         # 验证数据已删除
-        article_count_after = await self.session.exec(text("""
+        article_count_after = await self.session.execute(text("""
             SELECT COUNT(*) FROM article_vectors 
             WHERE projectitem_id = :article_id
         """), {"article_id": self.test_article_id})
         assert article_count_after.fetchone()[0] == 0
         
-        comment_count_after = await self.session.exec(text("""
+        comment_count_after = await self.session.execute(text("""
             SELECT COUNT(*) FROM comment_vectors 
             WHERE post_id = :comment_id
         """), {"comment_id": self.test_comment_id})

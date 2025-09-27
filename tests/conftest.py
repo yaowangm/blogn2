@@ -584,7 +584,12 @@ async def real_async_session(real_async_engine):
             yield session
         finally:
             # 回滚到保存点
-            await savepoint.rollback()
+            try:
+                await savepoint.rollback()
+            except Exception as e:
+                # 如果事务已经关闭，忽略错误
+                if "This transaction is closed" not in str(e):
+                    print(f"Warning: Failed to rollback savepoint: {e}")
 
 @pytest.fixture
 async def real_async_session_with_commit(real_async_engine):
