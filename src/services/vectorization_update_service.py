@@ -244,7 +244,6 @@ class VectorizationUpdateService:
             bool: 删除是否成功
         """
         try:
-            
             # 删除文章向量记录（级联删除片段向量）
             query = text("""
                 DELETE FROM article_vectors 
@@ -252,6 +251,9 @@ class VectorizationUpdateService:
             """)
             
             await self.session.execute(query, {"article_id": article_id})
+            
+            # 注意：不在这里提交事务，由调用方管理事务
+            # 这样可以确保向量化删除与文章删除在同一个事务中
             
             return True
             
