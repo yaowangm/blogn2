@@ -314,14 +314,21 @@ class BERTVectorizationService:
             "vector_dimension": self.vector_dimension
         }
 
-# 依赖注入函数
+# 依赖注入函数（已废弃）
 def get_vectorization_service() -> BERTVectorizationService:
     """
-    获取向量化服务实例
+    获取向量化服务实例（已废弃）
     
-    使用单例模式，确保全局只有一个向量化服务实例。
+    注意：此函数已废弃，应该使用 get_cached_model() 获取预加载的模型。
+    此函数保留仅用于向后兼容，但会抛出错误提醒开发者使用正确的缓存模型。
     
     Returns:
         BERTVectorizationService: 向量化服务实例
+        
+    Raises:
+        RuntimeError: 提醒使用 get_cached_model() 替代
     """
-    return BERTVectorizationService()
+    raise RuntimeError(
+        "get_vectorization_service() 已废弃，请使用 get_cached_model() 获取预加载的模型。"
+        "模型应该在服务器启动时加载，不应该在运行时创建新实例。"
+    )

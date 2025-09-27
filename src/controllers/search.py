@@ -43,12 +43,23 @@ async def search_content(
             vectorization_service = get_cached_model()
             search_service = HierarchicalSearchService(vectorization_service, session)
         except RuntimeError:
-            # 模型缓存未初始化，使用降级方案
+            # 模型缓存未初始化，返回错误而不是创建新实例
             search_method = "bert_model_error"  # 模型加载失败
             model_error = True
-            from src.services.vectorization_service import BERTVectorizationService
-            vectorization_service = BERTVectorizationService()
-            search_service = HierarchicalSearchService(vectorization_service, session)
+            # 不创建新的BERTVectorizationService实例，直接返回错误
+            return {
+                "query": q,
+                "type": type,
+                "sort": sort,
+                "page": page,
+                "limit": limit,
+                "total": 0,
+                "results": [],
+                "has_more": False,
+                "search_time": 0.0,
+                "search_method": "bert_model_error",
+                "error": "BERT模型未初始化，请稍后重试"
+            }
         
         # 参数验证
         if not q or not q.strip():

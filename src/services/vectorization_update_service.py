@@ -68,15 +68,9 @@ class VectorizationUpdateService:
                 # 尝试使用预加载的模型缓存
                 self.vectorization_service = get_cached_model()
             except RuntimeError:
-                # 如果缓存未初始化，尝试直接创建新的向量化服务
-                logger.warning("模型缓存未初始化，尝试直接创建向量化服务")
-                try:
-                    self.vectorization_service = BERTVectorizationService()
-                    # 立即尝试加载模型，避免延迟加载失败
-                    await self.vectorization_service.load_model()
-                except Exception as e:
-                    logger.error(f"创建或加载向量化服务失败: {e}")
-                    return None
+                # 如果缓存未初始化，记录错误并返回None
+                logger.error("模型缓存未初始化，无法进行向量化操作")
+                return None
         
         return self.vectorization_service
     
