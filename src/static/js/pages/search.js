@@ -48,6 +48,7 @@ class SearchPage {
         if (searchType) {
             searchType.addEventListener('change', (e) => {
                 this.currentType = e.target.value;
+                this.currentPage = 1; // 切换搜索类型时重置到第一页
                 if (this.currentQuery) {
                     this.performSearch();
                 }
@@ -57,6 +58,7 @@ class SearchPage {
         if (sortBy) {
             sortBy.addEventListener('change', (e) => {
                 this.currentSort = e.target.value;
+                this.currentPage = 1; // 切换排序方式时重置到第一页
                 if (this.currentQuery) {
                     this.performSearch();
                 }
@@ -68,6 +70,7 @@ class SearchPage {
         if (resultsSort) {
             resultsSort.addEventListener('change', (e) => {
                 this.currentSort = e.target.value;
+                this.currentPage = 1; // 切换结果排序时重置到第一页
                 if (this.currentQuery) {
                     this.performSearch();
                 }
@@ -112,6 +115,11 @@ class SearchPage {
         if (!query) {
             this.showError('请输入搜索关键词');
             return;
+        }
+
+        // 检查是否是新的搜索关键词，如果是则重置到第一页
+        if (this.currentQuery !== query) {
+            this.currentPage = 1;
         }
 
         this.currentQuery = query;
