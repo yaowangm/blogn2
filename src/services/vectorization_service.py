@@ -29,6 +29,9 @@ import numpy as np
 import torch
 from sentence_transformers import SentenceTransformer
 
+# 导入模型配置
+from src.config.model import model_settings, get_model_device, get_model_path, get_model_name, get_model_cache_dir
+
 # 设置日志记录器
 logger = logging.getLogger(__name__)
 
@@ -61,11 +64,11 @@ class BERTVectorizationService:
         if hasattr(self, '_initialized'):
             return
         
-        # 模型配置
-        self.model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.max_length = 512
-        self.vector_dimension = 384
+        # 从配置文件加载模型配置
+        self.model_name = get_model_name()
+        self.device = get_model_device()
+        self.max_length = model_settings.max_length
+        self.vector_dimension = model_settings.vector_dimension
         self._initialized = True
     
     async def load_model(self):
@@ -113,13 +116,28 @@ class BERTVectorizationService:
         优先尝试从本地缓存加载，失败时从Hugging Face下载。
         """
         try:
-            # 尝试从本地缓存加载
-            try:
-                model_path = "/home/wy/.cache/modelscope/hub/models/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-                BERTVectorizationService._model = SentenceTransformer(model_path)
-                logger.info(f"已加载模型: {self.model_name} (设备: {self.device}) - 使用本地缓存")
-            except Exception:
-                # 如果本地加载失败，从Hugging Face下载
+            # 获取配置的模型路径
+            model_path = get_model_path()
+            
+            # 如果配置了本地模型路径且优先使用本地模型
+            if model_path and model_settings.prefer_local:
+                try:
+                    BERTVectorizationService._model = SentenceTransformer(model_path)
+                    logger.info(f"已加载模型: {self.model_name} (设备: {self.device}) - 使用本地缓存: {model_path}")
+                    BERTVectorizationService._model_loaded = True
+                    return
+                except Exception as e:
+                    logger.warning(f"本地模型加载失败: {e}")
+                    if not model_settings.fallback_to_huggingface:
+                        raise
+                    logger.info("回退到Hugging Face下载模型...")
+            
+            # 从Hugging Face下载或使用模型名称
+            cache_dir = get_model_cache_dir()
+            if cache_dir:
+                BERTVectorizationService._model = SentenceTransformer(self.model_name, cache_folder=cache_dir)
+                logger.info(f"已加载模型: {self.model_name} (设备: {self.device}) - 从Hugging Face下载到: {cache_dir}")
+            else:
                 BERTVectorizationService._model = SentenceTransformer(self.model_name)
                 logger.info(f"已加载模型: {self.model_name} (设备: {self.device}) - 从Hugging Face下载")
             
@@ -127,7 +145,7 @@ class BERTVectorizationService:
             
         except Exception as e:
             logger.error(f"模型加载失败: {e}")
-            logger.error("提示: 请确保模型已下载到本地缓存")
+            logger.error("提示: 请检查模型配置和网络连接")
             BERTVectorizationService._loading = False
             raise
     
