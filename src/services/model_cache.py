@@ -1,32 +1,60 @@
 """
 模型缓存服务
-在应用启动时预加载BERT模型，避免重复加载
+使用跨进程共享缓存，确保只有一个进程执行模型初始化
 """
 
 import asyncio
+import os
+from typing import Optional
 from src.services.vectorization_service import BERTVectorizationService
+from src.services.shared_model_cache import get_shared_model_cache
 
-# 全局模型缓存
-_model_cache = None
+async def initialize_model_cache() -> Optional[BERTVectorizationService]:
+    """初始化模型缓存并返回模型实例"""
+    try:
+        print(f"🔄 进程 {os.getpid()} 正在初始化BERT模型缓存...")
+        
+        # 使用共享模型缓存
+        shared_cache = get_shared_model_cache()
+        
+        # 从配置获取模型信息
+        from src.config.model import get_model_name, get_model_path
+        model_name = get_model_name()
+        model_path = get_model_path()
+        
+        # 初始化共享模型
+        success = shared_cache.initialize_model(model_name, model_path)
+        
+        if success:
+            # 创建BERTVectorizationService实例，使用共享模型
+            model_cache = BERTVectorizationService()
+            # 直接设置共享的模型，跳过加载过程
+            model_cache._set_shared_model(shared_cache.get_model())
+            print(f"✅ 进程 {os.getpid()} BERT模型缓存初始化完成")
+            return model_cache
+        else:
+            print(f"⚠️  进程 {os.getpid()} BERT模型缓存初始化失败")
+            return None
+            
+    except Exception as e:
+        print(f"⚠️  进程 {os.getpid()} BERT模型缓存初始化失败: {e}")
+        print("💡 搜索功能将使用传统文本搜索")
+        return None
 
-async def initialize_model_cache():
-    """初始化模型缓存"""
-    global _model_cache
-    if _model_cache is None:
-        try:
-            print("🔄 正在初始化BERT模型缓存...")
-            _model_cache = BERTVectorizationService()
-            await _model_cache.load_model()
-            print("✅ BERT模型缓存初始化完成")
-        except Exception as e:
-            print(f"⚠️  BERT模型缓存初始化失败: {e}")
-            print("💡 搜索功能将使用传统文本搜索")
-            _model_cache = None
-    return _model_cache
-
-def get_cached_model():
-    """获取缓存的模型"""
-    global _model_cache
-    if _model_cache is None:
+def get_cached_model() -> BERTVectorizationService:
+    """
+    获取缓存的模型（从共享缓存获取）
+    
+    Returns:
+        BERTVectorizationService: 缓存的模型实例
+    """
+    shared_cache = get_shared_model_cache()
+    model = shared_cache.get_model()
+    
+    if model is None:
         raise RuntimeError("模型缓存未初始化，请先调用 initialize_model_cache()")
-    return _model_cache
+    
+    # 创建BERTVectorizationService实例并设置共享模型
+    model_cache = BERTVectorizationService()
+    model_cache._set_shared_model(model)
+    return model_cache

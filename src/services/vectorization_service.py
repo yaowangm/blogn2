@@ -109,6 +109,12 @@ class BERTVectorizationService:
         """检查模型是否已加载"""
         return BERTVectorizationService._model_loaded
     
+    def _set_shared_model(self, model):
+        """设置共享的模型实例"""
+        BERTVectorizationService._model = model
+        BERTVectorizationService._model_loaded = True
+        logger.info(f"已设置共享模型 (进程: {os.getpid()})")
+    
     def _load_model_sync(self):
         """
         同步加载sentence-transformers模型（在后台线程中执行）

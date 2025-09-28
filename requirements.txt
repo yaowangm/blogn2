@@ -6,6 +6,7 @@ asyncpg==0.29.0
 python-dotenv==1.0.0
 psycopg2-binary==2.9.9
 pydantic-settings==2.0.3
+portalocker==2.8.2
 
 # Cache dependencies
 fastapi-cache2==0.2.1

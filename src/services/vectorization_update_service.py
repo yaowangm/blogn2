@@ -26,6 +26,7 @@ import string
 from typing import List, Dict, Any, Optional
 
 import numpy as np
+from fastapi import FastAPI
 from sqlalchemy import text
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -65,7 +66,7 @@ class VectorizationUpdateService:
         """
         if self.vectorization_service is None:
             try:
-                # 尝试使用预加载的模型缓存
+                # 使用共享模型缓存
                 self.vectorization_service = get_cached_model()
             except RuntimeError:
                 # 如果缓存未初始化，检查是否在测试环境中
