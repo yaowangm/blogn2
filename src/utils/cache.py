@@ -51,7 +51,7 @@ def _is_testing_environment() -> bool:
     
     # 调试信息
     if os.getenv("CACHE_DEBUG") == "true":
-        print(f"测试环境检测: PYTEST_CURRENT_TEST={os.getenv('PYTEST_CURRENT_TEST')}, "
+        logger.debug(f"测试环境检测: PYTEST_CURRENT_TEST={os.getenv('PYTEST_CURRENT_TEST')}, "
               f"TESTING={os.getenv('TESTING')}, pytest in modules={'pytest' in sys.modules}, "
               f"pytest in argv={any('pytest' in arg for arg in sys.argv)}")
     

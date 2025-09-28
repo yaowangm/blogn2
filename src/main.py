@@ -17,6 +17,7 @@ BlogN2 FastAPI 主应用
 """
 
 import sys
+import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
 import warnings
@@ -31,6 +32,9 @@ warnings.filterwarnings("ignore", message="The `use_auth_token` argument is depr
 
 from fastapi import FastAPI
 import uvicorn
+
+# 设置日志记录器
+logger = logging.getLogger(__name__)
 
 # 导入缓存相关模块
 from src.utils.cache import cache_manager, cache_stats
@@ -52,26 +56,26 @@ async def lifespan(app: FastAPI):
     """
     # 启动事件：验证缓存配置并初始化缓存系统
     config_info = validate_cache_config()
-    print(f"📋 缓存配置已加载: Redis={config_info['redis_host']}:{config_info['redis_port']}, 缓存前缀={config_info['cache_prefix']}")
+    logger.info(f"缓存配置已加载: Redis={config_info['redis_host']}:{config_info['redis_port']}, 缓存前缀={config_info['cache_prefix']}")
     
     await cache_manager.initialize()
     
     if cache_manager.is_available():
-        print("✅ 缓存系统初始化成功")
+        logger.info("缓存系统初始化成功")
     else:
-        print("⚠️  缓存系统初始化失败，将使用无缓存模式")
+        logger.warning("缓存系统初始化失败，将使用无缓存模式")
     
     # 预加载BERT模型（使用跨进程共享缓存）
     model_cache = await initialize_model_cache()
     if model_cache is not None:
-        print("✅ BERT模型缓存初始化成功")
+        logger.info("BERT模型缓存初始化成功")
     else:
-        print("⚠️  BERT模型缓存初始化失败，搜索功能将使用降级方案")
+        logger.warning("BERT模型缓存初始化失败，搜索功能将使用降级方案")
     
     yield
     
     # 关闭事件：清理资源
-    print("🧹 清理模型缓存...")
+    logger.info("清理模型缓存...")
     from src.services.shared_model_cache import get_shared_model_cache
     shared_cache = get_shared_model_cache()
     shared_cache.cleanup()

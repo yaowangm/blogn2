@@ -1,9 +1,12 @@
+import logging
 from sqlmodel import SQLModel, create_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import sessionmaker
 import os
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # 导入模型
 from src.models.user import User
@@ -53,4 +56,4 @@ def create_db_and_tables():
 # 初始化数据库
 if __name__ == "__main__":
     create_db_and_tables()
-    print("数据库表创建完成！") 
+    logger.info("数据库表创建完成！") 

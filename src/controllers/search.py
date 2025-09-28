@@ -3,6 +3,7 @@
 实现基于BERT向量的智能搜索功能
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import Optional, Dict, Any, List
@@ -11,6 +12,8 @@ from src.database import get_async_session
 from src.utils.auth_dependencies import get_optional_current_user
 from src.services.model_cache import get_cached_model
 from src.services.search_service import HierarchicalSearchService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -116,7 +119,7 @@ async def search_content(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"搜索错误: {e}")
+        logger.error(f"搜索错误: {e}")
         raise HTTPException(status_code=500, detail="搜索服务暂时不可用，请稍后重试")
 
 @router.get("/api/search/suggestions")
@@ -144,7 +147,7 @@ async def get_search_suggestions(
         }
         
     except Exception as e:
-        print(f"搜索建议错误: {e}")
+        logger.error(f"搜索建议错误: {e}")
         return {"suggestions": []}
 
 @router.get("/api/search/trending")
@@ -171,7 +174,7 @@ async def get_trending_searches(
         }
         
     except Exception as e:
-        print(f"热门搜索错误: {e}")
+        logger.error(f"热门搜索错误: {e}")
         return {"trending": []}
 
 async def get_search_suggestions_from_db(session: AsyncSession, query: str, limit: int) -> List[str]:
@@ -189,5 +192,5 @@ async def get_search_suggestions_from_db(session: AsyncSession, query: str, limi
         return suggestions[:limit]
         
     except Exception as e:
-        print(f"获取搜索建议错误: {e}")
+        logger.error(f"获取搜索建议错误: {e}")
         return []

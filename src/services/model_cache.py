@@ -5,14 +5,17 @@
 
 import asyncio
 import os
+import logging
 from typing import Optional
 from src.services.vectorization_service import BERTVectorizationService
 from src.services.shared_model_cache import get_shared_model_cache
 
+logger = logging.getLogger(__name__)
+
 async def initialize_model_cache() -> Optional[BERTVectorizationService]:
     """初始化模型缓存并返回模型实例"""
     try:
-        print(f"🔄 进程 {os.getpid()} 正在初始化BERT模型缓存...")
+        logger.info(f"进程 {os.getpid()} 正在初始化BERT模型缓存...")
         
         # 使用共享模型缓存
         shared_cache = get_shared_model_cache()
@@ -30,15 +33,15 @@ async def initialize_model_cache() -> Optional[BERTVectorizationService]:
             model_cache = BERTVectorizationService()
             # 直接设置共享的模型，跳过加载过程
             model_cache._set_shared_model(shared_cache.get_model())
-            print(f"✅ 进程 {os.getpid()} BERT模型缓存初始化完成")
+            logger.info(f"进程 {os.getpid()} BERT模型缓存初始化完成")
             return model_cache
         else:
-            print(f"⚠️  进程 {os.getpid()} BERT模型缓存初始化失败")
+            logger.warning(f"进程 {os.getpid()} BERT模型缓存初始化失败")
             return None
             
     except Exception as e:
-        print(f"⚠️  进程 {os.getpid()} BERT模型缓存初始化失败: {e}")
-        print("💡 搜索功能将使用传统文本搜索")
+        logger.error(f"进程 {os.getpid()} BERT模型缓存初始化失败: {e}")
+        logger.info("搜索功能将使用传统文本搜索")
         return None
 
 def get_cached_model() -> BERTVectorizationService:

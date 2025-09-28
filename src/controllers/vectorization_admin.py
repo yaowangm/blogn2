@@ -8,9 +8,12 @@
 - 向量化数据清理
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from typing import List, Dict, Any, Optional
 from sqlmodel.ext.asyncio.session import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from src.database import get_async_session
 from src.utils.auth_dependencies import get_current_user
@@ -310,11 +313,11 @@ async def reindex_articles_background(article_ids: List[int]):
             # 批量更新向量
             result = await vectorization_service.batch_update_articles(article_ids)
             
-            print(f"后台重新索引完成: {result}")
+            logger.info(f"后台重新索引完成: {result}")
             break
             
     except Exception as e:
-        print(f"后台重新索引失败: {e}")
+        logger.error(f"后台重新索引失败: {e}")
 
 
 # 普通用户向量化API端点

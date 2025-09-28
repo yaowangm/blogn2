@@ -6,8 +6,11 @@
 """
 
 import os
+import logging
 from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 class CacheSettings(BaseSettings):
@@ -68,7 +71,7 @@ def validate_cache_config() -> dict:
     }
     
     if cache_settings.cache_debug:
-        print(f"Cache configuration loaded: {config_info}")
+        logger.debug(f"Cache configuration loaded: {config_info}")
     
     return config_info
 
