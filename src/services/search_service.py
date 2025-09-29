@@ -157,8 +157,8 @@ class HierarchicalSearchService:
         # 计算动态阈值
         dynamic_threshold = self.calculate_dynamic_threshold(query, query_vector_json)
         
-        # 使用纯语义搜索，确保阈值不低于60%
-        # 直接使用动态阈值，不再进一步降低
+        # 使用纯语义搜索，动态阈值范围为10%-90%
+        # 直接使用动态阈值，不再进一步调整
         adjusted_threshold = dynamic_threshold
         
         # 优化后的SQL：直接使用内容段相似度，避免UNION ALL和复杂GROUP BY
