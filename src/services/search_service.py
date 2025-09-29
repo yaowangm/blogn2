@@ -181,8 +181,8 @@ class HierarchicalSearchService:
                 -- 文章级相似度（仅作为参考，权重很低）
                 SELECT 
                     av.projectitem_id,
-                    (1 - (av.title_vector <=> '{query_vector_json}'::vector)) * {self.title_weight} + 
-                    (1 - (av.content_vector <=> '{query_vector_json}'::vector)) * {self.content_weight} as article_similarity
+                    (1 - (av.title_vector <=> '{query_vector_json}'::vector)) * 0.3 + 
+                    (1 - (av.content_vector <=> '{query_vector_json}'::vector)) * 0.7 as article_similarity
                 FROM article_vectors av
                 LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
                 WHERE pi.status = 1
@@ -196,8 +196,8 @@ class HierarchicalSearchService:
                 u.name as author,
                 pi.createtime,
                 -- 混合相似度：10%文章级 + 90%片段级
-                (COALESCE(art.article_similarity, 0) * {self.article_weight} + 
-                 bs.segment_similarity * {self.segment_weight}) as relevance_score,
+                (COALESCE(art.article_similarity, 0) * 0.1 + 
+                 bs.segment_similarity * 0.9) as relevance_score,
                 bs.segment_text as best_match_text,
                 bs.segment_type as match_type
             FROM best_segments bs
