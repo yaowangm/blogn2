@@ -30,6 +30,7 @@ class HierarchicalSearchService:
     分层搜索服务
     
     基于BERT向量实现智能语义搜索，支持文章和评论的混合搜索。
+    使用优化的混合搜索策略：10%文章级 + 90%片段级相似度。
     使用动态阈值调整和智能排序提高搜索质量。
     """
     
@@ -43,6 +44,14 @@ class HierarchicalSearchService:
         """
         self.vectorization_service = vectorization_service
         self.session = session
+        
+        # 混合搜索权重配置（优化后：10%文章级 + 90%片段级）
+        self.article_weight = 0.1  # 文章级权重
+        self.segment_weight = 0.9  # 片段级权重
+        
+        # 文章级内部权重（标题 vs 内容）
+        self.title_weight = 0.3    # 标题权重
+        self.content_weight = 0.7  # 内容权重
     
     def calculate_dynamic_threshold(self, query: str, query_vector_json: str) -> float:
         """
@@ -92,6 +101,165 @@ class HierarchicalSearchService:
         # 确保阈值在合理范围内
         return max(0.1, min(0.9, dynamic_threshold))
     
+    async def hybrid_search_articles(self, query_vector_json: str, sort_by: str, page: int, limit: int, query: str = "") -> Dict[str, Any]:
+        """
+        混合搜索文章（优化版：10%文章级 + 90%片段级）
+        
+        结合标题、内容和最佳片段的相似度，使用优化的权重分配。
+        
+        Args:
+            query_vector_json: 查询向量JSON字符串
+            sort_by: 排序方式
+            page: 页码
+            limit: 每页数量
+            query: 原始查询字符串
+            
+        Returns:
+            Dict[str, Any]: 搜索结果
+        """
+        offset = (page - 1) * limit
+        
+        # 计算动态阈值
+        dynamic_threshold = self.calculate_dynamic_threshold(query, query_vector_json)
+        adjusted_threshold = dynamic_threshold
+        
+        # 过滤掉过短的段落
+        keyword_length = len(query.strip()) if query else 0
+        min_segment_length = max(3, keyword_length)
+        
+        # 优化的混合搜索SQL：包含标题片段的片段级搜索
+        sql = f"""
+            WITH all_segments AS (
+                -- 标题作为特殊片段（权重更高）
+                SELECT 
+                    av.projectitem_id,
+                    0 as segment_index,
+                    av.title_text as segment_text,
+                    av.title_vector as segment_vector,
+                    1.0 as confidence_score,
+                    'title' as segment_type,
+                    1.2 as segment_weight  -- 标题片段权重更高
+                FROM article_vectors av
+                WHERE av.title_vector IS NOT NULL
+                AND av.projectitem_id IN (
+                    SELECT DISTINCT av2.projectitem_id 
+                    FROM article_vectors av2
+                    LEFT JOIN projectitem pi2 ON av2.projectitem_id = pi2.id
+                    WHERE pi2.status = 1
+                )
+                
+                UNION ALL
+                
+                -- 内容片段
+                SELECT 
+                    av.projectitem_id,
+                    csv.segment_index,
+                    csv.segment_text,
+                    csv.segment_vector,
+                    csv.confidence_score,
+                    'content' as segment_type,
+                    1.0 as segment_weight  -- 内容片段标准权重
+                FROM article_vectors av
+                JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
+                LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
+                WHERE pi.status = 1
+                AND csv.confidence_score >= 0.8
+                AND LENGTH(TRIM(csv.segment_text)) >= {min_segment_length}
+            ),
+            best_segments AS (
+                SELECT DISTINCT ON (projectitem_id)
+                    projectitem_id,
+                    segment_text,
+                    segment_type,
+                    (1 - (segment_vector <=> '{query_vector_json}'::vector)) as segment_similarity,
+                    segment_weight
+                FROM all_segments
+                WHERE (1 - (segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
+                ORDER BY projectitem_id, (1 - (segment_vector <=> '{query_vector_json}'::vector)) DESC
+            ),
+            article_scores AS (
+                -- 文章级相似度（仅作为参考，权重很低）
+                SELECT 
+                    av.projectitem_id,
+                    (1 - (av.title_vector <=> '{query_vector_json}'::vector)) * {self.title_weight} + 
+                    (1 - (av.content_vector <=> '{query_vector_json}'::vector)) * {self.content_weight} as article_similarity
+                FROM article_vectors av
+                LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
+                WHERE pi.status = 1
+                AND av.title_vector IS NOT NULL
+                AND av.content_vector IS NOT NULL
+            )
+            SELECT 
+                bs.projectitem_id as id,
+                pi.name as title,
+                pi.comment as content,
+                u.name as author,
+                pi.createtime,
+                -- 混合相似度：10%文章级 + 90%片段级
+                (COALESCE(art.article_similarity, 0) * {self.article_weight} + 
+                 bs.segment_similarity * {self.segment_weight}) as relevance_score,
+                bs.segment_text as best_match_text,
+                bs.segment_type as match_type
+            FROM best_segments bs
+            LEFT JOIN projectitem pi ON bs.projectitem_id = pi.id
+            LEFT JOIN users u ON pi.userid = u.id
+            LEFT JOIN article_scores art ON bs.projectitem_id = art.projectitem_id
+            ORDER BY relevance_score DESC
+            LIMIT {limit} OFFSET {offset}
+        """
+        
+        result = await self.session.exec(text(sql))
+        items = result.fetchall()
+        
+        # 获取总数
+        count_sql = f"""
+            WITH all_segments AS (
+                SELECT 
+                    av.projectitem_id,
+                    av.title_vector as segment_vector
+                FROM article_vectors av
+                WHERE av.title_vector IS NOT NULL
+                AND av.projectitem_id IN (
+                    SELECT DISTINCT av2.projectitem_id 
+                    FROM article_vectors av2
+                    LEFT JOIN projectitem pi2 ON av2.projectitem_id = pi2.id
+                    WHERE pi2.status = 1
+                )
+                
+                UNION ALL
+                
+                SELECT 
+                    av.projectitem_id,
+                    csv.segment_vector
+                FROM article_vectors av
+                JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
+                LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
+                WHERE pi.status = 1
+                AND csv.confidence_score >= 0.8
+                AND LENGTH(TRIM(csv.segment_text)) >= {min_segment_length}
+            ),
+            best_segments AS (
+                SELECT DISTINCT ON (projectitem_id)
+                    projectitem_id,
+                    (1 - (segment_vector <=> '{query_vector_json}'::vector)) as segment_similarity
+                FROM all_segments
+                WHERE (1 - (segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
+                ORDER BY projectitem_id, (1 - (segment_vector <=> '{query_vector_json}'::vector)) DESC
+            )
+            SELECT COUNT(DISTINCT projectitem_id)
+            FROM best_segments
+        """
+        count_result = await self.session.exec(text(count_sql))
+        total = count_result.fetchone()[0]
+        
+        return {
+            "items": [self._format_hybrid_article_result(item) for item in items],
+            "total": total,
+            "has_more": (offset + len(items)) < total,
+            "dynamic_threshold": dynamic_threshold,
+            "search_strategy": "hybrid_optimized"
+        }
+    
     async def search(self, query: str, search_type: str = "all", 
                     sort_by: str = "relevance", page: int = 1, limit: int = 10) -> Dict[str, Any]:
         """
@@ -118,11 +286,26 @@ class HierarchicalSearchService:
             
             # 2. 根据搜索类型执行不同的搜索策略
             if search_type == "articles":
-                results = await self._search_articles(query_vector_json, sort_by, page, limit, query)
+                # 使用优化的混合搜索策略（10%文章级 + 90%片段级）
+                results = await self.hybrid_search_articles(query_vector_json, sort_by, page, limit, query)
             elif search_type == "comments":
                 results = await self._search_comments(query_vector_json, sort_by, page, limit, query)
-            else:  # all
-                results = await self._search_all(query_vector_json, sort_by, page, limit, query)
+            else:  # all - 使用混合搜索策略
+                # 对于混合搜索，先搜索文章，再搜索评论
+                article_results = await self.hybrid_search_articles(query_vector_json, sort_by, page, limit, query)
+                comment_results = await self._search_comments(query_vector_json, sort_by, page, limit, query)
+                
+                # 合并结果
+                all_items = article_results.get("items", []) + comment_results.get("items", [])
+                total_count = article_results.get("total", 0) + comment_results.get("total", 0)
+                
+                results = {
+                    "items": all_items,
+                    "total": total_count,
+                    "has_more": article_results.get("has_more", False) or comment_results.get("has_more", False),
+                    "dynamic_threshold": article_results.get("dynamic_threshold", 0.45),
+                    "search_strategy": "hybrid_optimized"
+                }
             
             # 3. 计算搜索时间
             search_time = round(time.time() - start_time, 3)
@@ -318,6 +501,29 @@ class HierarchicalSearchService:
             "created_at": item[4].isoformat() if item[4] else None,
             "relevance_score": float(item[5]) if item[5] else 0.0,
             "type": "article"
+        }
+    
+    def _format_hybrid_article_result(self, item: tuple) -> Dict[str, Any]:
+        """
+        格式化混合搜索文章结果
+        
+        Args:
+            item: 数据库查询结果元组 (id, title, content, author, createtime, relevance_score, best_match_text, match_type)
+            
+        Returns:
+            Dict[str, Any]: 格式化的混合搜索文章结果
+        """
+        return {
+            "id": item[0],
+            "title": item[1],
+            "content": item[2],
+            "author": item[3],
+            "created_at": item[4].isoformat() if item[4] else None,
+            "relevance_score": float(item[5]) if item[5] else 0.0,
+            "best_match_text": item[6] if len(item) > 6 else None,
+            "match_type": item[7] if len(item) > 7 else "content",
+            "type": "article",
+            "search_strategy": "hybrid_optimized"
         }
     
     def _format_comment_result(self, item: tuple) -> Dict[str, Any]:
