@@ -167,6 +167,7 @@ class HierarchicalSearchService:
                 AND LENGTH(TRIM(csv.segment_text)) >= {min_segment_length}
             ),
             best_segments AS (
+                -- 选择每篇文章中相似度最高的片段
                 SELECT DISTINCT ON (projectitem_id)
                     projectitem_id,
                     segment_text,
