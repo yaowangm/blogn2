@@ -132,7 +132,7 @@ class HierarchicalSearchService:
                 "total": results.get("total", 0),
                 "has_more": results.get("has_more", False),
                 "search_time": search_time,
-                "dynamic_threshold": results.get("dynamic_threshold", 0.6)
+                "dynamic_threshold": results.get("dynamic_threshold", 0.45)
             }
             
         except Exception as e:
@@ -270,7 +270,7 @@ class HierarchicalSearchService:
             "items": all_items,
             "total": articles_result.get("total", 0) + comments_result.get("total", 0),
             "has_more": len(all_items) == limit,
-            "dynamic_threshold": articles_result.get("dynamic_threshold", 0.6)
+            "dynamic_threshold": articles_result.get("dynamic_threshold", 0.45)
         }
     
     def _vector_to_json(self, vector: np.ndarray) -> str:
