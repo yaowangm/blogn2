@@ -9,6 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 import uuid
+import logging
 from datetime import datetime
 
 from src.database import get_async_session
@@ -17,6 +18,9 @@ from src.models.user import User
 from src.utils.auth_dependencies import get_optional_current_user
 from src.utils.permission_decorators import require_auth
 from src.utils.time_utils import TimeUtils
+
+# 配置日志记录器
+logger = logging.getLogger(__name__)
 
 # 请求模型
 class ExchangeRegKeyRequest(BaseModel):
@@ -167,7 +171,10 @@ async def exchange_regkey(
     except HTTPException:
         raise
     except Exception as e:
-        await session.rollback()
+        try:
+            await session.rollback()
+        except Exception as rollback_error:
+            logger.error(f"Failed to rollback transaction during regkey exchange: {rollback_error}")
         raise HTTPException(status_code=500, detail=f"兑换注册码失败: {str(e)}")
 
 
@@ -256,5 +263,8 @@ async def use_regkey(
     except HTTPException:
         raise
     except Exception as e:
-        await session.rollback()
+        try:
+            await session.rollback()
+        except Exception as rollback_error:
+            logger.error(f"Failed to rollback transaction during regkey usage: {rollback_error}")
         raise HTTPException(status_code=500, detail=f"使用注册码失败: {str(e)}")
