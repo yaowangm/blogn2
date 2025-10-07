@@ -9,7 +9,7 @@ import sys
 import os
 from pathlib import Path
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent
@@ -64,7 +64,7 @@ async def test_token_refresh():
             
             access_exp = datetime.fromtimestamp(access_payload["exp"])
             refresh_exp = datetime.fromtimestamp(refresh_payload["exp"])
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
             
             print(f"\n⏰ 令牌过期时间:")
             print(f"   当前时间: {now.strftime('%Y-%m-%d %H:%M:%S')} UTC")

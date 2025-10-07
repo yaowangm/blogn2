@@ -6,7 +6,7 @@ JWT认证服务
 
 import hashlib
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from fastapi import HTTPException, status
 import os
@@ -120,13 +120,13 @@ class AuthService:
         to_encode = user_data.copy()
         
         if expires_delta:
-            expire = datetime.utcnow() + expires_delta
+            expire = datetime.now(timezone.utc).replace(tzinfo=None) + expires_delta
         else:
-            expire = datetime.utcnow() + timedelta(minutes=self.access_token_expire_minutes)
+            expire = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=self.access_token_expire_minutes)
         
         to_encode.update({
             "exp": expire,
-            "iat": datetime.utcnow(),
+            "iat": datetime.now(timezone.utc).replace(tzinfo=None),
             "type": "access"
         })
         
@@ -144,11 +144,11 @@ class AuthService:
             str: JWT刷新令牌
         """
         to_encode = user_data.copy()
-        expire = datetime.utcnow() + timedelta(days=self.refresh_token_expire_days)
+        expire = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=self.refresh_token_expire_days)
         
         to_encode.update({
             "exp": expire,
-            "iat": datetime.utcnow(),
+            "iat": datetime.now(timezone.utc).replace(tzinfo=None),
             "type": "refresh"
         })
         
@@ -177,7 +177,7 @@ class AuthService:
             if exp is None:
                 return None
                 
-            current_time = datetime.utcnow()
+            current_time = datetime.now(timezone.utc).replace(tzinfo=None)
             exp_time = datetime.fromtimestamp(exp)
             
             if current_time > exp_time:
@@ -214,7 +214,7 @@ class AuthService:
             if exp is None:
                 return None
                 
-            if datetime.utcnow() > datetime.fromtimestamp(exp):
+            if datetime.now(timezone.utc).replace(tzinfo=None) > datetime.fromtimestamp(exp):
                 return None
             
             # 创建新的访问令牌

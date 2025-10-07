@@ -21,7 +21,7 @@ class TimeUtils:
         Returns:
             datetime: 当前UTC时间（timezone-naive）
         """
-        return datetime.utcnow()
+        return datetime.now(timezone.utc).replace(tzinfo=None)
     
     @staticmethod
     def ensure_utc(dt: datetime) -> datetime:

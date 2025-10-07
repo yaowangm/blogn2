@@ -5,7 +5,7 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import jwt
 import hashlib
 
@@ -283,11 +283,11 @@ class TestAuthService:
         }
         
         # 创建过期的令牌
-        expired_time = datetime.utcnow() - timedelta(hours=1)
+        expired_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1)
         payload = {
             **user_data,
             "exp": expired_time,
-            "iat": datetime.utcnow()
+            "iat": datetime.now(timezone.utc).replace(tzinfo=None)
         }
         expired_token = jwt.encode(payload, auth_service.secret_key, algorithm=auth_service.algorithm)
         
@@ -347,12 +347,12 @@ class TestAuthService:
         }
         
         # 创建过期的刷新令牌
-        expired_time = datetime.utcnow() - timedelta(hours=1)
+        expired_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1)
         payload = {
             **user_data,
             "type": "refresh",
             "exp": expired_time,
-            "iat": datetime.utcnow()
+            "iat": datetime.now(timezone.utc).replace(tzinfo=None)
         }
         expired_refresh_token = jwt.encode(payload, auth_service.secret_key, algorithm=auth_service.algorithm)
         
@@ -383,7 +383,7 @@ class TestAuthService:
         # 验证过期时间在未来
         access_exp = datetime.fromtimestamp(access_decoded["exp"])
         refresh_exp = datetime.fromtimestamp(refresh_decoded["exp"])
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         
         assert access_exp > now
         assert refresh_exp > now
