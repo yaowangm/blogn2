@@ -182,24 +182,62 @@ class UserRepository:
             await self.session.rollback()
             return False
 
-    async def increment_point(self, user_id: int, points: int = 10) -> None:
+    async def increment_point(self, user_id: int, points: int = 10, source: str = "unknown") -> bool:
         """
-        增加用户积分
+        增加用户积分（带每日10分限制）
         
         Args:
             user_id: 用户ID
             points: 增加的积分数，默认为10
+            source: 积分来源，用于记录
+            
+        Returns:
+            bool: 是否成功增加积分（如果达到每日限制则返回False）
         """
-        from sqlmodel import select
-        from datetime import datetime
+        from sqlmodel import select, func
+        from datetime import datetime, date
+        from src.models.point_log import PointLog
         
+        # 检查今日已获得的积分
+        today = date.today()
+        today_start = datetime.combine(today, datetime.min.time())
+        today_end = datetime.combine(today, datetime.max.time())
+        
+        # 查询今日已获得的积分总数
+        today_points_stmt = select(func.sum(PointLog.points)).where(
+            PointLog.user_id == user_id,
+            PointLog.log_date >= today_start,
+            PointLog.log_date <= today_end
+        )
+        today_points_result = await self.session.exec(today_points_stmt)
+        today_points = today_points_result.first() or 0
+        
+        # 检查是否会超过每日10分限制
+        if today_points + points > 10:
+            return False  # 超过每日限制，不增加积分
+        
+        # 获取用户信息
         statement = select(User).where(User.id == user_id)
         result = await self.session.exec(statement)
         user = result.first()
         
         if user:
+            # 增加用户积分
             user.point = (user.point or 0) + points
             self.session.add(user)
+            
+            # 记录积分日志
+            point_log = PointLog(
+                user_id=user_id,
+                points=points,
+                source=source,
+                log_date=datetime.now()
+            )
+            self.session.add(point_log)
+            
+            return True
+        
+        return False
     
     async def decrement_point(self, user_id: int, points: int = 10) -> None:
         """
