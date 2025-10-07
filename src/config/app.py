@@ -5,10 +5,13 @@
 """
 
 import os
+import logging
 from dotenv import load_dotenv
 
 # 确保加载.env文件
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 def get_base_url() -> str:
@@ -122,6 +125,6 @@ def validate_app_config() -> dict:
     }
     
     if config_info["debug"]:
-        print(f"App configuration loaded: {config_info}")
+        logger.debug(f"App configuration loaded: {config_info}")
     
     return config_info

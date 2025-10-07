@@ -7,14 +7,19 @@ import pytest
 import asyncio
 import os
 import sys
+import logging
 from pathlib import Path
 from typing import Generator, Set, Dict, Any
 from typing import AsyncGenerator, Generator
 from unittest.mock import AsyncMock, MagicMock
 from dotenv import load_dotenv
+from sqlalchemy.exc import InvalidRequestError, StatementError
 
 # 加载环境变量
 load_dotenv()
+
+# 配置日志记录器
+logger = logging.getLogger(__name__)
 
 class TestDataTracker:
     """测试数据跟踪器 - 记录测试过程中创建的数据ID"""
@@ -195,11 +200,11 @@ def cleanup_test_data_by_ids(tracker: TestDataTracker):
             except Exception as e:
                 # 回滚事务
                 trans.rollback()
-                print(f"❌ 清理测试数据时出错: {e}")
+                logger.error(f"Failed to cleanup test data by ID: {e}")
                 raise
                 
     except Exception as e:
-        print(f"❌ 连接数据库失败: {e}")
+        logger.error(f"Failed to connect to database: {e}")
         raise
     finally:
         sync_engine.dispose()
@@ -282,7 +287,7 @@ def cleanup_test_data(engine):
         session.commit()
         print("✅ 测试数据清理完成")
     except Exception as e:
-        print(f"❌ 清理测试数据时出错: {e}")
+        logger.error(f"Failed to cleanup test data: {e}")
         session.rollback()
     finally:
         session.close()
@@ -584,7 +589,14 @@ async def real_async_session(real_async_engine):
             yield session
         finally:
             # 回滚到保存点
-            await savepoint.rollback()
+            try:
+                await savepoint.rollback()
+            except (InvalidRequestError, StatementError) as e:
+                # 如果事务已经关闭或状态无效，记录警告但继续执行
+                logger.warning(f"Failed to rollback savepoint due to transaction state: {e}")
+            except Exception as e:
+                # 其他未预期的错误，记录错误信息
+                logger.error(f"Unexpected error during savepoint rollback: {e}")
 
 @pytest.fixture
 async def real_async_session_with_commit(real_async_engine):
@@ -754,8 +766,8 @@ async def clear_cache_after_each_test():
             # 清理所有缓存
             await cache_manager.clear_pattern("*")
     except Exception as e:
-        # 如果缓存清理失败，继续测试
-        pass 
+        # 如果缓存清理失败，记录警告但继续测试
+        logger.warning(f"Failed to clear cache during test cleanup: {e}") 
 
 @pytest.fixture
 def test_data_tracker():

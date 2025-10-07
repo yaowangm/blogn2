@@ -17,15 +17,24 @@ BlogN2 FastAPI 主应用
 """
 
 import sys
+import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
+import warnings
 
 # 添加项目根目录到Python路径，确保模块导入正确
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+# 抑制已知的警告
+warnings.filterwarnings("ignore", message="torch.utils._pytree._register_pytree_node is deprecated")
+warnings.filterwarnings("ignore", message="The `use_auth_token` argument is deprecated")
+
 from fastapi import FastAPI
 import uvicorn
+
+# 设置日志记录器
+logger = logging.getLogger(__name__)
 
 # 导入缓存相关模块
 from src.utils.cache import cache_manager, cache_stats
@@ -35,6 +44,7 @@ from src.config.cache import cache_settings, validate_cache_config
 from src.utils.middleware_handlers import MiddlewareHandler
 from src.utils.api_handlers import APIHandler
 from src.utils.page_handlers import PageHandler
+from src.services.model_cache import initialize_model_cache
 
 
 @asynccontextmanager
@@ -46,18 +56,29 @@ async def lifespan(app: FastAPI):
     """
     # 启动事件：验证缓存配置并初始化缓存系统
     config_info = validate_cache_config()
-    print(f"📋 缓存配置已加载: Redis={config_info['redis_host']}:{config_info['redis_port']}, 缓存前缀={config_info['cache_prefix']}")
+    logger.info(f"缓存配置已加载: Redis={config_info['redis_host']}:{config_info['redis_port']}, 缓存前缀={config_info['cache_prefix']}")
     
     await cache_manager.initialize()
     
     if cache_manager.is_available():
-        print("✅ 缓存系统初始化成功")
+        logger.info("缓存系统初始化成功")
     else:
-        print("⚠️  缓存系统初始化失败，将使用无缓存模式")
+        logger.warning("缓存系统初始化失败，将使用无缓存模式")
+    
+    # 预加载BERT模型（使用跨进程共享缓存）
+    model_cache = await initialize_model_cache()
+    if model_cache is not None:
+        logger.info("BERT模型缓存初始化成功")
+    else:
+        logger.warning("BERT模型缓存初始化失败，搜索功能将使用降级方案")
     
     yield
     
-    # 关闭事件：清理资源（如需要）
+    # 关闭事件：清理资源
+    logger.info("清理模型缓存...")
+    from src.services.shared_model_cache import get_shared_model_cache
+    shared_cache = get_shared_model_cache()
+    shared_cache.cleanup()
 
 
 # 创建FastAPI应用实例
@@ -88,5 +109,6 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8000,
         reload=True,
-        log_level="info"
+        log_level="info",
+        access_log=False  # 关闭HTTP请求日志
     ) 

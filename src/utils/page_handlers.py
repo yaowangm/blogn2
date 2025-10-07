@@ -118,5 +118,11 @@ class PageHandler:
             """调试图片显示页面"""
             return FileResponse("debug_image_display.html")
         
+        # 搜索页面
+        @router.get("/search")
+        async def search_page():
+            """搜索页面路由"""
+            return FileResponse("src/static/search.html")
+        
         return router
 

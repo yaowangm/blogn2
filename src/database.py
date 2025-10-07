@@ -1,9 +1,12 @@
+import logging
 from sqlmodel import SQLModel, create_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import sessionmaker
 import os
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # 导入模型
 from src.models.user import User
@@ -24,14 +27,14 @@ if not DATABASE_URL:
 # 创建异步引擎
 async_engine = create_async_engine(
     DATABASE_URL,
-    echo=True,  # 在开发环境中显示SQL语句
+    echo=False,  # 关闭SQL语句输出
     future=True
 )
 
 # 创建同步引擎（用于创建表）
 sync_engine = create_engine(
     DATABASE_URL.replace("+asyncpg", "+psycopg2"),
-    echo=True
+    echo=False  # 关闭SQL语句输出
 )
 
 # 创建异步会话工厂
@@ -53,4 +56,4 @@ def create_db_and_tables():
 # 初始化数据库
 if __name__ == "__main__":
     create_db_and_tables()
-    print("数据库表创建完成！") 
+    logger.info("数据库表创建完成！") 

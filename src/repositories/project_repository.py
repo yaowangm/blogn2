@@ -178,14 +178,17 @@ class ProjectRepository:
             bool: 更新是否成功
         """
         try:
+            # 使用SQLModel的方式更新，避免原始SQL的同步问题
+            from src.utils.time_utils import TimeUtils
+            
             project = await self.get_by_id(project_id)
             if project:
                 project.accesscount = (project.accesscount or 0) + 1
                 project.updatetime = TimeUtils.now_utc()
+                self.session.add(project)
                 await self.session.commit()
-                await self.session.refresh(project)
                 return True
-            return False
+            else:
+                return False
         except Exception as e:
-            await self.session.rollback()
             return False

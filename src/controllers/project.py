@@ -641,15 +641,37 @@ async def create_post(
         # 更新项目的记录数和更新时间
         await project_repo.increment_record_count(project_id)
         
-        # 更新用户积分（每发表一篇文章获得10积分）
+        # 更新用户积分（每发表一篇文章获得10积分，每日最多10分）
         from src.repositories.user_repository import UserRepository
         user_repo = UserRepository(session)
-        await user_repo.increment_point(current_user["id"], 10)
+        point_added = await user_repo.increment_point(current_user["id"], 10, "article_create")
+        
+        # 如果达到每日积分限制，记录日志但不影响文章创建
+        if not point_added:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"用户 {current_user['id']} 今日积分已达上限，未获得积分奖励")
         
         # 更新全局项目项数量统计
         from src.services.global_stats_service import GlobalStatsService
         stats_service = GlobalStatsService(session)
         await stats_service.update_project_item_count(increment=True)
+        
+        # 在主事务提交前进行向量化处理
+        try:
+            from src.services.vectorization_update_service import get_vectorization_update_service
+            vectorization_service = get_vectorization_update_service(session)
+            
+            # 创建向量
+            await vectorization_service.update_article_vectors(
+                created_post.id, created_post.name, created_post.comment
+            )
+            
+        except Exception as e:
+            # 向量化创建失败不影响文章创建成功
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"向量化创建失败: {e}")
         
         # 提交事务（所有操作在同一个事务中）
         await session.commit()

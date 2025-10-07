@@ -579,6 +579,26 @@ async def update_article(
         await clear_article_detail_cache(article_id)
         await clear_article_comments_cache(article_id)
         
+        # 异步更新向量化索引
+        try:
+            from src.services.vectorization_update_service import get_vectorization_update_service
+            vectorization_service = get_vectorization_update_service(session)
+            
+            # 获取更新后的文章内容
+            updated_title = article_data.get("name", updated_article.name)
+            updated_content = article_data.get("comment", updated_article.comment)
+            
+            # 异步更新向量
+            await vectorization_service.update_article_vectors(
+                article_id, updated_title, updated_content
+            )
+            
+        except Exception as e:
+            # 向量化更新失败不影响文章更新成功
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"向量化更新失败: {e}")
+        
         return {"message": "文章更新成功"}
         
     except HTTPException:
@@ -642,6 +662,8 @@ async def delete_article(
         stats_service = GlobalStatsService(session)
         await stats_service.update_project_item_count(increment=False)
         
+        # 软删除时不删除向量化数据，保留用于搜索
+        
         # 提交事务
         await session.commit()
         
@@ -694,6 +716,17 @@ async def permanently_delete_article(
         
         # 记录文章状态，用于后续统计更新
         was_deleted = article.itemtype == ArticleStatus.DELETED
+        
+        # 硬删除时删除向量化数据
+        try:
+            from src.services.vectorization_update_service import get_vectorization_update_service
+            vectorization_service = get_vectorization_update_service(session)
+            await vectorization_service.delete_article_vectors(article_id)
+        except Exception as e:
+            # 向量化删除失败不影响文章删除，记录错误但继续
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"硬删除文章 {article_id} 时向量化数据删除失败: {e}")
         
         # 删除文件系统中的图片
         if article.attachment:

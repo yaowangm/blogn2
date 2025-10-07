@@ -5,10 +5,20 @@ sqlmodel==0.0.14
 asyncpg==0.29.0
 python-dotenv==1.0.0
 psycopg2-binary==2.9.9
+pydantic-settings==2.0.3
+portalocker==2.8.2
 
 # Cache dependencies
 fastapi-cache2==0.2.1
 redis==5.0.1
+
+# BERT Vectorization dependencies
+transformers==4.35.0
+torch==2.2.0
+numpy<2.0,>=1.24.0
+scikit-learn>=1.3.0
+pgvector==0.2.4
+sentence-transformers>=2.2.2
 
 # Testing dependencies
 pytest==7.4.3

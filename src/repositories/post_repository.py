@@ -383,7 +383,7 @@ class PostRepository:
         self.session.add(post)
         await self.session.flush()  # 获取生成的ID
         await self.session.refresh(post)  # 刷新对象以获取完整数据
-        await self.session.commit()  # 提交事务
+        # 注意：不在这里提交事务，由调用方管理事务
         
         # 更新统计信息
         try:
@@ -393,6 +393,25 @@ class PostRepository:
         except Exception as e:
             # 统计更新失败不影响评论创建，静默处理
             pass
+        
+        # 统一处理向量化（评论和留言都使用comment_vectors表）
+        try:
+            from src.services.vectorization_update_service import get_vectorization_update_service
+            vectorization_service = get_vectorization_update_service(self.session)
+            
+            # 创建向量化数据
+            await vectorization_service.update_comment_vectors(
+                post.id, 
+                post.subject or "", 
+                post.content, 
+                post.projectitemid  # 评论为article_id，留言为0
+            )
+            
+        except Exception as e:
+            # 向量化失败不影响post创建成功
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Post {post.id} 向量化失败: {e}")
         
         return post
     
@@ -415,6 +434,7 @@ class PostRepository:
             pass
         
         await self.session.delete(post)
+        # 注意：不在这里提交事务，由调用方管理事务
         return True
     
     async def delete_post(self, post_id: int) -> Dict[str, Any]:
