@@ -199,80 +199,80 @@
 
   <!-- 关系线 -->
   <!-- users -> project -->
-  <path d="M 250 40 L 300 40 L 300 40 L 350 40" class="one-to-many" />
-  <text x="300" y="35" text-anchor="middle" class="field-type">1:N</text>
+  <path d="M 250 50 L 300 50 L 300 50 L 350 50" class="one-to-many" />
+  <text x="300" y="45" text-anchor="middle" class="field-type">1:N</text>
 
   <!-- users -> projectitem -->
-  <path d="M 250 40 L 300 40 L 300 40 L 650 40 L 650 40" class="one-to-many" />
-  <text x="450" y="35" text-anchor="middle" class="field-type">1:N</text>
+  <path d="M 250 100 L 300 100 L 300 30 L 600 30 L 600 50 L 650 50" class="one-to-many" />
+  <text x="450" y="25" text-anchor="middle" class="field-type">1:N</text>
 
   <!-- users -> post -->
-  <path d="M 250 40 L 300 40 L 300 40 L 950 40 L 950 40" class="one-to-many" />
-  <text x="600" y="35" text-anchor="middle" class="field-type">1:N</text>
+  <path d="M 250 130 L 300 130 L 300 20 L 900 20 L 900 50 L 950 50" class="one-to-many" />
+  <text x="600" y="15" text-anchor="middle" class="field-type">1:N</text>
 
   <!-- users -> regkey (owner) -->
-  <path d="M 30 150 L 30 300 L 30 300 L 30 350" class="one-to-many" />
-  <text x="40" y="300" text-anchor="start" class="field-type">1:N</text>
+  <path d="M 100 250 L 100 320 L 100 320 L 100 350" class="one-to-many" />
+  <text x="110" y="300" text-anchor="start" class="field-type">1:N</text>
 
   <!-- users -> regkey (user) -->
-  <path d="M 30 180 L 30 300 L 30 300 L 30 350" class="one-to-many" />
-  <text x="40" y="300" text-anchor="start" class="field-type">1:N</text>
+  <path d="M 130 250 L 130 320 L 130 320 L 130 350" class="one-to-many" />
+  <text x="140" y="300" text-anchor="start" class="field-type">1:N</text>
 
   <!-- users -> point_logs -->
-  <path d="M 30 210 L 30 400 L 30 400 L 30 550" class="one-to-many" />
-  <text x="40" y="400" text-anchor="start" class="field-type">1:N</text>
+  <path d="M 160 250 L 160 400 L 160 400 L 160 550" class="one-to-many" />
+  <text x="170" y="400" text-anchor="start" class="field-type">1:N</text>
 
   <!-- project -> projectitem -->
-  <path d="M 550 40 L 600 40 L 600 40 L 650 40" class="one-to-many" />
-  <text x="600" y="35" text-anchor="middle" class="field-type">1:N</text>
+  <path d="M 550 50 L 600 50 L 600 50 L 650 50" class="one-to-many" />
+  <text x="600" y="45" text-anchor="middle" class="field-type">1:N</text>
 
   <!-- project -> folders -->
-  <path d="M 450 270 L 450 300 L 450 300 L 450 350" class="one-to-many" />
-  <text x="460" y="300" text-anchor="start" class="field-type">1:N</text>
+  <path d="M 400 270 L 400 320 L 400 320 L 400 350" class="one-to-many" />
+  <text x="410" y="310" text-anchor="start" class="field-type">1:N</text>
 
   <!-- project -> urllink -->
-  <path d="M 550 270 L 1050 270 L 1050 500 L 1050 500" class="one-to-many" />
-  <text x="800" y="385" text-anchor="middle" class="field-type">1:N</text>
+  <path d="M 550 200 L 880 200 L 880 500 L 950 500" class="one-to-many" />
+  <text x="750" y="195" text-anchor="middle" class="field-type">1:N</text>
 
   <!-- project -> subsc -->
-  <path d="M 450 270 L 450 300 L 450 300 L 450 550" class="one-to-many" />
-  <text x="460" y="400" text-anchor="start" class="field-type">1:N</text>
+  <path d="M 420 270 L 420 400 L 420 400 L 420 550" class="one-to-many" />
+  <text x="430" y="400" text-anchor="start" class="field-type">1:N</text>
 
   <!-- project -> relation (projectid) -->
-  <path d="M 550 270 L 600 270 L 600 300 L 650 300 L 650 550" class="one-to-many" />
-  <text x="600" y="400" text-anchor="middle" class="field-type">1:N</text>
+  <path d="M 550 180 L 580 180 L 580 520 L 650 520 L 650 550" class="one-to-many" />
+  <text x="600" y="350" text-anchor="middle" class="field-type">1:N</text>
 
   <!-- project -> relation (objectid) -->
-  <path d="M 550 270 L 700 270 L 700 300 L 750 300 L 750 550" class="one-to-many" />
-  <text x="700" y="400" text-anchor="middle" class="field-type">1:N</text>
+  <path d="M 550 160 L 620 160 L 620 520 L 720 520 L 720 550" class="one-to-many" />
+  <text x="670" y="350" text-anchor="middle" class="field-type">1:N</text>
 
   <!-- projectitem -> post -->
-  <path d="M 850 40 L 900 40 L 900 40 L 950 40" class="one-to-many" />
-  <text x="900" y="35" text-anchor="middle" class="field-type">1:N</text>
+  <path d="M 850 50 L 900 50 L 900 50 L 950 50" class="one-to-many" />
+  <text x="900" y="45" text-anchor="middle" class="field-type">1:N</text>
 
   <!-- projectitem -> attachment -->
-  <path d="M 850 290 L 850 320 L 850 320 L 850 350" class="one-to-many" />
-  <text x="860" y="320" text-anchor="start" class="field-type">1:N</text>
+  <path d="M 720 290 L 720 320 L 720 320 L 720 350" class="one-to-many" />
+  <text x="730" y="320" text-anchor="start" class="field-type">1:N</text>
 
   <!-- projectitem -> subsc -->
-  <path d="M 750 290 L 550 290 L 550 420 L 550 420 L 550 550" class="one-to-many" />
-  <text x="650" y="420" text-anchor="middle" class="field-type">1:N</text>
+  <path d="M 650 220 L 620 220 L 620 450 L 500 450 L 500 550" class="one-to-many" />
+  <text x="560" y="400" text-anchor="middle" class="field-type">1:N</text>
 
   <!-- projectitem -> article_vectors -->
-  <path d="M 750 290 L 200 290 L 200 700 L 200 700 L 200 750" class="one-to-many" />
-  <text x="475" y="520" text-anchor="middle" class="field-type">1:1</text>
+  <path d="M 650 260 L 30 260 L 30 720 L 150 720 L 150 750" class="one-to-many" />
+  <text x="340" y="490" text-anchor="middle" class="field-type">1:1</text>
 
   <!-- folders -> folders (self-reference) -->
-  <path d="M 350 450 L 300 450 L 300 500 L 350 500 L 350 550" class="one-to-many" />
-  <text x="300" y="500" text-anchor="middle" class="field-type">1:N</text>
+  <path d="M 350 400 L 320 400 L 320 480 L 350 480" class="one-to-many" />
+  <text x="320" y="440" text-anchor="middle" class="field-type">1:N</text>
 
   <!-- post -> comment_vectors -->
-  <path d="M 1050 270 L 1050 700 L 1050 700 L 775 700 L 775 750" class="one-to-many" />
-  <text x="912" y="700" text-anchor="middle" class="field-type">1:1</text>
+  <path d="M 1050 270 L 1050 720 L 810 720 L 810 750" class="one-to-many" />
+  <text x="930" y="715" text-anchor="middle" class="field-type">1:1</text>
 
   <!-- article_vectors -> content_segment_vectors -->
-  <path d="M 300 950 L 325 950 L 325 950 L 350 950" class="one-to-many" />
-  <text x="325" y="945" text-anchor="middle" class="field-type">1:N</text>
+  <path d="M 300 850 L 325 850 L 325 850 L 350 850" class="one-to-many" />
+  <text x="325" y="845" text-anchor="middle" class="field-type">1:N</text>
 
   <!-- 图例 -->
   <rect x="1200" y="50" width="180" height="200" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1" />
