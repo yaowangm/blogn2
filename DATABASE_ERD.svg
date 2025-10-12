@@ -231,7 +231,7 @@
   <text x="410" y="310" text-anchor="start" class="field-type">1:N</text>
 
   <!-- project -> urllink -->
-  <path d="M 550 200 L 880 200 L 880 500 L 950 500" class="one-to-many" />
+  <path d="M 550 200 L 880 200 L 880 330 L 920 330 L 920 500 L 950 500" class="one-to-many" />
   <text x="750" y="195" text-anchor="middle" class="field-type">1:N</text>
 
   <!-- project -> subsc -->
@@ -239,12 +239,12 @@
   <text x="430" y="400" text-anchor="start" class="field-type">1:N</text>
 
   <!-- project -> relation (projectid) -->
-  <path d="M 550 180 L 580 180 L 580 520 L 650 520 L 650 550" class="one-to-many" />
-  <text x="600" y="350" text-anchor="middle" class="field-type">1:N</text>
+  <path d="M 550 180 L 580 180 L 580 330 L 600 330 L 600 520 L 650 520 L 650 550" class="one-to-many" />
+  <text x="600" y="380" text-anchor="middle" class="field-type">1:N</text>
 
   <!-- project -> relation (objectid) -->
-  <path d="M 550 160 L 620 160 L 620 520 L 720 520 L 720 550" class="one-to-many" />
-  <text x="670" y="350" text-anchor="middle" class="field-type">1:N</text>
+  <path d="M 550 160 L 620 160 L 620 330 L 680 330 L 680 520 L 720 520 L 720 550" class="one-to-many" />
+  <text x="670" y="380" text-anchor="middle" class="field-type">1:N</text>
 
   <!-- projectitem -> post -->
   <path d="M 850 50 L 900 50 L 900 50 L 950 50" class="one-to-many" />
@@ -255,11 +255,11 @@
   <text x="730" y="320" text-anchor="start" class="field-type">1:N</text>
 
   <!-- projectitem -> subsc -->
-  <path d="M 650 220 L 620 220 L 620 450 L 500 450 L 500 550" class="one-to-many" />
+  <path d="M 650 220 L 620 220 L 620 330 L 570 330 L 570 520 L 500 520 L 500 550" class="one-to-many" />
   <text x="560" y="400" text-anchor="middle" class="field-type">1:N</text>
 
   <!-- projectitem -> article_vectors -->
-  <path d="M 650 260 L 30 260 L 30 720 L 150 720 L 150 750" class="one-to-many" />
+  <path d="M 650 260 L 620 260 L 620 330 L 30 330 L 30 720 L 150 720 L 150 750" class="one-to-many" />
   <text x="340" y="490" text-anchor="middle" class="field-type">1:1</text>
 
   <!-- folders -> folders (self-reference) -->
@@ -267,8 +267,8 @@
   <text x="320" y="440" text-anchor="middle" class="field-type">1:N</text>
 
   <!-- post -> comment_vectors -->
-  <path d="M 1050 270 L 1050 720 L 810 720 L 810 750" class="one-to-many" />
-  <text x="930" y="715" text-anchor="middle" class="field-type">1:1</text>
+  <path d="M 1150 150 L 1180 150 L 1180 720 L 810 720 L 810 750" class="one-to-many" />
+  <text x="995" y="715" text-anchor="middle" class="field-type">1:1</text>
 
   <!-- article_vectors -> content_segment_vectors -->
   <path d="M 300 850 L 325 850 L 325 850 L 350 850" class="one-to-many" />
