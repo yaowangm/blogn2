@@ -251,15 +251,24 @@ class RegistrationCodeManager {
         const exchangeBtn = document.getElementById('exchangeBtn');
         if (!exchangeBtn || !this.currentUser) return;
 
-        // 使用实时积分数据
-        const currentPoints = this.userPoints !== undefined ? this.userPoints : this.currentUser.point;
-        const hasEnoughPoints = currentPoints >= 10;
-        exchangeBtn.disabled = !hasEnoughPoints;
+        // 检查是否为管理员
+        const isAdmin = UserManager.isAdmin();
         
-        if (!hasEnoughPoints) {
-            exchangeBtn.title = `积分不足，当前积分：${currentPoints}，需要10积分`;
+        if (isAdmin) {
+            // 管理员不需要检查积分
+            exchangeBtn.disabled = false;
+            exchangeBtn.title = '管理员可以免费生成注册码';
         } else {
-            exchangeBtn.title = `当前积分：${currentPoints}，兑换后将扣除10积分`;
+            // 普通用户需要检查积分
+            const currentPoints = this.userPoints !== undefined ? this.userPoints : this.currentUser.point;
+            const hasEnoughPoints = currentPoints >= 10;
+            exchangeBtn.disabled = !hasEnoughPoints;
+            
+            if (!hasEnoughPoints) {
+                exchangeBtn.title = `积分不足，当前积分：${currentPoints}，需要10积分`;
+            } else {
+                exchangeBtn.title = `当前积分：${currentPoints}，兑换后将扣除10积分`;
+            }
         }
     }
 
@@ -269,16 +278,26 @@ class RegistrationCodeManager {
             return;
         }
 
-        // 使用实时积分数据
-        const currentPoints = this.userPoints !== undefined ? this.userPoints : this.currentUser.point;
+        // 检查是否为管理员
+        const isAdmin = UserManager.isAdmin();
         
-        if (currentPoints < 10) {
-            alert(`积分不足，当前积分：${currentPoints}，需要10积分`);
-            return;
-        }
+        if (!isAdmin) {
+            // 普通用户需要检查积分
+            const currentPoints = this.userPoints !== undefined ? this.userPoints : this.currentUser.point;
+            
+            if (currentPoints < 10) {
+                alert(`积分不足，当前积分：${currentPoints}，需要10积分`);
+                return;
+            }
 
-        if (!confirm(`确定要使用10积分兑换一个注册码吗？\n当前积分：${currentPoints}`)) {
-            return;
+            if (!confirm(`确定要使用10积分兑换一个注册码吗？\n当前积分：${currentPoints}`)) {
+                return;
+            }
+        } else {
+            // 管理员确认
+            if (!confirm('确定要生成一个注册码吗？（管理员免费）')) {
+                return;
+            }
         }
 
         try {
@@ -335,14 +354,25 @@ class RegistrationCodeManager {
 
             const result = await response.json();
             const formattedRegkey = window.RegKeyFormatter.format(result.regkey);
-            alert(`兑换成功！\n注册码：${formattedRegkey}\n请妥善保管，注册码只能使用一次。`);
+            
+            // 根据是否为管理员显示不同的消息
+            if (result.is_admin) {
+                alert(`生成成功！\n注册码：${formattedRegkey}\n请妥善保管，注册码只能使用一次。\n（管理员免费生成）`);
+            } else {
+                alert(`兑换成功！\n注册码：${formattedRegkey}\n请妥善保管，注册码只能使用一次。`);
+            }
             
             // 刷新数据
             await this.loadRegKeyData();
             
-            // 更新用户积分信息
-            this.currentUser.point -= 10;
-            this.userPoints = result.remaining_points || (this.userPoints - 10);
+            // 更新用户积分信息（只有非管理员才扣除积分）
+            if (!result.is_admin) {
+                this.currentUser.point -= 10;
+                this.userPoints = result.remaining_points || (this.userPoints - 10);
+            } else {
+                // 管理员不扣除积分，但更新显示的积分
+                this.userPoints = result.remaining_points || this.userPoints;
+            }
             
             // 更新页面显示的积分
             const pointsElement = document.getElementById('userPoints');
