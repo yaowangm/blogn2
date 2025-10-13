@@ -69,48 +69,8 @@ class FriendLinksCard extends BaseComponent {
 
     async loadData() {
         try {
-            let apiUrl;
-            
-            if (this.projectId) {
-                // 如果在博客页面，获取指定项目的友情链接
-                apiUrl = `/api/projects/${this.projectId}/friend-links`;
-            } else if (this.isArticlePage()) {
-                // 如果在文章页面，需要从文章ID获取项目ID
-                const articleId = this.getArticleId();
-                if (articleId) {
-                    try {
-                        // 先获取文章信息，从中提取项目ID
-                        const articleResponse = await fetch(`/api/articles/${articleId}`);
-                        if (articleResponse.ok) {
-                            const articleData = await articleResponse.json();
-                            const projectId = articleData.project?.id;
-                            if (projectId) {
-                                apiUrl = `/api/projects/${projectId}/friend-links`;
-                            } else {
-                                apiUrl = '/api/friend-links';
-                            }
-                        } else {
-                            apiUrl = '/api/friend-links';
-                        }
-                    } catch (error) {
-                        console.warn('获取文章信息失败，使用默认API');
-                        apiUrl = '/api/friend-links';
-                    }
-                } else {
-                    apiUrl = '/api/friend-links';
-                }
-            } else {
-                // 如果在首页，获取所有友情链接
-                apiUrl = '/api/friend-links';
-            }
-
-            const response = await fetch(apiUrl);
-            if (response.ok) {
-                this.friendLinks = await response.json();
-            } else {
-                console.warn('获取友情链接失败，使用默认数据');
-                this.friendLinks = this.getDefaultFriendLinks();
-            }
+            // 直接使用硬编码的友情链接，不从数据库获取
+            this.friendLinks = this.getDefaultFriendLinks();
         } catch (error) {
             console.error('Error loading friend links:', error);
             this.friendLinks = this.getDefaultFriendLinks();
@@ -141,12 +101,9 @@ class FriendLinksCard extends BaseComponent {
 
     getDefaultFriendLinks() {
         return [
-            { subject: 'GitHub', linkstr: 'https://github.com' },
-            { subject: 'Stack Overflow', linkstr: 'https://stackoverflow.com' },
-            { subject: '掘金', linkstr: 'https://juejin.cn' },
-            { subject: 'CSDN', linkstr: 'https://csdn.net' },
-            { subject: '博客园', linkstr: 'https://cnblogs.com' },
-            { subject: '简书', linkstr: 'https://jianshu.com' }
+            { subject: '无双谱', linkstr: 'http://wsp.bloggern.com' },
+            { subject: '豌豆网', linkstr: 'http://www.OneDoor.cn' },
+            { subject: '火网', linkstr: 'http://www.huooo.com' }
         ];
     }
 
@@ -224,8 +181,8 @@ class FriendLinksCard extends BaseComponent {
                 }
 
                 .friend-links {
-                    display: flex;
-                    flex-direction: column;
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
                     gap: var(--spacing-2);
                 }
 
@@ -242,6 +199,10 @@ class FriendLinksCard extends BaseComponent {
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
+                    min-height: 40px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
                 }
 
                 .friend-link:hover {
@@ -264,6 +225,26 @@ class FriendLinksCard extends BaseComponent {
                     font-style: italic;
                 }
 
+                /* 响应式设计 */
+                @media (max-width: 768px) {
+                    .friend-links {
+                        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+                        gap: var(--spacing-2);
+                    }
+
+                    .friend-link {
+                        padding: var(--spacing-2) var(--spacing-3);
+                        font-size: var(--font-size-sm);
+                        min-height: 36px;
+                    }
+                }
+
+                @media (max-width: 480px) {
+                    .friend-links {
+                        grid-template-columns: repeat(2, 1fr);
+                    }
+                }
+
 
             </style>
 
@@ -271,7 +252,7 @@ class FriendLinksCard extends BaseComponent {
                 <div class="card-header">
                     <h3 class="card-title">
                         <div class="card-title-left">
-                            <svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg class="card-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
                                 <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
                             </svg>
