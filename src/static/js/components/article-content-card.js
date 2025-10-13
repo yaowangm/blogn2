@@ -131,7 +131,10 @@ class ArticleContentCard extends BaseComponent {
             // 对解析后的HTML进行安全过滤
             const safeHtml = this.sanitizeHtml(html);
             
-            return safeHtml;
+            // 处理文本中的链接（包括ed2k等非标准协议）
+            const processedHtml = this.processTextWithLinks(safeHtml);
+            
+            return processedHtml;
         } catch (error) {
             this.logError('Markdown parsing failed', error);
             // 如果Markdown解析失败，回退到原始文本处理
@@ -335,18 +338,28 @@ class ArticleContentCard extends BaseComponent {
             return '';
         }
 
-        // 更严格的URL正则表达式，只匹配基本的http/https链接
-        const urlRegex = /(https?:\/\/[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=%]+)/gi;
+        // 通用的URL正则表达式，匹配任何 aaa://bbb 形式的链接
+        const urlRegex = /([a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^\s<>"']+)/gi;
         
-        return text.replace(urlRegex, (url) => {
-            // 使用严格的URL验证
-            if (this.isValidUrl(url)) {
-                const safeUrl = this.escapeHtml(url);
-                const displayUrl = this.escapeHtml(url);
-                return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="auto-link">${displayUrl}</a>`;
+        // 只处理不在HTML标签内的文本
+        return text.replace(/(<[^>]*>)|([^<]+)/g, (match, htmlTag, textContent) => {
+            if (htmlTag) {
+                // 如果是HTML标签，直接返回
+                return htmlTag;
+            } else if (textContent) {
+                // 如果是文本内容，处理其中的链接
+                return textContent.replace(urlRegex, (url) => {
+                    // 使用严格的URL验证
+                    if (this.isValidUrl(url)) {
+                        const safeUrl = this.escapeHtml(url);
+                        const displayUrl = this.escapeHtml(url);
+                        return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="auto-link">${displayUrl}</a>`;
+                    }
+                    // 如果URL不安全，只转义显示
+                    return this.escapeHtml(url);
+                });
             }
-            // 如果URL不安全，只转义显示
-            return this.escapeHtml(url);
+            return match;
         });
     }
 
@@ -376,6 +389,16 @@ class ArticleContentCard extends BaseComponent {
                 
                 .article-content {
                     line-height: 1.8;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                    max-width: 100%;
+                }
+                
+                .article-content a {
+                    word-break: break-all;
+                    overflow-wrap: anywhere;
+                    max-width: 100%;
+                    display: inline-block;
                 }
                 
                 .article-content p {
@@ -702,8 +725,8 @@ class ArticleContentCard extends BaseComponent {
                 }
 
                 .auto-link:hover {
-                    color: var(--primary-hover);
-                    text-decoration: underline;
+                    color: var(--primary-hover) !important;
+                    text-decoration: underline !important;
                 }
                 
                 .loading {

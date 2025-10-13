@@ -50,8 +50,8 @@
 }
 
 .auto-link:hover {
-    text-decoration: underline;
-    color: var(--primary-hover);
+    text-decoration: underline !important;
+    color: var(--primary-hover) !important;
 }
 
 /* 用户头像样式 */

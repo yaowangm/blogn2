@@ -483,36 +483,9 @@ class ArticleCommentsCard extends BaseComponent {
         try {
             const urlObj = new URL(url);
             
-            // 只允许http和https协议
-            if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-                return false;
-            }
-            
-            // 检查域名是否包含危险字符
-            const hostname = urlObj.hostname;
-            if (!hostname || /[<>\"'&]/.test(hostname)) {
-                return false;
-            }
-            
-            // 检查端口号是否在安全范围内
-            if (urlObj.port) {
-                const port = parseInt(urlObj.port);
-                if (port < 1 || port > 65535) {
-                    return false;
-                }
-            }
-            
-            // 检查URL长度是否合理
-            if (url.length > 2048) {
-                return false;
-            }
-            
-            // 检查是否包含可疑的JavaScript代码
-            if (/javascript:|data:|vbscript:|file:/i.test(url)) {
-                return false;
-            }
-            
-            return true;
+            // 允许任何有效的协议，但排除一些明显不安全的协议
+            const disallowedProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
+            return !disallowedProtocols.includes(urlObj.protocol);
         } catch (error) {
             return false;
         }
@@ -526,8 +499,8 @@ class ArticleCommentsCard extends BaseComponent {
             return '';
         }
 
-        // 更严格的URL正则表达式，只匹配基本的http/https链接
-        const urlRegex = /(https?:\/\/[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=%]+)/gi;
+        // 通用的URL正则表达式，匹配任何 aaa://bbb 形式的链接
+        const urlRegex = /([a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^\s<>"']+)/gi;
         
         return text.replace(urlRegex, (url) => {
             // 使用严格的URL验证
@@ -820,6 +793,13 @@ class ArticleCommentsCard extends BaseComponent {
                     white-space: pre-line;
                     overflow-wrap: break-word;
                 }
+                
+                .comment-content a {
+                    word-break: break-all;
+                    overflow-wrap: anywhere;
+                    max-width: 100%;
+                    display: inline-block;
+                }
 
                 .auto-link {
                     color: var(--primary-color);
@@ -829,8 +809,8 @@ class ArticleCommentsCard extends BaseComponent {
                 }
 
                 .auto-link:hover {
-                    color: var(--primary-hover);
-                    text-decoration: underline;
+                    color: var(--primary-hover) !important;
+                    text-decoration: underline !important;
                 }
                 
                 .comment-replies {
