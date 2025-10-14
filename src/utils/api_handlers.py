@@ -51,8 +51,10 @@ class APIHandler:
             app: FastAPI应用实例
         """
         # 静态文件服务配置
-        UPLOAD_BASE_PATH = get_upload_dir()
-        AVATAR_BASE_PATH = "../pic/blogn_img/userlogo"
+        from src.config.app import validate_app_config
+        config = validate_app_config()
+        UPLOAD_BASE_PATH = config["upload_dir"]
+        AVATAR_BASE_PATH = config["avatar_dir"]
         
         @app.get("/upload/{file_path:path}")
         async def serve_upload_file(file_path: str):
