@@ -242,6 +242,78 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 - **API文档**: http://localhost:8000/docs
 - **健康检查**: http://localhost:8000/health
 
+## 使用初始管理员账户
+
+### 1. 登录系统
+
+1. 打开浏览器，访问 http://localhost:8000
+2. 在页面右上角找到"登录"按钮，点击进入登录页面
+3. 输入以下信息：
+   - **用户名**: `admin`
+   - **密码**: `testpasswd`
+4. 点击"登录"按钮
+
+### 2. 验证管理员权限
+
+登录成功后，您应该能看到：
+- 页面右上角显示"admin"用户名
+- 导航菜单中包含管理员专用功能
+- 可以访问用户管理、系统设置等高级功能
+
+### 3. 首次使用建议
+
+1. **修改密码**：
+   - 登录后立即修改默认密码
+   - 进入个人资料页面更新密码
+
+2. **创建博客**：
+   - 使用"创建文章"功能发布第一篇博客
+   - 测试图片上传和附件功能
+
+3. **用户管理**：
+   - 查看用户列表
+   - 创建新用户账户
+   - 管理用户权限
+
+4. **系统配置**：
+   - 检查系统设置
+   - 配置网站基本信息
+   - 管理友情链接等
+
+### 4. 常见登录问题
+
+如果无法登录，请检查：
+
+1. **数据库连接**：
+   ```bash
+   # 验证admin用户是否存在
+   psql -U blogn_user -d blogn_example -c "SELECT name, state FROM users WHERE name = 'admin';"
+   ```
+
+2. **密码验证**：
+   ```bash
+   # 使用提供的脚本验证密码
+   python scripts/create_admin_user.py --dry-run
+   ```
+
+3. **应用日志**：
+   ```bash
+   # 查看应用日志
+   tail -f app.log
+   ```
+
+### 5. 重置管理员密码（如需要）
+
+如果忘记密码或需要重置，可以使用提供的脚本：
+
+```bash
+# 激活虚拟环境
+source venv/bin/activate
+
+# 重置admin用户密码
+python scripts/create_admin_user.py -u admin -p newpassword -f
+```
+
 ## 故障排除
 
 ### 常见问题
