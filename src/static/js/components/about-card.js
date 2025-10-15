@@ -60,7 +60,7 @@ class AboutCard extends BaseComponent {
                     }
                     
                     if (safeLink.startsWith('http://') || safeLink.startsWith('https://') || safeLink.startsWith('/')) {
-                        linkHtml = ` <a href="${finalLink}" class="read-more">查看详情</a>`;
+                        linkHtml = ` <a href="${finalLink}" class="read-more" target="_blank" rel="noopener noreferrer">查看详情</a>`;
                     }
                 }
                 
