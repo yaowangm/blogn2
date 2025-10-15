@@ -8,6 +8,7 @@ from src.utils.dependencies import get_blog_service
 from src.utils.cache import cache_blog_recent_list, cache_blog_popular_list, cache_blog_detail, cache_blog_comments, cache_blog_messages_recent, cache_blog_messages_list, cache_blog_message_thread, clear_blog_messages_cache
 from src.utils.auth_dependencies import get_current_user, get_optional_current_user
 from src.database import get_async_session
+from src.services.global_stats_service import GlobalStatsService
 
 # 创建博客API路由器
 router = APIRouter()
@@ -85,6 +86,49 @@ async def get_about_content(
         Dict[str, Any]: 关于页面的内容
     """
     return await blog_service.get_about_content()
+
+@router.post("/blogs/set-intro/{article_id}")
+@handle_api_errors("设置网站介绍文章失败")
+async def set_intro_article(
+    article_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    设置指定文章为网站介绍文章
+    
+    Args:
+        article_id: 文章ID
+        session: 数据库会话
+        current_user: 当前登录用户信息
+        
+    Returns:
+        Dict[str, Any]: 操作结果
+    """
+    # 检查用户是否为管理员
+    if current_user.get("state") != 10:
+        raise HTTPException(status_code=403, detail="只有管理员可以设置网站介绍文章")
+    
+    # 验证文章是否存在
+    from src.repositories.project_item_repository import ProjectItemRepository
+    project_item_repo = ProjectItemRepository(session)
+    article = await project_item_repo.get_by_id(article_id)
+    
+    if not article:
+        raise HTTPException(status_code=404, detail="文章不存在")
+    
+    # 设置intropiid
+    stats_service = GlobalStatsService(session)
+    success = await stats_service.set_stat_value("intropiid", article_id)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="设置失败")
+    
+    return {
+        "message": "网站介绍文章设置成功",
+        "article_id": article_id,
+        "article_title": article.name or "无标题"
+    }
 
 @router.get("/blogs/messages/recent", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最近留言失败")

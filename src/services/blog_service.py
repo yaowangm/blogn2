@@ -133,9 +133,25 @@ class BlogService(BaseService):
             return []
     
     async def get_about_content(self) -> Dict[str, Any]:
-        """获取关于页面的内容（来自ID为486的projectitem记录）"""
+        """获取关于页面的内容（从glovar表动态获取intropiid）"""
         try:
-            project_item = await self.project_item_repo.get_by_id(486)
+            # 先从glovar表获取intropiid
+            from src.models.glovar import Glovar
+            from sqlmodel import select
+            
+            statement = select(Glovar).where(Glovar.varname == "intropiid")
+            result = await self.project_item_repo.session.exec(statement)
+            glovar = result.first()
+            
+            if not glovar or not glovar.varvalue:
+                return {
+                    "title": "Why Blogn",
+                    "content": "内容暂不可用",
+                    "link": None
+                }
+            
+            # 使用从glovar表获取的ID来查询文章
+            project_item = await self.project_item_repo.get_by_id(glovar.varvalue)
             
             if not project_item:
                 return {
@@ -165,10 +181,11 @@ class BlogService(BaseService):
             return {
                 "title": "Why Blogn",
                 "content": content,
-                "link": f"/projectitem/{project_item.id}"
+                "link": f"/article/{project_item.id}"
             }
         except Exception as e:
             # 如果查询失败，返回默认内容
+            print(f"Error in get_about_content: {e}")  # 添加调试信息
             return {
                 "title": "Why Blogn",
                 "content": "内容暂不可用",

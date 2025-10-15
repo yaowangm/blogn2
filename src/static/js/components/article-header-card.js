@@ -128,6 +128,10 @@ class ArticleHeaderCard extends BaseComponent {
         // 只有当前用户是文章作者且文章有附件图片时才显示
         const showSetIntroButton = this.isAuthor && this.articleData.attachment;
         
+        // 检查是否显示"设为网站介绍"按钮
+        // 只有管理员才能设置网站介绍
+        const showSetSiteIntroButton = this.isAdmin;
+        
         this.shadowRoot.innerHTML = `
             <div class="card article-header-card">
                 <div class="card-body">
@@ -183,6 +187,12 @@ class ArticleHeaderCard extends BaseComponent {
                     
                     ${showToolbar ? `
                         <div class="article-toolbar">
+                            ${showSetSiteIntroButton ? `
+                                <button class="btn btn-info btn-sm" id="set-site-intro-btn">
+                                    <i class="icon-globe"></i>
+                                    设为网站介绍
+                                </button>
+                            ` : ''}
                             ${showSetIntroButton ? `
                                 <button class="btn btn-success btn-sm" id="set-intro-btn">
                                     <i class="icon-user"></i>
@@ -230,10 +240,15 @@ class ArticleHeaderCard extends BaseComponent {
      * 绑定工具栏事件
      */
     bindToolbarEvents() {
+        const setSiteIntroBtn = this.shadowRoot.getElementById('set-site-intro-btn');
         const setIntroBtn = this.shadowRoot.getElementById('set-intro-btn');
         const editBtn = this.shadowRoot.getElementById('edit-article-btn');
         const deleteBtn = this.shadowRoot.getElementById('delete-article-btn');
         const permanentDeleteBtn = this.shadowRoot.getElementById('permanent-delete-article-btn');
+        
+        if (setSiteIntroBtn) {
+            setSiteIntroBtn.addEventListener('click', () => this.handleSetSiteIntro());
+        }
         
         if (setIntroBtn) {
             setIntroBtn.addEventListener('click', () => this.handleSetIntro());
@@ -249,6 +264,48 @@ class ArticleHeaderCard extends BaseComponent {
         
         if (permanentDeleteBtn) {
             permanentDeleteBtn.addEventListener('click', () => this.handlePermanentDeleteArticle());
+        }
+    }
+
+    /**
+     * 处理设为网站介绍
+     */
+    async handleSetSiteIntro() {
+        if (!this.articleId) {
+            this.showError('无法获取文章ID');
+            return;
+        }
+
+        if (!confirm('确定要将此文章设为网站介绍吗？')) {
+            return;
+        }
+
+        try {
+            const token = UserManager.getAccessToken();
+            if (!token) {
+                this.showError('请先登录');
+                return;
+            }
+            
+            const response = await fetch(`/api/blogs/set-intro/${this.articleId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || '设置失败');
+            }
+
+            const result = await response.json();
+            this.showSuccess(result.message);
+            
+        } catch (error) {
+            this.logError('设置网站介绍失败', error);
+            this.showError('设置网站介绍失败: ' + error.message);
         }
     }
 
@@ -432,6 +489,40 @@ class ArticleHeaderCard extends BaseComponent {
             </div>
         `;
         this.addStyles();
+    }
+
+    /**
+     * 显示成功信息
+     */
+    showSuccess(message) {
+        // 创建临时成功提示
+        const successDiv = document.createElement('div');
+        successDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #10b981;
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            z-index: 1001;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: center;
+            min-width: 200px;
+            max-width: 400px;
+        `;
+        successDiv.textContent = message;
+        
+        document.body.appendChild(successDiv);
+        
+        setTimeout(() => {
+            if (successDiv.parentNode) {
+                successDiv.parentNode.removeChild(successDiv);
+            }
+        }, 3000);
     }
 
     /**
