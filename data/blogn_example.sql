@@ -1218,6 +1218,10 @@ COPY public.forumlist (id, name, comment, artcount) FROM stdin;
 --
 
 COPY public.glovar (id, varname, varvalue) FROM stdin;
+1	usercount                                         	1
+2	projectcount                                      	0
+3	projectitemcount                                  	0
+4	intropiid                                         	0
 \.
 
 
@@ -1356,7 +1360,7 @@ SELECT pg_catalog.setval('public.forumlist_id_seq', 1, false);
 -- Name: glovar_id_seq; Type: SEQUENCE SET; Schema: public; Owner: wy
 --
 
-SELECT pg_catalog.setval('public.glovar_id_seq', 1, false);
+SELECT pg_catalog.setval('public.glovar_id_seq', 4, true);
 
 
 --
