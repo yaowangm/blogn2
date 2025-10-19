@@ -260,7 +260,7 @@ BlogN2实现了完整的缓存系统：
 
 ## 📄 许可证
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+本项目采用 BSD 3-Clause 许可证 - 查看 [BSD 3-Clause License](https://opensource.org/licenses/BSD-3-Clause) 了解详情。
 
 ## 📞 联系方式
 
