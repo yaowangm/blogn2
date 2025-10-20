@@ -11,6 +11,7 @@ from src.repositories.user_repository import UserRepository
 from src.repositories.project_item_repository import ProjectItemRepository
 from src.repositories.project_repository import ProjectRepository
 from src.repositories.post_repository import PostRepository
+from src.repositories.glovar_repository import GlovarRepository
 from src.services.metadata_service import MetadataService
 from src.services.user_service import UserService
 from src.services.blog_service import BlogService
@@ -59,5 +60,6 @@ get_blog_service = create_service_dependency(
     UserRepository,
     ProjectItemRepository,
     ProjectRepository,
-    PostRepository
+    PostRepository,
+    GlovarRepository
 )

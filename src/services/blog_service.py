@@ -5,6 +5,7 @@ from src.repositories.user_repository import UserRepository
 from src.repositories.project_item_repository import ProjectItemRepository
 from src.repositories.project_repository import ProjectRepository
 from src.repositories.post_repository import PostRepository
+from src.repositories.glovar_repository import GlovarRepository
 from src.services.base_service import BaseService
 from src.utils.time_utils import TimeUtils
 
@@ -14,11 +15,12 @@ class BlogService(BaseService):
     提供博客相关的业务逻辑处理，包括最新加入、最热门、最近评论等功能。
     """
     
-    def __init__(self, user_repo: UserRepository, project_item_repo: ProjectItemRepository, project_repo: ProjectRepository, post_repo: PostRepository):
+    def __init__(self, user_repo: UserRepository, project_item_repo: ProjectItemRepository, project_repo: ProjectRepository, post_repo: PostRepository, glovar_repo: Optional[GlovarRepository] = None):
         self.user_repo = user_repo
         self.project_item_repo = project_item_repo
         self.project_repo = project_repo
         self.post_repo = post_repo
+        self.glovar_repo = glovar_repo
     
     def _check_avatar_exists(self, userid: int) -> str | None:
         """检查用户头像文件是否存在
@@ -137,16 +139,9 @@ class BlogService(BaseService):
         try:
             intro_id = None
             try:
-                # 优先从glovar表获取intropiid
-                from src.models.glovar import Glovar
-                from sqlmodel import select
-                statement = select(Glovar).where(Glovar.varname == "intropiid")
-                result = await self.project_item_repo.session.exec(statement)
-                glovar = result.first()
-                if glovar and getattr(glovar, "varvalue", None):
-                    intro_id = glovar.varvalue
+                # 优先通过仓储获取 glovar.intropiid（在单测中 glovar_repo 可能未注入）
+                intro_id = await self.glovar_repo.get_value("intropiid") if self.glovar_repo else None
             except Exception:
-                # glovar 查询失败时，稍后走回退
                 intro_id = None
 
             # 若未取到有效ID，回退到固定ID=486
