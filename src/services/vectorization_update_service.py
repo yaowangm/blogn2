@@ -69,20 +69,13 @@ class VectorizationUpdateService:
                 # 使用共享模型缓存
                 self.vectorization_service = get_cached_model()
             except RuntimeError:
-                # 如果缓存未初始化，检查是否在测试环境中
-                import sys
-                if 'pytest' in sys.modules:
-                    # 测试环境中允许创建新实例
-                    logger.warning("测试环境：模型缓存未初始化，创建新的向量化服务实例")
-                    try:
-                        self.vectorization_service = BERTVectorizationService()
-                        await self.vectorization_service.load_model()
-                    except Exception as e:
-                        logger.error(f"测试环境创建向量化服务失败: {e}")
-                        return None
-                else:
-                    # 生产环境中不允许创建新实例
-                    logger.error("模型缓存未初始化，无法进行向量化操作")
+                # 如果缓存未初始化，创建新实例并加载模型
+                logger.warning("模型缓存未初始化，创建新的向量化服务实例")
+                try:
+                    self.vectorization_service = BERTVectorizationService()
+                    await self.vectorization_service.load_model()
+                except Exception as e:
+                    logger.error(f"创建向量化服务失败: {e}")
                     return None
         
         return self.vectorization_service
