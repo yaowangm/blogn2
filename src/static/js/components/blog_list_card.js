@@ -391,8 +391,10 @@ class BlogListCard extends BaseComponent {
                     margin-bottom: var(--spacing-2);
                     line-height: 1.4;
                     overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
+                    /* 允许长标题在任意位置断行，避免单行撑破布局 */
+                    white-space: normal;
+                    word-break: break-word;
+                    overflow-wrap: anywhere;
                     max-width: 100%;
                 }
 
@@ -435,7 +437,7 @@ class BlogListCard extends BaseComponent {
                     max-width: 100%;
                     word-wrap: break-word;
                     word-break: break-word;
-                    overflow-wrap: break-word;
+                    overflow-wrap: anywhere; /* 允许在任意位置断行，防止超长串撑破 */
                 }
 
                 .post-attachment-image {
