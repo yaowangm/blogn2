@@ -144,9 +144,13 @@ class BlogService(BaseService):
             except Exception:
                 intro_id = None
 
-            # 若未取到有效ID，回退到固定ID=486
+            # 若未取到有效ID，则无内容
             if not intro_id:
-                intro_id = 486
+                return {
+                    "title": "Why Blogn",
+                    "content": "内容暂不可用",
+                    "link": None
+                }
 
             # 使用获得的ID来查询文章
             project_item = await self.project_item_repo.get_by_id(intro_id)
@@ -182,27 +186,7 @@ class BlogService(BaseService):
                 "link": f"/article/{project_item.id}"
             }
         except Exception as e:
-            # 尝试回退到固定ID=486再取一次
-            try:
-                fallback_item = await self.project_item_repo.get_by_id(486)
-                if fallback_item:
-                    content = (fallback_item.comment or "").replace('\r\n', '<br>').replace('\n', '<br>').replace('\r', '<br>')
-                    if len(content) > 300:
-                        truncate_pos = 300
-                        while truncate_pos > 0 and content[truncate_pos-1:truncate_pos+3] != '<br>':
-                            truncate_pos -= 1
-                            if truncate_pos <= 0:
-                                truncate_pos = 300
-                                break
-                        content = content[:truncate_pos] + "..."
-                    return {
-                        "title": "Why Blogn",
-                        "content": content,
-                        "link": f"/article/{fallback_item.id}"
-                    }
-            except Exception:
-                pass
-            # 最终兜底
+            # 最终兜底：明确无内容
             return {
                 "title": "Why Blogn",
                 "content": "内容暂不可用",
