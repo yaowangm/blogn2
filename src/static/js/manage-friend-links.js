@@ -38,6 +38,7 @@ class FriendLinksManager {
             this.showError('缺少项目ID参数');
             return;
         }
+        this.updatePageHeader();
         
         // 检查用户权限
         this.checkUserPermissions();
@@ -47,6 +48,22 @@ class FriendLinksManager {
         
         // 加载友情链接列表
         this.loadFriendLinks();
+    }
+
+    updatePageHeader() {
+        const isGlobal = this.projectId === 0;
+        const titleEl = document.querySelector('title');
+        const h1 = document.querySelector('.page-title');
+        const desc = document.querySelector('.page-description');
+        if (isGlobal) {
+            if (titleEl) titleEl.textContent = '管理全站友情链接 - 博客管理系统';
+            if (h1) h1.lastChild && h1.lastChild.nodeType === Node.TEXT_NODE ? h1.lastChild.textContent = '管理全站友情链接' : h1.appendChild(document.createTextNode('管理全站友情链接'));
+            if (desc) desc.textContent = '管理全站友情链接，最多可添加20个友情链接';
+        } else {
+            if (titleEl) titleEl.textContent = '管理友情链接 - 博客管理系统';
+            if (h1) h1.lastChild && h1.lastChild.nodeType === Node.TEXT_NODE ? h1.lastChild.textContent = '管理友情链接' : h1.appendChild(document.createTextNode('管理友情链接'));
+            if (desc) desc.textContent = '管理您的博客友情链接，最多可添加20个友情链接';
+        }
     }
     
     getProjectIdFromUrl() {
