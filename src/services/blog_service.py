@@ -133,25 +133,28 @@ class BlogService(BaseService):
             return []
     
     async def get_about_content(self) -> Dict[str, Any]:
-        """获取关于页面的内容（从glovar表动态获取intropiid）"""
+        """获取关于页面的内容（优先从glovar读取intropiid，失败时回退到固定ID=486）"""
         try:
-            # 先从glovar表获取intropiid
-            from src.models.glovar import Glovar
-            from sqlmodel import select
-            
-            statement = select(Glovar).where(Glovar.varname == "intropiid")
-            result = await self.project_item_repo.session.exec(statement)
-            glovar = result.first()
-            
-            if not glovar or not glovar.varvalue:
-                return {
-                    "title": "Why Blogn",
-                    "content": "内容暂不可用",
-                    "link": None
-                }
-            
-            # 使用从glovar表获取的ID来查询文章
-            project_item = await self.project_item_repo.get_by_id(glovar.varvalue)
+            intro_id = None
+            try:
+                # 优先从glovar表获取intropiid
+                from src.models.glovar import Glovar
+                from sqlmodel import select
+                statement = select(Glovar).where(Glovar.varname == "intropiid")
+                result = await self.project_item_repo.session.exec(statement)
+                glovar = result.first()
+                if glovar and getattr(glovar, "varvalue", None):
+                    intro_id = glovar.varvalue
+            except Exception:
+                # glovar 查询失败时，稍后走回退
+                intro_id = None
+
+            # 若未取到有效ID，回退到固定ID=486
+            if not intro_id:
+                intro_id = 486
+
+            # 使用获得的ID来查询文章
+            project_item = await self.project_item_repo.get_by_id(intro_id)
             
             if not project_item:
                 return {
@@ -184,13 +187,32 @@ class BlogService(BaseService):
                 "link": f"/article/{project_item.id}"
             }
         except Exception as e:
-            # 如果查询失败，返回默认内容
-            print(f"Error in get_about_content: {e}")  # 添加调试信息
+            # 尝试回退到固定ID=486再取一次
+            try:
+                fallback_item = await self.project_item_repo.get_by_id(486)
+                if fallback_item:
+                    content = (fallback_item.comment or "").replace('\r\n', '<br>').replace('\n', '<br>').replace('\r', '<br>')
+                    if len(content) > 300:
+                        truncate_pos = 300
+                        while truncate_pos > 0 and content[truncate_pos-1:truncate_pos+3] != '<br>':
+                            truncate_pos -= 1
+                            if truncate_pos <= 0:
+                                truncate_pos = 300
+                                break
+                        content = content[:truncate_pos] + "..."
+                    return {
+                        "title": "Why Blogn",
+                        "content": content,
+                        "link": f"/article/{fallback_item.id}"
+                    }
+            except Exception:
+                pass
+            # 最终兜底
             return {
                 "title": "Why Blogn",
                 "content": "内容暂不可用",
                 "link": None
-            } 
+            }
     
     async def get_recent_messages(self, limit: int = 5) -> List[Dict[str, Any]]:
         """获取最近的留言本记录"""

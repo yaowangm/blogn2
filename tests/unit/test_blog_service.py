@@ -252,7 +252,7 @@ class TestBlogService:
         
         assert result["title"] == "Why Blogn"
         assert result["content"] == "这是关于页面的内容<br>包含换行符"
-        assert result["link"] == "/projectitem/486"
+        assert result["link"] == "/article/486"
         mock_project_item_repo.get_by_id.assert_called_once_with(486)
     
     @pytest.mark.unit
