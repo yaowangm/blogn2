@@ -69,14 +69,26 @@ class FriendLinksCard extends BaseComponent {
 
     async loadData() {
         try {
-            // 直接使用硬编码的友情链接，不从数据库获取
-            this.friendLinks = this.getDefaultFriendLinks();
+            // 首页无 projectId 时，尝试加载全站友情链接（project_id=0）
+            const pid = this.projectId ? this.projectId : 0;
+            const response = await fetch(`/api/projects/${pid}/friend-links`);
+            if (response.ok) {
+                const data = await response.json();
+                // 接口成功且有数据则使用接口数据，否则回退默认数据
+                if (Array.isArray(data) && data.length > 0) {
+                    this.friendLinks = data;
+                } else {
+                    this.friendLinks = this.getDefaultFriendLinks();
+                }
+            } else {
+                // 接口失败时回退
+                this.friendLinks = this.getDefaultFriendLinks();
+            }
         } catch (error) {
             console.error('Error loading friend links:', error);
             this.friendLinks = this.getDefaultFriendLinks();
         } finally {
             this.loading = false;
-            // 重新检查权限并渲染
             await this.checkOwnership();
             this.render();
             this.addEventListeners();
@@ -93,6 +105,9 @@ class FriendLinksCard extends BaseComponent {
                     const projectId = this.projectId;
                     if (projectId) {
                         window.open(`/manage-friend-links?project_id=${projectId}`, '_blank');
+                    } else {
+                        // 全站友情链接管理（仅管理员有效）
+                        window.open('/manage-friend-links?project_id=0', '_blank');
                     }
                 });
             }
