@@ -52,7 +52,8 @@ class FriendLinksManager {
     getProjectIdFromUrl() {
         const urlParams = new URLSearchParams(window.location.search);
         const raw = urlParams.get('project_id');
-        if (raw === null) return null;
+        // 无参数时默认全站模式（project_id=0）
+        if (raw === null || raw === '') return 0;
         const num = parseInt(raw, 10);
         if (Number.isNaN(num)) return null;
         return num;

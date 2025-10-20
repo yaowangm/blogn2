@@ -354,7 +354,7 @@ class HeaderComponent extends BaseComponent {
                                     管理友情链接
                                 </a>
                                 ${this.userInfo && this.userInfo.state === 10 ? `
-                                <a href="/manage-friend-links?project_id=0" target="_blank" rel="noopener" class="dropdown-item" id="manageGlobalFriendLinksMenuItem">
+                                <a href="/manage-friend-links" target="_blank" rel="noopener" class="dropdown-item" id="manageGlobalFriendLinksMenuItem">
                                     ${settingsIcon}
                                     管理全站友情链接
                                 </a>

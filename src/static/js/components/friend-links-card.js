@@ -103,7 +103,7 @@ class FriendLinksCard extends BaseComponent {
                         window.open(`/manage-friend-links?project_id=${projectId}`, '_blank');
                     } else {
                         // 全站友情链接管理（仅管理员有效）
-                        window.open('/manage-friend-links?project_id=0', '_blank');
+                        window.open('/manage-friend-links', '_blank');
                     }
                 });
             }
