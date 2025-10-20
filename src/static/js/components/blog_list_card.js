@@ -382,6 +382,9 @@ class BlogListCard extends BaseComponent {
                     min-width: 0;
                     max-width: 100%;
                     overflow: hidden;
+                    /* 继承全局文本断行策略 */
+                    /* 若common-components.css未作用于Shadow DOM，可用工具类兜底 */
+                    /* 此处不重复具体规则，避免多层定义 */
                 }
 
                 .post-title {
@@ -391,10 +394,6 @@ class BlogListCard extends BaseComponent {
                     margin-bottom: var(--spacing-2);
                     line-height: 1.4;
                     overflow: hidden;
-                    /* 允许长标题在任意位置断行，避免单行撑破布局 */
-                    white-space: normal;
-                    word-break: break-word;
-                    overflow-wrap: anywhere;
                     max-width: 100%;
                 }
 

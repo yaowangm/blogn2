@@ -21,6 +21,22 @@
     word-break: break-word;  /* 必要时对长单词断行 */
 }
 
+/* 文本换行工具类，供组件按需继承使用 */
+.text-wrap,
+.text-wrap * {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.text-wrap a {
+    word-break: break-all;
+}
+
+/* 常见标题在文本容器内的换行优化 */
+.text-wrap .post-title {
+    white-space: normal;
+}
+
 /* 主机样式 */
 :host {
     display: block;
