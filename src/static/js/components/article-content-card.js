@@ -131,7 +131,7 @@ class ArticleContentCard extends BaseComponent {
             // 对解析后的HTML进行安全过滤
             const safeHtml = this.sanitizeHtml(html);
             
-            // 处理文本中的链接（包括ed2k等非标准协议）
+            // 处理文本中的链接（包括ed2k等非标准协议），采用DOM遍历避免破坏HTML结构
             const processedHtml = this.processTextWithLinks(safeHtml);
             
             return processedHtml;
@@ -333,34 +333,70 @@ class ArticleContentCard extends BaseComponent {
      * 处理文本中的链接，安全地转换为可点击的链接
      */
 
-    processTextWithLinks(text) {
-        if (!text || typeof text !== 'string') {
+    processTextWithLinks(htmlOrText) {
+        if (!htmlOrText || typeof htmlOrText !== 'string') {
             return '';
         }
+        // 通用URL正则，匹配 aaa://...
+        const urlRegex = /([a-zA-Z][a-zA-Z0-9+.-]*:\/\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]+)/g;
 
-        // 通用的URL正则表达式，匹配任何 aaa://bbb 形式的链接
-        const urlRegex = /([a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^\s<>"']+)/gi;
-        
-        // 只处理不在HTML标签内的文本
-        return text.replace(/(<[^>]*>)|([^<]+)/g, (match, htmlTag, textContent) => {
-            if (htmlTag) {
-                // 如果是HTML标签，直接返回
-                return htmlTag;
-            } else if (textContent) {
-                // 如果是文本内容，处理其中的链接
-                return textContent.replace(urlRegex, (url) => {
-                    // 使用严格的URL验证
-                    if (this.isValidUrl(url)) {
-                        const safeUrl = this.escapeHtml(url);
-                        const displayUrl = this.escapeHtml(url);
-                        return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="auto-link">${displayUrl}</a>`;
-                    }
-                    // 如果URL不安全，只转义显示
-                    return this.escapeHtml(url);
-                });
+        // 使用DOM解析，避免正则直接切分HTML导致结构损坏
+        const container = document.createElement('div');
+        container.innerHTML = htmlOrText;
+
+        const SKIP_TAGS = new Set(['A', 'CODE', 'PRE', 'SCRIPT', 'STYLE']);
+
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+            acceptNode: (node) => {
+                const parent = node.parentNode;
+                if (!parent) return NodeFilter.FILTER_REJECT;
+                let el = parent;
+                while (el && el.nodeType === 1) {
+                    if (SKIP_TAGS.has(el.nodeName)) return NodeFilter.FILTER_REJECT;
+                    el = el.parentNode;
+                }
+                return urlRegex.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
             }
-            return match;
         });
+
+        const nodes = [];
+        let n;
+        while ((n = walker.nextNode())) nodes.push(n);
+
+        for (const textNode of nodes) {
+            const text = textNode.nodeValue;
+            const parts = [];
+            let lastIndex = 0;
+            text.replace(urlRegex, (match, url, offset) => {
+                if (offset > lastIndex) parts.push(document.createTextNode(text.slice(lastIndex, offset)));
+                try {
+                    if (this.isValidUrl(url)) {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                        a.className = 'auto-link';
+                        a.textContent = url;
+                        parts.push(a);
+                    } else {
+                        parts.push(document.createTextNode(url));
+                    }
+                } catch (_) {
+                    parts.push(document.createTextNode(url));
+                }
+                lastIndex = offset + match.length;
+                return match;
+            });
+            if (lastIndex < text.length) parts.push(document.createTextNode(text.slice(lastIndex)));
+
+            const parent = textNode.parentNode;
+            if (parent) {
+                for (const part of parts) parent.insertBefore(part, textNode);
+                parent.removeChild(textNode);
+            }
+        }
+
+        return container.innerHTML;
     }
 
     /**
