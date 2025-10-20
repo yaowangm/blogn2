@@ -172,6 +172,13 @@ class HeaderComponent extends BaseComponent {
                     transition: var(--transition-fast);
                 }
 
+                /* 规范下拉菜单项中的任意SVG图标尺寸，避免外部图标过大 */
+                .dropdown-item svg {
+                    width: 16px;
+                    height: 16px;
+                    flex-shrink: 0;
+                }
+
                 .dropdown-item:hover .dropdown-icon {
                     color: var(--gray-900);
                 }
