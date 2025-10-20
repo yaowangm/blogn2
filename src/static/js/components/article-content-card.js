@@ -426,12 +426,18 @@ class ArticleContentCard extends BaseComponent {
                 .article-content {
                     line-height: 1.8;
                     word-wrap: break-word;
-                    overflow-wrap: break-word;
+                    overflow-wrap: anywhere; /* 允许在任意位置换行，避免超长连续字符撑破布局 */
+                    word-break: break-word;   /* 在必要时对长单词/连续字符串进行断行 */
                     max-width: 100%;
+                }
+                /* 对所有后代启用任意位置换行，兜底避免极端长串文本导致变形 */
+                .article-content * {
+                    overflow-wrap: anywhere;
+                    word-break: break-word;
                 }
                 
                 .article-content a {
-                    word-break: break-all;
+                    word-break: break-all;    /* 链接内优先允许任意断行 */
                     overflow-wrap: anywhere;
                     max-width: 100%;
                     display: inline-block;
