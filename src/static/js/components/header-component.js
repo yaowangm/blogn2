@@ -550,21 +550,25 @@ class HeaderComponent extends BaseComponent {
                 this.userName = (this.userInfo.name || 'User').trim();
 
                 // 补充获取完整用户信息（包括是否开通博客的projectid）
-                try {
-                    const headers = UserManager.createHeaders();
-                    const resp = await fetch(`/api/users/${this.userInfo.id}`, { headers });
-                    if (resp && resp.ok) {
-                        const fullUser = await resp.json();
-                        // 合并关键字段（避免覆盖已有字段）
-                        if (typeof fullUser.projectid !== 'undefined') {
-                            this.userInfo.projectid = fullUser.projectid;
+                if (this.userInfo && this.userInfo.id) {
+                    try {
+                        const headers = UserManager.createHeaders();
+                        const resp = await fetch(`/api/users/${this.userInfo.id}`, { headers });
+                        if (resp && resp.ok) {
+                            const fullUser = await resp.json();
+                            // 合并关键字段（避免覆盖已有字段）
+                            if (typeof fullUser.projectid !== 'undefined') {
+                                this.userInfo.projectid = fullUser.projectid;
+                            }
+                            if (typeof fullUser.avatar_url !== 'undefined' && !this.userInfo.avatar_url) {
+                                this.userInfo.avatar_url = fullUser.avatar_url;
+                            }
+                        } else {
+                            console.warn('Failed to load full user info:', resp && resp.status);
                         }
-                        if (typeof fullUser.avatar_url !== 'undefined' && !this.userInfo.avatar_url) {
-                            this.userInfo.avatar_url = fullUser.avatar_url;
-                        }
+                    } catch (e) {
+                        console.warn('Error fetching full user info:', e);
                     }
-                } catch (e) {
-                    // 静默失败，保持已有信息
                 }
             } catch (error) {
                 console.error('Failed to parse user info:', error);
