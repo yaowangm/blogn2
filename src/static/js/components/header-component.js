@@ -353,6 +353,12 @@ class HeaderComponent extends BaseComponent {
                                     ${settingsIcon}
                                     管理友情链接
                                 </a>
+                                ${this.userInfo && this.userInfo.state === 10 ? `
+                                <a href="/manage-friend-links?project_id=0" target="_blank" rel="noopener" class="dropdown-item" id="manageGlobalFriendLinksMenuItem">
+                                    ${settingsIcon}
+                                    管理全站友情链接
+                                </a>
+                                ` : ''}
                                 ` : ''}
                                 ${this.isLoggedIn && this.userInfo && this.userInfo.state === 10 ? `
                                 <a href="/users" class="dropdown-item" id="usersListMenuItem">
@@ -427,6 +433,16 @@ class HeaderComponent extends BaseComponent {
         const manageFriendLinksMenuItem = this.shadowRoot.querySelector('#manageFriendLinksMenuItem');
         if (manageFriendLinksMenuItem) {
             manageFriendLinksMenuItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // 新窗口打开，关闭菜单
+                userMenu.classList.remove('active');
+            });
+        }
+
+        // 管理全站友情链接菜单项（仅管理员可见）
+        const manageGlobalFriendLinksMenuItem = this.shadowRoot.querySelector('#manageGlobalFriendLinksMenuItem');
+        if (manageGlobalFriendLinksMenuItem) {
+            manageGlobalFriendLinksMenuItem.addEventListener('click', (e) => {
                 e.stopPropagation();
                 // 新窗口打开，关闭菜单
                 userMenu.classList.remove('active');
