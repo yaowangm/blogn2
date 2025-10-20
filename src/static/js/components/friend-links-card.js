@@ -74,19 +74,15 @@ class FriendLinksCard extends BaseComponent {
             const response = await fetch(`/api/projects/${pid}/friend-links`);
             if (response.ok) {
                 const data = await response.json();
-                // 接口成功且有数据则使用接口数据，否则回退默认数据
-                if (Array.isArray(data) && data.length > 0) {
-                    this.friendLinks = data;
-                } else {
-                    this.friendLinks = this.getDefaultFriendLinks();
-                }
+                // 接口成功则使用返回数据；为空则显示空列表
+                this.friendLinks = Array.isArray(data) ? data : [];
             } else {
-                // 接口失败时回退
-                this.friendLinks = this.getDefaultFriendLinks();
+                // 接口失败显示空列表
+                this.friendLinks = [];
             }
         } catch (error) {
             console.error('Error loading friend links:', error);
-            this.friendLinks = this.getDefaultFriendLinks();
+            this.friendLinks = [];
         } finally {
             this.loading = false;
             await this.checkOwnership();
