@@ -33,6 +33,7 @@ class HeaderComponent extends BaseComponent {
         const hasIcons = typeof Icons !== 'undefined';
         const searchIcon = hasIcons ? Icons.search : this.getDefaultSearchIcon();
         const userHomeIcon = hasIcons ? Icons.userHome : this.getDefaultUserHomeIcon();
+        const blogIcon = hasIcons ? Icons.userHome : this.getDefaultHomeIcon();
         const logoutIcon = hasIcons ? Icons.logout : this.getDefaultLogoutIcon();
 
         this.shadowRoot.innerHTML = `
@@ -329,6 +330,12 @@ class HeaderComponent extends BaseComponent {
                                     ${searchIcon}
                                     搜索
                                 </a>
+                                ${this.userInfo && this.userInfo.projectid ? `
+                                <a href="/blog/${this.userInfo.projectid}" target="_blank" rel="noopener" class="dropdown-item" id="blogMenuItem">
+                                    ${blogIcon}
+                                    博客
+                                </a>
+                                ` : ''}
                                 <a href="${this.userInfo && this.userInfo.id ? `/profile/${this.userInfo.id}` : '/profile'}" class="dropdown-item" id="profileMenuItem">
                                     ${userHomeIcon}
                                     个人资料
@@ -398,6 +405,16 @@ class HeaderComponent extends BaseComponent {
             profileMenuItem.addEventListener('click', (e) => {
                 e.stopPropagation();
                 // 链接已经直接指向正确的URL，只需要关闭菜单
+                userMenu.classList.remove('active');
+            });
+        }
+
+        // 博客菜单项
+        const blogMenuItem = this.shadowRoot.querySelector('#blogMenuItem');
+        if (blogMenuItem) {
+            blogMenuItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // 新窗口打开，关闭菜单
                 userMenu.classList.remove('active');
             });
         }
@@ -491,6 +508,24 @@ class HeaderComponent extends BaseComponent {
                 this.isLoggedIn = true;
                 // 清理用户名中的多余空格
                 this.userName = (this.userInfo.name || 'User').trim();
+
+                // 补充获取完整用户信息（包括是否开通博客的projectid）
+                try {
+                    const headers = UserManager.createHeaders();
+                    const resp = await fetch(`/api/users/${this.userInfo.id}`, { headers });
+                    if (resp && resp.ok) {
+                        const fullUser = await resp.json();
+                        // 合并关键字段（避免覆盖已有字段）
+                        if (typeof fullUser.projectid !== 'undefined') {
+                            this.userInfo.projectid = fullUser.projectid;
+                        }
+                        if (typeof fullUser.avatar_url !== 'undefined' && !this.userInfo.avatar_url) {
+                            this.userInfo.avatar_url = fullUser.avatar_url;
+                        }
+                    }
+                } catch (e) {
+                    // 静默失败，保持已有信息
+                }
             } catch (error) {
                 console.error('Failed to parse user info:', error);
                 this.clearAuthData();
