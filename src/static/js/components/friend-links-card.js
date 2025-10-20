@@ -99,7 +99,7 @@ class FriendLinksCard extends BaseComponent {
                 manageButton.addEventListener('click', (e) => {
                     e.preventDefault();
                     const projectId = this.projectId;
-                    if (projectId) {
+                    if (projectId !== undefined && projectId !== null) {
                         window.open(`/manage-friend-links?project_id=${projectId}`, '_blank');
                     } else {
                         // 全站友情链接管理（仅管理员有效）
