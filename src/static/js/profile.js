@@ -85,13 +85,13 @@ function updatePageTitle() {
     // 如果有目标用户ID，需要从API获取用户信息来设置标题
     if (window.targetUserId) {
         // 标题将在用户数据加载完成后更新
-        document.title = '个人资料 - BlogN2';
+        document.title = '个人资料 - BlogN';
     } else {
         // 使用当前登录用户信息
         if (UserManager.isLoggedIn()) {
             try {
                 const user = UserManager.getCurrentUser();
-                document.title = `${user.name}的个人资料 - BlogN2`;
+                document.title = `${user.name}的个人资料 - BlogN`;
             } catch (error) {
                 console.error('更新页面标题失败:', error);
             }

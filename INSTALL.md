@@ -1,6 +1,6 @@
-# BlogN2 安装指南
+# BlogN 安装指南
 
-本文档详细描述如何在干净的Linux环境中安装和配置BlogN2博客系统。
+本文档详细描述如何在干净的Linux环境中安装和配置BlogN博客系统。
 
 ## 系统要求
 
@@ -213,7 +213,7 @@ python run.py
 
 如果一切正常，您应该看到类似输出：
 ```
-🚀 启动 BlogN2 FastAPI 应用...
+🚀 启动 BlogN FastAPI 应用...
 📍 访问地址:
    - 首页: http://localhost:8000
    - API文档: http://localhost:8000/docs
