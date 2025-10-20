@@ -54,19 +54,10 @@ get_user_service = create_service_dependency(
     ProjectRepository
 )
 
-async def get_blog_service(session: AsyncSession = Depends(get_async_session)):
-    """
-    获取博客服务实例
-    
-    Args:
-        session: 数据库会话
-        
-    Returns:
-        BlogService: 博客服务实例
-    """
-    user_repo = UserRepository(session)
-    project_item_repo = ProjectItemRepository(session)
-    project_repo = ProjectRepository(session)
-    post_repo = PostRepository(session)
-    
-    return BlogService(user_repo, project_item_repo, project_repo, post_repo) 
+get_blog_service = create_service_dependency(
+    BlogService,
+    UserRepository,
+    ProjectItemRepository,
+    ProjectRepository,
+    PostRepository
+)
