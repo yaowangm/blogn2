@@ -33,7 +33,8 @@ class FriendLinksManager {
     init() {
         // 获取项目ID
         this.projectId = this.getProjectIdFromUrl();
-        if (!this.projectId) {
+        // 允许全站模式（project_id=0），仅在无法判定时提示缺少参数
+        if (this.projectId === null) {
             this.showError('缺少项目ID参数');
             return;
         }
@@ -49,8 +50,16 @@ class FriendLinksManager {
     }
     
     getProjectIdFromUrl() {
+        // 管理全站友情链接页面，无查询参数时默认 project_id=0
+        if (window.location && typeof window.location.pathname === 'string' && window.location.pathname.includes('manage-global-friend-links')) {
+            return 0;
+        }
         const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get('project_id');
+        const raw = urlParams.get('project_id');
+        if (raw === null) return null;
+        const num = parseInt(raw, 10);
+        if (Number.isNaN(num)) return null;
+        return num;
     }
     
     async checkUserPermissions() {
@@ -63,19 +72,25 @@ class FriendLinksManager {
             const currentUser = UserManager.getCurrentUser();
             const isAdmin = currentUser.state === 10;
             
-            // 检查是否为博客所有者
-            const response = await fetch(`/api/projects/${this.projectId}`);
-            if (!response.ok) {
-                this.showError('无法获取博客信息');
-                return;
-            }
-            
-            const blogData = await response.json();
-            const isOwner = currentUser.id === blogData.userid;
-            
-            if (!isOwner && !isAdmin) {
-                this.showError('无权限管理该博客的友情链接');
-                return;
+            if (this.projectId === 0) {
+                // 全站模式：仅管理员可管理
+                if (!isAdmin) {
+                    this.showError('仅管理员可以管理全站友情链接');
+                    return;
+                }
+            } else {
+                // 检查是否为博客所有者
+                const response = await fetch(`/api/projects/${this.projectId}`);
+                if (!response.ok) {
+                    this.showError('无法获取博客信息');
+                    return;
+                }
+                const blogData = await response.json();
+                const isOwner = currentUser.id === blogData.userid;
+                if (!isOwner && !isAdmin) {
+                    this.showError('无权限管理该博客的友情链接');
+                    return;
+                }
             }
             
         } catch (error) {

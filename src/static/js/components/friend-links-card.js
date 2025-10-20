@@ -47,7 +47,7 @@ class FriendLinksCard extends BaseComponent {
         // 检查是否为管理员（state为10表示管理员）
         this.isAdmin = currentUser.state === 10;
 
-        // 检查是否为博客所有者
+        // 检查是否为博客所有者（全站模式下无所有者，仅管理员可管理）
         if (this.projectId) {
             try {
                 // 获取博客信息
@@ -63,17 +63,25 @@ class FriendLinksCard extends BaseComponent {
                 this.isOwner = false;
             }
         } else {
+            // 首页全站模式：没有所有者，仅管理员可管理
             this.isOwner = false;
         }
     }
 
     async loadData() {
         try {
-            // 直接使用硬编码的友情链接，不从数据库获取
-            this.friendLinks = this.getDefaultFriendLinks();
+            const pid = this.projectId ? this.projectId : 0; // 首页为全站友情链接
+            const response = await fetch(`/api/projects/${pid}/friend-links`);
+            if (response.ok) {
+                this.friendLinks = await response.json();
+            } else if (response.status === 404) {
+                this.friendLinks = [];
+            } else {
+                throw new Error('获取友情链接失败');
+            }
         } catch (error) {
             console.error('Error loading friend links:', error);
-            this.friendLinks = this.getDefaultFriendLinks();
+            this.friendLinks = [];
         } finally {
             this.loading = false;
             // 重新检查权限并渲染
@@ -93,18 +101,13 @@ class FriendLinksCard extends BaseComponent {
                     const projectId = this.projectId;
                     if (projectId) {
                         window.open(`/manage-friend-links?project_id=${projectId}`, '_blank');
+                    } else {
+                        // 全站友情链接管理
+                        window.open('/manage-global-friend-links', '_blank');
                     }
                 });
             }
         }, 100);
-    }
-
-    getDefaultFriendLinks() {
-        return [
-            { subject: '无双谱', linkstr: 'http://wsp.bloggern.com' },
-            { subject: '豌豆网', linkstr: 'http://www.OneDoor.cn' },
-            { subject: '火网', linkstr: 'http://www.huooo.com' }
-        ];
     }
 
     render() {
