@@ -14,6 +14,13 @@
     padding: var(--spacing-6);
 }
 
+/* 全局长文本断行策略，防止超长连续字符串/链接撑破卡片布局 */
+.card-body,
+.card-body * {
+    overflow-wrap: anywhere; /* 在任意位置断行 */
+    word-break: break-word;  /* 必要时对长单词断行 */
+}
+
 /* 主机样式 */
 :host {
     display: block;
@@ -46,7 +53,7 @@
 .auto-link {
     color: var(--primary-color);
     text-decoration: none;
-    word-break: break-all;
+    word-break: break-all; /* 链接文本优先强断行，避免溢出 */
 }
 
 .auto-link:hover {
