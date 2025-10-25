@@ -72,9 +72,8 @@ class TestGuestbookWithRealDB:
     @pytest.mark.integration
     def test_create_message_logged_in(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试登录用户创建留言"""
-        # 创建测试用户
+        # 创建测试用户 - 不指定ID，让数据库自动生成
         user = User(
-            id=2002,
             name="testuser2002",
             email="user2002@example.com",
             password="hashed_password",
@@ -110,7 +109,7 @@ class TestGuestbookWithRealDB:
         )
         message = message_result.first()
         assert message is not None
-        assert message.userid == 2002
+        assert message.userid == user.id  # 使用动态生成的用户ID
 
     @pytest.mark.integration
     def test_create_message_empty_subject(self, test_client, real_sync_session_with_commit, test_data_tracker):
@@ -170,9 +169,8 @@ class TestGuestbookWithRealDB:
     @pytest.mark.integration
     def test_create_reply_message(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试创建跟贴留言"""
-        # 创建测试用户
+        # 创建测试用户 - 不指定ID，让数据库自动生成
         user = User(
-            id=2003,
             name="testuser2003",
             email="user2003@example.com",
             password="hashed_password",
@@ -234,9 +232,8 @@ class TestGuestbookWithRealDB:
     @pytest.mark.integration
     def test_get_messages_list(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试获取留言本列表"""
-        # 创建测试用户
+        # 创建测试用户 - 不指定ID，让数据库自动生成
         user = User(
-            id=2004,
             name="testuser2004",
             email="user2004@example.com",
             password="hashed_password",
