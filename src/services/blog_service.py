@@ -144,8 +144,8 @@ class BlogService(BaseService):
             except Exception:
                 intro_id = None
 
-            # 若未取到有效ID，则无内容
-            if not intro_id:
+            # 若未取到有效ID，则无内容（使用 is None 检查，避免 intro_id=0 时误判）
+            if intro_id is None:
                 return {
                     "title": "Why Blogn",
                     "content": "内容暂不可用",
