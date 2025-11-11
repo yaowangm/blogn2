@@ -166,13 +166,36 @@ class TestAPIEndpointsWithRealDB:
     @pytest.mark.integration
     def test_get_about_content_with_real_db(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试获取关于内容 - 使用真实数据库"""
-        # 创建测试项目项 - 不指定ID，让数据库自动生成
+        # 先创建测试用户 - 不指定ID，让数据库自动生成
+        user = User(
+            name="testuser_about",
+            email="user_about@example.com",
+            password="hashed_password",
+            regtime=datetime(2024, 1, 1, 10, 0, 0)
+        )
+        real_sync_session_with_commit.add(user)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_user(user.id)  # 跟踪用户ID
+        
+        # 创建测试项目 - 不指定ID，让数据库自动生成
+        project = Project(
+            name="About Project",
+            userid=user.id,
+            createtime=datetime(2024, 1, 1, 10, 0, 0),
+            state=0,
+            accesscount=0
+        )
+        real_sync_session_with_commit.add(project)
+        real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_project(project.id)  # 跟踪项目ID
+        
+        # 创建测试项目项 - 使用刚创建的项目ID
         project_item = ProjectItem(
-            projectid=1,  # 使用现有的项目ID
+            projectid=project.id,  # 使用刚创建的项目ID
             name="About Page",
             comment="This is the about page content",
             itemtype=1,
-            userid=1,  # 使用现有的用户ID
+            userid=user.id,  # 使用刚创建的用户ID
             createtime=datetime(2024, 1, 1, 10, 0, 0),
             status=1
         )
