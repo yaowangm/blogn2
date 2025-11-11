@@ -18,8 +18,14 @@ logger = logging.getLogger(__name__)
 class SharedModelCache:
     """跨进程共享的模型缓存管理器"""
     
-    def __init__(self, lock_file: str = "/tmp/model_cache.lock"):
-        self.lock_file = lock_file
+    def __init__(self, lock_file: str = None):
+        if lock_file is None:
+            # 使用项目目录下的临时文件，避免权限问题
+            import tempfile
+            import os
+            self.lock_file = os.path.join(tempfile.gettempdir(), f"model_cache_{os.getpid()}.lock")
+        else:
+            self.lock_file = lock_file
         self.manager = Manager()
         self.shared_dict = self.manager.dict()
         self._model = None

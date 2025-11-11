@@ -9,6 +9,8 @@
     /* 颜色变量 */
     --primary-color: #2563eb;
     --primary-hover: #1d4ed8;
+    --primary-600: #2563eb;
+    --primary-700: #1d4ed8;
     --secondary-color: #64748b;
     --accent-color: #f59e0b;
     --success-color: #10b981;

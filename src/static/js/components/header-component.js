@@ -33,6 +33,8 @@ class HeaderComponent extends BaseComponent {
         const hasIcons = typeof Icons !== 'undefined';
         const searchIcon = hasIcons ? Icons.search : this.getDefaultSearchIcon();
         const userHomeIcon = hasIcons ? Icons.userHome : this.getDefaultUserHomeIcon();
+        const blogIcon = hasIcons ? Icons.userHome : this.getDefaultHomeIcon();
+        const settingsIcon = hasIcons && Icons.settings ? Icons.settings : this.getDefaultSettingsIcon();
         const logoutIcon = hasIcons ? Icons.logout : this.getDefaultLogoutIcon();
 
         this.shadowRoot.innerHTML = `
@@ -168,6 +170,13 @@ class HeaderComponent extends BaseComponent {
                     flex-shrink: 0;
                     color: var(--gray-600);
                     transition: var(--transition-fast);
+                }
+
+                /* 规范下拉菜单项中的任意SVG图标尺寸，避免外部图标过大 */
+                .dropdown-item svg {
+                    width: 16px;
+                    height: 16px;
+                    flex-shrink: 0;
                 }
 
                 .dropdown-item:hover .dropdown-icon {
@@ -329,10 +338,28 @@ class HeaderComponent extends BaseComponent {
                                     ${searchIcon}
                                     搜索
                                 </a>
+                                ${this.userInfo && this.userInfo.projectid ? `
+                                <a href="/blog/${this.userInfo.projectid}" target="_blank" rel="noopener" class="dropdown-item" id="blogMenuItem">
+                                    ${blogIcon}
+                                    博客
+                                </a>
+                                ` : ''}
                                 <a href="${this.userInfo && this.userInfo.id ? `/profile/${this.userInfo.id}` : '/profile'}" class="dropdown-item" id="profileMenuItem">
                                     ${userHomeIcon}
                                     个人资料
                                 </a>
+                                ${this.userInfo && this.userInfo.projectid ? `
+                                <a href="/manage-friend-links?project_id=${this.userInfo.projectid}" target="_blank" rel="noopener" class="dropdown-item" id="manageFriendLinksMenuItem">
+                                    ${settingsIcon}
+                                    管理友情链接
+                                </a>
+                                ${this.userInfo && this.userInfo.state === 10 ? `
+                                <a href="/manage-friend-links" target="_blank" rel="noopener" class="dropdown-item" id="manageGlobalFriendLinksMenuItem">
+                                    ${settingsIcon}
+                                    管理全站友情链接
+                                </a>
+                                ` : ''}
+                                ` : ''}
                                 ${this.isLoggedIn && this.userInfo && this.userInfo.state === 10 ? `
                                 <a href="/users" class="dropdown-item" id="usersListMenuItem">
                                     ${hasIcons ? Icons.usersList : this.getDefaultUsersListIcon()}
@@ -398,6 +425,36 @@ class HeaderComponent extends BaseComponent {
             profileMenuItem.addEventListener('click', (e) => {
                 e.stopPropagation();
                 // 链接已经直接指向正确的URL，只需要关闭菜单
+                userMenu.classList.remove('active');
+            });
+        }
+
+        // 管理友情链接菜单项
+        const manageFriendLinksMenuItem = this.shadowRoot.querySelector('#manageFriendLinksMenuItem');
+        if (manageFriendLinksMenuItem) {
+            manageFriendLinksMenuItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // 新窗口打开，关闭菜单
+                userMenu.classList.remove('active');
+            });
+        }
+
+        // 管理全站友情链接菜单项（仅管理员可见）
+        const manageGlobalFriendLinksMenuItem = this.shadowRoot.querySelector('#manageGlobalFriendLinksMenuItem');
+        if (manageGlobalFriendLinksMenuItem) {
+            manageGlobalFriendLinksMenuItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // 新窗口打开，关闭菜单
+                userMenu.classList.remove('active');
+            });
+        }
+
+        // 博客菜单项
+        const blogMenuItem = this.shadowRoot.querySelector('#blogMenuItem');
+        if (blogMenuItem) {
+            blogMenuItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // 新窗口打开，关闭菜单
                 userMenu.classList.remove('active');
             });
         }
@@ -491,6 +548,28 @@ class HeaderComponent extends BaseComponent {
                 this.isLoggedIn = true;
                 // 清理用户名中的多余空格
                 this.userName = (this.userInfo.name || 'User').trim();
+
+                // 补充获取完整用户信息（包括是否开通博客的projectid）
+                if (this.userInfo && this.userInfo.id) {
+                    try {
+                        const headers = UserManager.createHeaders();
+                        const resp = await fetch(`/api/users/${this.userInfo.id}`, { headers });
+                        if (resp && resp.ok) {
+                            const fullUser = await resp.json();
+                            // 合并关键字段（避免覆盖已有字段）
+                            if (typeof fullUser.projectid !== 'undefined') {
+                                this.userInfo.projectid = fullUser.projectid;
+                            }
+                            if (typeof fullUser.avatar_url !== 'undefined' && !this.userInfo.avatar_url) {
+                                this.userInfo.avatar_url = fullUser.avatar_url;
+                            }
+                        } else {
+                            console.warn('Failed to load full user info:', resp && resp.status);
+                        }
+                    } catch (e) {
+                        console.warn('Error fetching full user info:', e);
+                    }
+                }
             } catch (error) {
                 console.error('Failed to parse user info:', error);
                 this.clearAuthData();
@@ -630,6 +709,13 @@ class HeaderComponent extends BaseComponent {
             <circle cx="9" cy="7" r="4"></circle>
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>`;
+    }
+
+    getDefaultSettingsIcon() {
+        return `<svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>`;
     }
 

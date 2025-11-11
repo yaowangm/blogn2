@@ -248,11 +248,15 @@ class TestBlogService:
         mock_item.comment = "这是关于页面的内容\n包含换行符"
         mock_project_item_repo.get_by_id.return_value = mock_item
         
+        # 为 glovar 提供返回值，模拟 intropiid 配置
+        blog_service.glovar_repo = AsyncMock()
+        blog_service.glovar_repo.get_value.return_value = 486
+
         result = await blog_service.get_about_content()
         
         assert result["title"] == "Why Blogn"
         assert result["content"] == "这是关于页面的内容<br>包含换行符"
-        assert result["link"] == "/projectitem/486"
+        assert result["link"] == "/article/486"
         mock_project_item_repo.get_by_id.assert_called_once_with(486)
     
     @pytest.mark.unit
@@ -275,6 +279,10 @@ class TestBlogService:
         mock_item.comment = long_content
         mock_project_item_repo.get_by_id.return_value = mock_item
         
+        # 为 glovar 提供返回值，模拟 intropiid 配置
+        blog_service.glovar_repo = AsyncMock()
+        blog_service.glovar_repo.get_value.return_value = 486
+
         result = await blog_service.get_about_content()
         
         assert len(result["content"]) <= 303  # 300 + "..."

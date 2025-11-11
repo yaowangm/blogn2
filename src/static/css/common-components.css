@@ -14,6 +14,29 @@
     padding: var(--spacing-6);
 }
 
+/* 全局长文本断行策略，防止超长连续字符串/链接撑破卡片布局 */
+.card-body,
+.card-body * {
+    overflow-wrap: anywhere; /* 在任意位置断行 */
+    word-break: break-word;  /* 必要时对长单词断行 */
+}
+
+/* 文本换行工具类，供组件按需继承使用 */
+.text-wrap,
+.text-wrap * {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.text-wrap a {
+    word-break: break-all;
+}
+
+/* 常见标题在文本容器内的换行优化 */
+.text-wrap .post-title {
+    white-space: normal;
+}
+
 /* 主机样式 */
 :host {
     display: block;
@@ -44,14 +67,14 @@
 
 /* 自动链接样式 */
 .auto-link {
-    color: var(--primary-color);
+    color: #0066cc; /* 蓝色字体 */
     text-decoration: none;
-    word-break: break-all;
+    word-break: break-all; /* 链接文本优先强断行，避免溢出 */
 }
 
 .auto-link:hover {
-    text-decoration: underline;
-    color: var(--primary-hover);
+    text-decoration: underline !important;
+    color: #0052a3 !important; /* 悬停时更深的蓝色 */
 }
 
 /* 用户头像样式 */

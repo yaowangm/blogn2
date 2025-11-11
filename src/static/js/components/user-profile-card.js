@@ -73,7 +73,7 @@ class UserProfileCard extends BaseComponent {
             
             // 更新页面标题
             if (this.userData && this.userData.name) {
-                document.title = `${this.userData.name}的个人资料 - BlogN2`;
+                document.title = `${this.userData.name}的个人资料 - BlogN`;
             }
         } catch (error) {
             console.error('加载用户数据失败:', error);

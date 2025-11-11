@@ -5,6 +5,7 @@ from src.repositories.user_repository import UserRepository
 from src.repositories.project_item_repository import ProjectItemRepository
 from src.repositories.project_repository import ProjectRepository
 from src.repositories.post_repository import PostRepository
+from src.repositories.glovar_repository import GlovarRepository
 from src.services.base_service import BaseService
 from src.utils.time_utils import TimeUtils
 
@@ -14,11 +15,12 @@ class BlogService(BaseService):
     提供博客相关的业务逻辑处理，包括最新加入、最热门、最近评论等功能。
     """
     
-    def __init__(self, user_repo: UserRepository, project_item_repo: ProjectItemRepository, project_repo: ProjectRepository, post_repo: PostRepository):
+    def __init__(self, user_repo: UserRepository, project_item_repo: ProjectItemRepository, project_repo: ProjectRepository, post_repo: PostRepository, glovar_repo: Optional[GlovarRepository] = None):
         self.user_repo = user_repo
         self.project_item_repo = project_item_repo
         self.project_repo = project_repo
         self.post_repo = post_repo
+        self.glovar_repo = glovar_repo
     
     def _check_avatar_exists(self, userid: int) -> str | None:
         """检查用户头像文件是否存在
@@ -133,9 +135,25 @@ class BlogService(BaseService):
             return []
     
     async def get_about_content(self) -> Dict[str, Any]:
-        """获取关于页面的内容（来自ID为486的projectitem记录）"""
+        """获取关于页面的内容（优先从glovar读取intropiid，失败时回退到固定ID=486）"""
         try:
-            project_item = await self.project_item_repo.get_by_id(486)
+            intro_id = None
+            try:
+                # 优先通过仓储获取 glovar.intropiid（在单测中 glovar_repo 可能未注入）
+                intro_id = await self.glovar_repo.get_value("intropiid") if self.glovar_repo else None
+            except Exception:
+                intro_id = None
+
+            # 若未取到有效ID，则无内容（使用 is None 检查，避免 intro_id=0 时误判）
+            if intro_id is None:
+                return {
+                    "title": "Why Blogn",
+                    "content": "内容暂不可用",
+                    "link": None
+                }
+
+            # 使用获得的ID来查询文章
+            project_item = await self.project_item_repo.get_by_id(intro_id)
             
             if not project_item:
                 return {
@@ -165,15 +183,15 @@ class BlogService(BaseService):
             return {
                 "title": "Why Blogn",
                 "content": content,
-                "link": f"/projectitem/{project_item.id}"
+                "link": f"/article/{project_item.id}"
             }
         except Exception as e:
-            # 如果查询失败，返回默认内容
+            # 最终兜底：明确无内容
             return {
                 "title": "Why Blogn",
                 "content": "内容暂不可用",
                 "link": None
-            } 
+            }
     
     async def get_recent_messages(self, limit: int = 5) -> List[Dict[str, Any]]:
         """获取最近的留言本记录"""

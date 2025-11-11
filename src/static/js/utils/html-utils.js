@@ -104,7 +104,9 @@ class HtmlUtils {
     static isValidUrl(url) {
         try {
             const urlObj = new URL(url);
-            return ['http:', 'https:', 'mailto:'].includes(urlObj.protocol);
+            // 只允许指定的安全协议
+            const allowedProtocols = ['http:', 'https:', 'ftp:', 'mailto:', 'tel:', 'ed2k:', 'thunder:'];
+            return allowedProtocols.includes(urlObj.protocol);
         } catch {
             return false;
         }

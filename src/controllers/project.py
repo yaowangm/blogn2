@@ -140,12 +140,10 @@ async def get_project_posts(
         # 转换为字典格式
         posts_data = []
         
-        # 创建BlogService实例用于头像检查
-        user_repo = UserRepository(session)
-        project_item_repo = ProjectItemRepository(session)
-        project_repo = ProjectRepository(session)
-        post_repo = PostRepository(session)
-        blog_service = BlogService(user_repo, project_item_repo, project_repo, post_repo)
+        # 使用统一依赖注入的BlogService用于头像检查
+        from src.utils.dependencies import get_blog_service
+        from fastapi import Depends
+        blog_service = await get_blog_service(session)
         
         for post in posts:
             # 生成头像路径 - 使用BlogService检查头像是否存在
@@ -207,12 +205,9 @@ async def get_project_recent_comments(
         userid = comment["userid"]
         avatar_path = None
         if userid:
-            # 创建BlogService实例来检查头像
-            user_repo = UserRepository(session)
-            project_item_repo = ProjectItemRepository(session)
-            project_repo = ProjectRepository(session)
-            post_repo = PostRepository(session)
-            blog_service = BlogService(user_repo, project_item_repo, project_repo, post_repo)
+            # 使用统一依赖注入的BlogService来检查头像
+            from src.utils.dependencies import get_blog_service
+            blog_service = await get_blog_service(session)
             
             avatar_path = blog_service._check_avatar_exists(userid)
         

@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1400" height="1000" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .entity-box {
+        fill: #e3f2fd;
+        stroke: #1976d2;
+        stroke-width: 2;
+        rx: 5;
+      }
+      .entity-title {
+        fill: #1976d2;
+        font-weight: bold;
+        font-size: 14px;
+      }
+      .entity-field {
+        fill: #333;
+        font-size: 11px;
+      }
+      .pk-field {
+        font-weight: bold;
+        fill: #c62828;
+      }
+      .fk-field {
+        font-style: italic;
+        fill: #1565c0;
+      }
+      .relationship-line {
+        stroke: #666;
+        stroke-width: 2;
+        marker-end: url(#arrowhead);
+      }
+      .one-to-many {
+        stroke-dasharray: 5,5;
+      }
+      .many-to-one {
+        stroke: #666;
+      }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#666" />
+    </marker>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1400" height="1000" fill="#f5f5f5"/>
+  
+  <!-- Title -->
+  <text x="700" y="30" text-anchor="middle" font-size="20" font-weight="bold" fill="#333">
+    数据库ER图 - BlogN系统
+  </text>
+  
+  <!-- Users Entity -->
+  <g id="users">
+    <rect x="50" y="60" width="180" height="200" class="entity-box"/>
+    <text x="140" y="80" text-anchor="middle" class="entity-title">users</text>
+    <line x1="50" y1="95" x2="230" y2="95" stroke="#1976d2" stroke-width="1"/>
+    <text x="60" y="115" class="entity-field pk-field">id (PK)</text>
+    <text x="60" y="135" class="entity-field">name</text>
+    <text x="60" y="155" class="entity-field">password</text>
+    <text x="60" y="175" class="entity-field">email</text>
+    <text x="60" y="195" class="entity-field">state</text>
+    <text x="60" y="215" class="entity-field">point</text>
+    <text x="60" y="235" class="entity-field fk-field">projectid (FK)</text>
+    <text x="60" y="255" class="entity-field">intropiid</text>
+  </g>
+  
+  <!-- Project Entity -->
+  <g id="project">
+    <rect x="300" y="60" width="180" height="200" class="entity-box"/>
+    <text x="390" y="80" text-anchor="middle" class="entity-title">project</text>
+    <line x1="300" y1="95" x2="480" y2="95" stroke="#1976d2" stroke-width="1"/>
+    <text x="310" y="115" class="entity-field pk-field">id (PK)</text>
+    <text x="310" y="135" class="entity-field">name</text>
+    <text x="310" y="155" class="entity-field">comment</text>
+    <text x="310" y="175" class="entity-field fk-field">userid (FK)</text>
+    <text x="310" y="195" class="entity-field">recordcount</text>
+    <text x="310" y="215" class="entity-field">accesscount</text>
+    <text x="310" y="235" class="entity-field">commentcount</text>
+    <text x="310" y="255" class="entity-field">state</text>
+  </g>
+  
+  <!-- ProjectItem Entity -->
+  <g id="projectitem">
+    <rect x="550" y="60" width="180" height="280" class="entity-box"/>
+    <text x="640" y="80" text-anchor="middle" class="entity-title">projectitem</text>
+    <line x1="550" y1="95" x2="730" y2="95" stroke="#1976d2" stroke-width="1"/>
+    <text x="560" y="115" class="entity-field pk-field">id (PK)</text>
+    <text x="560" y="135" class="entity-field">name</text>
+    <text x="560" y="155" class="entity-field">comment</text>
+    <text x="560" y="175" class="entity-field fk-field">projectid (FK)</text>
+    <text x="560" y="195" class="entity-field fk-field">userid (FK)</text>
+    <text x="560" y="215" class="entity-field fk-field">folderid (FK)</text>
+    <text x="560" y="235" class="entity-field">status</text>
+    <text x="560" y="255" class="entity-field">accesscount</text>
+    <text x="560" y="275" class="entity-field">commentcount</text>
+    <text x="560" y="295" class="entity-field">attachment</text>
+    <text x="560" y="315" class="entity-field">allowpost</text>
+  </g>
+  
+  <!-- Post Entity -->
+  <g id="post">
+    <rect x="800" y="60" width="180" height="280" class="entity-box"/>
+    <text x="890" y="80" text-anchor="middle" class="entity-title">post</text>
+    <line x1="800" y1="95" x2="980" y2="95" stroke="#1976d2" stroke-width="1"/>
+    <text x="810" y="115" class="entity-field pk-field">id (PK)</text>
+    <text x="810" y="135" class="entity-field">subject</text>
+    <text x="810" y="155" class="entity-field">content</text>
+    <text x="810" y="175" class="entity-field fk-field">userid (FK)</text>
+    <text x="810" y="195" class="entity-field fk-field">projectitemid (FK)</text>
+    <text x="810" y="215" class="entity-field">rootid (自引用)</text>
+    <text x="810" y="235" class="entity-field">posttime</text>
+    <text x="810" y="255" class="entity-field">replycount</text>
+    <text x="810" y="275" class="entity-field">lastreplyid</text>
+    <text x="810" y="295" class="entity-field">status</text>
+  </g>
+  
+  <!-- Folder Entity -->
+  <g id="folders">
+    <rect x="1050" y="60" width="180" height="160" class="entity-box"/>
+    <text x="1140" y="80" text-anchor="middle" class="entity-title">folders</text>
+    <line x1="1050" y1="95" x2="1230" y2="95" stroke="#1976d2" stroke-width="1"/>
+    <text x="1060" y="115" class="entity-field pk-field">id (PK)</text>
+    <text x="1060" y="135" class="entity-field">name</text>
+    <text x="1060" y="155" class="entity-field fk-field">projectid (FK)</text>
+    <text x="1060" y="175" class="entity-field fk-field">parent (FK)</text>
+    <text x="1060" y="195" class="entity-field">recordcount</text>
+  </g>
+  
+  <!-- Relation Entity -->
+  <g id="relation">
+    <rect x="50" y="320" width="180" height="140" class="entity-box"/>
+    <text x="140" y="340" text-anchor="middle" class="entity-title">relation</text>
+    <line x1="50" y1="355" x2="230" y2="355" stroke="#1976d2" stroke-width="1"/>
+    <text x="60" y="375" class="entity-field pk-field">id (PK)</text>
+    <text x="60" y="395" class="entity-field fk-field">projectid (FK)</text>
+    <text x="60" y="415" class="entity-field fk-field">objectid (FK)</text>
+    <text x="60" y="435" class="entity-field">acttype</text>
+    <text x="60" y="455" class="entity-field">created</text>
+  </g>
+  
+  <!-- Subscription Entity -->
+  <g id="subsc">
+    <rect x="300" y="320" width="180" height="100" class="entity-box"/>
+    <text x="390" y="340" text-anchor="middle" class="entity-title">subsc</text>
+    <line x1="300" y1="355" x2="480" y2="355" stroke="#1976d2" stroke-width="1"/>
+    <text x="310" y="375" class="entity-field pk-field">id (PK)</text>
+    <text x="310" y="395" class="entity-field fk-field">projectid (FK)</text>
+    <text x="310" y="415" class="entity-field fk-field">piid (FK)</text>
+  </g>
+  
+  <!-- Attachment Entity -->
+  <g id="attachment">
+    <rect x="550" y="380" width="180" height="140" class="entity-box"/>
+    <text x="640" y="400" text-anchor="middle" class="entity-title">attachment</text>
+    <line x1="550" y1="415" x2="730" y2="415" stroke="#1976d2" stroke-width="1"/>
+    <text x="560" y="435" class="entity-field pk-field">id (PK)</text>
+    <text x="560" y="455" class="entity-field fk-field">parentid (FK)</text>
+    <text x="560" y="475" class="entity-field">linkstr</text>
+    <text x="560" y="495" class="entity-field">comment</text>
+    <text x="560" y="515" class="entity-field">amtype</text>
+  </g>
+  
+  <!-- UrlLink Entity -->
+  <g id="urllink">
+    <rect x="800" y="380" width="180" height="120" class="entity-box"/>
+    <text x="890" y="400" text-anchor="middle" class="entity-title">urllink</text>
+    <line x1="800" y1="415" x2="980" y2="415" stroke="#1976d2" stroke-width="1"/>
+    <text x="810" y="435" class="entity-field pk-field">id (PK)</text>
+    <text x="810" y="455" class="entity-field">subject</text>
+    <text x="810" y="475" class="entity-field">linkstr</text>
+    <text x="810" y="495" class="entity-field fk-field">projectid (FK)</text>
+  </g>
+  
+  <!-- Glovar Entity -->
+  <g id="glovar">
+    <rect x="1050" y="260" width="180" height="100" class="entity-box"/>
+    <text x="1140" y="280" text-anchor="middle" class="entity-title">glovar</text>
+    <line x1="1050" y1="295" x2="1230" y2="295" stroke="#1976d2" stroke-width="1"/>
+    <text x="1060" y="315" class="entity-field pk-field">id (PK)</text>
+    <text x="1060" y="335" class="entity-field">varname</text>
+    <text x="1060" y="355" class="entity-field">varvalue</text>
+  </g>
+  
+  <!-- Relationships -->
+  <!-- User -> Project (1:N) -->
+  <line x1="230" y1="150" x2="300" y2="150" class="relationship-line many-to-one"/>
+  <text x="265" y="145" font-size="10" fill="#666">userid</text>
+  
+  <!-- Project -> ProjectItem (1:N) -->
+  <line x1="480" y1="170" x2="550" y2="170" class="relationship-line many-to-one"/>
+  <text x="515" y="165" font-size="10" fill="#666">projectid</text>
+  
+  <!-- User -> ProjectItem (1:N) -->
+  <line x1="230" y1="190" x2="550" y2="185" class="relationship-line many-to-one"/>
+  <text x="390" y="185" font-size="10" fill="#666">userid</text>
+  
+  <!-- Folder -> ProjectItem (1:N) -->
+  <line x1="1140" y1="210" x2="730" y2="205" class="relationship-line many-to-one"/>
+  <text x="935" y="205" font-size="10" fill="#666">folderid</text>
+  
+  <!-- Project -> Folder (1:N) -->
+  <path d="M 480 178 Q 650 110 1050 140" stroke="#666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="765" y="145" font-size="10" fill="#666">projectid</text>
+  
+  <!-- ProjectItem -> Post (1:N) -->
+  <line x1="730" y1="210" x2="800" y2="210" class="relationship-line many-to-one"/>
+  <text x="765" y="205" font-size="10" fill="#666">projectitemid</text>
+  
+  <!-- User -> Post (1:N) -->
+  <line x1="230" y1="225" x2="800" y2="225" class="relationship-line many-to-one"/>
+  <text x="515" y="220" font-size="10" fill="#666">userid</text>
+  
+  <!-- Post -> Post (自引用，回复关系) -->
+  <path d="M 890 340 Q 890 380 890 400" stroke="#666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="900" y="370" font-size="10" fill="#666">rootid</text>
+  
+  <!-- Project -> Relation (1:N, projectid) -->
+  <path d="M 480 190 Q 350 250 300 360" stroke="#666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="390" y="265" font-size="10" fill="#666">projectid</text>
+  
+  <!-- Project -> Relation (1:N, objectid) -->
+  <path d="M 480 225 Q 420 280 300 380" stroke="#666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="390" y="295" font-size="10" fill="#666">objectid</text>
+  
+  <!-- Project -> Subscription (1:N) -->
+  <line x1="480" y1="245" x2="480" y2="320" class="relationship-line many-to-one"/>
+  <text x="490" y="280" font-size="10" fill="#666">projectid</text>
+  
+  <!-- ProjectItem -> Subscription (1:N) -->
+  <path d="M 640 340 Q 540 355 480 360" stroke="#666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="560" y="350" font-size="10" fill="#666">piid</text>
+  
+  <!-- ProjectItem -> Attachment (1:N) -->
+  <line x1="640" y1="340" x2="640" y2="380" class="relationship-line many-to-one"/>
+  <text x="650" y="360" font-size="10" fill="#666">parentid</text>
+  
+  <!-- Project -> UrlLink (1:N) -->
+  <path d="M 480 260 Q 850 320 980 400" stroke="#666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="730" y="330" font-size="10" fill="#666">projectid</text>
+  
+  <!-- Folder -> Folder (自引用，父子关系) -->
+  <path d="M 1230 140 Q 1280 140 1280 100 Q 1280 60 1230 100" stroke="#666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="1290" y="80" font-size="10" fill="#666">parent</text>
+  
+  <!-- User -> Project (projectid, 可选) -->
+  <path d="M 230 250 Q 280 100 480 100" stroke="#666" stroke-width="2" fill="none" marker-end="url(#arrowhead)" stroke-dasharray="5,5"/>
+  <text x="355" y="155" font-size="10" fill="#666">projectid</text>
+  
+  <!-- Legend -->
+  <g id="legend">
+    <rect x="50" y="550" width="300" height="200" fill="white" stroke="#ccc" stroke-width="1" rx="5"/>
+    <text x="200" y="575" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">图例</text>
+    <line x1="60" y1="590" x2="60" y2="590" stroke="#1976d2" stroke-width="2"/>
+    <text x="70" y="595" font-size="11" fill="#333">实体框</text>
+    <text x="60" y="620" class="pk-field">主键 (PK)</text>
+    <text x="60" y="640" class="fk-field">外键 (FK)</text>
+    <line x1="60" y1="665" x2="100" y2="665" class="relationship-line"/>
+    <text x="110" y="670" font-size="11" fill="#333">关系线 (1:N)</text>
+    <line x1="60" y1="690" x2="100" y2="690" class="relationship-line" stroke-dasharray="5,5"/>
+    <text x="110" y="695" font-size="11" fill="#333">可选关系</text>
+    <text x="60" y="720" font-size="11" fill="#666">注：Post.projectitemid=0表示留言本</text>
+  </g>
+  
+  <!-- Key Relationships Summary -->
+  <g id="summary">
+    <rect x="400" y="550" width="900" height="200" fill="white" stroke="#ccc" stroke-width="1" rx="5"/>
+    <text x="850" y="575" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">主要关系说明</text>
+    <text x="420" y="600" font-size="11" fill="#333">• User 1:N Project (一个用户可以有多个博客项目)</text>
+    <text x="420" y="620" font-size="11" fill="#333">• Project 1:N ProjectItem (一个博客项目包含多篇文章)</text>
+    <text x="420" y="640" font-size="11" fill="#333">• Project 1:N Folder (一个博客项目有多个分类/文件夹)</text>
+    <text x="420" y="660" font-size="11" fill="#333">• Folder 1:N ProjectItem (一个分类包含多篇文章)</text>
+    <text x="420" y="680" font-size="11" fill="#333">• ProjectItem 1:N Post (一篇文章有多个评论，projectitemid>0) 或留言本 (projectitemid=0)</text>
+    <text x="420" y="700" font-size="11" fill="#333">• Post N:1 Post (评论可以回复其他评论，通过rootid自引用)</text>
+    <text x="420" y="720" font-size="11" fill="#333">• Relation表存储博客订阅关系 (projectid订阅objectid)</text>
+    <text x="420" y="740" font-size="11" fill="#333">• Subscription表存储文章订阅/广播关系 (projectid订阅piid文章)</text>
+  </g>
+  
+</svg>
+

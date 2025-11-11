@@ -79,6 +79,8 @@ class ArticleContentCard extends BaseComponent {
                     </div>
                 </div>
             `;
+            // 在设置 innerHTML 之后添加样式
+            this.addStyles();
             return;
         }
 
@@ -95,7 +97,8 @@ class ArticleContentCard extends BaseComponent {
                 </div>
             </div>
         `;
-
+        
+        // 在设置 innerHTML 之后添加样式
         this.addStyles();
         
         // 设置图片模态框事件监听器
@@ -131,7 +134,10 @@ class ArticleContentCard extends BaseComponent {
             // 对解析后的HTML进行安全过滤
             const safeHtml = this.sanitizeHtml(html);
             
-            return safeHtml;
+            // 处理文本中的链接（包括ed2k等非标准协议），采用DOM遍历避免破坏HTML结构
+            const processedHtml = this.processTextWithLinks(safeHtml);
+            
+            return processedHtml;
         } catch (error) {
             this.logError('Markdown parsing failed', error);
             // 如果Markdown解析失败，回退到原始文本处理
@@ -330,24 +336,73 @@ class ArticleContentCard extends BaseComponent {
      * 处理文本中的链接，安全地转换为可点击的链接
      */
 
-    processTextWithLinks(text) {
-        if (!text || typeof text !== 'string') {
+    processTextWithLinks(htmlOrText) {
+        if (!htmlOrText || typeof htmlOrText !== 'string') {
             return '';
         }
+        // 通用URL正则，匹配 aaa://...
+        const urlRegex = /([a-zA-Z][a-zA-Z0-9+.-]*:\/\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]+)/g;
+        // 用于测试的正则（无全局标志，避免 lastIndex 状态问题）
+        const urlTestRegex = /[a-zA-Z][a-zA-Z0-9+.-]*:\/\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]+/;
 
-        // 更严格的URL正则表达式，只匹配基本的http/https链接
-        const urlRegex = /(https?:\/\/[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=%]+)/gi;
-        
-        return text.replace(urlRegex, (url) => {
-            // 使用严格的URL验证
-            if (this.isValidUrl(url)) {
-                const safeUrl = this.escapeHtml(url);
-                const displayUrl = this.escapeHtml(url);
-                return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="auto-link">${displayUrl}</a>`;
+        // 使用DOM解析，避免正则直接切分HTML导致结构损坏
+        const container = document.createElement('div');
+        container.innerHTML = htmlOrText;
+
+        const SKIP_TAGS = new Set(['A', 'CODE', 'PRE', 'SCRIPT', 'STYLE']);
+
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+            acceptNode: (node) => {
+                const parent = node.parentNode;
+                if (!parent) return NodeFilter.FILTER_REJECT;
+                let el = parent;
+                while (el && el.nodeType === 1) {
+                    if (SKIP_TAGS.has(el.nodeName)) return NodeFilter.FILTER_REJECT;
+                    el = el.parentNode;
+                }
+                // 使用无全局标志的正则进行测试，避免 lastIndex 状态问题
+                return urlTestRegex.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
             }
-            // 如果URL不安全，只转义显示
-            return this.escapeHtml(url);
         });
+
+        const nodes = [];
+        let n;
+        while ((n = walker.nextNode())) nodes.push(n);
+
+        for (const textNode of nodes) {
+            const text = textNode.nodeValue;
+            const parts = [];
+            let lastIndex = 0;
+            text.replace(urlRegex, (match, url, offset) => {
+                if (offset > lastIndex) parts.push(document.createTextNode(text.slice(lastIndex, offset)));
+                try {
+                    if (this.isValidUrl(url)) {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                        a.className = 'auto-link';
+                        a.textContent = url;
+                        parts.push(a);
+                    } else {
+                        parts.push(document.createTextNode(url));
+                    }
+                } catch (_) {
+                    parts.push(document.createTextNode(url));
+                }
+                lastIndex = offset + match.length;
+                return match;
+            });
+            if (lastIndex < text.length) parts.push(document.createTextNode(text.slice(lastIndex)));
+
+            const parent = textNode.parentNode;
+            if (parent) {
+                for (const part of parts) parent.insertBefore(part, textNode);
+                parent.removeChild(textNode);
+            }
+        }
+
+        return container.innerHTML;
     }
 
     /**
@@ -376,6 +431,22 @@ class ArticleContentCard extends BaseComponent {
                 
                 .article-content {
                     line-height: 1.8;
+                    word-wrap: break-word;
+                    overflow-wrap: anywhere; /* 允许在任意位置换行，避免超长连续字符撑破布局 */
+                    word-break: break-word;   /* 在必要时对长单词/连续字符串进行断行 */
+                    max-width: 100%;
+                }
+                /* 对所有后代启用任意位置换行，兜底避免极端长串文本导致变形 */
+                .article-content * {
+                    overflow-wrap: anywhere;
+                    word-break: break-word;
+                }
+                
+                .article-content a {
+                    word-break: break-all;    /* 链接内优先允许任意断行 */
+                    overflow-wrap: anywhere;
+                    max-width: 100%;
+                    display: inline-block;
                 }
                 
                 .article-content p {
@@ -692,18 +763,6 @@ class ArticleContentCard extends BaseComponent {
                     max-height: 70vh;
                     height: auto;
                     border-radius: var(--radius-md);
-                }
-
-                .auto-link {
-                    color: var(--primary-color);
-                    text-decoration: none;
-                    word-break: break-all;
-                    transition: color var(--transition-fast);
-                }
-
-                .auto-link:hover {
-                    color: var(--primary-hover);
-                    text-decoration: underline;
                 }
                 
                 .loading {

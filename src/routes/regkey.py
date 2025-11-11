@@ -18,6 +18,7 @@ from src.models.user import User
 from src.utils.auth_dependencies import get_optional_current_user
 from src.utils.permission_decorators import require_auth
 from src.utils.time_utils import TimeUtils
+from src.utils.permission_utils import PermissionUtils
 
 # 配置日志记录器
 logger = logging.getLogger(__name__)
@@ -131,8 +132,11 @@ async def exchange_regkey(
         if not user:
             raise HTTPException(status_code=404, detail="用户不存在")
         
-        # 检查用户积分是否足够
-        if user.point < 10:
+        # 检查是否为管理员
+        is_admin = PermissionUtils.is_admin(current_user)
+        
+        # 如果不是管理员，检查用户积分是否足够
+        if not is_admin and user.point < 10:
             raise HTTPException(status_code=400, detail="积分不足，需要10积分")
         
         # 生成唯一注册码（确保25位字符）
@@ -146,8 +150,9 @@ async def exchange_regkey(
             createtime=TimeUtils.now_utc()
         )
         
-        # 扣除用户积分
-        user.point -= 10
+        # 如果不是管理员，扣除用户积分
+        if not is_admin:
+            user.point -= 10
         
         # 先添加注册码记录到session
         session.add(new_regkey)
@@ -162,10 +167,17 @@ async def exchange_regkey(
         # 提交成功后，重新查询用户信息以获取最新积分
         await session.refresh(user)
         
+        # 根据是否为管理员返回不同的消息
+        if is_admin:
+            message = "注册码生成成功（管理员免费）"
+        else:
+            message = "注册码兑换成功"
+            
         return {
             "regkey": regkey,
-            "message": "注册码兑换成功",
-            "remaining_points": user.point
+            "message": message,
+            "remaining_points": user.point,
+            "is_admin": is_admin
         }
         
     except HTTPException:

@@ -33,10 +33,12 @@ class FriendLinksManager {
     init() {
         // 获取项目ID
         this.projectId = this.getProjectIdFromUrl();
-        if (!this.projectId) {
+        // 允许 project_id=0（全站），仅在无法解析时提示
+        if (this.projectId === null) {
             this.showError('缺少项目ID参数');
             return;
         }
+        this.updatePageHeader();
         
         // 检查用户权限
         this.checkUserPermissions();
@@ -47,10 +49,31 @@ class FriendLinksManager {
         // 加载友情链接列表
         this.loadFriendLinks();
     }
+
+    updatePageHeader() {
+        const isGlobal = this.projectId === 0;
+        const titleEl = document.querySelector('title');
+        const h1 = document.querySelector('.page-title');
+        const desc = document.querySelector('.page-description');
+        if (isGlobal) {
+            if (titleEl) titleEl.textContent = '管理全站友情链接 - 博客管理系统';
+            if (h1) h1.lastChild && h1.lastChild.nodeType === Node.TEXT_NODE ? h1.lastChild.textContent = '管理全站友情链接' : h1.appendChild(document.createTextNode('管理全站友情链接'));
+            if (desc) desc.textContent = '管理全站友情链接，最多可添加20个友情链接';
+        } else {
+            if (titleEl) titleEl.textContent = '管理友情链接 - 博客管理系统';
+            if (h1) h1.lastChild && h1.lastChild.nodeType === Node.TEXT_NODE ? h1.lastChild.textContent = '管理友情链接' : h1.appendChild(document.createTextNode('管理友情链接'));
+            if (desc) desc.textContent = '管理您的博客友情链接，最多可添加20个友情链接';
+        }
+    }
     
     getProjectIdFromUrl() {
         const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get('project_id');
+        const raw = urlParams.get('project_id');
+        // 无参数时默认全站模式（project_id=0）
+        if (raw === null || raw === '') return 0;
+        const num = parseInt(raw, 10);
+        if (Number.isNaN(num)) return null;
+        return num;
     }
     
     async checkUserPermissions() {
@@ -63,19 +86,27 @@ class FriendLinksManager {
             const currentUser = UserManager.getCurrentUser();
             const isAdmin = currentUser.state === 10;
             
-            // 检查是否为博客所有者
-            const response = await fetch(`/api/projects/${this.projectId}`);
-            if (!response.ok) {
-                this.showError('无法获取博客信息');
-                return;
-            }
-            
-            const blogData = await response.json();
-            const isOwner = currentUser.id === blogData.userid;
-            
-            if (!isOwner && !isAdmin) {
-                this.showError('无权限管理该博客的友情链接');
-                return;
+            if (this.projectId === 0) {
+                // 全站模式：仅管理员
+                if (!isAdmin) {
+                    this.showError('仅管理员可以管理全站友情链接');
+                    return;
+                }
+            } else {
+                // 检查是否为博客所有者
+                const response = await fetch(`/api/projects/${this.projectId}`);
+                if (!response.ok) {
+                    this.showError('无法获取博客信息');
+                    return;
+                }
+                
+                const blogData = await response.json();
+                const isOwner = currentUser.id === blogData.userid;
+                
+                if (!isOwner && !isAdmin) {
+                    this.showError('无权限管理该博客的友情链接');
+                    return;
+                }
             }
             
         } catch (error) {

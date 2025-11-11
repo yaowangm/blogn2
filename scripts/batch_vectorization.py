@@ -107,9 +107,17 @@ class BatchVectorization:
             BERTVectorizationService: 向量化服务实例
         """
         if self.vectorization_service is None:
-            self.vectorization_service = BERTVectorizationService()
-            await self.vectorization_service.load_model()
-            logger.info(f"进程 {self.process_id}: 已加载向量化服务")
+            try:
+                # 尝试使用共享模型缓存
+                from src.services.model_cache import get_cached_model
+                self.vectorization_service = get_cached_model()
+                logger.info(f"进程 {self.process_id}: 已从缓存获取向量化服务")
+            except RuntimeError:
+                # 如果缓存未初始化，创建新实例并加载模型
+                logger.info(f"进程 {self.process_id}: 缓存未初始化，创建新的向量化服务实例")
+                self.vectorization_service = BERTVectorizationService()
+                await self.vectorization_service.load_model()
+                logger.info(f"进程 {self.process_id}: 已加载向量化服务")
         return self.vectorization_service
     
     async def _get_update_service(self, session) -> VectorizationUpdateService:
@@ -603,6 +611,24 @@ def main():
     
     # 运行计数任务
     asyncio.run(count_total_records())
+    
+    # 在主进程中预先初始化模型缓存
+    logger.info("在主进程中初始化模型缓存...")
+    async def initialize_model_cache():
+        try:
+            from src.services.model_cache import initialize_model_cache
+            model_cache = await initialize_model_cache()
+            if model_cache:
+                logger.info("✅ 主进程模型缓存初始化成功")
+                return True
+            else:
+                logger.warning("⚠️ 主进程模型缓存初始化失败，子进程将独立加载模型")
+                return False
+        except Exception as e:
+            logger.error(f"主进程模型缓存初始化出错: {e}")
+            return False
+    
+    model_cache_initialized = asyncio.run(initialize_model_cache())
     
     # 如果需要清空向量表，在主进程中清空（避免并发问题）
     if args.clear_tables:

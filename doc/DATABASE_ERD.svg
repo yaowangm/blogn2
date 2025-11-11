@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1400" height="1000" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .table-title { font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; fill: #2c3e50; }
+      .field-name { font-family: Arial, sans-serif; font-size: 11px; fill: #34495e; }
+      .field-type { font-family: Arial, sans-serif; font-size: 10px; fill: #7f8c8d; }
+      .pk { font-weight: bold; fill: #e74c3c; }
+      .fk { font-style: italic; fill: #3498db; }
+      .table-box { fill: #ecf0f1; stroke: #bdc3c7; stroke-width: 2; }
+      .table-header { fill: #3498db; stroke: #2980b9; stroke-width: 1; }
+      .relationship-line { stroke: #e67e22; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .one-to-many { stroke: #e67e22; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .many-to-one { stroke: #e67e22; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#e67e22" />
+    </marker>
+  </defs>
+
+  <!-- 用户表 -->
+  <rect x="50" y="50" width="200" height="200" class="table-box" />
+  <rect x="50" y="50" width="200" height="25" class="table-header" />
+  <text x="150" y="67" text-anchor="middle" class="table-title">users</text>
+  <text x="60" y="85" class="field-name pk">id (PK)</text>
+  <text x="60" y="100" class="field-name">name</text>
+  <text x="60" y="115" class="field-name">password</text>
+  <text x="60" y="130" class="field-name">state</text>
+  <text x="60" y="145" class="field-name">email</text>
+  <text x="60" y="160" class="field-name">regtime</text>
+  <text x="60" y="175" class="field-name">point</text>
+  <text x="60" y="190" class="field-name">projectid (FK)</text>
+  <text x="60" y="205" class="field-name">intropiid (FK)</text>
+
+  <!-- 项目表 -->
+  <rect x="350" y="50" width="200" height="220" class="table-box" />
+  <rect x="350" y="50" width="200" height="25" class="table-header" />
+  <text x="450" y="67" text-anchor="middle" class="table-title">project</text>
+  <text x="360" y="85" class="field-name pk">id (PK)</text>
+  <text x="360" y="100" class="field-name">name</text>
+  <text x="360" y="115" class="field-name">comment</text>
+  <text x="360" y="130" class="field-name">state</text>
+  <text x="360" y="145" class="field-name">userid (FK)</text>
+  <text x="360" y="160" class="field-name">folderid (FK)</text>
+  <text x="360" y="175" class="field-name">accesscount</text>
+  <text x="360" y="190" class="field-name">commentcount</text>
+  <text x="360" y="205" class="field-name">createtime</text>
+  <text x="360" y="220" class="field-name">updatetime</text>
+
+  <!-- 项目条目表 -->
+  <rect x="650" y="50" width="200" height="240" class="table-box" />
+  <rect x="650" y="50" width="200" height="25" class="table-header" />
+  <text x="750" y="67" text-anchor="middle" class="table-title">projectitem</text>
+  <text x="660" y="85" class="field-name pk">id (PK)</text>
+  <text x="660" y="100" class="field-name">name</text>
+  <text x="660" y="115" class="field-name">comment</text>
+  <text x="660" y="130" class="field-name">itemtype</text>
+  <text x="660" y="145" class="field-name">attachment</text>
+  <text x="660" y="160" class="field-name">allowpost</text>
+  <text x="660" y="175" class="field-name">userid (FK)</text>
+  <text x="660" y="190" class="field-name">folderid (FK)</text>
+  <text x="660" y="205" class="field-name">projectid (FK)</text>
+  <text x="660" y="220" class="field-name">status</text>
+  <text x="660" y="235" class="field-name">accesscount</text>
+  <text x="660" y="250" class="field-name">commentcount</text>
+
+  <!-- 评论表 -->
+  <rect x="950" y="50" width="200" height="220" class="table-box" />
+  <rect x="950" y="50" width="200" height="25" class="table-header" />
+  <text x="1050" y="67" text-anchor="middle" class="table-title">post</text>
+  <text x="960" y="85" class="field-name pk">id (PK)</text>
+  <text x="960" y="100" class="field-name">subject</text>
+  <text x="960" y="115" class="field-name">content</text>
+  <text x="960" y="130" class="field-name">posttime</text>
+  <text x="960" y="145" class="field-name">hits</text>
+  <text x="960" y="160" class="field-name">userid (FK)</text>
+  <text x="960" y="175" class="field-name">folderid (FK)</text>
+  <text x="960" y="190" class="field-name">projectitemid (FK)</text>
+  <text x="960" y="205" class="field-name">status</text>
+  <text x="960" y="220" class="field-name">replycount</text>
+
+  <!-- 文件夹表 -->
+  <rect x="350" y="350" width="200" height="160" class="table-box" />
+  <rect x="350" y="350" width="200" height="25" class="table-header" />
+  <text x="450" y="367" text-anchor="middle" class="table-title">folders</text>
+  <text x="360" y="385" class="field-name pk">id (PK)</text>
+  <text x="360" y="400" class="field-name">name</text>
+  <text x="360" y="415" class="field-name">parent (FK)</text>
+  <text x="360" y="430" class="field-name">projectid (FK)</text>
+  <text x="360" y="445" class="field-name">recordcount</text>
+  <text x="360" y="460" class="field-name">postcount</text>
+
+  <!-- 附件表 -->
+  <rect x="650" y="350" width="200" height="160" class="table-box" />
+  <rect x="650" y="350" width="200" height="25" class="table-header" />
+  <text x="750" y="367" text-anchor="middle" class="table-title">attachment</text>
+  <text x="660" y="385" class="field-name pk">id (PK)</text>
+  <text x="660" y="400" class="field-name">parentid (FK)</text>
+  <text x="660" y="415" class="field-name">amtype</text>
+  <text x="660" y="430" class="field-name">comment</text>
+  <text x="660" y="445" class="field-name">linkstr</text>
+  <text x="660" y="460" class="field-name">createtime</text>
+
+  <!-- 注册码表 -->
+  <rect x="50" y="350" width="200" height="160" class="table-box" />
+  <rect x="50" y="350" width="200" height="25" class="table-header" />
+  <text x="150" y="367" text-anchor="middle" class="table-title">regkey</text>
+  <text x="60" y="385" class="field-name pk">id (PK)</text>
+  <text x="60" y="400" class="field-name">name</text>
+  <text x="60" y="415" class="field-name">ownerid (FK)</text>
+  <text x="60" y="430" class="field-name">userid (FK)</text>
+  <text x="60" y="445" class="field-name">status</text>
+  <text x="60" y="460" class="field-name">createtime</text>
+
+  <!-- 积分记录表 -->
+  <rect x="50" y="550" width="200" height="160" class="table-box" />
+  <rect x="50" y="550" width="200" height="25" class="table-header" />
+  <text x="150" y="567" text-anchor="middle" class="table-title">point_logs</text>
+  <text x="60" y="585" class="field-name pk">id (PK)</text>
+  <text x="60" y="600" class="field-name">user_id (FK)</text>
+  <text x="60" y="615" class="field-name">points</text>
+  <text x="60" y="630" class="field-name">source</text>
+  <text x="60" y="645" class="field-name">log_date</text>
+  <text x="60" y="660" class="field-name">created_at</text>
+
+  <!-- 订阅表 -->
+  <rect x="350" y="550" width="200" height="120" class="table-box" />
+  <rect x="350" y="550" width="200" height="25" class="table-header" />
+  <text x="450" y="567" text-anchor="middle" class="table-title">subsc</text>
+  <text x="360" y="585" class="field-name pk">id (PK)</text>
+  <text x="360" y="600" class="field-name">projectid (FK)</text>
+  <text x="360" y="615" class="field-name">piid (FK)</text>
+
+  <!-- 关系表 -->
+  <rect x="650" y="550" width="200" height="120" class="table-box" />
+  <rect x="650" y="550" width="200" height="25" class="table-header" />
+  <text x="750" y="567" text-anchor="middle" class="table-title">relation</text>
+  <text x="660" y="585" class="field-name pk">id (PK)</text>
+  <text x="660" y="600" class="field-name">projectid (FK)</text>
+  <text x="660" y="615" class="field-name">objectid (FK)</text>
+
+  <!-- 全局变量表 -->
+  <rect x="950" y="350" width="200" height="120" class="table-box" />
+  <rect x="950" y="350" width="200" height="25" class="table-header" />
+  <text x="1050" y="367" text-anchor="middle" class="table-title">glovar</text>
+  <text x="960" y="385" class="field-name pk">id (PK)</text>
+  <text x="960" y="400" class="field-name">varname</text>
+  <text x="960" y="415" class="field-name">varvalue</text>
+
+  <!-- 链接表 -->
+  <rect x="950" y="500" width="200" height="120" class="table-box" />
+  <rect x="950" y="500" width="200" height="25" class="table-header" />
+  <text x="1050" y="517" text-anchor="middle" class="table-title">urllink</text>
+  <text x="960" y="535" class="field-name pk">id (PK)</text>
+  <text x="960" y="550" class="field-name">subject</text>
+  <text x="960" y="565" class="field-name">linkstr</text>
+  <text x="960" y="580" class="field-name">projectid (FK)</text>
+
+  <!-- 向量搜索相关表 -->
+  <!-- 文章向量表 -->
+  <rect x="50" y="750" width="250" height="200" class="table-box" />
+  <rect x="50" y="750" width="250" height="25" class="table-header" />
+  <text x="175" y="767" text-anchor="middle" class="table-title">article_vectors</text>
+  <text x="60" y="785" class="field-name pk">id (PK)</text>
+  <text x="60" y="800" class="field-name fk">projectitem_id (FK)</text>
+  <text x="60" y="815" class="field-name">title_vector</text>
+  <text x="60" y="830" class="field-name">content_vector</text>
+  <text x="60" y="845" class="field-name">segment_count</text>
+  <text x="60" y="860" class="field-name">vectorization_method</text>
+  <text x="60" y="875" class="field-name">avg_confidence</text>
+  <text x="60" y="890" class="field-name">created_at</text>
+  <text x="60" y="905" class="field-name">updated_at</text>
+
+  <!-- 内容片段向量表 -->
+  <rect x="350" y="750" width="250" height="200" class="table-box" />
+  <rect x="350" y="750" width="250" height="25" class="table-header" />
+  <text x="475" y="767" text-anchor="middle" class="table-title">content_segment_vectors</text>
+  <text x="360" y="785" class="field-name pk">id (PK)</text>
+  <text x="360" y="800" class="field-name fk">article_vector_id (FK)</text>
+  <text x="360" y="815" class="field-name">segment_index</text>
+  <text x="360" y="830" class="field-name">segment_text</text>
+  <text x="360" y="845" class="field-name">segment_vector</text>
+  <text x="360" y="860" class="field-name">confidence_score</text>
+  <text x="360" y="875" class="field-name">is_key_segment</text>
+  <text x="360" y="890" class="field-name">created_at</text>
+
+  <!-- 评论向量表 -->
+  <rect x="650" y="750" width="250" height="200" class="table-box" />
+  <rect x="650" y="750" width="250" height="25" class="table-header" />
+  <text x="775" y="767" text-anchor="middle" class="table-title">comment_vectors</text>
+  <text x="660" y="785" class="field-name pk">id (PK)</text>
+  <text x="660" y="800" class="field-name fk">post_id (FK)</text>
+  <text x="660" y="815" class="field-name">title_vector</text>
+  <text x="660" y="830" class="field-name">content_vector</text>
+  <text x="660" y="845" class="field-name">segment_count</text>
+  <text x="660" y="860" class="field-name">vectorization_method</text>
+  <text x="660" y="875" class="field-name">created_at</text>
+  <text x="660" y="890" class="field-name">updated_at</text>
+
+  <!-- 关系线 - 完全绕过表框 -->
+  <!-- users -> project -->
+  <path d="M 250 50 L 300 50 L 300 50 L 350 50" class="one-to-many" />
+  <text x="300" y="45" text-anchor="middle" class="field-type">1:N</text>
+
+  <!-- users -> projectitem -->
+  <path d="M 250 50 L 300 50 L 300 50 L 650 50 L 650 50" class="one-to-many" />
+  <text x="450" y="45" text-anchor="middle" class="field-type">1:N</text>
+
+  <!-- users -> post -->
+  <path d="M 250 50 L 300 50 L 300 50 L 950 50 L 950 50" class="one-to-many" />
+  <text x="600" y="45" text-anchor="middle" class="field-type">1:N</text>
+
+  <!-- users -> regkey (owner) -->
+  <path d="M 50 150 L 50 300 L 50 300 L 50 350" class="one-to-many" />
+  <text x="60" y="300" text-anchor="start" class="field-type">1:N</text>
+
+  <!-- users -> regkey (user) -->
+  <path d="M 50 180 L 50 300 L 50 300 L 50 350" class="one-to-many" />
+  <text x="60" y="300" text-anchor="start" class="field-type">1:N</text>
+
+  <!-- users -> point_logs -->
+  <path d="M 50 210 L 50 400 L 50 400 L 50 550" class="one-to-many" />
+  <text x="60" y="400" text-anchor="start" class="field-type">1:N</text>
+
+  <!-- project -> projectitem -->
+  <path d="M 550 50 L 600 50 L 600 50 L 650 50" class="one-to-many" />
+  <text x="600" y="45" text-anchor="middle" class="field-type">1:N</text>
+
+  <!-- project -> folders -->
+  <path d="M 450 270 L 450 300 L 450 300 L 450 350" class="one-to-many" />
+  <text x="460" y="300" text-anchor="start" class="field-type">1:N</text>
+
+  <!-- project -> urllink -->
+  <path d="M 550 270 L 1050 270 L 1050 500 L 1050 500" class="one-to-many" />
+  <text x="800" y="385" text-anchor="middle" class="field-type">1:N</text>
+
+  <!-- project -> subsc -->
+  <path d="M 450 270 L 450 300 L 450 300 L 450 550" class="one-to-many" />
+  <text x="460" y="400" text-anchor="start" class="field-type">1:N</text>
+
+  <!-- project -> relation (projectid) -->
+  <path d="M 550 270 L 600 270 L 600 300 L 650 300 L 650 550" class="one-to-many" />
+  <text x="600" y="400" text-anchor="middle" class="field-type">1:N</text>
+
+  <!-- project -> relation (objectid) -->
+  <path d="M 550 270 L 700 270 L 700 300 L 750 300 L 750 550" class="one-to-many" />
+  <text x="650" y="400" text-anchor="middle" class="field-type">1:N</text>
+
+  <!-- projectitem -> post -->
+  <path d="M 850 50 L 900 50 L 900 50 L 950 50" class="one-to-many" />
+  <text x="900" y="45" text-anchor="middle" class="field-type">1:N</text>
+
+  <!-- projectitem -> attachment -->
+  <path d="M 750 290 L 750 320 L 750 320 L 750 350" class="one-to-many" />
+  <text x="760" y="320" text-anchor="start" class="field-type">1:N</text>
+
+  <!-- projectitem -> subsc -->
+  <path d="M 750 290 L 550 290 L 550 420 L 550 420 L 550 550" class="one-to-many" />
+  <text x="650" y="420" text-anchor="middle" class="field-type">1:N</text>
+
+  <!-- projectitem -> article_vectors -->
+  <path d="M 750 290 L 200 290 L 200 700 L 200 700 L 200 750" class="one-to-many" />
+  <text x="475" y="520" text-anchor="middle" class="field-type">1:1</text>
+
+  <!-- folders -> folders (self-reference) -->
+  <path d="M 350 450 L 300 450 L 300 500 L 350 500 L 350 550" class="one-to-many" />
+  <text x="300" y="500" text-anchor="middle" class="field-type">1:N</text>
+
+  <!-- post -> comment_vectors -->
+  <path d="M 1050 270 L 1050 700 L 1050 700 L 775 700 L 775 750" class="one-to-many" />
+  <text x="912" y="700" text-anchor="middle" class="field-type">1:1</text>
+
+  <!-- article_vectors -> content_segment_vectors -->
+  <path d="M 300 850 L 325 850 L 325 850 L 350 850" class="one-to-many" />
+  <text x="325" y="845" text-anchor="middle" class="field-type">1:N</text>
+
+  <!-- 图例 -->
+  <rect x="1200" y="50" width="180" height="200" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1" />
+  <text x="1290" y="75" text-anchor="middle" class="table-title">图例</text>
+  <text x="1210" y="95" class="field-name pk">PK = 主键</text>
+  <text x="1210" y="110" class="field-name fk">FK = 外键</text>
+  <text x="1210" y="130" class="field-type">1:N = 一对多关系</text>
+  <text x="1210" y="145" class="field-type">1:1 = 一对一关系</text>
+  <line x1="1210" y1="160" x2="1370" y2="160" class="one-to-many" />
+  <text x="1290" y="155" text-anchor="middle" class="field-type">关系线</text>
+  <text x="1210" y="180" class="field-type">蓝色 = 核心业务表</text>
+  <text x="1210" y="195" class="field-type">橙色 = 向量搜索表</text>
+  <text x="1210" y="210" class="field-type">灰色 = 辅助表</text>
+  <text x="1210" y="230" class="field-type">箭头指向"多"的一方</text>
+
+  <!-- 标题 -->
+  <text x="700" y="30" text-anchor="middle" class="table-title" font-size="20">BlogN2 数据库实体关系图 (ERD)</text>
+</svg>
