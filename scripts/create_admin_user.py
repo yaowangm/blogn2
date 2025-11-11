@@ -61,24 +61,27 @@ def get_database_connection(database_name: str = "blogn_example"):
         # 从环境变量获取数据库URL
         database_url = os.getenv("DATABASE_URL")
         if not database_url:
-            # 如果没有设置环境变量，使用默认的PostgreSQL连接
-            print(f"⚠️  DATABASE_URL 环境变量未设置，使用默认配置连接到数据库: {database_name}")
-            database_url = f"postgresql+psycopg2://wy:passw0rd@localhost:5432/{database_name}"
-        else:
-            # 解析现有URL并替换数据库名称
-            if "postgresql://" in database_url or "postgresql+psycopg2://" in database_url or "postgresql+asyncpg://" in database_url:
-                # 提取基础URL（去掉数据库名部分）
-                if "/" in database_url.split("://")[1]:
-                    # 找到最后一个斜杠，替换后面的数据库名
-                    parts = database_url.split("/")
-                    base_url = "/".join(parts[:-1])
-                    database_url = f"{base_url}/{database_name}"
-                else:
-                    # 如果URL中没有数据库名，直接添加
-                    database_url = f"{database_url.rstrip('/')}/{database_name}"
+            print("❌ 错误: 未设置 DATABASE_URL 环境变量")
+            print("请在 .env 文件中配置数据库连接信息")
+            print("格式: DATABASE_URL=postgresql+asyncpg://用户名:密码@主机:端口/数据库名")
+            sys.exit(1)
+        
+        # 解析现有URL并替换数据库名称
+        if "postgresql://" in database_url or "postgresql+psycopg2://" in database_url or "postgresql+asyncpg://" in database_url:
+            # 提取基础URL（去掉数据库名部分）
+            if "/" in database_url.split("://")[1]:
+                # 找到最后一个斜杠，替换后面的数据库名
+                parts = database_url.split("/")
+                base_url = "/".join(parts[:-1])
+                database_url = f"{base_url}/{database_name}"
             else:
-                # 如果URL格式不正确，使用默认格式
-                database_url = f"postgresql+psycopg2://wy:passw0rd@localhost:5432/{database_name}"
+                # 如果URL中没有数据库名，直接添加
+                database_url = f"{database_url.rstrip('/')}/{database_name}"
+        else:
+            # 如果URL格式不正确，报错
+            print("❌ 错误: DATABASE_URL 格式不正确")
+            print("请使用 PostgreSQL 连接格式: postgresql+asyncpg://用户名:密码@主机:端口/数据库名")
+            sys.exit(1)
         
         # 确保使用同步驱动
         if "+asyncpg" in database_url:

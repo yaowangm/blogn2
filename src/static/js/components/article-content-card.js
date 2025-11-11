@@ -342,6 +342,8 @@ class ArticleContentCard extends BaseComponent {
         }
         // 通用URL正则，匹配 aaa://...
         const urlRegex = /([a-zA-Z][a-zA-Z0-9+.-]*:\/\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]+)/g;
+        // 用于测试的正则（无全局标志，避免 lastIndex 状态问题）
+        const urlTestRegex = /[a-zA-Z][a-zA-Z0-9+.-]*:\/\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]+/;
 
         // 使用DOM解析，避免正则直接切分HTML导致结构损坏
         const container = document.createElement('div');
@@ -358,7 +360,8 @@ class ArticleContentCard extends BaseComponent {
                     if (SKIP_TAGS.has(el.nodeName)) return NodeFilter.FILTER_REJECT;
                     el = el.parentNode;
                 }
-                return urlRegex.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+                // 使用无全局标志的正则进行测试，避免 lastIndex 状态问题
+                return urlTestRegex.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
             }
         });
 
