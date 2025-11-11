@@ -104,9 +104,9 @@ class HtmlUtils {
     static isValidUrl(url) {
         try {
             const urlObj = new URL(url);
-            // 允许任何有效的协议，但排除一些明显不安全的协议
-            const disallowedProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
-            return !disallowedProtocols.includes(urlObj.protocol);
+            // 只允许指定的安全协议
+            const allowedProtocols = ['http:', 'https:', 'ftp:', 'mailto:', 'tel:', 'ed2k:', 'thunder:'];
+            return allowedProtocols.includes(urlObj.protocol);
         } catch {
             return false;
         }

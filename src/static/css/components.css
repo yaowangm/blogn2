@@ -751,6 +751,23 @@ latest-posts-card {
     text-decoration: underline;
 }
 
+/* 自动链接样式 - 蓝色显示，使用 !important 确保优先级 */
+.markdown-content a.auto-link,
+.article-content a.auto-link,
+.markdown-content .auto-link,
+.article-content .auto-link {
+    color: #0066cc !important;
+    text-decoration: none !important;
+}
+
+.markdown-content a.auto-link:hover,
+.article-content a.auto-link:hover,
+.markdown-content .auto-link:hover,
+.article-content .auto-link:hover {
+    color: #0052a3 !important;
+    text-decoration: underline !important;
+}
+
 .markdown-content img {
     max-width: 100%;
     height: auto;

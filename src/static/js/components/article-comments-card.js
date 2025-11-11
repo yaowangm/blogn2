@@ -482,10 +482,9 @@ class ArticleCommentsCard extends BaseComponent {
     isValidUrl(url) {
         try {
             const urlObj = new URL(url);
-            
-            // 允许任何有效的协议，但排除一些明显不安全的协议
-            const disallowedProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
-            return !disallowedProtocols.includes(urlObj.protocol);
+            // 只允许指定的安全协议
+            const allowedProtocols = ['http:', 'https:', 'ftp:', 'mailto:', 'tel:', 'ed2k:', 'thunder:'];
+            return allowedProtocols.includes(urlObj.protocol);
         } catch (error) {
             return false;
         }
@@ -799,18 +798,6 @@ class ArticleCommentsCard extends BaseComponent {
                     overflow-wrap: anywhere;
                     max-width: 100%;
                     display: inline-block;
-                }
-
-                .auto-link {
-                    color: var(--primary-color);
-                    text-decoration: none;
-                    word-break: break-all;
-                    transition: color var(--transition-fast);
-                }
-
-                .auto-link:hover {
-                    color: var(--primary-hover) !important;
-                    text-decoration: underline !important;
                 }
                 
                 .comment-replies {

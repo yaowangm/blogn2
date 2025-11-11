@@ -79,6 +79,8 @@ class ArticleContentCard extends BaseComponent {
                     </div>
                 </div>
             `;
+            // 在设置 innerHTML 之后添加样式
+            this.addStyles();
             return;
         }
 
@@ -95,7 +97,8 @@ class ArticleContentCard extends BaseComponent {
                 </div>
             </div>
         `;
-
+        
+        // 在设置 innerHTML 之后添加样式
         this.addStyles();
         
         // 设置图片模态框事件监听器
@@ -757,18 +760,6 @@ class ArticleContentCard extends BaseComponent {
                     max-height: 70vh;
                     height: auto;
                     border-radius: var(--radius-md);
-                }
-
-                .auto-link {
-                    color: var(--primary-color);
-                    text-decoration: none;
-                    word-break: break-all;
-                    transition: color var(--transition-fast);
-                }
-
-                .auto-link:hover {
-                    color: var(--primary-hover) !important;
-                    text-decoration: underline !important;
                 }
                 
                 .loading {

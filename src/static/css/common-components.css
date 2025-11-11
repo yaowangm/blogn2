@@ -67,14 +67,14 @@
 
 /* 自动链接样式 */
 .auto-link {
-    color: var(--primary-color);
+    color: #0066cc; /* 蓝色字体 */
     text-decoration: none;
     word-break: break-all; /* 链接文本优先强断行，避免溢出 */
 }
 
 .auto-link:hover {
     text-decoration: underline !important;
-    color: var(--primary-hover) !important;
+    color: #0052a3 !important; /* 悬停时更深的蓝色 */
 }
 
 /* 用户头像样式 */
