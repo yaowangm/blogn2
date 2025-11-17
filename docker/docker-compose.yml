@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  blogn2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: blogn2-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # 数据库配置（从外部PostgreSQL连接）
+      - DATABASE_URL=${DATABASE_URL}
+      
+      # Redis配置（从外部Redis连接）
+      - CACHE_REDIS_HOST=${CACHE_REDIS_HOST:-localhost}
+      - CACHE_REDIS_PORT=${CACHE_REDIS_PORT:-6379}
+      - CACHE_REDIS_PASSWORD=${CACHE_REDIS_PASSWORD:-}
+      - CACHE_REDIS_DB=${CACHE_REDIS_DB:-0}
+      - CACHE_REDIS_SSL=${CACHE_REDIS_SSL:-false}
+      - CACHE_ENABLE_CACHE=${CACHE_ENABLE_CACHE:-true}
+      - CACHE_DEFAULT_TTL=${CACHE_DEFAULT_TTL:-600}
+      - CACHE_CACHE_PREFIX=${CACHE_CACHE_PREFIX:-blogn2}
+      
+      # BERT模型配置（模型缓存通过环境变量配置）
+      - MODEL_MODEL_NAME=${MODEL_MODEL_NAME:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      - MODEL_MODEL_PATH=${MODEL_MODEL_PATH:-}
+      - MODEL_DEVICE=${MODEL_DEVICE:-cpu}
+      - MODEL_MAX_LENGTH=${MODEL_MAX_LENGTH:-512}
+      - MODEL_VECTOR_DIMENSION=${MODEL_VECTOR_DIMENSION:-384}
+      - MODEL_PREFER_LOCAL=${MODEL_PREFER_LOCAL:-false}
+      - MODEL_FALLBACK_TO_HUGGINGFACE=${MODEL_FALLBACK_TO_HUGGINGFACE:-true}
+      - MODEL_CACHE_DIR=${MODEL_CACHE_DIR:-/app/.cache/models}
+      
+      # 应用配置
+      - APP_ENV=${APP_ENV:-production}
+      - DEBUG=${DEBUG:-false}
+      - BASE_URL=${BASE_URL:-http://localhost:8000}
+      - SECRET_KEY=${SECRET_KEY}
+      
+      # 文件上传配置
+      - UPLOAD_DIR=${UPLOAD_DIR:-/app/uploads}
+      - AVATAR_DIR=${AVATAR_DIR:-/app/avatars}
+      
+      # 其他配置
+      - BLOG_POSTS_PAGE_SIZE=${BLOG_POSTS_PAGE_SIZE:-10}
+      - MAX_ATTACHMENTS_PER_ARTICLE=${MAX_ATTACHMENTS_PER_ARTICLE:-10}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-10485760}
+      - ALLOWED_FILE_TYPES=${ALLOWED_FILE_TYPES:-image/jpeg,image/png,image/gif}
+      
+      # Uvicorn配置
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      # 挂载上传目录（持久化存储，路径相对于项目根目录）
+      - ../uploads:/app/uploads
+      - ../avatars:/app/avatars
+      # 注意：模型缓存通过 MODEL_CACHE_DIR 环境变量配置，不在此处挂载
+    networks:
+      - blogn2-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  blogn2-network:
+    driver: bridge
+    # 如果需要连接到外部PostgreSQL和Redis，可以配置external网络
+    # 例如：
+    # external: true
+    # name: external-network
+    # 然后在 services.blogn2.networks 中添加该网络名称
+

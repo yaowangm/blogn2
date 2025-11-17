@@ -1,0 +1,92 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+venv/
+env/
+ENV/
+.venv
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+coverage.xml
+*.cover
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+doc/
+*.md
+!README.md
+!README-DOCKER.md
+
+# Data files (not needed in container)
+data/*.sql
+data/*.db
+
+# Cache
+.cache/
+*.cache
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Other
+*.code-workspace
+warnings.log
+app.log
+server.log
+vector.log
+batch_vectorization.log
+simple_vectorization.log
+safe_vectorization.log
+ivfflat_optimization.log
+ivfflat_optimization_fixed.log
+final_cache_performance_report.json
+
+# Upload directories (will be mounted as volumes)
+../pic/
+pic/
+
