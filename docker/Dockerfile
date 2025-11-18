@@ -52,6 +52,10 @@ WORKDIR /app
 # 复制应用代码
 COPY --chown=appuser:appuser . .
 
+# 复制 docker-entrypoint.sh 到正确位置并设置权限（在切换用户之前）
+COPY --chown=appuser:appuser docker/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
 # 切换到非root用户
 USER appuser
 

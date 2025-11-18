@@ -21,7 +21,9 @@ fi
 # 模型缓存目录根据环境变量 MODEL_CACHE_DIR 创建（默认为 /app/.cache/models）
 MODEL_CACHE_DIR=${MODEL_CACHE_DIR:-/app/.cache/models}
 mkdir -p /app/uploads /app/avatars "${MODEL_CACHE_DIR}"
-chmod -R 755 /app/uploads /app/avatars "${MODEL_CACHE_DIR}"
+# 只对可写目录设置权限（模型缓存目录可能是只读挂载）
+chmod -R 755 /app/uploads /app/avatars 2>/dev/null || true
+chmod -R 755 "${MODEL_CACHE_DIR}" 2>/dev/null || true
 
 # 等待数据库连接（可选，如果数据库在同一网络）
 if [ -n "$WAIT_FOR_DB" ] && [ "$WAIT_FOR_DB" = "true" ]; then
