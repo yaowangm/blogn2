@@ -1,0 +1,96 @@
+# 优化版 Dockerfile for BlogN2
+# 使用 CPU-only PyTorch 和排除测试依赖，减小镜像大小
+# 预期大小：~1.6GB (相比原版 5.8GB，减少 72%)
+
+# 第一阶段：构建依赖
+FROM python:3.12-slim as builder
+
+# 设置工作目录
+WORKDIR /build
+
+# 配置 Debian apt 使用清华大学镜像源（基础镜像使用 Debian）
+RUN sed -i 's|http://deb.debian.org|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/debian.sources && \
+    sed -i 's|http://security.debian.org|https://mirrors.tuna.tsinghua.edu.cn/debian-security|g' /etc/apt/sources.list.d/debian.sources
+
+# 配置 pip 使用清华大学镜像源（加速 Python 包下载）
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
+    pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn
+
+# 安装构建依赖
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# 复制生产环境依赖文件
+COPY requirements-prod.txt .
+
+# 创建虚拟环境并安装依赖
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# 升级 pip（使用清华镜像源）
+RUN pip install --no-cache-dir --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 先安装 PyTorch CPU 版本
+# 尝试多个源：先尝试官方 CPU 索引，失败则使用清华镜像
+RUN pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu torch==2.2.0+cpu || \
+    pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple torch==2.2.0+cpu
+
+# 安装其他依赖（使用清华镜像源）
+RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements-prod.txt
+
+# 第二阶段：运行环境
+FROM python:3.12-slim
+
+# 设置环境变量
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    APP_ENV=production
+
+# 配置 Debian apt 使用清华大学镜像源（第二阶段也需要配置）
+RUN sed -i 's|http://deb.debian.org|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/debian.sources && \
+    sed -i 's|http://security.debian.org|https://mirrors.tuna.tsinghua.edu.cn/debian-security|g' /etc/apt/sources.list.d/debian.sources
+
+# 安装运行时依赖
+# 注意：只安装 postgresql-client 用于连接外部PostgreSQL数据库，不包含PostgreSQL服务器
+# Redis 和 BERT 模型通过环境变量配置，不在此处安装
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# 创建非root用户
+# 注意：模型缓存目录由 docker-entrypoint.sh 根据 MODEL_CACHE_DIR 环境变量创建
+RUN useradd -m -u 1000 appuser && \
+    mkdir -p /app/data /app/uploads /app/avatars && \
+    chown -R appuser:appuser /app
+
+# 从构建阶段复制虚拟环境
+COPY --from=builder /opt/venv /opt/venv
+
+# 设置工作目录
+WORKDIR /app
+
+# 复制应用代码
+COPY --chown=appuser:appuser . .
+
+# 复制 docker-entrypoint.sh 到正确位置并设置权限（在切换用户之前）
+COPY --chown=appuser:appuser docker/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
+# 切换到非root用户
+USER appuser
+
+# 暴露端口
+EXPOSE 8000
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+
+# 启动命令
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+

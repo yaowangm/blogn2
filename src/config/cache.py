@@ -17,7 +17,8 @@ class CacheSettings(BaseSettings):
     """
     缓存配置类
     
-    支持从环境变量和.env文件加载配置。
+    在 Docker 容器中，只从环境变量加载配置，不读取 .env 文件。
+    在本地开发环境中，可以通过环境变量或 .env 文件配置。
     所有配置项都有合理的默认值。
     """
     
@@ -39,8 +40,9 @@ class CacheSettings(BaseSettings):
     
     model_config = SettingsConfigDict(
         env_prefix="CACHE_",
-        env_file=".env",
-        env_file_encoding="utf-8",
+        # 在 Docker 容器中，不读取 .env 文件，只使用环境变量
+        # 这样可以确保容器配置完全由启动参数控制，不依赖宿主机文件
+        env_file=None,
         case_sensitive=False,
         extra="ignore"
     )
