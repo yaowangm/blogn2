@@ -99,6 +99,44 @@ sys.path.insert(0, str(project_root))
 static_dir = project_root / "src" / "static"
 static_dir.mkdir(parents=True, exist_ok=True)
 
+# 确保配置加载在测试前正确初始化（避免测试失败）
+# 在测试环境中，如果没有配置文件，使用默认配置
+# 必须在导入任何使用配置的模块之前完成配置加载
+
+# 设置测试环境的模型配置（使用本地模型，避免访问 Hugging Face）
+_default_model_path = os.path.expanduser("~/.cache/modelscope/hub/models/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+
+try:
+    # 先加载配置工具
+    from src.config.utils import load_config_file, get_config_file_path
+    # 加载配置文件（这会更新环境变量，但不会覆盖已存在的环境变量）
+    config_path = load_config_file()
+    if config_path:
+        logger.info(f"测试环境使用配置文件: {config_path}")
+    else:
+        logger.debug("测试环境使用默认配置（未找到配置文件）")
+    
+    # 在配置加载后，确保使用本地模型（优先级最高）
+    if os.path.exists(_default_model_path):
+        os.environ["MODEL_MODEL_PATH"] = _default_model_path
+        os.environ["MODEL_PREFER_LOCAL"] = "true"
+        os.environ["MODEL_FALLBACK_TO_HUGGINGFACE"] = "false"
+        logger.info(f"测试环境强制使用本地模型: {_default_model_path}")
+    elif not os.getenv("MODEL_MODEL_PATH"):
+        logger.warning(f"本地模型路径不存在: {_default_model_path}，将尝试从 Hugging Face 下载")
+        
+except Exception as e:
+    # 如果配置加载失败，记录但不中断测试
+    logger.debug(f"配置加载初始化失败（测试环境）: {e}")
+    import traceback
+    logger.debug(traceback.format_exc())
+    
+    # 即使配置加载失败，也尝试设置本地模型路径
+    if os.path.exists(_default_model_path):
+        os.environ["MODEL_MODEL_PATH"] = _default_model_path
+        os.environ["MODEL_PREFER_LOCAL"] = "true"
+        os.environ["MODEL_FALLBACK_TO_HUGGINGFACE"] = "false"
+
 def cleanup_test_data_by_ids(tracker: TestDataTracker):
     """基于ID精确清理测试数据"""
     if not tracker.has_data():

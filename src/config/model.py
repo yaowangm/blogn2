@@ -20,24 +20,52 @@ class ModelSettings:
     
     支持从环境变量和.env文件加载配置。
     所有配置项都有合理的默认值。
+    使用属性访问器确保每次访问时都读取最新的环境变量值。
     """
     
     def __init__(self):
-        # 模型配置
-        self.model_name = os.getenv('MODEL_MODEL_NAME', 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
-        self.model_path = os.getenv('MODEL_MODEL_PATH') or None  # 本地模型路径，如果为None则使用model_name从Hugging Face下载
-        self.device = os.getenv('MODEL_DEVICE', 'auto')  # auto, cpu, cuda, cuda:0等
-        
-        # 模型性能参数
-        self.max_length = int(os.getenv('MODEL_MAX_LENGTH', '512'))
-        self.vector_dimension = int(os.getenv('MODEL_VECTOR_DIMENSION', '384'))
-        
-        # 模型加载策略
-        self.prefer_local = os.getenv('MODEL_PREFER_LOCAL', 'true').lower() == 'true'  # 是否优先使用本地模型
-        self.fallback_to_huggingface = os.getenv('MODEL_FALLBACK_TO_HUGGINGFACE', 'true').lower() == 'true'  # 本地模型失败时是否回退到Hugging Face
-        
-        # 模型缓存配置
-        self.cache_dir = os.getenv('MODEL_CACHE_DIR') or None  # 模型缓存目录，None表示使用默认目录
+        # 标记已初始化，避免重复初始化
+        self._initialized = True
+    
+    @property
+    def model_name(self) -> str:
+        """模型名称"""
+        return os.getenv('MODEL_MODEL_NAME', 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+    
+    @property
+    def model_path(self) -> Optional[str]:
+        """本地模型路径"""
+        return os.getenv('MODEL_MODEL_PATH') or None
+    
+    @property
+    def device(self) -> str:
+        """运行设备"""
+        return os.getenv('MODEL_DEVICE', 'auto')
+    
+    @property
+    def max_length(self) -> int:
+        """最大输入长度"""
+        return int(os.getenv('MODEL_MAX_LENGTH', '512'))
+    
+    @property
+    def vector_dimension(self) -> int:
+        """向量维度"""
+        return int(os.getenv('MODEL_VECTOR_DIMENSION', '384'))
+    
+    @property
+    def prefer_local(self) -> bool:
+        """是否优先使用本地模型"""
+        return os.getenv('MODEL_PREFER_LOCAL', 'true').lower() == 'true'
+    
+    @property
+    def fallback_to_huggingface(self) -> bool:
+        """本地模型失败时是否回退到Hugging Face"""
+        return os.getenv('MODEL_FALLBACK_TO_HUGGINGFACE', 'true').lower() == 'true'
+    
+    @property
+    def cache_dir(self) -> Optional[str]:
+        """模型缓存目录"""
+        return os.getenv('MODEL_CACHE_DIR') or None
 
 
 # 创建全局模型配置实例

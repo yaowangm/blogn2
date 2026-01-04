@@ -4,6 +4,8 @@
 提供静态页面路由的统一处理逻辑。
 """
 
+import os
+from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
 from typing import Optional
@@ -11,6 +13,23 @@ from typing import Optional
 
 class PageHandler:
     """页面处理器类"""
+    
+    @staticmethod
+    def _get_static_file_path(filename: str) -> str:
+        """
+        获取静态文件的绝对路径
+        
+        Args:
+            filename: 文件名
+            
+        Returns:
+            str: 文件的绝对路径
+        """
+        # 获取项目根目录（从当前文件位置推断）
+        current_file = Path(__file__)
+        project_root = current_file.parent.parent.parent
+        static_file = project_root / "src" / "static" / filename
+        return str(static_file.resolve())
     
     @staticmethod
     def create_page_router() -> APIRouter:
@@ -26,103 +45,111 @@ class PageHandler:
         @router.get("/")
         async def root():
             """根路径和首页路由"""
-            return FileResponse("src/static/index.html")
+            return FileResponse(PageHandler._get_static_file_path("index.html"))
         
         # 博客页面
         @router.get("/blog/{project_id}")
         async def blog_page(project_id: int):
             """博客页面路由"""
-            return FileResponse("src/static/blog.html")
+            return FileResponse(PageHandler._get_static_file_path("blog.html"))
         
         # 留言本页面
         @router.get("/messages")
         async def messages_page():
             """留言本页面路由"""
-            return FileResponse("src/static/messages.html")
+            return FileResponse(PageHandler._get_static_file_path("messages.html"))
         
         # 留言本主题页面
         @router.get("/thread/{thread_id}")
         async def thread_page(thread_id: int):
             """留言本主题页面路由"""
-            return FileResponse("src/static/thread.html")
+            return FileResponse(PageHandler._get_static_file_path("thread.html"))
         
         # 发表博客文章页面
         @router.get("/blog/{project_id}/create-post")
         async def create_post_page(project_id: int):
             """发表博客文章页面路由"""
-            return FileResponse("src/static/create-post.html")
+            return FileResponse(PageHandler._get_static_file_path("create-post.html"))
         
         # 编辑博客文章页面
         @router.get("/edit-article/{article_id}")
         async def edit_article_page(article_id: int):
             """编辑博客文章页面路由"""
-            return FileResponse("src/static/edit-article.html")
+            return FileResponse(PageHandler._get_static_file_path("edit-article.html"))
         
         # 个人资料页面
         @router.get("/profile")
         @router.get("/profile/{user_id}")
         async def profile_page(user_id: Optional[int] = None):
             """个人资料页面路由"""
-            return FileResponse("src/static/profile.html")
+            return FileResponse(PageHandler._get_static_file_path("profile.html"))
         
         # 注册码管理页面
         @router.get("/regkey")
         async def registration_code_page():
             """注册码管理页面路由"""
-            return FileResponse("src/static/regkey.html")
+            return FileResponse(PageHandler._get_static_file_path("regkey.html"))
         
         # 用户列表页面
         @router.get("/users")
         async def users_list_page():
             """用户列表页面路由"""
-            return FileResponse("src/static/users.html")
+            return FileResponse(PageHandler._get_static_file_path("users.html"))
         
         # 用户注册页面
         @router.get("/user_register")
         async def user_register_page():
             """用户注册页面路由"""
-            return FileResponse("src/static/user_register.html")
+            return FileResponse(PageHandler._get_static_file_path("user_register.html"))
         
         # 博客文章页面
         @router.get("/article/{article_id}")
         async def article_page(article_id: int):
             """博客文章页面路由"""
-            return FileResponse("src/static/article.html")
+            return FileResponse(PageHandler._get_static_file_path("article.html"))
         
         # 订阅的博客页面
         @router.get("/blog/{project_id}/subscriptions")
         async def subscriptions_page(project_id: int):
             """订阅的博客页面路由"""
-            return FileResponse("src/static/subscriptions.html")
+            return FileResponse(PageHandler._get_static_file_path("subscriptions.html"))
         
         # 分类维护页面
         @router.get("/blog/{project_id}/categories/maintenance")
         async def category_maintenance_page(project_id: int):
             """分类维护页面路由"""
-            return FileResponse("src/static/category-maintenance.html")
+            return FileResponse(PageHandler._get_static_file_path("category-maintenance.html"))
         
         # 管理友情链接页面
         @router.get("/manage-friend-links")
         async def manage_friend_links_page():
             """管理友情链接页面路由"""
-            return FileResponse("src/static/manage-friend-links.html")
+            return FileResponse(PageHandler._get_static_file_path("manage-friend-links.html"))
         
-        # 调试页面
+        # 调试页面（这些文件可能在项目根目录）
         @router.get("/debug/article-api")
         async def debug_article_api():
             """调试文章API页面"""
-            return FileResponse("debug_article_api.html")
+            # 调试文件可能在项目根目录
+            current_file = Path(__file__)
+            project_root = current_file.parent.parent.parent
+            debug_file = project_root / "debug_article_api.html"
+            return FileResponse(str(debug_file.resolve()))
         
         @router.get("/debug/image-display")
         async def debug_image_display():
             """调试图片显示页面"""
-            return FileResponse("debug_image_display.html")
+            # 调试文件可能在项目根目录
+            current_file = Path(__file__)
+            project_root = current_file.parent.parent.parent
+            debug_file = project_root / "debug_image_display.html"
+            return FileResponse(str(debug_file.resolve()))
         
         # 搜索页面
         @router.get("/search")
         async def search_page():
             """搜索页面路由"""
-            return FileResponse("src/static/search.html")
+            return FileResponse(PageHandler._get_static_file_path("search.html"))
         
         return router
 

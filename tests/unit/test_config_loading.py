@@ -78,6 +78,10 @@ class TestLoadConfigFileLocal:
         config_file = tmp_path / "test_config.env"
         config_file.write_text("CACHE_REDIS_HOST=test_host\nCACHE_REDIS_PORT=6380\n")
         
+        # 先删除可能存在的环境变量，确保测试干净
+        monkeypatch.delenv("CACHE_REDIS_HOST", raising=False)
+        monkeypatch.delenv("CACHE_REDIS_PORT", raising=False)
+        
         # 设置环境变量
         monkeypatch.setenv("BLOGN_CONFIG_FILE", str(config_file))
         monkeypatch.delenv("DOCKER_CONTAINER", raising=False)
@@ -101,6 +105,10 @@ class TestLoadConfigFileLocal:
         # 创建临时 .env 文件
         env_file = tmp_path / ".env"
         env_file.write_text("CACHE_REDIS_HOST=env_host\nCACHE_REDIS_PORT=6379\n")
+        
+        # 先删除可能存在的环境变量，确保测试干净
+        monkeypatch.delenv("CACHE_REDIS_HOST", raising=False)
+        monkeypatch.delenv("CACHE_REDIS_PORT", raising=False)
         
         # 不设置 BLOGN_CONFIG_FILE
         monkeypatch.delenv("BLOGN_CONFIG_FILE", raising=False)
@@ -157,6 +165,9 @@ class TestLoadConfigFileDocker:
         # 创建临时配置文件
         config_file = tmp_path / "docker_config.env"
         config_file.write_text("CACHE_REDIS_HOST=docker_host\n")
+        
+        # 先删除可能存在的环境变量，确保测试干净
+        monkeypatch.delenv("CACHE_REDIS_HOST", raising=False)
         
         # 设置环境变量
         monkeypatch.setenv("BLOGN_CONFIG_FILE", str(config_file))

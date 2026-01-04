@@ -74,22 +74,36 @@ def load_config_file() -> Optional[Path]:
     if _config_file_path is not None:
         return _config_file_path
     
-    in_docker = is_docker_container()
+    try:
+        in_docker = is_docker_container()
+    except Exception:
+        # 如果检测 Docker 容器时出错，假设不在容器中
+        in_docker = False
+    
     config_file: Optional[Path] = None
     
     # 检查 BLOGN_CONFIG_FILE 环境变量
     config_file_env = os.getenv("BLOGN_CONFIG_FILE")
     if config_file_env:
-        config_file = Path(config_file_env).resolve()
-        if not config_file.exists():
-            logger.warning(f"配置文件不存在: {config_file}")
+        try:
+            config_file = Path(config_file_env).resolve()
+            if not config_file.exists():
+                logger.warning(f"配置文件不存在: {config_file}")
+                config_file = None
+        except Exception as e:
+            logger.warning(f"解析配置文件路径失败: {e}")
             config_file = None
     elif not in_docker:
         # 本地开发环境：检查当前目录下的 .env 文件
-        current_dir = Path.cwd()
-        env_file = current_dir / ".env"
-        if env_file.exists():
-            config_file = env_file.resolve()
+        try:
+            current_dir = Path.cwd()
+            env_file = current_dir / ".env"
+            if env_file.exists():
+                config_file = env_file.resolve()
+        except Exception as e:
+            # 如果获取当前目录失败（例如在某些测试环境中），忽略错误
+            logger.debug(f"无法获取当前目录: {e}")
+            config_file = None
     else:
         # Docker 容器中：必须配置 BLOGN_CONFIG_FILE
         logger.warning("在 Docker 容器中运行，但未配置 BLOGN_CONFIG_FILE 环境变量，将使用默认配置")
