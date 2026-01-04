@@ -8,8 +8,12 @@ import os
 import logging
 from dotenv import load_dotenv
 
-# 确保加载.env文件
-load_dotenv()
+from .utils import is_docker_container
+
+# 在 Docker 容器中，不加载 .env 文件，只使用环境变量
+# 在本地开发环境中，允许从 .env 文件加载配置
+if not is_docker_container():
+    load_dotenv()
 
 logger = logging.getLogger(__name__)
 

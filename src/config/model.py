@@ -8,9 +8,20 @@
 import os
 from typing import Optional
 
+from .utils import is_docker_container
+
 # 简单的.env文件加载函数
 def load_env_file():
-    """加载.env文件到环境变量"""
+    """
+    加载.env文件到环境变量
+    
+    在 Docker 容器中，不加载 .env 文件，只使用环境变量。
+    在本地开发环境中，允许从 .env 文件加载配置。
+    """
+    # 在 Docker 容器中，不读取 .env 文件
+    if is_docker_container():
+        return
+    
     env_file = '.env'
     if os.path.exists(env_file):
         with open(env_file, 'r', encoding='utf-8') as f:
@@ -20,7 +31,7 @@ def load_env_file():
                     key, value = line.split('=', 1)
                     os.environ[key.strip()] = value.strip()
 
-# 加载.env文件
+# 加载.env文件（如果在本地开发环境中）
 load_env_file()
 
 
@@ -116,7 +127,7 @@ def validate_model_config() -> dict:
         "prefer_local": model_settings.prefer_local,
         "fallback_to_huggingface": model_settings.fallback_to_huggingface,
         "cache_dir": model_settings.cache_dir,
-        "config_source": "environment" if os.path.exists(".env") else "defaults"
+        "config_source": "env_file" if not is_docker_container() and os.path.exists(".env") else "environment"
     }
     
     return config_info

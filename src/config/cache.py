@@ -10,6 +10,8 @@ import logging
 from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .utils import is_docker_container
+
 logger = logging.getLogger(__name__)
 
 
@@ -42,7 +44,8 @@ class CacheSettings(BaseSettings):
         env_prefix="CACHE_",
         # 在 Docker 容器中，不读取 .env 文件，只使用环境变量
         # 这样可以确保容器配置完全由启动参数控制，不依赖宿主机文件
-        env_file=None,
+        # 在本地开发环境中，允许从 .env 文件加载配置
+        env_file=None if is_docker_container() else ".env",
         case_sensitive=False,
         extra="ignore"
     )
@@ -69,7 +72,7 @@ def validate_cache_config() -> dict:
         "max_ttl": cache_settings.max_ttl,
         "enable_cache": cache_settings.enable_cache,
         "cache_debug": cache_settings.cache_debug,
-        "config_source": "environment" if cache_settings.model_config.get("env_file") else "defaults"
+        "config_source": "env_file" if not is_docker_container() and os.path.exists(".env") else "environment"
     }
     
     if cache_settings.cache_debug:
