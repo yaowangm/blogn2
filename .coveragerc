@@ -1,10 +1,14 @@
 [run]
-source = src
+source = 
+    ../src
+    src
 omit = 
     */tests/*
     */venv/*
     */__pycache__/*
     */migrations/*
+branch = False
+parallel = False
 
 [report]
 exclude_lines =
@@ -17,4 +21,4 @@ exclude_lines =
     if 0:
     if __name__ == .__main__.:
     class .*\bProtocol\):
-    @(abc\.)?abstractmethod 
+    @(abc\.)?abstractmethod
