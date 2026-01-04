@@ -1,38 +1,17 @@
 """
 模型配置模块
 
-提供BERT模型相关配置，支持从环境变量和.env文件加载配置。
+提供BERT模型相关配置，支持从环境变量和配置文件加载配置。
 包含模型路径、设备选择、性能参数等配置项。
 """
 
 import os
 from typing import Optional
 
-from .utils import is_docker_container
+from .utils import load_config_file, get_config_file_path
 
-# 简单的.env文件加载函数
-def load_env_file():
-    """
-    加载.env文件到环境变量
-    
-    在 Docker 容器中，不加载 .env 文件，只使用环境变量。
-    在本地开发环境中，允许从 .env 文件加载配置。
-    """
-    # 在 Docker 容器中，不读取 .env 文件
-    if is_docker_container():
-        return
-    
-    env_file = '.env'
-    if os.path.exists(env_file):
-        with open(env_file, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
-                    os.environ[key.strip()] = value.strip()
-
-# 加载.env文件（如果在本地开发环境中）
-load_env_file()
+# 加载配置文件（如果存在）
+load_config_file()
 
 
 class ModelSettings:
@@ -118,6 +97,7 @@ def validate_model_config() -> dict:
     Returns:
         Dict: 包含完整模型配置信息的字典
     """
+    config_file = get_config_file_path()
     config_info = {
         "model_name": model_settings.model_name,
         "model_path": model_settings.model_path,
@@ -127,7 +107,7 @@ def validate_model_config() -> dict:
         "prefer_local": model_settings.prefer_local,
         "fallback_to_huggingface": model_settings.fallback_to_huggingface,
         "cache_dir": model_settings.cache_dir,
-        "config_source": "env_file" if not is_docker_container() and os.path.exists(".env") else "environment"
+        "config_source": str(config_file) if config_file else "defaults"
     }
     
     return config_info

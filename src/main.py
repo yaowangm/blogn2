@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 # 导入缓存相关模块
 from src.utils.cache import cache_manager, cache_stats
 from src.config.cache import cache_settings, validate_cache_config
+from src.config.utils import get_config_file_path
 
 # 导入工具类
 from src.utils.middleware_handlers import MiddlewareHandler
@@ -54,7 +55,14 @@ async def lifespan(app: FastAPI):
     
     处理应用启动和关闭事件，包括缓存系统初始化。
     """
-    # 启动事件：验证缓存配置并初始化缓存系统
+    # 启动事件：打印配置文件信息
+    config_file = get_config_file_path()
+    if config_file:
+        logger.info(f"📄 使用配置文件: {config_file}")
+    else:
+        logger.info("📄 使用默认配置（未使用配置文件）")
+    
+    # 验证缓存配置并初始化缓存系统
     config_info = validate_cache_config()
     logger.info(f"缓存配置已加载: Redis={config_info['redis_host']}:{config_info['redis_port']}, 缓存前缀={config_info['cache_prefix']}")
     

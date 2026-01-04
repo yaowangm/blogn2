@@ -95,6 +95,10 @@ class TestDataTracker:
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+# 确保静态文件目录存在（用于测试）
+static_dir = project_root / "src" / "static"
+static_dir.mkdir(parents=True, exist_ok=True)
+
 def cleanup_test_data_by_ids(tracker: TestDataTracker):
     """基于ID精确清理测试数据"""
     if not tracker.has_data():

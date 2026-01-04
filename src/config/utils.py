@@ -1,11 +1,19 @@
 """
 配置工具模块
 
-提供配置相关的工具函数，如判断运行环境等。
+提供配置相关的工具函数，如判断运行环境、加载配置文件等。
 """
 
 import os
+import logging
 from pathlib import Path
+from typing import Optional
+from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
+
+# 全局变量存储使用的配置文件路径
+_config_file_path: Optional[Path] = None
 
 
 def is_docker_container() -> bool:
@@ -42,4 +50,74 @@ def is_docker_container() -> bool:
         pass
     
     return False
+
+
+def load_config_file() -> Optional[Path]:
+    """
+    加载配置文件
+    
+    配置规则：
+    1. 在本地开发环境中：
+       - 优先使用 BLOGN_CONFIG_FILE 环境变量指定的配置文件
+       - 如果 BLOGN_CONFIG_FILE 不存在，使用当前目录下的 .env 文件
+       - 如果 .env 文件也不存在，返回 None（使用代码中的默认配置）
+    2. 在 Docker 容器中：
+       - 必须通过 BLOGN_CONFIG_FILE 环境变量指定配置文件
+       - 如果未指定，返回 None（使用代码中的默认配置）
+    
+    Returns:
+        Optional[Path]: 使用的配置文件路径（绝对路径），如果未使用配置文件则返回 None
+    """
+    global _config_file_path
+    
+    # 如果已经加载过，直接返回
+    if _config_file_path is not None:
+        return _config_file_path
+    
+    in_docker = is_docker_container()
+    config_file: Optional[Path] = None
+    
+    # 检查 BLOGN_CONFIG_FILE 环境变量
+    config_file_env = os.getenv("BLOGN_CONFIG_FILE")
+    if config_file_env:
+        config_file = Path(config_file_env).resolve()
+        if not config_file.exists():
+            logger.warning(f"配置文件不存在: {config_file}")
+            config_file = None
+    elif not in_docker:
+        # 本地开发环境：检查当前目录下的 .env 文件
+        current_dir = Path.cwd()
+        env_file = current_dir / ".env"
+        if env_file.exists():
+            config_file = env_file.resolve()
+    else:
+        # Docker 容器中：必须配置 BLOGN_CONFIG_FILE
+        logger.warning("在 Docker 容器中运行，但未配置 BLOGN_CONFIG_FILE 环境变量，将使用默认配置")
+    
+    # 如果找到配置文件，加载它
+    if config_file:
+        try:
+            load_dotenv(config_file, override=False)  # override=False 表示环境变量优先
+            _config_file_path = config_file
+            return _config_file_path
+        except Exception as e:
+            logger.error(f"加载配置文件失败 {config_file}: {e}")
+            _config_file_path = None
+            return None
+    
+    # 未使用配置文件
+    _config_file_path = None
+    return None
+
+
+def get_config_file_path() -> Optional[Path]:
+    """
+    获取当前使用的配置文件路径
+    
+    Returns:
+        Optional[Path]: 配置文件路径（绝对路径），如果未使用配置文件则返回 None
+    """
+    # 确保配置文件已加载
+    load_config_file()
+    return _config_file_path
 

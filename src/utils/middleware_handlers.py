@@ -62,7 +62,14 @@ class MiddlewareHandler:
         Args:
             app: FastAPI应用实例
         """
-        app.mount("/static", StaticFiles(directory="src/static"), name="static")
+        from pathlib import Path
+        static_dir = Path("src/static")
+        if static_dir.exists() and static_dir.is_dir():
+            app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+        else:
+            # 如果目录不存在，创建它（用于测试环境）
+            static_dir.mkdir(parents=True, exist_ok=True)
+            app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
     
     @staticmethod
     def setup_all_middleware(app: FastAPI) -> None:
