@@ -40,7 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 创建非root用户
 # 注意：模型缓存目录由 docker-entrypoint.sh 根据 MODEL_CACHE_DIR 环境变量创建
 RUN useradd -m -u 1000 appuser && \
-    mkdir -p /app/data /app/uploads /app/avatars && \
+    mkdir -p /app/data /app/uploads /app/avatars /app/.cache/models && \
     chown -R appuser:appuser /app
 
 # 从构建阶段复制虚拟环境
@@ -55,6 +55,10 @@ COPY --chown=appuser:appuser . .
 # 复制 docker-entrypoint.sh 到正确位置并设置权限（在切换用户之前）
 COPY --chown=appuser:appuser docker/docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
+
+# 确保必要的目录存在并设置正确的权限（在切换用户之前，使用 root 权限）
+RUN mkdir -p /app/.cache/models /app/uploads /app/avatars && \
+    chown -R appuser:appuser /app/.cache /app/uploads /app/avatars
 
 # 切换到非root用户
 USER appuser

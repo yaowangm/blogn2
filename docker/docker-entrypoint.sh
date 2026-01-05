@@ -6,9 +6,53 @@ set -e
 
 echo "🚀 BlogN2 容器启动中..."
 
+# 加载配置文件（如果 BLOGN_CONFIG_FILE 环境变量已设置）
+if [ -n "$BLOGN_CONFIG_FILE" ] && [ -f "$BLOGN_CONFIG_FILE" ]; then
+    echo "📄 从配置文件加载环境变量: $BLOGN_CONFIG_FILE"
+    # 使用 Python 加载 .env 文件并导出环境变量到当前 shell
+    eval "$(python3 << 'PYTHON_EOF'
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+config_file = os.getenv("BLOGN_CONFIG_FILE")
+if config_file and Path(config_file).exists():
+    # 加载配置文件（override=False 表示不覆盖已存在的环境变量）
+    load_dotenv(config_file, override=False)
+    # 导出所有环境变量到 shell（只导出应用相关的变量）
+    for key, value in os.environ.items():
+        if any(key.startswith(prefix) for prefix in [
+            "DATABASE_", "CACHE_", "MODEL_", "APP_", "SECRET_", 
+            "DEBUG", "BASE_URL", "UPLOAD_", "AVATAR_"
+        ]):
+            # 转义单引号
+            value_escaped = value.replace("'", "'\"'\"'")
+            print(f"export {key}='{value_escaped}'")
+PYTHON_EOF
+)"
+else
+    if [ -n "$BLOGN_CONFIG_FILE" ]; then
+        echo "⚠️  警告: 配置文件不存在: $BLOGN_CONFIG_FILE"
+    else
+        echo "⚠️  警告: BLOGN_CONFIG_FILE 未设置，使用环境变量或默认配置"
+    fi
+fi
+
 # 检查必要的环境变量
 if [ -z "$DATABASE_URL" ]; then
     echo "❌ 错误: DATABASE_URL 环境变量未设置"
+    echo "   请确保："
+    echo "   1. BLOGN_CONFIG_FILE 环境变量指向正确的配置文件路径（容器内路径）"
+    echo "   2. 配置文件包含 DATABASE_URL 配置项"
+    echo "   3. 配置文件已通过 volume 挂载到容器内"
+    if [ -n "$BLOGN_CONFIG_FILE" ]; then
+        echo "   4. 当前配置的配置文件路径: $BLOGN_CONFIG_FILE"
+        if [ -f "$BLOGN_CONFIG_FILE" ]; then
+            echo "   5. 配置文件存在，但可能缺少 DATABASE_URL 配置项"
+        else
+            echo "   5. 配置文件不存在，请检查 volume 挂载配置"
+        fi
+    fi
     exit 1
 fi
 
