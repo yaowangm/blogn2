@@ -136,6 +136,19 @@ else
 fi
 
 echo "  - Redis: ${CACHE_REDIS_HOST:-localhost}:${CACHE_REDIS_PORT:-6379}"
+
+# 显示缓存启用状态
+if [ -n "$CACHE_ENABLE_CACHE" ]; then
+    if [ "$CACHE_ENABLE_CACHE" = "true" ] || [ "$CACHE_ENABLE_CACHE" = "1" ]; then
+        CACHE_STATUS="已启用"
+    else
+        CACHE_STATUS="已禁用"
+    fi
+else
+    CACHE_STATUS="已启用（默认）"
+fi
+echo "  - 缓存: ${CACHE_STATUS}"
+
 echo "  - 模型设备: ${MODEL_DEVICE:-cpu}"
 echo "  - 模型缓存目录: ${MODEL_CACHE_DIR:-/app/.cache/models}"
 echo "  - 上传目录: ${UPLOAD_DIR:-/app/uploads}"
