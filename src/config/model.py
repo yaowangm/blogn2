@@ -51,7 +51,7 @@ class ModelSettings:
     def vector_dimension(self) -> int:
         """向量维度"""
         return int(os.getenv('MODEL_VECTOR_DIMENSION', '384'))
-    
+        
     @property
     def prefer_local(self) -> bool:
         """是否优先使用本地模型"""
