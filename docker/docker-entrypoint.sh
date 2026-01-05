@@ -157,15 +157,31 @@ echo "  - 头像目录: ${AVATAR_DIR:-/app/avatars}"
 # 执行传入的命令
 echo "🚀 启动应用..."
 
-# 如果命令是 uvicorn，添加日志级别参数
+# 如果命令是 uvicorn，添加日志级别参数（如果未指定）
 if [ "$1" = "uvicorn" ]; then
     # 设置日志级别（默认 warning，只显示错误和警告）
     LOG_LEVEL=${LOG_LEVEL:-warning}
     # 将日志级别转换为小写
     LOG_LEVEL=$(echo "$LOG_LEVEL" | tr '[:upper:]' '[:lower:]')
-    # 执行 uvicorn 命令，添加日志级别参数
-    # 注意：应用启动成功消息会在应用代码中通过 logger.warning() 输出
-    exec uvicorn "$2" --host 0.0.0.0 --port 8000 --workers 1 --log-level "$LOG_LEVEL" "${@:3}"
+    
+    # 检查是否已经指定了 --log-level 参数
+    HAS_LOG_LEVEL=false
+    for arg in "${@:2}"; do
+        if [ "$arg" = "--log-level" ] || [ "${arg%%=*}" = "--log-level" ]; then
+            HAS_LOG_LEVEL=true
+            break
+        fi
+    done
+    
+    # 如果没有指定 --log-level，则添加
+    if [ "$HAS_LOG_LEVEL" = false ]; then
+        # 执行 uvicorn 命令，添加日志级别参数
+        # 注意：应用启动成功消息会在应用代码中通过 logger.warning() 输出
+        exec uvicorn "${@:2}" --log-level "$LOG_LEVEL"
+    else
+        # 如果已经指定了 --log-level，直接执行，不添加
+        exec uvicorn "${@:2}"
+    fi
 else
     # 其他命令直接执行
     exec "$@"
