@@ -80,6 +80,9 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("BERT模型缓存初始化失败，搜索功能将使用降级方案")
     
+    # 应用启动成功（使用 warning 级别，确保在 warning 日志级别下也能显示）
+    logger.warning("✅ 应用启动成功，服务已就绪")
+    
     yield
     
     # 关闭事件：清理资源

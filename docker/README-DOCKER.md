@@ -139,6 +139,11 @@ docker logs blogn2-app
 - `APP_ENV`: 应用环境（`development`/`production`/`testing`）
 - `BASE_URL`: 应用基础 URL（用于生成链接）
 - `SECRET_KEY`: JWT 密钥（生产环境必须修改）
+- `LOG_LEVEL`: 日志级别（`debug`/`info`/`warning`/`error`，默认：`warning`）
+  - `warning`: 只显示警告和错误（推荐生产环境）
+  - `error`: 只显示错误
+  - `info`: 显示信息、警告和错误
+  - `debug`: 显示所有日志（包括调试信息）
 
 详细配置请参考 `docker/env.docker.example` 文件。
 
