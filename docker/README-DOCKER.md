@@ -77,14 +77,16 @@ chmod -R 755 uploads avatars
 docker build -f docker/Dockerfile -t blogn2-app .
 
 # 启动容器（在项目根目录执行）
+# 注意：需要将实际的图片目录挂载到容器中
+# 如果图片在 ../pic/blogn_img/upload，则挂载该目录
 docker run -d \
   --name blogn2-app \
   --restart unless-stopped \
   --network host \
   -e BLOGN_CONFIG_FILE=/app/config.env \
   -v $(pwd)/.env:/app/config.env:ro \
-  -v $(pwd)/uploads:/app/uploads \
-  -v $(pwd)/avatars:/app/avatars \
+  -v /home/wy/pic/blogn_img/upload:/app/uploads \
+  -v /home/wy/pic/blogn_img/userlogo:/app/avatars \
   -v /home/wy/.cache/huggingface:/app/.cache/huggingface:ro \
   -v /home/wy/.cache/modelscope:/app/.cache/modelscope:ro \
   blogn2-app
@@ -183,12 +185,16 @@ CACHE_REDIS_HOST=redis-container
 
 #### 上传文件持久化
 
-上传的文件和用户头像通过 volume 挂载持久化（已在启动命令中包含）：
+上传的文件和用户头像通过 volume 挂载持久化。**注意**：需要挂载实际的图片目录，而不是空的目录。
+
+如果图片文件在 `../pic/blogn_img/upload`（相对于项目根目录），则：
 
 ```bash
--v $(pwd)/uploads:/app/uploads
--v $(pwd)/avatars:/app/avatars
+-v /home/wy/pic/blogn_img/upload:/app/uploads
+-v /home/wy/pic/blogn_img/userlogo:/app/avatars
 ```
+
+如果图片文件在其他位置，请根据实际路径修改。
 
 #### 模型缓存
 
@@ -278,6 +284,8 @@ docker run -d \
   --restart unless-stopped \
   --network host \
   -e BLOGN_CONFIG_FILE=/app/config.env \
+  -e UPLOAD_DIR=/app/uploads \
+  -e AVATAR_DIR=/app/avatars \
   -v $(pwd)/.env:/app/config.env:ro \
   -v $(pwd)/uploads:/app/uploads \
   -v $(pwd)/avatars:/app/avatars \
@@ -372,8 +380,8 @@ docker run -d \
   --network host \
   -e BLOGN_CONFIG_FILE=/app/config.env \
   -v $(pwd)/.env:/app/config.env:ro \
-  -v $(pwd)/uploads:/app/uploads \
-  -v $(pwd)/avatars:/app/avatars \
+  -v /home/wy/pic/blogn_img/upload:/app/uploads \
+  -v /home/wy/pic/blogn_img/userlogo:/app/avatars \
   -v /home/wy/.cache/huggingface:/app/.cache/huggingface:ro \
   -v /home/wy/.cache/modelscope:/app/.cache/modelscope:ro \
   blogn2-app \
