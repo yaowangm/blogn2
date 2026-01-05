@@ -125,7 +125,16 @@ fi
 # 显示配置信息（不显示敏感信息）
 echo "📋 配置信息:"
 echo "  - 应用环境: ${APP_ENV:-production}"
-echo "  - 数据库: ${DATABASE_URL%%@*}@***"
+
+# 安全地显示数据库连接信息（隐藏密码）
+if [ -n "$DATABASE_URL" ]; then
+    # 提取协议、用户名、主机和端口，隐藏密码
+    DB_DISPLAY=$(echo "$DATABASE_URL" | sed -E 's|://([^:]+):([^@]+)@|://\1:***@|')
+    echo "  - 数据库: ${DB_DISPLAY}"
+else
+    echo "  - 数据库: 未配置"
+fi
+
 echo "  - Redis: ${CACHE_REDIS_HOST:-localhost}:${CACHE_REDIS_PORT:-6379}"
 echo "  - 模型设备: ${MODEL_DEVICE:-cpu}"
 echo "  - 模型缓存目录: ${MODEL_CACHE_DIR:-/app/.cache/models}"
