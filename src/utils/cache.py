@@ -25,6 +25,23 @@ import redis.asyncio as redis
 logger = logging.getLogger(__name__)
 
 
+# ==================== JSON 序列化工具 ====================
+
+def _json_serializer(obj: Any) -> Any:
+    """
+    自定义 JSON 序列化器，处理 datetime 等不可序列化的对象
+    
+    Args:
+        obj: 要序列化的对象
+        
+    Returns:
+        可序列化的对象
+    """
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+
 # ==================== 工具函数 ====================
 
 def _is_testing_environment() -> bool:
@@ -135,7 +152,7 @@ class CacheManager:
         
         try:
             ttl = ttl or cache_settings.default_ttl
-            value_str = json.dumps(value, ensure_ascii=False)
+            value_str = json.dumps(value, ensure_ascii=False, default=_json_serializer)
             await self._backend.redis.set(key, value_str, ex=ttl)
             return True
         except Exception as e:
