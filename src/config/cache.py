@@ -8,7 +8,13 @@
 import os
 import logging
 from typing import Optional
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from .utils import load_config_file, get_config_file_path
+
+# 加载配置文件（如果存在）
+load_config_file()
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +23,11 @@ class CacheSettings(BaseSettings):
     """
     缓存配置类
     
-    支持从环境变量和.env文件加载配置。
+    配置加载规则：
+    1. 在本地开发环境中，可以通过 BLOGN_CONFIG_FILE 环境变量指定配置文件，
+       如果未指定，则使用当前目录下的 .env 文件
+    2. 在 Docker 容器中，必须通过 BLOGN_CONFIG_FILE 环境变量指定配置文件
+    3. 如果未使用配置文件，则使用代码中的默认配置
     所有配置项都有合理的默认值。
     """
     
@@ -39,8 +49,10 @@ class CacheSettings(BaseSettings):
     
     model_config = SettingsConfigDict(
         env_prefix="CACHE_",
-        env_file=".env",
-        env_file_encoding="utf-8",
+        # 使用统一的配置文件加载逻辑
+        # env_file 由 load_config_file() 函数处理，这里设置为 None
+        # pydantic_settings 会从已加载的环境变量中读取配置
+        env_file=None,
         case_sensitive=False,
         extra="ignore"
     )
@@ -57,6 +69,7 @@ def validate_cache_config() -> dict:
     Returns:
         Dict: 包含完整缓存配置信息的字典
     """
+    config_file = get_config_file_path()
     config_info = {
         "redis_host": cache_settings.redis_host,
         "redis_port": cache_settings.redis_port,
@@ -67,7 +80,7 @@ def validate_cache_config() -> dict:
         "max_ttl": cache_settings.max_ttl,
         "enable_cache": cache_settings.enable_cache,
         "cache_debug": cache_settings.cache_debug,
-        "config_source": "environment" if cache_settings.model_config.get("env_file") else "defaults"
+        "config_source": str(config_file) if config_file else "defaults"
     }
     
     if cache_settings.cache_debug:

@@ -1,27 +1,17 @@
 """
 模型配置模块
 
-提供BERT模型相关配置，支持从环境变量和.env文件加载配置。
+提供BERT模型相关配置，支持从环境变量和配置文件加载配置。
 包含模型路径、设备选择、性能参数等配置项。
 """
 
 import os
 from typing import Optional
 
-# 简单的.env文件加载函数
-def load_env_file():
-    """加载.env文件到环境变量"""
-    env_file = '.env'
-    if os.path.exists(env_file):
-        with open(env_file, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
-                    os.environ[key.strip()] = value.strip()
+from .utils import load_config_file, get_config_file_path
 
-# 加载.env文件
-load_env_file()
+# 加载配置文件（如果存在）
+load_config_file()
 
 
 class ModelSettings:
@@ -30,24 +20,52 @@ class ModelSettings:
     
     支持从环境变量和.env文件加载配置。
     所有配置项都有合理的默认值。
+    使用属性访问器确保每次访问时都读取最新的环境变量值。
     """
     
     def __init__(self):
-        # 模型配置
-        self.model_name = os.getenv('MODEL_MODEL_NAME', 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
-        self.model_path = os.getenv('MODEL_MODEL_PATH') or None  # 本地模型路径，如果为None则使用model_name从Hugging Face下载
-        self.device = os.getenv('MODEL_DEVICE', 'auto')  # auto, cpu, cuda, cuda:0等
+        # 标记已初始化，避免重复初始化
+        self._initialized = True
+    
+    @property
+    def model_name(self) -> str:
+        """模型名称"""
+        return os.getenv('MODEL_MODEL_NAME', 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+    
+    @property
+    def model_path(self) -> Optional[str]:
+        """本地模型路径"""
+        return os.getenv('MODEL_MODEL_PATH') or None
+    
+    @property
+    def device(self) -> str:
+        """运行设备"""
+        return os.getenv('MODEL_DEVICE', 'auto')
+    
+    @property
+    def max_length(self) -> int:
+        """最大输入长度"""
+        return int(os.getenv('MODEL_MAX_LENGTH', '512'))
+    
+    @property
+    def vector_dimension(self) -> int:
+        """向量维度"""
+        return int(os.getenv('MODEL_VECTOR_DIMENSION', '384'))
         
-        # 模型性能参数
-        self.max_length = int(os.getenv('MODEL_MAX_LENGTH', '512'))
-        self.vector_dimension = int(os.getenv('MODEL_VECTOR_DIMENSION', '384'))
-        
-        # 模型加载策略
-        self.prefer_local = os.getenv('MODEL_PREFER_LOCAL', 'true').lower() == 'true'  # 是否优先使用本地模型
-        self.fallback_to_huggingface = os.getenv('MODEL_FALLBACK_TO_HUGGINGFACE', 'true').lower() == 'true'  # 本地模型失败时是否回退到Hugging Face
-        
-        # 模型缓存配置
-        self.cache_dir = os.getenv('MODEL_CACHE_DIR') or None  # 模型缓存目录，None表示使用默认目录
+    @property
+    def prefer_local(self) -> bool:
+        """是否优先使用本地模型"""
+        return os.getenv('MODEL_PREFER_LOCAL', 'true').lower() == 'true'
+    
+    @property
+    def fallback_to_huggingface(self) -> bool:
+        """本地模型失败时是否回退到Hugging Face"""
+        return os.getenv('MODEL_FALLBACK_TO_HUGGINGFACE', 'true').lower() == 'true'
+    
+    @property
+    def cache_dir(self) -> Optional[str]:
+        """模型缓存目录"""
+        return os.getenv('MODEL_CACHE_DIR') or None
 
 
 # 创建全局模型配置实例
@@ -107,6 +125,7 @@ def validate_model_config() -> dict:
     Returns:
         Dict: 包含完整模型配置信息的字典
     """
+    config_file = get_config_file_path()
     config_info = {
         "model_name": model_settings.model_name,
         "model_path": model_settings.model_path,
@@ -116,7 +135,7 @@ def validate_model_config() -> dict:
         "prefer_local": model_settings.prefer_local,
         "fallback_to_huggingface": model_settings.fallback_to_huggingface,
         "cache_dir": model_settings.cache_dir,
-        "config_source": "environment" if os.path.exists(".env") else "defaults"
+        "config_source": str(config_file) if config_file else "defaults"
     }
     
     return config_info

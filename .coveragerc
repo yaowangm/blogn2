@@ -1,10 +1,14 @@
 [run]
-source = src
+source = 
+    ../src
+    src
 omit = 
     */tests/*
     */venv/*
     */__pycache__/*
     */migrations/*
+branch = False
+parallel = False
 
 [report]
 exclude_lines =

@@ -98,8 +98,11 @@ class TestBlogService:
     
     @pytest.mark.unit
     @patch('os.path.exists')
-    def test_check_avatar_exists_success(self, mock_exists, blog_service):
+    def test_check_avatar_exists_success(self, mock_exists, blog_service, monkeypatch):
         """测试检查头像存在成功"""
+        # 设置测试环境变量，确保使用测试期望的路径
+        monkeypatch.setenv("AVATAR_DIR", "../pic/blogn_img/userlogo")
+        
         mock_exists.return_value = True
         
         result = blog_service._check_avatar_exists(12345)
@@ -113,8 +116,11 @@ class TestBlogService:
     
     @pytest.mark.unit
     @patch('os.path.exists')
-    def test_check_avatar_exists_not_found(self, mock_exists, blog_service):
+    def test_check_avatar_exists_not_found(self, mock_exists, blog_service, monkeypatch):
         """测试检查头像不存在"""
+        # 设置测试环境变量，确保使用测试期望的路径
+        monkeypatch.setenv("AVATAR_DIR", "../pic/blogn_img/userlogo")
+        
         mock_exists.return_value = False
         
         result = blog_service._check_avatar_exists(12345)

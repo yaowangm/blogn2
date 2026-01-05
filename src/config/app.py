@@ -6,10 +6,11 @@
 
 import os
 import logging
-from dotenv import load_dotenv
 
-# 确保加载.env文件
-load_dotenv()
+from .utils import load_config_file, get_config_file_path
+
+# 加载配置文件（如果存在）
+load_config_file()
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +111,7 @@ def validate_app_config() -> dict:
     Returns:
         Dict: 包含完整应用配置信息的字典
     """
+    config_file = get_config_file_path()
     config_info = {
         "app_env": get_app_environment(),
         "debug": os.getenv('DEBUG', 'true').lower() == 'true',
@@ -121,7 +123,7 @@ def validate_app_config() -> dict:
         "allowed_file_types": os.getenv('ALLOWED_FILE_TYPES', 'image/jpeg,image/png,image/gif'),
         "upload_dir": get_upload_dir(),
         "avatar_dir": os.getenv('AVATAR_DIR', '../pic/blogn_img/userlogo'),
-        "config_source": "environment" if os.path.exists(".env") else "defaults"
+        "config_source": str(config_file) if config_file else "defaults"
     }
     
     if config_info["debug"]:
