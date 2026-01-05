@@ -2,6 +2,8 @@
 
 本文档说明如何使用 Docker 容器化部署 BlogN2 应用。
 
+> **注意**：本项目使用优化后的 Dockerfile，使用 CPU-only PyTorch，镜像大小约 1.6GB，并优化了构建缓存以提高构建速度。
+
 ## 📋 部署架构
 
 BlogN2 容器化部署采用以下架构：
@@ -77,12 +79,17 @@ cd docker
 # 构建镜像
 docker-compose build
 
+# 或者直接使用 docker build
+docker build -f docker/Dockerfile -t blogn2-app ..
+
 # 启动容器
 docker-compose up -d
 
 # 查看日志
 docker-compose logs -f
 ```
+
+> **说明**：Dockerfile 使用 CPU-only PyTorch，镜像更小，构建更快。构建时 PyTorch 安装层独立缓存，提高后续构建速度。
 
 ### 5. 验证部署
 

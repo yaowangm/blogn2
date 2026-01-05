@@ -1,9 +1,26 @@
-# 多阶段构建 Dockerfile for BlogN2
+# Dockerfile for BlogN2
+# 使用 CPU-only PyTorch 和排除测试依赖，减小镜像大小
+# 预期大小：~1.6GB
+# 
+# 特性：
+# - 多阶段构建，减小最终镜像大小
+# - 使用 CPU-only PyTorch（torch==2.2.0+cpu）
+# - 优化构建缓存，PyTorch 安装层独立，提高构建速度
+# - 使用清华大学镜像源加速构建
+
 # 第一阶段：构建依赖
-FROM python:3.12-slim as builder
+FROM python:3.12-slim AS builder
 
 # 设置工作目录
 WORKDIR /build
+
+# 配置 Debian apt 使用清华大学镜像源（基础镜像使用 Debian）
+RUN sed -i 's|http://deb.debian.org|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/debian.sources && \
+    sed -i 's|http://security.debian.org|https://mirrors.tuna.tsinghua.edu.cn/debian-security|g' /etc/apt/sources.list.d/debian.sources
+
+# 配置 pip 使用清华大学镜像源（加速 Python 包下载）
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
+    pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn
 
 # 安装构建依赖
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -12,14 +29,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制依赖文件
-COPY requirements.txt .
-
 # 创建虚拟环境并安装依赖
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+
+# 升级 pip（使用清华镜像源）
+RUN pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 先安装 PyTorch CPU 版本（独立层，不依赖 requirements 文件，便于缓存）
+# 尝试多个源：先尝试官方 CPU 索引，失败则使用清华镜像
+RUN pip install --extra-index-url https://download.pytorch.org/whl/cpu torch==2.2.0+cpu || \
+    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple torch==2.2.0+cpu
+
+# 复制生产环境依赖文件（放在 PyTorch 安装之后，避免 requirements 变化导致 PyTorch 层缓存失效）
+COPY requirements-prod.txt .
+
+# 安装其他依赖（使用清华镜像源）
+RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements-prod.txt
 
 # 第二阶段：运行环境
 FROM python:3.12-slim
@@ -29,6 +55,10 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:$PATH" \
     APP_ENV=production
+
+# 配置 Debian apt 使用清华大学镜像源（第二阶段也需要配置）
+RUN sed -i 's|http://deb.debian.org|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/debian.sources && \
+    sed -i 's|http://security.debian.org|https://mirrors.tuna.tsinghua.edu.cn/debian-security|g' /etc/apt/sources.list.d/debian.sources
 
 # 安装运行时依赖
 # 注意：只安装 postgresql-client 用于连接外部PostgreSQL数据库，不包含PostgreSQL服务器
