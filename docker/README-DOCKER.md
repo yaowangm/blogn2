@@ -135,6 +135,150 @@ docker logs blogn2-app
 - `MODEL_CACHE_DIR`: 模型缓存目录（默认：`/app/.cache/models`）
 - `MODEL_FALLBACK_TO_HUGGINGFACE`: 是否回退到在线下载（默认：`true`）
 
+##### 下载 BERT 模型并获取本地缓存
+
+应用使用的 BERT 模型是 `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`。首次运行时，模型会自动从 Hugging Face 下载。为了加快后续启动速度，可以预先下载模型并获取本地缓存路径。
+
+**方法 1：在宿主机上下载模型（推荐）**
+
+1. **安装 Python 和依赖**
+   ```bash
+   # 确保已安装 Python 3.8+
+   python3 --version
+   
+   # 安装 sentence-transformers
+   pip install sentence-transformers
+   ```
+
+2. **下载模型到本地**
+   ```bash
+   python3 -c "
+   from sentence_transformers import SentenceTransformer
+   model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+   print('模型已下载到:', model._model_card_vars.get('cache_folder', '默认缓存目录'))
+   "
+   ```
+
+3. **查找模型缓存路径**
+   
+   模型通常下载到以下位置之一：
+   - Linux: `~/.cache/huggingface/hub/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2`
+   - 或者: `~/.cache/torch/sentence_transformers/sentence-transformers_paraphrase-multilingual-MiniLM-L12-v2`
+   
+   可以通过以下命令查找：
+   ```bash
+   # 查找模型缓存目录
+   find ~/.cache -name "*paraphrase-multilingual-MiniLM-L12-v2*" -type d 2>/dev/null
+   
+   # 或者查看 Python 缓存目录
+   python3 -c "
+   from sentence_transformers import SentenceTransformer
+   import os
+   model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+   cache_path = os.path.expanduser('~/.cache/huggingface/hub')
+   print('Hugging Face 缓存目录:', cache_path)
+   print('模型应位于:', cache_path + '/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2')
+   "
+   ```
+
+4. **挂载模型缓存到容器**
+   
+   找到模型缓存路径后，在启动容器时挂载：
+   ```bash
+   docker run -d \
+     --name blogn2-app \
+     --restart unless-stopped \
+     --network host \
+     -e BLOGN_CONFIG_FILE=/app/config.env \
+     -v $(pwd)/.env:/app/config.env:ro \
+     -v /home/wy/pic/blogn_img/upload:/app/uploads \
+     -v /home/wy/pic/blogn_img/userlogo:/app/avatars \
+     -v ~/.cache/huggingface:/app/.cache/huggingface:ro \
+     blogn2-app
+   ```
+
+**方法 2：在容器内下载模型**
+
+如果容器有网络访问权限，模型会在首次启动时自动下载：
+
+1. **启动容器并等待模型下载**
+   ```bash
+   docker run -d \
+     --name blogn2-app \
+     --restart unless-stopped \
+     --network host \
+     -e BLOGN_CONFIG_FILE=/app/config.env \
+     -v $(pwd)/.env:/app/config.env:ro \
+     -v /home/wy/pic/blogn_img/upload:/app/uploads \
+     -v /home/wy/pic/blogn_img/userlogo:/app/avatars \
+     -v blogn2-model-cache:/app/.cache/models \
+     blogn2-app
+   
+   # 查看日志，等待模型下载完成
+   docker logs -f blogn2-app
+   ```
+
+2. **模型下载完成后，保存缓存**
+   ```bash
+   # 创建命名 volume 以持久化模型缓存
+   docker volume create blogn2-model-cache
+   
+   # 或者将容器内的缓存复制到宿主机
+   docker cp blogn2-app:/app/.cache/models ~/model_cache
+   ```
+
+**方法 3：使用 MODEL_MODEL_PATH 指定本地模型路径**
+
+如果模型已经下载到本地特定路径，可以通过环境变量指定：
+
+1. **在 .env 文件中配置**
+   ```env
+   # 指定本地模型路径（宿主机路径）
+   MODEL_MODEL_PATH=/path/to/local/model
+   MODEL_PREFER_LOCAL=true
+   MODEL_FALLBACK_TO_HUGGINGFACE=false
+   ```
+
+2. **挂载本地模型目录**
+   ```bash
+   docker run -d \
+     --name blogn2-app \
+     --restart unless-stopped \
+     --network host \
+     -e BLOGN_CONFIG_FILE=/app/config.env \
+     -v $(pwd)/.env:/app/config.env:ro \
+     -v /path/to/local/model:/app/.cache/models/paraphrase-multilingual-MiniLM-L12-v2:ro \
+     -v /home/wy/pic/blogn_img/upload:/app/uploads \
+     -v /home/wy/pic/blogn_img/userlogo:/app/avatars \
+     blogn2-app
+   ```
+
+**验证模型缓存**
+
+启动容器后，可以通过以下命令验证模型是否已缓存：
+
+```bash
+# 检查容器内的模型缓存目录
+docker exec blogn2-app ls -la /app/.cache/models
+
+# 查看模型加载日志
+docker logs blogn2-app | grep -i model
+
+# 测试模型是否正常工作
+docker exec blogn2-app python3 -c "
+from sentence_transformers import SentenceTransformer
+model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+print('模型加载成功！')
+"
+```
+
+**注意事项**
+
+- 模型大小约 420MB，首次下载可能需要一些时间
+- 如果网络不稳定，建议使用方法 1 预先下载
+- 模型缓存目录建议使用只读挂载（`:ro`）以提高安全性
+- 确保模型缓存目录有足够的磁盘空间（至少 500MB）
+
 #### 应用配置
 - `APP_ENV`: 应用环境（`development`/`production`/`testing`）
 - `BASE_URL`: 应用基础 URL（用于生成链接）
