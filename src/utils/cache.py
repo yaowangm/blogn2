@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 def _json_serializer(obj: Any) -> Any:
     """
-    自定义 JSON 序列化器，处理 datetime 等不可序列化的对象
+    自定义 JSON 序列化器，处理 datetime、SQLModel、Pydantic 等不可序列化的对象
     
     Args:
         obj: 要序列化的对象
@@ -37,8 +37,22 @@ def _json_serializer(obj: Any) -> Any:
     Returns:
         可序列化的对象
     """
+    # 处理 datetime 对象
     if isinstance(obj, datetime):
         return obj.isoformat()
+    
+    # 处理 SQLModel 和 Pydantic BaseModel 对象
+    # SQLModel 继承自 Pydantic BaseModel，所以检查 BaseModel 即可
+    if hasattr(obj, 'model_dump'):
+        # Pydantic v2 使用 model_dump()
+        return obj.model_dump()
+    elif hasattr(obj, 'dict'):
+        # Pydantic v1 使用 dict()
+        return obj.dict()
+    elif hasattr(obj, '__dict__'):
+        # 普通对象，尝试使用 __dict__
+        return obj.__dict__
+    
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 
