@@ -129,8 +129,47 @@ echo "  - 应用环境: ${APP_ENV:-production}"
 
 # 安全地显示数据库连接信息（隐藏密码）
 if [ -n "$DATABASE_URL" ]; then
-    # 提取协议、用户名、主机和端口，隐藏密码
-    DB_DISPLAY=$(echo "$DATABASE_URL" | sed -E 's|://([^:]+):([^@]+)@|://\1:***@|')
+    # 使用 Python 安全地隐藏密码（处理密码中包含 @ 的情况）
+    DB_DISPLAY=$(python3 << 'PYTHON_EOF'
+from urllib.parse import urlparse, urlunparse
+import sys
+
+url = sys.stdin.read().strip()
+try:
+    # 解析 URL
+    parsed = urlparse(url)
+    
+    # 如果有用户名
+    if parsed.username:
+        # 如果有密码，隐藏密码；如果没有密码，只显示用户名
+        if parsed.password:
+            # 构建新的 netloc（只包含用户名，密码用 *** 替换）
+            if parsed.port:
+                new_netloc = f'{parsed.username}:***@{parsed.hostname}:{parsed.port}'
+            else:
+                new_netloc = f'{parsed.username}:***@{parsed.hostname}'
+        else:
+            # 没有密码，只显示用户名
+            if parsed.port:
+                new_netloc = f'{parsed.username}@{parsed.hostname}:{parsed.port}'
+            else:
+                new_netloc = f'{parsed.username}@{parsed.hostname}'
+        
+        # 重新构建 URL
+        new_parsed = parsed._replace(netloc=new_netloc)
+        print(urlunparse(new_parsed))
+    else:
+        print(url)
+except Exception:
+    # 如果解析失败，使用简单的正则表达式作为后备
+    # 注意：这种方法可能无法正确处理密码中包含 @ 的情况
+    # 但作为后备方案，总比不隐藏密码好
+    import re
+    # 匹配最后一个 @ 之前的内容（假设密码中的 @ 应该被 URL 编码为 %40）
+    result = re.sub(r'://([^:]+):[^@]*@', r'://\1:***@', url)
+    print(result)
+PYTHON_EOF
+    <<< "$DATABASE_URL")
     echo "  - 数据库: ${DB_DISPLAY}"
 else
     echo "  - 数据库: 未配置"
