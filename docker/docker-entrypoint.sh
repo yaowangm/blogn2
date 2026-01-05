@@ -21,10 +21,11 @@ if config_file and Path(config_file).exists():
     load_dotenv(config_file, override=False)
     # 导出所有环境变量到 shell（只导出应用相关的变量）
     for key, value in os.environ.items():
+        # 检查是否匹配前缀或完全匹配特定变量
         if any(key.startswith(prefix) for prefix in [
             "DATABASE_", "CACHE_", "MODEL_", "APP_", "SECRET_", 
             "DEBUG", "BASE_URL", "UPLOAD_", "AVATAR_"
-        ]):
+        ]) or key in ["LOG_LEVEL"]:
             # 转义单引号
             value_escaped = value.replace("'", "'\"'\"'")
             print(f"export {key}='{value_escaped}'")
