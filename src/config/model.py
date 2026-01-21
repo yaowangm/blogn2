@@ -66,6 +66,11 @@ class ModelSettings:
     def cache_dir(self) -> Optional[str]:
         """模型缓存目录"""
         return os.getenv('MODEL_CACHE_DIR') or None
+    
+    @property
+    def enable_model(self) -> bool:
+        """是否启用BERT模型（禁用后搜索功能将使用传统文本搜索）"""
+        return os.getenv('MODEL_ENABLE_MODEL', 'true').lower() in ('true', '1', 'yes')
 
 
 # 创建全局模型配置实例

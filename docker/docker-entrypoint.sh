@@ -10,6 +10,7 @@ echo "🚀 BlogN2 容器启动中..."
 if [ -n "$BLOGN_CONFIG_FILE" ] && [ -f "$BLOGN_CONFIG_FILE" ]; then
     echo "📄 从配置文件加载环境变量: $BLOGN_CONFIG_FILE"
     # 使用 Python 加载 .env 文件并导出环境变量到当前 shell
+    # 注意：使用 override=True 确保配置文件中的值覆盖已存在的环境变量
     eval "$(python3 << 'PYTHON_EOF'
 import os
 from pathlib import Path
@@ -17,8 +18,8 @@ from dotenv import load_dotenv
 
 config_file = os.getenv("BLOGN_CONFIG_FILE")
 if config_file and Path(config_file).exists():
-    # 加载配置文件（override=False 表示不覆盖已存在的环境变量）
-    load_dotenv(config_file, override=False)
+    # 加载配置文件（override=True 确保配置文件中的值覆盖已存在的环境变量）
+    load_dotenv(config_file, override=True)
     # 导出所有环境变量到 shell（只导出应用相关的变量）
     for key, value in os.environ.items():
         # 检查是否匹配前缀或完全匹配特定变量
@@ -26,6 +27,7 @@ if config_file and Path(config_file).exists():
             "DATABASE_", "CACHE_", "MODEL_", "APP_", "SECRET_", 
             "DEBUG", "BASE_URL", "UPLOAD_", "AVATAR_"
         ]) or key in ["LOG_LEVEL"]:
+            # MODEL_ 前缀已经包含 MODEL_ENABLE_MODEL，无需额外处理
             # 转义单引号
             value_escaped = value.replace("'", "'\"'\"'")
             print(f"export {key}='{value_escaped}'")
@@ -40,8 +42,8 @@ else
 fi
 
 # 检查必要的环境变量
-if [ -z "$DATABASE_URL" ]; then
-    echo "❌ 错误: DATABASE_URL 环境变量未设置"
+if [ -z "$DATABASE_URL" ] || [ "$DATABASE_URL" = "" ]; then
+    echo "❌ 错误: DATABASE_URL 环境变量未设置或为空"
     echo "   请确保："
     echo "   1. BLOGN_CONFIG_FILE 环境变量指向正确的配置文件路径（容器内路径）"
     echo "   2. 配置文件包含 DATABASE_URL 配置项"
@@ -50,10 +52,16 @@ if [ -z "$DATABASE_URL" ]; then
         echo "   4. 当前配置的配置文件路径: $BLOGN_CONFIG_FILE"
         if [ -f "$BLOGN_CONFIG_FILE" ]; then
             echo "   5. 配置文件存在，但可能缺少 DATABASE_URL 配置项"
+            echo "   6. 检查配置文件内容（前20行）："
+            head -20 "$BLOGN_CONFIG_FILE" | grep -i "DATABASE" || echo "      未找到 DATABASE_URL 配置"
         else
             echo "   5. 配置文件不存在，请检查 volume 挂载配置"
         fi
     fi
+    echo ""
+    echo "   调试信息："
+    echo "   - BLOGN_CONFIG_FILE: ${BLOGN_CONFIG_FILE:-未设置}"
+    echo "   - DATABASE_URL 长度: ${#DATABASE_URL}"
     exit 1
 fi
 
@@ -189,6 +197,17 @@ else
 fi
 echo "  - 缓存: ${CACHE_STATUS}"
 
+# 显示模型启用状态
+if [ -n "$MODEL_ENABLE_MODEL" ]; then
+    if [ "$MODEL_ENABLE_MODEL" = "true" ] || [ "$MODEL_ENABLE_MODEL" = "1" ] || [ "$MODEL_ENABLE_MODEL" = "yes" ]; then
+        MODEL_STATUS="已启用"
+    else
+        MODEL_STATUS="已禁用"
+    fi
+else
+    MODEL_STATUS="已启用（默认）"
+fi
+echo "  - BERT模型: ${MODEL_STATUS}"
 echo "  - 模型设备: ${MODEL_DEVICE:-cpu}"
 echo "  - 模型缓存目录: ${MODEL_CACHE_DIR:-/app/.cache/models}"
 echo "  - 上传目录: ${UPLOAD_DIR:-/app/uploads}"
@@ -217,13 +236,23 @@ if [ "$1" = "uvicorn" ]; then
     if [ "$HAS_LOG_LEVEL" = false ]; then
         # 执行 uvicorn 命令，添加日志级别参数
         # 注意：应用启动成功消息会在应用代码中通过 logger.warning() 输出
-        exec uvicorn "${@:2}" --log-level "$LOG_LEVEL"
+        # 使用 exec 替换当前进程，如果启动失败会直接退出容器
+        exec uvicorn "${@:2}" --log-level "$LOG_LEVEL" || {
+            echo "❌ 应用启动失败，退出码: $?"
+            exit 1
+        }
     else
         # 如果已经指定了 --log-level，直接执行，不添加
-        exec uvicorn "${@:2}"
+        exec uvicorn "${@:2}" || {
+            echo "❌ 应用启动失败，退出码: $?"
+            exit 1
+        }
     fi
 else
     # 其他命令直接执行
-    exec "$@"
+    exec "$@" || {
+        echo "❌ 命令执行失败，退出码: $?"
+        exit 1
+    }
 fi
 

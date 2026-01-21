@@ -17,7 +17,9 @@ BlogN2 FastAPI 主应用
 """
 
 import sys
+import os
 import logging
+import asyncio
 from pathlib import Path
 from contextlib import asynccontextmanager
 import warnings
@@ -56,6 +58,7 @@ async def lifespan(app: FastAPI):
     处理应用启动和关闭事件，包括缓存系统初始化。
     """
     # 启动事件：打印配置文件信息
+    logger.warning(f"🚀 应用启动中（进程ID: {os.getpid()}）...")
     config_file = get_config_file_path()
     if config_file:
         logger.info(f"📄 使用配置文件: {config_file}")
@@ -79,11 +82,23 @@ async def lifespan(app: FastAPI):
             logger.warning("缓存系统初始化失败，将使用无缓存模式")
     
     # 预加载BERT模型（使用跨进程共享缓存）
-    model_cache = await initialize_model_cache()
-    if model_cache is not None:
-        logger.info("BERT模型缓存初始化成功")
+    # 检查是否启用了模型功能
+    from src.config.model import model_settings
+    if not model_settings.enable_model:
+        logger.info("BERT模型功能已禁用，搜索功能将使用传统文本搜索")
     else:
-        logger.warning("BERT模型缓存初始化失败，搜索功能将使用降级方案")
+        # 添加超时保护，避免模型加载阻塞应用启动
+        try:
+            logger.info("开始初始化BERT模型缓存...")
+            model_cache = await asyncio.wait_for(initialize_model_cache(), timeout=300.0)  # 5分钟超时
+            if model_cache is not None:
+                logger.info("BERT模型缓存初始化成功")
+            else:
+                logger.warning("BERT模型缓存初始化失败，搜索功能将使用降级方案")
+        except asyncio.TimeoutError:
+            logger.error("BERT模型缓存初始化超时（超过5分钟），搜索功能将使用降级方案")
+        except Exception as e:
+            logger.error(f"BERT模型缓存初始化异常: {e}，搜索功能将使用降级方案")
     
     # 应用启动成功（使用 warning 级别，确保在 warning 日志级别下也能显示）
     logger.warning("✅ 应用启动成功，服务已就绪")
