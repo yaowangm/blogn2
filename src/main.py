@@ -71,7 +71,12 @@ async def lifespan(app: FastAPI):
     if cache_manager.is_available():
         logger.info("缓存系统初始化成功")
     else:
-        logger.warning("缓存系统初始化失败，将使用无缓存模式")
+        # 区分缓存被禁用和初始化失败两种情况
+        from src.config.cache import cache_settings
+        if not cache_settings.enable_cache:
+            logger.info("缓存功能已禁用，将使用无缓存模式")
+        else:
+            logger.warning("缓存系统初始化失败，将使用无缓存模式")
     
     # 预加载BERT模型（使用跨进程共享缓存）
     model_cache = await initialize_model_cache()

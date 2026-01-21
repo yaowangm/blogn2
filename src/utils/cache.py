@@ -128,6 +128,12 @@ class CacheManager:
         if self._initialized:
             return
         
+        # 如果禁用了缓存，直接返回，不尝试连接 Redis
+        if not cache_settings.enable_cache:
+            logger.info("缓存功能已禁用，跳过 Redis 连接")
+            self._initialized = False
+            return
+        
         try:
             from src.config.cache import get_redis_url
             redis_url = get_redis_url()
