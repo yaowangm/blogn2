@@ -15,6 +15,12 @@
 - 智能阈值计算提高搜索精度
 - 支持多种排序方式
 - 错误降级处理
+- NaN值过滤：在SQL查询和Python代码中多层过滤，确保结果有效性
+
+NaN过滤机制：
+- SQL层：使用PostgreSQL的NaN检测（NaN != NaN）在多个CTE中过滤无效值
+- Python层：在格式化函数中再次验证，作为最后一道防线
+- 确保所有返回的相似度分数都是有效的浮点数（0.0-1.0范围内）
 """
 
 import json
@@ -111,6 +117,11 @@ class HierarchicalSearchService:
         
         结合标题、内容和最佳片段的相似度，使用优化的权重分配。
         
+        NaN过滤策略：
+        - 在SQL查询的多个层级进行NaN过滤，确保无效的相似度值不会进入结果集
+        - 使用PostgreSQL的特性：NaN != NaN 为true，用于检测无效值
+        - 在Python格式化函数中再次验证，作为最后一道防线
+        
         Args:
             query_vector_json: 查询向量JSON字符串
             sort_by: 排序方式
@@ -145,6 +156,8 @@ class HierarchicalSearchService:
                     1.2 as segment_weight  -- 标题片段权重更高
                 FROM article_vectors av
                 WHERE av.title_vector IS NOT NULL
+                -- 过滤NaN：当向量距离计算返回NaN时，NaN != NaN 为true，从而过滤掉无效结果
+                AND (av.title_vector <=> '{query_vector_json}'::vector) = (av.title_vector <=> '{query_vector_json}'::vector)
                 AND av.projectitem_id IN (
                     SELECT DISTINCT av2.projectitem_id 
                     FROM article_vectors av2
@@ -169,18 +182,40 @@ class HierarchicalSearchService:
                 WHERE pi.status = 1
                 AND csv.confidence_score >= 0.8
                 AND LENGTH(TRIM(csv.segment_text)) >= {min_segment_length}
+                AND csv.segment_vector IS NOT NULL
+                -- 过滤NaN：确保向量距离计算有效
+                AND (csv.segment_vector <=> '{query_vector_json}'::vector) = (csv.segment_vector <=> '{query_vector_json}'::vector)
+            ),
+            segment_similarities AS (
+                -- 计算片段相似度：使用余弦距离转换为相似度 (1 - distance)
+                -- 相似度范围：[0, 1]，其中1表示完全相同
+                SELECT 
+                    projectitem_id,
+                    segment_text,
+                    segment_type,
+                    segment_weight,
+                    (1 - (segment_vector <=> '{query_vector_json}'::vector)) as segment_similarity
+                FROM all_segments
+                WHERE segment_vector IS NOT NULL
+                AND (1 - (segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
+                -- 过滤NaN：PostgreSQL中 NaN != NaN 为true，用于检测无效的相似度值
+                AND (1 - (segment_vector <=> '{query_vector_json}'::vector)) = (1 - (segment_vector <=> '{query_vector_json}'::vector))
+                AND (1 - (segment_vector <=> '{query_vector_json}'::vector)) IS NOT NULL
             ),
             best_segments AS (
                 -- 选择每篇文章中相似度最高的片段
+                -- 使用DISTINCT ON确保每篇文章只返回一个最佳匹配片段
                 SELECT DISTINCT ON (projectitem_id)
                     projectitem_id,
                     segment_text,
                     segment_type,
-                    (1 - (segment_vector <=> '{query_vector_json}'::vector)) as segment_similarity,
+                    segment_similarity,
                     segment_weight
-                FROM all_segments
-                WHERE (1 - (segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
-                ORDER BY projectitem_id, (1 - (segment_vector <=> '{query_vector_json}'::vector)) DESC
+                FROM segment_similarities
+                WHERE segment_similarity IS NOT NULL
+                -- 再次过滤NaN：确保最终结果中不包含无效值
+                AND segment_similarity = segment_similarity
+                ORDER BY projectitem_id, segment_similarity DESC
             ),
             article_scores AS (
                 -- 文章级相似度（仅作为参考，权重很低）
@@ -200,15 +235,21 @@ class HierarchicalSearchService:
                 pi.comment as content,
                 u.name as author,
                 pi.createtime,
-                -- 混合相似度：10%文章级 + 90%片段级
-                (COALESCE(art.article_similarity, 0) * 0.1 + 
-                 bs.segment_similarity * 0.9) as relevance_score,
+                -- 使用片段相似度作为最终相关性分数
+                -- 注意：虽然设计上支持混合相似度（10%文章级 + 90%片段级），
+                -- 但当前实现直接使用segment_similarity，因为best_segments已经过滤了NaN
+                bs.segment_similarity as relevance_score,
                 bs.segment_text as best_match_text,
                 bs.segment_type as match_type
             FROM best_segments bs
             LEFT JOIN projectitem pi ON bs.projectitem_id = pi.id
             LEFT JOIN users u ON pi.userid = u.id
-            LEFT JOIN article_scores art ON bs.projectitem_id = art.projectitem_id
+            WHERE bs.segment_similarity IS NOT NULL 
+            -- 过滤NaN：确保最终结果中不包含无效值
+            AND bs.segment_similarity = bs.segment_similarity
+            AND bs.segment_similarity > 0
+            AND bs.segment_similarity >= {adjusted_threshold}  -- 确保大于等于动态阈值
+            AND bs.segment_similarity <= 1.0  -- 确保相似度在有效范围内 [0, 1]
             ORDER BY relevance_score DESC
             LIMIT {limit} OFFSET {offset}
         """
@@ -243,24 +284,103 @@ class HierarchicalSearchService:
                 AND csv.confidence_score >= 0.8
                 AND LENGTH(TRIM(csv.segment_text)) >= {min_segment_length}
             ),
-            best_segments AS (
-                SELECT DISTINCT ON (projectitem_id)
+            segment_similarities AS (
+                -- 计算片段相似度并过滤NaN
+                SELECT 
                     projectitem_id,
                     (1 - (segment_vector <=> '{query_vector_json}'::vector)) as segment_similarity
                 FROM all_segments
                 WHERE (1 - (segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
-                ORDER BY projectitem_id, (1 - (segment_vector <=> '{query_vector_json}'::vector)) DESC
+                AND (1 - (segment_vector <=> '{query_vector_json}'::vector)) = (1 - (segment_vector <=> '{query_vector_json}'::vector))  -- 过滤NaN
+            ),
+            best_segments AS (
+                SELECT DISTINCT ON (projectitem_id)
+                    projectitem_id,
+                    segment_similarity
+                FROM segment_similarities
+                WHERE segment_similarity IS NOT NULL
+                AND segment_similarity = segment_similarity  -- 再次过滤NaN
+                ORDER BY projectitem_id, segment_similarity DESC
+            ),
+            article_scores AS (
+                -- 文章级相似度（仅作为参考，权重很低）
+                SELECT 
+                    av.projectitem_id,
+                    (1 - (av.title_vector <=> '{query_vector_json}'::vector)) * 0.3 + 
+                    (1 - (av.content_vector <=> '{query_vector_json}'::vector)) * 0.7 as article_similarity
+                FROM article_vectors av
+                LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
+                WHERE pi.status = 1
+                AND av.title_vector IS NOT NULL
+                AND av.content_vector IS NOT NULL
+                AND (1 - (av.title_vector <=> '{query_vector_json}'::vector)) = (1 - (av.title_vector <=> '{query_vector_json}'::vector))  -- 过滤NaN
+                AND (1 - (av.content_vector <=> '{query_vector_json}'::vector)) = (1 - (av.content_vector <=> '{query_vector_json}'::vector))  -- 过滤NaN
+            ),
+            final_scores AS (
+                SELECT 
+                    bs.projectitem_id,
+                    CASE 
+                        WHEN bs.segment_similarity IS NULL OR bs.segment_similarity != bs.segment_similarity THEN
+                            NULL
+                        WHEN art.article_similarity IS NULL OR art.article_similarity != art.article_similarity THEN
+                            bs.segment_similarity
+                        ELSE
+                            GREATEST(
+                                bs.segment_similarity,
+                                (art.article_similarity * 0.1 + bs.segment_similarity * 0.9)
+                            )
+                    END as relevance_score
+                FROM best_segments bs
+                LEFT JOIN article_scores art ON bs.projectitem_id = art.projectitem_id
             )
             SELECT COUNT(DISTINCT projectitem_id)
-            FROM best_segments
+            FROM final_scores
+            WHERE relevance_score IS NOT NULL
+            AND relevance_score = relevance_score  -- 过滤NaN
+            AND relevance_score > 0
         """
         count_result = await self.session.exec(text(count_sql))
         total = count_result.fetchone()[0]
         
+        # 格式化结果并应用最终过滤
+        # 注意：SQL查询已经通过阈值和NaN过滤，这里进行最终验证和格式化
+        formatted_items = []
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        for item in items:
+            try:
+                # 将Row对象转换为字典（如果必要）
+                if hasattr(item, '_asdict'):
+                    # SQLAlchemy Row对象，转换为字典再处理
+                    item_dict = item._asdict()
+                    formatted = self._format_hybrid_article_result_from_dict(item_dict)
+                elif hasattr(item, '__getitem__'):
+                    # 元组或列表，直接处理
+                    formatted = self._format_hybrid_article_result(item)
+                else:
+                    # 未知类型，跳过
+                    logger.warning(f"未知的结果类型: {type(item)}")
+                    continue
+                
+                relevance_score = formatted.get("relevance_score", 0)
+                
+                # 最终过滤：确保相似度大于0且满足阈值要求
+                # 使用阈值的95%作为容差，避免浮点数精度问题
+                min_score = adjusted_threshold * 0.95
+                if relevance_score > 0 and relevance_score >= min_score:
+                    formatted_items.append(formatted)
+            except Exception as e:
+                # 记录格式化错误，但不中断处理
+                logger.error(f"格式化搜索结果失败: {e}, item: {item}")
+                import traceback
+                logger.debug(traceback.format_exc())
+                continue
+        
         return {
-            "items": [self._format_hybrid_article_result(item) for item in items],
+            "items": formatted_items,
             "total": total,
-            "has_more": (offset + len(items)) < total,
+            "has_more": (offset + len(formatted_items)) < total,
             "dynamic_threshold": dynamic_threshold,
             "search_strategy": "hybrid_optimized"
         }
@@ -287,6 +407,22 @@ class HierarchicalSearchService:
         try:
             # 1. 将查询文本向量化
             query_vector = await self.vectorization_service.vectorize_text(query)
+            
+            # 检查查询向量是否有效（不是全零或包含NaN）
+            if np.all(query_vector == 0) or np.any(np.isnan(query_vector)) or np.any(np.isinf(query_vector)):
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"查询向量无效（全零或包含NaN/Inf）: query='{query[:50]}', vector_sum={np.sum(query_vector)}")
+                # 返回空结果
+                return {
+                    "items": [],
+                    "total": 0,
+                    "has_more": False,
+                    "search_time": round(time.time() - start_time, 3),
+                    "dynamic_threshold": 0.45,
+                    "error": "查询向量无效"
+                }
+            
             query_vector_json = self._vector_to_json(query_vector)
             
             # 2. 根据搜索类型执行不同的搜索策略
@@ -391,7 +527,7 @@ class HierarchicalSearchService:
         result = await self.session.exec(text(sql))
         items = result.fetchall()
         
-        # 获取总数 - 简化查询，使用相同的过滤条件
+        # 获取总数 - 使用相同的过滤条件
         count_sql = f"""
         SELECT COUNT(DISTINCT av.projectitem_id)
         FROM article_vectors av
@@ -403,11 +539,31 @@ class HierarchicalSearchService:
         """
         count_result = await self.session.exec(text(count_sql))
         total = count_result.fetchone()[0]
+        
+        # 格式化结果并过滤掉相似度为0的结果
+        # 注意：SQL中已经通过阈值过滤，这里只需要过滤掉0值即可
+        formatted_items = []
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        for item in items:
+            try:
+                formatted = self._format_article_result(item)
+                relevance_score = formatted.get("relevance_score", 0)
+                # 只过滤掉相似度为0的结果（SQL中已经通过阈值过滤）
+                if relevance_score > 0:
+                    formatted_items.append(formatted)
+            except Exception as e:
+                # 记录格式化错误，但不中断处理
+                logger.error(f"格式化搜索结果失败: {e}, item: {item}")
+                import traceback
+                logger.debug(traceback.format_exc())
+                continue
             
         return {
-            "items": [self._format_article_result(item) for item in items],
+            "items": formatted_items,
             "total": total,
-            "has_more": (offset + len(items)) < total,
+            "has_more": (offset + len(formatted_items)) < total,
             "dynamic_threshold": dynamic_threshold
         }
     
@@ -537,6 +693,72 @@ class HierarchicalSearchService:
             "type": "article"
         }
     
+    def _format_hybrid_article_result_from_dict(self, item_dict: dict) -> Dict[str, Any]:
+        """
+        从字典格式化混合搜索文章结果（用于SQLAlchemy Row对象）
+        
+        Args:
+            item_dict: 数据库查询结果字典
+            
+        Returns:
+            Dict[str, Any]: 格式化的混合搜索文章结果
+        """
+        try:
+            # 安全地处理 relevance_score，避免 NaN 和 Infinity 值
+            # 虽然SQL查询已经过滤了NaN，但这里作为最后一道防线确保数据有效性
+            relevance_score = 0.0
+            raw_score = item_dict.get('relevance_score')
+            if raw_score is not None:
+                try:
+                    score = float(raw_score)
+                    # 检查是否为 NaN 或 Infinity
+                    if np.isnan(score) or np.isinf(score):
+                        # 如果出现NaN或Infinity，记录错误并使用0（这种情况理论上不应该发生）
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.error(f"relevance_score包含无效值（NaN/Inf）: item_id={item_dict.get('id')}")
+                        relevance_score = 0.0
+                    else:
+                        relevance_score = score
+                except (ValueError, TypeError) as e:
+                    # 类型转换失败，记录错误
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"无法转换relevance_score: {e}, item_id={item_dict.get('id')}")
+                    relevance_score = 0.0
+            
+            return {
+                "id": item_dict.get('id'),
+                "title": item_dict.get('title'),
+                "content": item_dict.get('content'),
+                "author": item_dict.get('author'),
+                "created_at": item_dict.get('createtime').isoformat() if item_dict.get('createtime') else None,
+                "relevance_score": relevance_score,
+                "best_match_text": item_dict.get('best_match_text'),
+                "match_type": item_dict.get('match_type', 'content'),
+                "type": "article",
+                "search_strategy": "hybrid_optimized"
+            }
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"格式化混合搜索结果（字典）失败: {e}, item_dict: {item_dict}")
+            import traceback
+            logger.debug(traceback.format_exc())
+            return {
+                "id": item_dict.get('id'),
+                "title": None,
+                "content": None,
+                "author": None,
+                "created_at": None,
+                "relevance_score": 0.0,
+                "best_match_text": None,
+                "match_type": "content",
+                "type": "article",
+                "search_strategy": "hybrid_optimized",
+                "error": "格式化失败"
+            }
+    
     def _format_hybrid_article_result(self, item: tuple) -> Dict[str, Any]:
         """
         格式化混合搜索文章结果
@@ -547,29 +769,61 @@ class HierarchicalSearchService:
         Returns:
             Dict[str, Any]: 格式化的混合搜索文章结果
         """
-        # 安全地处理 relevance_score，避免 NaN 值
-        relevance_score = 0.0
-        if item[5] is not None:
-            try:
-                score = float(item[5])
-                # 检查是否为 NaN 或 Infinity
-                if not (np.isnan(score) or np.isinf(score)):
-                    relevance_score = score
-            except (ValueError, TypeError):
-                relevance_score = 0.0
-        
-        return {
-            "id": item[0],
-            "title": item[1],
-            "content": item[2],
-            "author": item[3],
-            "created_at": item[4].isoformat() if item[4] else None,
-            "relevance_score": relevance_score,
-            "best_match_text": item[6] if len(item) > 6 else None,
-            "match_type": item[7] if len(item) > 7 else "content",
-            "type": "article",
-            "search_strategy": "hybrid_optimized"
-        }
+        try:
+            # 安全地处理 relevance_score，避免 NaN 和 Infinity 值
+            # 虽然SQL查询已经过滤了NaN，但这里作为最后一道防线确保数据有效性
+            relevance_score = 0.0
+            if len(item) > 5 and item[5] is not None:
+                try:
+                    score = float(item[5])
+                    # 检查是否为 NaN 或 Infinity
+                    if not (np.isnan(score) or np.isinf(score)):
+                        relevance_score = score
+                    else:
+                        # 如果出现NaN或Infinity，记录错误（这种情况理论上不应该发生）
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.error(f"relevance_score包含无效值（NaN/Inf）")
+                except (ValueError, TypeError) as e:
+                    # 类型转换失败，记录错误
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"无法转换relevance_score: {e}")
+                    relevance_score = 0.0
+            
+            return {
+                "id": item[0] if len(item) > 0 else None,
+                "title": item[1] if len(item) > 1 else None,
+                "content": item[2] if len(item) > 2 else None,
+                "author": item[3] if len(item) > 3 else None,
+                "created_at": item[4].isoformat() if len(item) > 4 and item[4] else None,
+                "relevance_score": relevance_score,
+                "best_match_text": item[6] if len(item) > 6 else None,
+                "match_type": item[7] if len(item) > 7 else "content",
+                "type": "article",
+                "search_strategy": "hybrid_optimized"
+            }
+        except Exception as e:
+            # 如果格式化失败，记录错误并返回基本信息
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"格式化混合搜索结果失败: {e}, item长度: {len(item) if item else 0}, item: {item}")
+            import traceback
+            logger.debug(traceback.format_exc())
+            # 返回一个基本的错误结果，而不是抛出异常
+            return {
+                "id": item[0] if item and len(item) > 0 else None,
+                "title": None,
+                "content": None,
+                "author": None,
+                "created_at": None,
+                "relevance_score": 0.0,
+                "best_match_text": None,
+                "match_type": "content",
+                "type": "article",
+                "search_strategy": "hybrid_optimized",
+                "error": "格式化失败"
+            }
     
     def _format_comment_result(self, item: tuple) -> Dict[str, Any]:
         """
