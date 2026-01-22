@@ -31,6 +31,19 @@ class ArticleCommentsCard extends BaseComponent {
         this.checkAndScrollToComment();
     }
 
+    disconnectedCallback() {
+        // 清理事件监听器，避免内存泄漏
+        if (this.pageChangeHandler) {
+            this.shadowRoot.removeEventListener('page-change', this.pageChangeHandler);
+            document.removeEventListener('page-change', this.pageChangeHandler);
+            this.pageChangeHandler = null;
+        }
+        if (this.clickHandler) {
+            this.shadowRoot.removeEventListener('click', this.clickHandler);
+            this.clickHandler = null;
+        }
+    }
+
     /**
      * 从URL获取文章ID
      */
@@ -56,6 +69,8 @@ class ArticleCommentsCard extends BaseComponent {
                 // 保存分页信息
                 if (this.articleData.comments_pagination) {
                     this.pagination = this.articleData.comments_pagination;
+                    // 确保current_page与this.currentPage一致
+                    this.pagination.current_page = this.currentPage;
                 }
                 
                 // 如果有评论，获取每个评论的用户信息
@@ -147,7 +162,12 @@ class ArticleCommentsCard extends BaseComponent {
 
         this.addStyles();
         this.addEventListeners();
-        this.setupPaginationCallback();
+        
+        // 延迟设置分页回调，确保navigation-card组件已完全初始化
+        // 使用setTimeout确保DOM已更新
+        setTimeout(() => {
+            this.setupPaginationCallback();
+        }, 0);
     }
 
     /**
@@ -172,6 +192,39 @@ class ArticleCommentsCard extends BaseComponent {
         
         // 添加新的事件监听器
         this.shadowRoot.addEventListener('click', this.clickHandler);
+        
+        // 监听分页事件（从navigation-card组件触发）
+        // 移除旧的事件监听器（如果存在）
+        if (this.pageChangeHandler) {
+            this.shadowRoot.removeEventListener('page-change', this.pageChangeHandler);
+            // 同时从document上移除（如果之前添加过）
+            document.removeEventListener('page-change', this.pageChangeHandler);
+        }
+        
+        // 创建分页事件处理器
+        // 注意：这个事件处理器作为备用，主要依赖回调函数
+        this.pageChangeHandler = (e) => {
+            // 检查事件是否来自本组件内的navigation-card
+            const navigationCard = this.shadowRoot.querySelector('navigation-card');
+            if (navigationCard) {
+                const page = e.detail?.page;
+                
+                // 不检查 page !== this.currentPage，因为回调函数可能已经更新了currentPage
+                // 让goToPage自己检查是否有效（包括重复调用检查）
+                if (page && page >= 1) {
+                    // 验证页码是否在有效范围内
+                    if (this.pagination && page <= this.pagination.total_pages) {
+                        this.goToPage(page);
+                    }
+                }
+            }
+        };
+        
+        // 在shadowRoot上监听page-change事件（事件会从navigation-card冒泡到这里）
+        this.shadowRoot.addEventListener('page-change', this.pageChangeHandler);
+        
+        // 同时在document上监听（作为备用，因为composed事件会冒泡到document）
+        document.addEventListener('page-change', this.pageChangeHandler);
     }
 
     /**
@@ -584,9 +637,15 @@ class ArticleCommentsCard extends BaseComponent {
             return '';
         }
 
+        // 确保current_page与this.currentPage一致
+        const paginationData = {
+            ...this.pagination,
+            current_page: this.currentPage
+        };
+
         return `
             <div class="pagination-container">
-                <navigation-card mode="pagination" pagination='${JSON.stringify(this.pagination)}'></navigation-card>
+                <navigation-card mode="pagination" pagination='${JSON.stringify(paginationData)}'></navigation-card>
             </div>
         `;
     }
@@ -595,12 +654,23 @@ class ArticleCommentsCard extends BaseComponent {
      * 切换到指定页面
      */
     async goToPage(page) {
-        if (page < 1 || page > this.pagination.total_pages) {
+        if (!this.pagination || page < 1 || page > this.pagination.total_pages) {
+            return;
+        }
+        
+        // 如果已经是当前页，不需要重新加载
+        if (page === this.currentPage) {
             return;
         }
         
         this.currentPage = page;
         await this.loadArticleData();
+        
+        // 确保分页数据中的current_page已更新
+        if (this.pagination) {
+            this.pagination.current_page = page;
+        }
+        
         this.render();
         this.checkAndScrollToComment();
     }
@@ -611,14 +681,20 @@ class ArticleCommentsCard extends BaseComponent {
     setupPaginationCallback() {
         const navigationCard = this.shadowRoot.querySelector('navigation-card');
         if (navigationCard && this.pagination) {
-            // 为评论分页添加item_type
+            // 为评论分页添加item_type，并确保current_page正确
             const paginationData = {
                 ...this.pagination,
+                current_page: this.currentPage,
                 item_type: '条评论'
             };
+            
+            // 设置分页数据和回调函数
             navigationCard.setPagination(paginationData, (page) => {
                 this.goToPage(page);
             });
+            
+            // 确保事件监听器已设置（双重保障）
+            // 即使回调函数设置失败，事件监听器也能处理分页
         }
     }
 

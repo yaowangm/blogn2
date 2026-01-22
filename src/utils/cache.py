@@ -416,9 +416,13 @@ def cache_metadata(ttl: int = None):
 
 # 文章相关缓存装饰器
 def cache_article_detail(ttl: int = None):
-    """文章详情缓存装饰器"""
+    """文章详情缓存装饰器（包含分页参数）"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
-                          CacheKeyGenerator.article_detail(kwargs.get('article_id', 0)))
+                          CacheKeyGenerator.article_detail(
+                              kwargs.get('article_id', 0),
+                              kwargs.get('page', 1),
+                              kwargs.get('per_page', 10)
+                          ))
 
 
 def cache_article_comments(ttl: int = None):
