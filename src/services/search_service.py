@@ -98,8 +98,12 @@ class HierarchicalSearchService:
         # 计算最终阈值
         dynamic_threshold = base_threshold + length_factor + complexity_factor + precision_factor
         
-        # 确保阈值在合理范围内
-        return max(0.1, min(0.9, dynamic_threshold))
+        # 确保阈值在合理范围内，并检查 NaN
+        threshold = max(0.1, min(0.9, dynamic_threshold))
+        # 额外检查 NaN 和 Infinity
+        if np.isnan(threshold) or np.isinf(threshold):
+            return 0.45  # 返回默认值
+        return threshold
     
     async def hybrid_search_articles(self, query_vector_json: str, sort_by: str, page: int, limit: int, query: str = "") -> Dict[str, Any]:
         """
@@ -311,12 +315,26 @@ class HierarchicalSearchService:
             # 3. 计算搜索时间
             search_time = round(time.time() - start_time, 3)
             
+            # 安全地处理 dynamic_threshold，避免 NaN 值
+            dynamic_threshold = results.get("dynamic_threshold", 0.45)
+            if dynamic_threshold is not None:
+                try:
+                    threshold = float(dynamic_threshold)
+                    if np.isnan(threshold) or np.isinf(threshold):
+                        dynamic_threshold = 0.45
+                    else:
+                        dynamic_threshold = threshold
+                except (ValueError, TypeError):
+                    dynamic_threshold = 0.45
+            else:
+                dynamic_threshold = 0.45
+            
             return {
                 "items": results.get("items", []),
                 "total": results.get("total", 0),
                 "has_more": results.get("has_more", False),
                 "search_time": search_time,
-                "dynamic_threshold": results.get("dynamic_threshold", 0.45)
+                "dynamic_threshold": dynamic_threshold
             }
             
         except Exception as e:
@@ -467,6 +485,10 @@ class HierarchicalSearchService:
         Returns:
             str: JSON格式的向量字符串
         """
+        # 检查并替换 NaN 和 Infinity 值
+        if np.any(np.isnan(vector)) or np.any(np.isinf(vector)):
+            # 如果向量包含 NaN 或 Infinity，替换为零向量
+            vector = np.nan_to_num(vector, nan=0.0, posinf=0.0, neginf=0.0)
         return json.dumps(vector.tolist())
     
     def _json_to_vector(self, json_str: str) -> np.ndarray:
@@ -494,13 +516,24 @@ class HierarchicalSearchService:
         Returns:
             Dict[str, Any]: 格式化的文章搜索结果
         """
+        # 安全地处理 relevance_score，避免 NaN 值
+        relevance_score = 0.0
+        if item[5] is not None:
+            try:
+                score = float(item[5])
+                # 检查是否为 NaN 或 Infinity
+                if not (np.isnan(score) or np.isinf(score)):
+                    relevance_score = score
+            except (ValueError, TypeError):
+                relevance_score = 0.0
+        
         return {
             "id": item[0],
             "title": item[1],
             "content": item[2],
             "author": item[3],
             "created_at": item[4].isoformat() if item[4] else None,
-            "relevance_score": float(item[5]) if item[5] else 0.0,
+            "relevance_score": relevance_score,
             "type": "article"
         }
     
@@ -514,13 +547,24 @@ class HierarchicalSearchService:
         Returns:
             Dict[str, Any]: 格式化的混合搜索文章结果
         """
+        # 安全地处理 relevance_score，避免 NaN 值
+        relevance_score = 0.0
+        if item[5] is not None:
+            try:
+                score = float(item[5])
+                # 检查是否为 NaN 或 Infinity
+                if not (np.isnan(score) or np.isinf(score)):
+                    relevance_score = score
+            except (ValueError, TypeError):
+                relevance_score = 0.0
+        
         return {
             "id": item[0],
             "title": item[1],
             "content": item[2],
             "author": item[3],
             "created_at": item[4].isoformat() if item[4] else None,
-            "relevance_score": float(item[5]) if item[5] else 0.0,
+            "relevance_score": relevance_score,
             "best_match_text": item[6] if len(item) > 6 else None,
             "match_type": item[7] if len(item) > 7 else "content",
             "type": "article",
@@ -537,12 +581,23 @@ class HierarchicalSearchService:
         Returns:
             Dict[str, Any]: 格式化的评论搜索结果
         """
+        # 安全地处理 relevance_score，避免 NaN 值
+        relevance_score = 0.0
+        if item[5] is not None:
+            try:
+                score = float(item[5])
+                # 检查是否为 NaN 或 Infinity
+                if not (np.isnan(score) or np.isinf(score)):
+                    relevance_score = score
+            except (ValueError, TypeError):
+                relevance_score = 0.0
+        
         return {
             "id": item[0],
             "title": item[1],
             "content": item[2],
             "author": item[3],
             "created_at": item[4].isoformat() if item[4] else None,
-            "relevance_score": float(item[5]) if item[5] else 0.0,
+            "relevance_score": relevance_score,
             "type": "comment"
         }
