@@ -563,6 +563,14 @@ else:
    "
    ```
 
+### 图片 /upload/ 或 /avatar/ 返回 404（目录正确、文件在宿主机存在）
+
+- 在 **Docker 容器内**，应用只能访问容器内的路径。若配置里写的是**宿主机路径**（如 `UPLOAD_DIR=/home/wy/pic/blogn_img/upload`），该路径在容器中不存在，`/upload/xxx` 会返回 404。
+- **正确做法**：在容器用的配置文件（如 `blogn_docker.cnf`）中设置为**容器内路径**，并通过 `-v` 把宿主机目录挂载到该路径：
+  - `UPLOAD_DIR=/app/uploads`，启动时加：`-v /home/wy/pic/blogn_img/upload:/app/uploads`
+  - `AVATAR_DIR=/app/avatars`，启动时加：`-v /home/wy/pic/blogn_img/userlogo:/app/avatars`
+- 修改后重启容器：`docker restart blogn2-app`。启动日志中若出现“上传目录为宿主机路径…”的提示，说明仍需按上述方式改为容器路径并挂载。
+
 ### 模型下载失败
 
 1. **检查网络连接**
