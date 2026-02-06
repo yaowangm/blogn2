@@ -17,8 +17,10 @@ BlogN2 FastAPI 主应用
 """
 
 import sys
+import os
 import logging
 from pathlib import Path
+from urllib.parse import urlparse
 from contextlib import asynccontextmanager
 import warnings
 
@@ -61,6 +63,17 @@ async def lifespan(app: FastAPI):
         logger.info(f"📄 使用配置文件: {config_file}")
     else:
         logger.info("📄 使用默认配置（未使用配置文件）")
+    
+    # 打印当前使用的数据库连接信息（不含密码，便于排查认证问题）
+    db_url = os.getenv("DATABASE_URL")
+    if db_url:
+        try:
+            p = urlparse(db_url.replace("postgresql+asyncpg://", "http://").replace("postgresql://", "http://"))
+            logger.warning(f"数据库连接: 主机={p.hostname} 端口={p.port or 5432} 用户={p.username}")
+        except Exception:
+            logger.warning("数据库连接: DATABASE_URL 已设置但解析失败，请检查格式")
+    else:
+        logger.warning("数据库连接: DATABASE_URL 未设置")
     
     # 验证缓存配置并初始化缓存系统
     config_info = validate_cache_config()

@@ -31,6 +31,11 @@ if config_file and Path(config_file).exists():
             print(f"export {key}='{value_escaped}'")
 PYTHON_EOF
 )"
+    if [ -n "$DATABASE_URL" ]; then
+        echo "✅ 已从配置文件加载 DATABASE_URL 等变量"
+    else
+        echo "⚠️  配置文件已读取，但未包含 DATABASE_URL，请检查文件格式与键名"
+    fi
 else
     if [ -n "$BLOGN_CONFIG_FILE" ]; then
         echo "⚠️  警告: 配置文件不存在: $BLOGN_CONFIG_FILE"

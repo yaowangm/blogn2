@@ -19,7 +19,9 @@ BlogN2 容器化部署采用以下架构：
 
 ### 前置要求
 
-1. **Docker** 已安装
+1. **Docker** 已安装，且 **Docker 守护进程（daemon）已运行**
+   - Linux：`sudo systemctl start docker` 或 `sudo service docker start`
+   - 若构建时报 `permission denied` 或 `connect: connection refused`，请先确认 daemon 已启动：`docker info`
 2. **PostgreSQL 数据库**（支持 pgvector 扩展）已部署并可访问
 3. **Redis 服务器**已部署并可访问
 4. 确保应用容器可以访问上述服务
@@ -445,6 +447,27 @@ docker run -d \
 
 ## 🔍 故障排查
 
+### 构建时报 permission denied / connection refused
+
+- 多为 **Docker 守护进程未运行**。先启动：`sudo systemctl start docker`（或 `sudo service docker start`），再执行 `docker build`。
+- 验证：`docker info` 能正常输出即表示 daemon 已就绪。
+
+### 拉取基础镜像超时（Client.Timeout exceeded / request canceled）
+
+- 多为访问 Docker Hub（registry-1.docker.io）网络慢或被限。可配置 **Docker 镜像加速**，让拉取走国内镜像。
+- 创建或编辑 `/etc/docker/daemon.json`（若已有该文件，只追加 `registry-mirrors` 即可）：
+  ```json
+  {
+    "registry-mirrors": [
+      "https://docker.m.daocloud.io",
+      "https://docker.1ms.run"
+    ]
+  }
+  ```
+- 保存后重启 Docker：`sudo systemctl restart docker`（或 `sudo service docker restart`）。
+- 再执行：`docker build -f docker/Dockerfile -t blogn2-app .`
+- 若仍超时，可搜索当前可用的 Docker 镜像加速地址（如阿里云容器镜像服务提供的个人加速器）并替换上述地址。
+
 ### 容器无法启动
 
 1. **检查日志**
@@ -467,6 +490,46 @@ docker run -d \
    print(f'数据库主机: {parsed.hostname}:{parsed.port or 5432}')
    "
    ```
+
+### password authentication failed for user "xxx"（远程可手动登录但容器内失败）
+
+1. **为何 `docker exec blogn2-app env | grep DATABASE_URL` 无输出？**
+   配置是通过 entrypoint 从**挂载的配置文件**读入并只传给 uvicorn 进程的，不会写回容器的默认环境，所以 `docker exec ... env` 看不到 `DATABASE_URL`，这是预期行为。要确认配置是否被读入，请：
+   - 看启动日志：若出现 `✅ 已从配置文件加载 DATABASE_URL 等变量`，说明文件已读且包含 `DATABASE_URL`；若出现 `⚠️ 配置文件已读取，但未包含 DATABASE_URL`，说明文件里没有该键或键名不对。
+   - 在容器内用同一份文件检查（不打印密码）：  
+     `docker exec blogn2-app python3 -c "
+from dotenv import load_dotenv
+import os
+load_dotenv('/app/config.env')
+u = os.getenv('DATABASE_URL','')
+if u:
+    from urllib.parse import urlparse
+    p = urlparse(u.replace('postgresql+asyncpg://','http://'))
+    print('DATABASE_URL 已设置  主机:', p.hostname, '端口:', p.port or 5432, '用户:', p.username)
+else:
+    print('DATABASE_URL 未设置，请检查 /app/config.env 是否存在且含 DATABASE_URL=...')
+"`
+   - 确认挂载正确：`docker exec blogn2-app cat /app/config.env | head -5` 应能看到你配置的前几行（注意不要在生产环境暴露完整配置）。
+
+2. **确认远程用的是远程库的配置**
+   若通过 `-v /home/wy/blogn_docker.cnf:/app/config.env` 挂载，请确认**执行 `docker run` 的那台机**上的 `/home/wy/blogn_docker.cnf` 里写的是**该机可访问的数据库**的地址和密码（与在该机“手动能登录”的凭据一致），而不是本地开发用的连接串。
+
+3. **密码中含特殊字符时必须 URL 编码**
+   `DATABASE_URL` 格式为 `postgresql+asyncpg://用户名:密码@主机:端口/数据库名`。密码里若包含 `@`、`#`、`:`、`/`、`?`、`%` 等，必须按 URL 编码写入，否则会被解析错导致认证失败。例如：
+   - `@` → `%40`
+   - `#` → `%23`
+   - `:` → `%3A`
+   - `/` → `%2F`
+   - `%` → `%25`
+   例：密码为 `p@ss#123` 时，URL 中应写 `p%40ss%23123`。
+
+4. **密码里含有 `#` 时必须用引号包住整条值**
+   在 `.env` / `config.env` 里，`#` 表示注释，**未加引号时**同一行中 `#` 后面的内容会被忽略。若密码含 `#`，整条值需用双引号包住，例如：  
+   `DATABASE_URL="postgresql+asyncpg://wy:pass#123@localhost:5432/blogn"`  
+   否则实际传给应用的可能只有 `postgresql+asyncpg://wy:pass`，导致认证失败。
+
+5. **改完配置后重启容器**
+   修改挂载的配置文件后需重启容器才能生效：`docker restart blogn2-app`。
 
 ### 无法连接数据库
 
@@ -515,6 +578,23 @@ docker run -d \
 3. **手动下载模型**（如果需要）
    - 在宿主机下载模型
    - 挂载到容器的 `MODEL_CACHE_DIR`
+
+### 日志出现 Invalid HTTP request / Unsupported upgrade / 重复重启
+
+1. **Invalid HTTP request received**
+   - 通常表示有客户端或反向代理用**非 HTTP** 访问了 8000 端口（例如：用 HTTPS 访问、或做了 TCP 健康检查）。
+   - 若前面有 Nginx/Traefik 等反向代理：请确保**到后端的协议是 HTTP**（代理终止 TLS，向后端发 HTTP），不要对 8000 端口直接发 HTTPS。
+   - 若使用负载均衡器的「TCP 健康检查」：可改为「HTTP 健康检查」，请求 `http://容器:8000/health`。
+
+2. **Unsupported upgrade request / No supported WebSocket library**
+   - 已通过依赖中显式加入 `websockets` 解决。重新构建镜像即可：  
+     `docker build -f docker/Dockerfile -t blogn2-app .`
+
+3. **容器反复重启**
+   - 健康检查在应用未完全就绪时可能失败（如 BERT 加载较慢）。当前 Dockerfile 已把健康检查的 `start-period` 设为 90 秒、`retries` 设为 5。
+   - 若仍重启，可先临时去掉健康检查排查：  
+     `docker run ... --no-healthcheck blogn2-app`  
+   - 查看退出原因：`docker inspect blogn2-app --format '{{.State.ExitCode}}'` 和 `docker logs blogn2-app`。
 
 ## 📊 性能优化
 
