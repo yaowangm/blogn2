@@ -60,12 +60,11 @@ ENV PYTHONUNBUFFERED=1 \
 RUN sed -i 's|http://deb.debian.org|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/debian.sources && \
     sed -i 's|http://security.debian.org|https://mirrors.tuna.tsinghua.edu.cn/debian-security|g' /etc/apt/sources.list.d/debian.sources
 
-# 安装运行时依赖
-# 注意：只安装 postgresql-client 用于连接外部PostgreSQL数据库，不包含PostgreSQL服务器
-# Redis 和 BERT 模型通过环境变量配置，不在此处安装
-# 密码重置邮件：通过 SMTP 连接宿主机 sendmail（见 SMTP_HOST 环境变量），不在容器内安装 sendmail
+# 安装运行时依赖（含 sendmail，供密码重置邮件使用本机 sendmail 命令；可选后续改为 SMTP 连宿主机）
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
+    sendmail \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # 创建非root用户
@@ -91,9 +90,7 @@ RUN chmod +x /app/docker-entrypoint.sh
 RUN mkdir -p /app/.cache/models /app/uploads /app/avatars && \
     chown -R appuser:appuser /app/.cache /app/uploads /app/avatars
 
-# 切换到非root用户
-USER appuser
-
+# 容器以 root 启动，entrypoint 中先启动 sendmail 再以 appuser 运行 uvicorn
 # 暴露端口
 EXPOSE 8000
 

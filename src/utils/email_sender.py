@@ -2,8 +2,8 @@
 邮件发送工具
 
 支持两种方式：
-- SMTP：当配置 SMTP_HOST 时，连接该主机（如宿主机 sendmail 的 25 端口），适用于 Docker 等环境。
-- sendmail 命令：未配置 SMTP_HOST 时使用本机 sendmail 命令。
+- SMTP：当配置 SMTP_HOST 或运行在 Docker 内（未配置时自动使用 localhost）时，连接该主机发信。
+- sendmail 命令：非 Docker 且未配置 SMTP_HOST 时使用本机 sendmail 命令。
 """
 
 import subprocess
@@ -13,7 +13,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr
 
-from src.config.app import get_mail_from, get_smtp_host, get_smtp_port
+from src.config.app import get_mail_from, get_smtp_host, get_smtp_port, get_reset_link_expire_minutes
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,7 @@ def send_password_reset_email(to_email: str, reset_link: str, username: str) -> 
         RuntimeError: 当发送失败时
     """
     mail_from = get_mail_from()
+    expire_minutes = get_reset_link_expire_minutes()
     subject = "Bloggern 密码重置"
     body = f"""您好，{username}：
 
@@ -38,7 +39,7 @@ def send_password_reset_email(to_email: str, reset_link: str, username: str) -> 
 
 {reset_link}
 
-该链接有效期为 60 分钟（具体以系统配置为准），过期后需重新申请。
+该链接有效期为 {expire_minutes} 分钟，过期后需重新申请。
 
 如果您没有申请重置密码，请忽略此邮件。
 
@@ -88,5 +89,11 @@ def _send_via_sendmail(msg: MIMEMultipart, to_email: str) -> None:
             raise RuntimeError(f"发送邮件失败: {err or 'sendmail 返回非零'}")
         logger.info("Password reset email sent to %s", to_email)
     except FileNotFoundError:
-        logger.error("sendmail not found; ensure sendmail is installed (e.g. apt install sendmail)")
-        raise RuntimeError("系统未安装 sendmail，无法发送邮件")
+        logger.error(
+            "sendmail 命令不存在。本机部署请安装 sendmail；Docker 内一般会自动使用 SMTP 连宿主机，"
+            "若仍报错请确认使用 host 网络或显式设置 SMTP_HOST=localhost。"
+        )
+        raise RuntimeError(
+            "系统未安装 sendmail，无法发送邮件。"
+            "若在 Docker 内运行，请确认使用 host 网络或显式设置 SMTP_HOST=localhost 后重启容器。"
+        )

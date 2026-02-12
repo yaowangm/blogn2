@@ -128,13 +128,19 @@ def get_reset_link_expire_minutes() -> int:
 def get_smtp_host() -> Optional[str]:
     """
     获取 SMTP 主机（用于连接宿主机 sendmail）。
-    若设置则通过 SMTP 发信（Docker 内连接宿主机 25 端口）；未设置则使用本机 sendmail 命令。
-    
-    Returns:
-        str 或 None: 环境变量 SMTP_HOST，未设置或空则返回 None
+    - 若设置则通过 SMTP 发信；未设置或空则使用本机 sendmail 命令。
+    - Docker 内未设置时默认为 localhost，通过 SMTP 连宿主机 25 端口发信（不依赖容器内安装 sendmail）。
     """
     v = os.getenv('SMTP_HOST', '').strip()
-    return v if v else None
+    if v:
+        return v
+    try:
+        from .utils import is_docker_container
+        if is_docker_container():
+            return 'localhost'
+    except Exception:
+        pass
+    return None
 
 
 def get_smtp_port() -> int:
