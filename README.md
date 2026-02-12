@@ -2,6 +2,8 @@
 
 一个基于FastAPI和现代Web技术构建的高性能博客平台，支持用户管理、博客发布、评论系统、智能搜索等功能。
 
+> **安装与配置**：环境要求、依赖安装、数据库初始化、BERT 模型等完整步骤请参阅 **[INSTALL.md](INSTALL.md)**。
+
 ## 🚀 主要特性
 
 - **高性能后端**: 基于FastAPI框架，支持异步操作
@@ -104,81 +106,9 @@ blogn2/
 
 ## 🚀 快速开始
 
-### 环境要求
+详细的**安装与配置步骤**（环境要求、克隆与依赖、数据库与 pgvector、BERT 模型、启动与验证等）请参考 **[INSTALL.md](INSTALL.md)**。
 
-- **Python**: 3.12.3
-- **PostgreSQL**: 16.9 (支持pgvector扩展)
-- **Redis**: 7.0.15
-- **Git**: 用于代码下载
-
-> **注意**: 本文档基于上述版本测试，不保证在其他版本下可以正常运行。
-
-### 安装步骤
-
-详细的安装指南请参考 [INSTALL.md](INSTALL.md) 文件。
-
-#### 1. 克隆项目
-```bash
-git clone https://github.com/yaowangm/blogn2.git
-cd blogn2
-```
-
-#### 2. 创建虚拟环境
-```bash
-python3.12 -m venv venv
-source venv/bin/activate
-```
-
-#### 3. 安装依赖
-```bash
-pip install -r requirements.txt
-```
-
-#### 4. 配置环境变量
-```bash
-cp .env.example .env
-# 编辑 .env 文件，配置数据库和Redis连接信息
-```
-
-#### 5. 初始化数据库
-```bash
-# 创建数据库和用户
-psql -U postgres -c "CREATE USER blogn_user WITH PASSWORD 'blogn_password';"
-psql -U postgres -c "CREATE DATABASE blogn_example OWNER blogn_user;"
-
-# 导入示例数据
-psql -U blogn_user -d blogn_example -f data/blogn_example.sql
-```
-
-#### 6. 可选：安装 BERT 模型（智能搜索）
-
-使用语义搜索或运行 BERT 相关测试前，需先下载模型（约 400MB，仅首次需要）：
-
-```bash
-# 激活虚拟环境后执行，将模型下载到默认缓存目录（如 ~/.cache/huggingface/hub）
-python -c "
-from sentence_transformers import SentenceTransformer
-SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
-print('BERT 模型下载完成')
-"
-```
-
-- 默认缓存目录：`~/.cache/huggingface/hub`，需有写权限。
-- 自定义缓存目录：在 `.env` 中设置 `MODEL_CACHE_DIR=/你的目录` 后重新运行上述命令。
-- 无法访问 Hugging Face 时：可配置 `HF_ENDPOINT` 使用镜像，或从已下载的机器拷贝 `MODEL_CACHE_DIR` 目录。
-
-不启用智能搜索时可跳过本步；未下载模型时，与 BERT 相关的集成/性能测试会失败，可用 `--ignore` 跳过（见下方测试说明）。
-
-#### 7. 启动应用
-```bash
-python run.py
-```
-
-### 默认管理员账户
-
-- **用户名**: `admin`
-- **密码**: `testpasswd`
-- **权限**: 管理员
+完成安装后执行 `python run.py` 启动应用。默认管理员账户：**用户名** `admin`，**密码** `testpasswd`。
 
 ## 🧪 测试
 
@@ -247,7 +177,7 @@ BlogN集成了基于BERT的智能搜索系统：
 
 ### BERT 模型安装
 
-智能搜索依赖 **sentence-transformers** 的多语言 BERT 模型（默认：`paraphrase-multilingual-MiniLM-L12-v2`）。首次使用前需下载模型，见上方「可选：安装 BERT 模型」步骤。相关环境变量见 `.env.example` 中的 `MODEL_*` 配置（如 `MODEL_MODEL_NAME`、`MODEL_CACHE_DIR`）。
+智能搜索依赖 **sentence-transformers** 的多语言 BERT 模型（默认：`paraphrase-multilingual-MiniLM-L12-v2`）。首次使用前需下载模型，详见 [INSTALL.md](INSTALL.md) 中的「下载 BERT 模型」步骤。相关环境变量见 `.env.example` 中的 `MODEL_*` 配置。
 
 ## 🛡️ 权限管理
 
