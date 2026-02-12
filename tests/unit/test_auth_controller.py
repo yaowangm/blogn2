@@ -10,7 +10,12 @@ from fastapi.testclient import TestClient
 from datetime import datetime, timedelta
 
 from src.controllers.auth import router, get_auth_service
-from src.models.auth import LoginRequest, TokenRefreshRequest
+from src.models.auth import (
+    LoginRequest,
+    TokenRefreshRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+)
 from src.services.auth_service import AuthService
 from src.services.user_service import UserService
 from src.models.user import User
@@ -347,3 +352,75 @@ class TestAuthController:
         # 验证返回的是AuthService实例
         assert isinstance(auth_service, AuthService)
         assert auth_service.user_repo == mock_user_service.user_repo
+
+
+class TestPasswordResetController:
+    """密码重置接口测试：forgot-password、reset-password、validate-reset-token"""
+
+    @pytest.fixture
+    def mock_password_reset_service(self):
+        return AsyncMock()
+
+    @pytest.mark.asyncio
+    async def test_forgot_password_success(self, mock_password_reset_service):
+        """POST /forgot-password：成功时返回统一提示"""
+        from src.controllers.auth import forgot_password
+
+        request = ForgotPasswordRequest(email="user@example.com")
+        mock_password_reset_service.request_reset.return_value = None
+
+        result = await forgot_password(request, mock_password_reset_service)
+
+        assert result.message == "若该邮箱已注册，将收到重置邮件"
+        mock_password_reset_service.request_reset.assert_called_once_with("user@example.com")
+
+    @pytest.mark.asyncio
+    async def test_reset_password_success(self, mock_password_reset_service):
+        """POST /reset-password：合法 token 时返回成功"""
+        from src.controllers.auth import reset_password
+
+        request = ResetPasswordRequest(token="valid_token_xyz", new_password="newpass123")
+        mock_password_reset_service.reset_password.return_value = None
+
+        result = await reset_password(request, mock_password_reset_service)
+
+        assert result.message == "密码重置成功"
+        mock_password_reset_service.reset_password.assert_called_once_with("valid_token_xyz", "newpass123")
+
+    @pytest.mark.asyncio
+    async def test_reset_password_invalid_token_returns_400(self, mock_password_reset_service):
+        """POST /reset-password：无效 token 时返回 400"""
+        from src.controllers.auth import reset_password
+
+        request = ResetPasswordRequest(token="invalid", new_password="newpass")
+        mock_password_reset_service.reset_password.side_effect = ValueError("链接无效或已过期，请重新申请重置密码")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reset_password(request, mock_password_reset_service)
+
+        assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
+        assert "链接无效或已过期" in str(exc_info.value.detail)
+
+    @pytest.mark.asyncio
+    async def test_validate_reset_token_valid(self, mock_password_reset_service):
+        """GET /validate-reset-token：有效 token 返回 valid=true"""
+        from src.controllers.auth import validate_reset_token
+
+        mock_password_reset_service.is_token_valid.return_value = True
+
+        result = await validate_reset_token("valid_token", mock_password_reset_service)
+
+        assert result.valid is True
+        mock_password_reset_service.is_token_valid.assert_called_once_with("valid_token")
+
+    @pytest.mark.asyncio
+    async def test_validate_reset_token_invalid(self, mock_password_reset_service):
+        """GET /validate-reset-token：无效 token 返回 valid=false"""
+        from src.controllers.auth import validate_reset_token
+
+        mock_password_reset_service.is_token_valid.return_value = False
+
+        result = await validate_reset_token("bad_token", mock_password_reset_service)
+
+        assert result.valid is False
+        mock_password_reset_service.is_token_valid.assert_called_once_with("bad_token")
