@@ -63,6 +63,7 @@ RUN sed -i 's|http://deb.debian.org|https://mirrors.tuna.tsinghua.edu.cn|g' /etc
 # 安装运行时依赖
 # 注意：只安装 postgresql-client 用于连接外部PostgreSQL数据库，不包含PostgreSQL服务器
 # Redis 和 BERT 模型通过环境变量配置，不在此处安装
+# 密码重置邮件：通过 SMTP 连接宿主机 sendmail（见 SMTP_HOST 环境变量），不在容器内安装 sendmail
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*

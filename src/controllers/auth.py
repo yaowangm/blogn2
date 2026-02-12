@@ -7,15 +7,22 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Dict, Any, Optional
 from datetime import timedelta
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.models.auth import (
-    LoginRequest, LoginResponse, TokenRefreshRequest, 
-    TokenRefreshResponse, LogoutResponse, UserInfo
+    LoginRequest, LoginResponse, TokenRefreshRequest,
+    TokenRefreshResponse, LogoutResponse, UserInfo,
+    ForgotPasswordRequest, ForgotPasswordResponse,
+    ResetPasswordRequest, ResetPasswordResponse,
+    ValidateResetTokenResponse,
 )
 from src.services.auth_service import AuthService
 from src.services.user_service import UserService
+from src.services.password_reset_service import PasswordResetService
+from src.repositories.password_reset_token_repository import PasswordResetTokenRepository
 from src.utils.dependencies import get_user_service
 from src.utils.error_handlers import handle_api_errors
+from src.database import get_async_session
 
 # 创建认证API路由器
 router = APIRouter(prefix="/auth", tags=["认证"])
@@ -30,6 +37,16 @@ JWT_SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 def get_auth_service(user_service: UserService = Depends(get_user_service)) -> AuthService:
     """获取认证服务实例"""
     return AuthService(user_service.user_repo, JWT_SECRET_KEY)
+
+
+def get_password_reset_service(
+    user_service: UserService = Depends(get_user_service),
+    auth_service: AuthService = Depends(get_auth_service),
+    session: AsyncSession = Depends(get_async_session),
+) -> PasswordResetService:
+    """获取密码重置服务实例"""
+    token_repo = PasswordResetTokenRepository(session)
+    return PasswordResetService(user_service.user_repo, token_repo, auth_service)
 
 @router.post("/login", response_model=LoginResponse)
 @handle_api_errors("登录失败")
@@ -290,5 +307,47 @@ async def validate_token(
         )
     
     return {"valid": True}
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+@handle_api_errors("申请重置失败")
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    password_reset_service: PasswordResetService = Depends(get_password_reset_service),
+):
+    """
+    申请重置密码：提交邮箱后，若该邮箱已注册则发送重置邮件；无论是否存在均返回相同提示（防枚举）。
+    """
+    await password_reset_service.request_reset(request.email)
+    return ForgotPasswordResponse(message="若该邮箱已注册，将收到重置邮件")
+
+
+@router.post("/reset-password", response_model=ResetPasswordResponse)
+@handle_api_errors("重置密码失败")
+async def reset_password(
+    request: ResetPasswordRequest,
+    password_reset_service: PasswordResetService = Depends(get_password_reset_service),
+):
+    """
+    执行重置密码：使用邮件中的 token 设置新密码。token 无效或过期返回 400。
+    """
+    try:
+        await password_reset_service.reset_password(request.token, request.new_password)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return ResetPasswordResponse(message="密码重置成功")
+
+
+@router.get("/validate-reset-token", response_model=ValidateResetTokenResponse)
+@handle_api_errors("校验 token 失败")
+async def validate_reset_token(
+    token: str,
+    password_reset_service: PasswordResetService = Depends(get_password_reset_service),
+):
+    """
+    校验重置 token 是否有效，供前端在展示重置表单前使用。
+    """
+    valid = await password_reset_service.is_token_valid(token)
+    return ValidateResetTokenResponse(valid=valid)
 
 

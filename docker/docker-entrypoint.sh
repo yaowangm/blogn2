@@ -3,6 +3,7 @@ set -e
 
 # Docker 启动脚本
 # 用于在容器启动时执行必要的检查和初始化
+# 密码重置邮件通过 SMTP 连接宿主机 sendmail（配置 SMTP_HOST=localhost 且使用 host 网络）
 
 echo "🚀 BlogN2 容器启动中..."
 
@@ -24,7 +25,7 @@ if config_file and Path(config_file).exists():
         # 检查是否匹配前缀或完全匹配特定变量
         if any(key.startswith(prefix) for prefix in [
             "DATABASE_", "CACHE_", "MODEL_", "APP_", "SECRET_", 
-            "DEBUG", "BASE_URL", "UPLOAD_", "AVATAR_"
+            "DEBUG", "BASE_URL", "UPLOAD_", "AVATAR_", "SMTP_", "MAIL_", "RESET_LINK"
         ]) or key in ["LOG_LEVEL"]:
             # 转义单引号
             value_escaped = value.replace("'", "'\"'\"'")
@@ -225,14 +226,11 @@ if [ "$1" = "uvicorn" ]; then
     # 如果没有指定 --log-level，则添加
     if [ "$HAS_LOG_LEVEL" = false ]; then
         # 执行 uvicorn 命令，添加日志级别参数
-        # 注意：应用启动成功消息会在应用代码中通过 logger.warning() 输出
         exec uvicorn "${@:2}" --log-level "$LOG_LEVEL"
     else
-        # 如果已经指定了 --log-level，直接执行，不添加
         exec uvicorn "${@:2}"
     fi
 else
-    # 其他命令直接执行
     exec "$@"
 fi
 

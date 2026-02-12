@@ -101,6 +101,18 @@ class PageHandler:
         async def user_register_page():
             """用户注册页面路由"""
             return FileResponse(PageHandler._get_static_file_path("user_register.html"))
+
+        # 忘记密码页面
+        @router.get("/forgot-password")
+        async def forgot_password_page():
+            """忘记密码页面路由"""
+            return FileResponse(PageHandler._get_static_file_path("forgot-password.html"))
+
+        # 重置密码页面
+        @router.get("/reset-password")
+        async def reset_password_page():
+            """重置密码页面路由"""
+            return FileResponse(PageHandler._get_static_file_path("reset-password.html"))
         
         # 博客文章页面
         @router.get("/article/{article_id}")

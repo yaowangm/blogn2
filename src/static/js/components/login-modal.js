@@ -204,6 +204,17 @@ class LoginModal extends BaseComponent {
                     font-size: var(--font-size-sm);
                     font-weight: 500;
                 }
+
+                .forgot-password-link {
+                    display: inline-block;
+                    margin-top: var(--spacing-2);
+                    font-size: var(--font-size-sm);
+                    color: var(--primary-color);
+                    text-decoration: none;
+                }
+                .forgot-password-link:hover {
+                    text-decoration: underline;
+                }
             </style>
 
             <div class="modal-container">
@@ -244,6 +255,7 @@ class LoginModal extends BaseComponent {
                                 required
                             >
                             <div class="error-message" id="passwordError"></div>
+                            <a href="/forgot-password" class="forgot-password-link">忘记密码？</a>
                         </div>
 
                         <button type="submit" class="login-button" id="loginButton">

@@ -62,6 +62,12 @@ MODEL_CACHE_DIR=/app/.cache/models
 APP_ENV=production
 BASE_URL=https://yourdomain.com
 SECRET_KEY=your-super-secret-jwt-key-change-in-production
+
+# 密码重置邮件：使用宿主机 sendmail（宿主机需安装并运行 sendmail）
+# 使用 host 网络时填 localhost，容器即可连到宿主机 25 端口
+MAIL_FROM=noreply@yourdomain.com
+SMTP_HOST=localhost
+SMTP_PORT=25
 ```
 
 ### 3. 创建必要的目录

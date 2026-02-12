@@ -49,3 +49,29 @@ class AuthError(BaseModel):
     """认证错误模型"""
     detail: str
     error_code: Optional[str] = None
+
+
+class ForgotPasswordRequest(BaseModel):
+    """忘记密码（申请重置）请求"""
+    email: str
+
+
+class ForgotPasswordResponse(BaseModel):
+    """忘记密码（申请重置）响应"""
+    message: str = "若该邮箱已注册，将收到重置邮件"
+
+
+class ResetPasswordRequest(BaseModel):
+    """执行重置密码请求"""
+    token: str
+    new_password: str
+
+
+class ResetPasswordResponse(BaseModel):
+    """执行重置密码响应"""
+    message: str = "密码重置成功"
+
+
+class ValidateResetTokenResponse(BaseModel):
+    """校验重置 token 响应"""
+    valid: bool

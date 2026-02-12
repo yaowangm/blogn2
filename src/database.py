@@ -8,13 +8,14 @@ from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
-# 导入模型
+# 导入模型（确保所有表被 SQLModel 注册）
 from src.models.user import User
 from src.models.project_item import ProjectItem
 from src.models.post import Post
 from src.models.subscription import Subscription
 from src.models.urllink import UrlLink
 from src.models.relation import Relation
+from src.models.password_reset_token import PasswordResetToken
 
 # 加载环境变量
 load_dotenv()

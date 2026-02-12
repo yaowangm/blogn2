@@ -242,6 +242,31 @@ BlogN实现了完整的缓存系统：
 - **性能监控**: 实时缓存命中率统计
 - **配置管理**: 环境变量配置缓存策略
 
+## 📋 部署时需手动完成的事项
+
+以下功能或配置需在部署环境中由管理员手动完成，代码与镜像中未自动完成：
+
+### 邮件重置密码（sendmail）
+
+| 步骤 | 说明 |
+|------|------|
+| **1. 安装 sendmail** | 宿主机安装：`sudo apt install sendmail`（Ubuntu/Debian） |
+| **2. 配置 sendmail** | 编辑 `/etc/mail/sendmail.mc`，设置 `MASQUERADE_AS(bloggern.com)` 等使发件人域名与站点一致；执行 `sudo make -C /etc/mail` 后 `sudo systemctl restart sendmail` |
+| **3. 环境变量** | 在 `.env` 中配置：`MAIL_FROM`、`RESET_LINK_EXPIRE_MINUTES`、`BASE_URL`；Docker 部署时另设 `SMTP_HOST=localhost`、`SMTP_PORT=25`（使用宿主机 sendmail） |
+| **4. 创建重置令牌表** | 首次部署或升级后执行：`python scripts/init_db.py`，以创建 `password_reset_tokens` 表 |
+| **5. DNS/SPF（可选）** | 在域名 DNS 中配置 SPF 记录（如 `v=spf1 ip4:发信服务器公网IP ~all`）以提高送达率、减少被判为垃圾邮件 |
+
+### Docker 部署（宿主机 sendmail）
+
+| 步骤 | 说明 |
+|------|------|
+| **宿主机运行 sendmail** | 宿主机安装并启动 sendmail，监听 25 端口（见上表） |
+| **容器连宿主机 25 端口** | 使用 **host 网络**时，在配置中设置 `SMTP_HOST=localhost`、`SMTP_PORT=25`，容器内应用通过 SMTP 连接宿主机 25 端口发信，无需在容器内安装 sendmail |
+
+详细设计见 [doc/EMAIL_PASSWORD_RESET_DESIGN.md](doc/EMAIL_PASSWORD_RESET_DESIGN.md)，Docker 部署见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
+
+---
+
 ## 🚨 注意事项
 
 1. **安全配置**: 生产环境请修改默认密钥和配置
