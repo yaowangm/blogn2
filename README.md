@@ -150,7 +150,26 @@ psql -U postgres -c "CREATE DATABASE blogn_example OWNER blogn_user;"
 psql -U blogn_user -d blogn_example -f data/blogn_example.sql
 ```
 
-#### 6. 启动应用
+#### 6. 可选：安装 BERT 模型（智能搜索）
+
+使用语义搜索或运行 BERT 相关测试前，需先下载模型（约 400MB，仅首次需要）：
+
+```bash
+# 激活虚拟环境后执行，将模型下载到默认缓存目录（如 ~/.cache/huggingface/hub）
+python -c "
+from sentence_transformers import SentenceTransformer
+SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+print('BERT 模型下载完成')
+"
+```
+
+- 默认缓存目录：`~/.cache/huggingface/hub`，需有写权限。
+- 自定义缓存目录：在 `.env` 中设置 `MODEL_CACHE_DIR=/你的目录` 后重新运行上述命令。
+- 无法访问 Hugging Face 时：可配置 `HF_ENDPOINT` 使用镜像，或从已下载的机器拷贝 `MODEL_CACHE_DIR` 目录。
+
+不启用智能搜索时可跳过本步；未下载模型时，与 BERT 相关的集成/性能测试会失败，可用 `--ignore` 跳过（见下方测试说明）。
+
+#### 7. 启动应用
 ```bash
 python run.py
 ```
@@ -165,18 +184,20 @@ python run.py
 
 ### 运行测试
 ```bash
+# 激活虚拟环境（推荐）
+source venv/bin/activate   # Linux/macOS；Windows: venv\Scripts\activate
+
 # 运行所有测试
-python tests/run_tests.py all
+python -m pytest
 
-# 运行单元测试
-python tests/run_tests.py unit
+# 仅运行单元测试（不包含需 BERT 的集成/性能测试）
+python -m pytest tests/unit/
 
-# 运行集成测试
-python tests/run_tests.py integration
-
-# 生成覆盖率报告
-python tests/run_tests.py coverage
+# 若未下载 BERT 模型，可跳过相关测试以避免失败
+python -m pytest --ignore=tests/integration/test_bert_vectorization_with_real_db.py --ignore=tests/performance/test_bert_vectorization_performance.py
 ```
+
+也可使用 `tests/run_tests.py`：`python tests/run_tests.py all`、`unit`、`integration`、`coverage`。
 
 ### 测试特定功能
 ```bash
@@ -223,6 +244,10 @@ BlogN集成了基于BERT的智能搜索系统：
 - **向量化存储**: 使用pgvector存储文本向量
 - **混合搜索**: 结合语义搜索和关键词搜索
 - **多语言支持**: 支持中文和英文搜索
+
+### BERT 模型安装
+
+智能搜索依赖 **sentence-transformers** 的多语言 BERT 模型（默认：`paraphrase-multilingual-MiniLM-L12-v2`）。首次使用前需下载模型，见上方「可选：安装 BERT 模型」步骤。相关环境变量见 `.env.example` 中的 `MODEL_*` 配置（如 `MODEL_MODEL_NAME`、`MODEL_CACHE_DIR`）。
 
 ## 🛡️ 权限管理
 

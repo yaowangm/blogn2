@@ -104,7 +104,32 @@ static_dir.mkdir(parents=True, exist_ok=True)
 # 必须在导入任何使用配置的模块之前完成配置加载
 
 # 设置测试环境的模型配置（使用本地模型，避免访问 Hugging Face）
-_default_model_path = os.path.expanduser("~/.cache/modelscope/hub/models/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+# 优先 modelscope 路径，其次 Hugging Face 默认缓存（sentence-transformers 下载后的位置）
+_default_model_path_modelscope = os.path.expanduser(
+    "~/.cache/modelscope/hub/models/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+)
+_default_model_path_huggingface = os.path.expanduser(
+    "~/.cache/huggingface/hub/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2"
+)
+
+def _get_test_local_model_path():
+    """返回可用的本地模型路径，优先 modelscope，其次 Hugging Face 缓存。"""
+    if os.path.exists(_default_model_path_modelscope):
+        return _default_model_path_modelscope
+    if os.path.exists(_default_model_path_huggingface):
+        # HF 缓存：实际模型在 snapshots/<revision>/ 下，SentenceTransformer 需要该目录
+        snapshots_dir = os.path.join(_default_model_path_huggingface, "snapshots")
+        if os.path.isdir(snapshots_dir):
+            try:
+                revs = sorted(os.listdir(snapshots_dir))
+                if revs:
+                    snapshot_path = os.path.join(snapshots_dir, revs[0])
+                    if os.path.isdir(snapshot_path):
+                        return snapshot_path
+            except OSError:
+                pass
+        return _default_model_path_huggingface
+    return None
 
 try:
     # 先加载配置工具
@@ -117,14 +142,17 @@ try:
         logger.debug("测试环境使用默认配置（未找到配置文件）")
     
     # 在配置加载后，确保使用本地模型（优先级最高）
-    if os.path.exists(_default_model_path):
-        os.environ["MODEL_MODEL_PATH"] = _default_model_path
+    _test_local_model_path = _get_test_local_model_path()
+    if _test_local_model_path:
+        os.environ["MODEL_MODEL_PATH"] = _test_local_model_path
         os.environ["MODEL_PREFER_LOCAL"] = "true"
         os.environ["MODEL_FALLBACK_TO_HUGGINGFACE"] = "false"
-        logger.info(f"测试环境强制使用本地模型: {_default_model_path}")
+        logger.info(f"测试环境强制使用本地模型: {_test_local_model_path}")
     elif not os.getenv("MODEL_MODEL_PATH"):
-        logger.warning(f"本地模型路径不存在: {_default_model_path}，将尝试从 Hugging Face 下载")
-        
+        logger.warning(
+            f"本地模型路径不存在（已检查 modelscope 与 ~/.cache/huggingface/hub），将尝试从 Hugging Face 下载"
+        )
+
 except Exception as e:
     # 如果配置加载失败，记录但不中断测试
     logger.debug(f"配置加载初始化失败（测试环境）: {e}")
@@ -132,8 +160,9 @@ except Exception as e:
     logger.debug(traceback.format_exc())
     
     # 即使配置加载失败，也尝试设置本地模型路径
-    if os.path.exists(_default_model_path):
-        os.environ["MODEL_MODEL_PATH"] = _default_model_path
+    _test_local_model_path = _get_test_local_model_path()
+    if _test_local_model_path:
+        os.environ["MODEL_MODEL_PATH"] = _test_local_model_path
         os.environ["MODEL_PREFER_LOCAL"] = "true"
         os.environ["MODEL_FALLBACK_TO_HUGGINGFACE"] = "false"
 

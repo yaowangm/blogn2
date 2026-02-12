@@ -177,7 +177,27 @@ sudo apt install -y postgresql-16-pgvector
 psql -U blogn_user -d blogn_example -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
 
-### 12. 验证安装
+### 12. 下载 BERT 模型（智能搜索，可选）
+
+使用语义搜索或运行 BERT 相关测试前，需先下载模型（约 400MB，仅首次需要）：
+
+```bash
+# 确保已激活虚拟环境
+source venv/bin/activate
+
+# 下载默认模型到缓存目录（默认 ~/.cache/huggingface/hub）
+python -c "
+from sentence_transformers import SentenceTransformer
+SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+print('BERT 模型下载完成')
+"
+```
+
+- **缓存目录**：默认 `~/.cache/huggingface/hub`，需对该目录有写权限；可在 `.env` 中设置 `MODEL_CACHE_DIR` 指定其他目录。
+- **网络**：若无法直连 Hugging Face，可配置 `HF_ENDPOINT` 使用镜像，或将他人已下载的 `MODEL_CACHE_DIR` 目录拷贝到本机。
+- 不使用智能搜索或暂不跑 BERT 相关测试时可跳过本步。
+
+### 13. 验证安装
 
 ```bash
 # 测试数据库连接
@@ -198,7 +218,7 @@ print('Redis连接成功:', r.ping())
 "
 ```
 
-### 13. 启动应用
+### 14. 启动应用
 
 ```bash
 # 确保在项目根目录

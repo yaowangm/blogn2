@@ -8,12 +8,12 @@ CREATE TABLE IF NOT EXISTS article_vectors (
     id SERIAL PRIMARY KEY,
     projectitem_id INTEGER UNIQUE REFERENCES projectitem(id) ON DELETE CASCADE,
     
-    -- 标题向量（直接存储，无需分片）
-    title_vector VECTOR(768),
+    -- 标题向量（直接存储，无需分片）- 与 paraphrase-multilingual-MiniLM-L12-v2 一致，384 维
+    title_vector VECTOR(384),
     title_text TEXT,
     
     -- 内容向量（聚合后的最终向量）
-    content_vector VECTOR(768),
+    content_vector VECTOR(384),
     content_text TEXT,
     
     -- 多片段元数据
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS content_segment_vectors (
     
     -- 片段内容
     segment_text TEXT,
-    segment_vector VECTOR(768),
+    segment_vector VECTOR(384),
     
     -- 片段统计
     segment_length INTEGER,
@@ -101,9 +101,9 @@ CREATE TABLE IF NOT EXISTS comment_vectors (
     id SERIAL PRIMARY KEY,
     post_id INTEGER UNIQUE REFERENCES post(id) ON DELETE CASCADE,
     
-    -- 评论向量
-    title_vector VECTOR(768),
-    content_vector VECTOR(768),
+    -- 评论向量（与 BERT 模型 384 维一致）
+    title_vector VECTOR(384),
+    content_vector VECTOR(384),
     title_text TEXT,
     content_text TEXT,
     
