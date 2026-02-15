@@ -420,20 +420,26 @@
             
             validatePassword() {
                 const password = document.getElementById('password').value;
-                if (!password) {
-                    this.showError('password', '密码不能为空');
-                    return false;
-                }
-                if (password.length < 6) {
-                    this.showError('password', '密码至少需要6个字符');
-                    return false;
-                }
-                if (password.length > 60) {
-                    this.showError('password', '密码不能超过60个字符');
+                const err = this._passwordRuleError(password);
+                if (err) {
+                    this.showError('password', err);
                     return false;
                 }
                 this.showSuccess('password');
                 return true;
+            }
+            _passwordRuleError(pwd) {
+                if (!pwd) return '密码不能为空';
+                if (pwd.length < 8) return '密码至少需要8个字符';
+                if (pwd.length > 30) return '密码不能超过30个字符';
+                for (let i = 0; i < pwd.length; i++) {
+                    const c = pwd.charCodeAt(i);
+                    if (c < 0x20 || c > 0x7E) return '密码只能包含可打印 ASCII 字符（空格到波浪号 ~）';
+                }
+                if (!/[A-Z]/.test(pwd)) return '密码至少需要包含一个大写字母';
+                if (!/[a-z]/.test(pwd)) return '密码至少需要包含一个小写字母';
+                if (!/[0-9]/.test(pwd)) return '密码至少需要包含一个数字';
+                return null;
             }
             
             validateRegkey() {

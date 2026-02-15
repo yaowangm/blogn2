@@ -365,11 +365,14 @@ async def reset_user_password(
     if not PermissionUtils.can_manage_resource(current_user, user_id):
         raise ResponseUtils.forbidden_response("无权限重置该用户的密码")
     
-    # 验证新密码
+    # 验证新密码（与注册、邮件重置规则一致）
     new_password = password_data.get("new_password")
-    if not new_password or len(new_password) < 6:
-        raise HTTPException(status_code=400, detail="新密码长度至少6位")
-    
+    try:
+        from src.utils.password_validation import validate_password
+        validate_password(new_password or "")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     # 调用用户服务重置密码
     await user_service.reset_user_password(user_id, new_password)
     return {"message": "密码重置成功"}

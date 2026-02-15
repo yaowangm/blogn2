@@ -379,20 +379,20 @@ class TestPasswordResetController:
         """POST /reset-password：合法 token 时返回成功"""
         from src.controllers.auth import reset_password
 
-        request = ResetPasswordRequest(token="valid_token_xyz", new_password="newpass123")
+        request = ResetPasswordRequest(token="valid_token_xyz", new_password="Newpass123")
         mock_password_reset_service.reset_password.return_value = None
 
         result = await reset_password(request, mock_password_reset_service)
 
         assert result.message == "密码重置成功"
-        mock_password_reset_service.reset_password.assert_called_once_with("valid_token_xyz", "newpass123")
+        mock_password_reset_service.reset_password.assert_called_once_with("valid_token_xyz", "Newpass123")
 
     @pytest.mark.asyncio
     async def test_reset_password_invalid_token_returns_400(self, mock_password_reset_service):
         """POST /reset-password：无效 token 时返回 400"""
         from src.controllers.auth import reset_password
 
-        request = ResetPasswordRequest(token="invalid", new_password="newpass")
+        request = ResetPasswordRequest(token="invalid", new_password="Newpass123")
         mock_password_reset_service.reset_password.side_effect = ValueError("链接无效或已过期，请重新申请重置密码")
 
         with pytest.raises(HTTPException) as exc_info:

@@ -2,9 +2,11 @@
 认证相关的数据模型
 """
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, validator
 from typing import Optional
 from datetime import datetime
+
+from src.utils.password_validation import validate_password as validate_password_rules
 
 class LoginRequest(BaseModel):
     """登录请求模型"""
@@ -65,6 +67,11 @@ class ResetPasswordRequest(BaseModel):
     """执行重置密码请求"""
     token: str
     new_password: str
+
+    @validator("new_password")
+    def validate_new_password(cls, v: str) -> str:
+        validate_password_rules(v or "")
+        return v
 
 
 class ResetPasswordResponse(BaseModel):

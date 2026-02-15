@@ -16,6 +16,7 @@ import hashlib
 from src.database import get_async_session
 from src.models.regkey import RegKey
 from src.models.user import User
+from src.utils.password_validation import validate_password as validate_password_rules
 
 # 创建用户注册API路由器
 router = APIRouter(prefix="/register", tags=["用户注册"])
@@ -45,10 +46,7 @@ class UserRegisterRequest(BaseModel):
     
     @validator('password')
     def validate_password(cls, v):
-        if not v or len(v) < 6:
-            raise ValueError('密码至少需要6个字符')
-        if len(v) > 60:
-            raise ValueError('密码不能超过60个字符')
+        validate_password_rules(v or "")
         return v
     
     @validator('regkey')

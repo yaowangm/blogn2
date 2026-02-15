@@ -694,6 +694,25 @@ class UserProfileCard extends BaseComponent {
     }
 
     /**
+     * 密码规则校验（与注册、邮件重置一致）：8–30 字符，至少大小写+数字，仅可打印 ASCII
+     * @param {string} pwd
+     * @returns {string|null} 错误信息或 null
+     */
+    _passwordRuleError(pwd) {
+        if (!pwd) return '密码不能为空';
+        if (pwd.length < 8) return '密码至少需要8个字符';
+        if (pwd.length > 30) return '密码不能超过30个字符';
+        for (let i = 0; i < pwd.length; i++) {
+            const c = pwd.charCodeAt(i);
+            if (c < 0x20 || c > 0x7E) return '密码只能包含可打印 ASCII 字符（空格到波浪号 ~）';
+        }
+        if (!/[A-Z]/.test(pwd)) return '密码至少需要包含一个大写字母';
+        if (!/[a-z]/.test(pwd)) return '密码至少需要包含一个小写字母';
+        if (!/[0-9]/.test(pwd)) return '密码至少需要包含一个数字';
+        return null;
+    }
+
+    /**
      * 处理重置密码
      */
     async handleResetPassword() {
@@ -703,9 +722,10 @@ class UserProfileCard extends BaseComponent {
         // 清除之前的错误信息
         this.clearResetPasswordError();
 
-        // 验证密码
-        if (newPassword.length < 6) {
-            this.showResetPasswordError('密码长度至少6位');
+        // 验证密码（与注册、邮件重置规则一致：8–30 字符，大小写+数字，可打印 ASCII）
+        const pwdErr = this._passwordRuleError(newPassword);
+        if (pwdErr) {
+            this.showResetPasswordError(pwdErr);
             return;
         }
 
