@@ -45,13 +45,18 @@ else
     fi
 fi
 
-# --- BERT 模型路径：若当前路径无 config.json，从挂载的 HF hub 解析到 snapshots/<revision> ---
+# --- BERT 模型路径：若当前路径无 config.json，从挂载目录解析（支持直接含 config.json 或 hub 含 snapshots/）---
 if [ -z "$MODEL_PREFER_LOCAL" ]; then
     export MODEL_PREFER_LOCAL=true
 fi
-# 从 hub 目录（含 snapshots/）中取第一个含 config.json 的 snapshot 路径
-_resolve_snapshot() {
+# 返回可用的模型目录：若 hub_dir 自身含 config.json 则返回自身，否则取 snapshots/ 下第一个含 config.json 的目录
+_resolve_model_dir() {
     local hub_dir="$1"
+    [ -d "$hub_dir" ] || return 1
+    if [ -f "$hub_dir/config.json" ]; then
+        echo "$hub_dir"
+        return 0
+    fi
     [ -d "$hub_dir/snapshots" ] || return 1
     local snap
     snap=$(ls -1d "$hub_dir/snapshots/"*/ 2>/dev/null | head -1)
@@ -59,12 +64,12 @@ _resolve_snapshot() {
     return 1
 }
 if [ -z "$MODEL_MODEL_PATH" ] || [ ! -f "$MODEL_MODEL_PATH/config.json" ]; then
-    SNAPSHOT_PATH=""
+    RESOLVED=""
     for HUB_DIR in "/app/.cache/models/bert-model-hub" "/app/.cache/huggingface/hub/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2"; do
-        SNAPSHOT_PATH=$(_resolve_snapshot "$HUB_DIR") || true
-        if [ -n "$SNAPSHOT_PATH" ]; then
-            export MODEL_MODEL_PATH="$SNAPSHOT_PATH"
-            echo "从 hub 解析到 snapshot: $MODEL_MODEL_PATH"
+        RESOLVED=$(_resolve_model_dir "$HUB_DIR") || true
+        if [ -n "$RESOLVED" ]; then
+            export MODEL_MODEL_PATH="$RESOLVED"
+            echo "从挂载目录解析到模型路径: $MODEL_MODEL_PATH"
             break
         fi
     done

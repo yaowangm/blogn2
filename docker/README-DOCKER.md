@@ -295,11 +295,13 @@ print('模型加载成功！')
    ls ~/.cache/huggingface/hub/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2/snapshots/
    ```
 
-2. **宿主机路径**：若 BERT 在默认目录（`~/.cache/huggingface/hub/...`），无需改；若在**其它目录**，在项目根目录 `.env` 中增加：
-   ```env
-   BERT_MODEL_HUB_HOST_PATH=/你的宿主机路径/到含 snapshots 的 hub 目录
-   ```
-   例如 `/data/models/paraphrase-multilingual-MiniLM-L12-v2`（该目录下需有 `snapshots/<revision>/config.json`）。compose 会读取该变量作为 volume 宿主机路径，无需改 docker-compose.yml。
+2. **宿主机路径**：若 BERT 在默认目录（`~/.cache/huggingface/hub/...`），无需改；若在**其它目录**，需让 compose 读到变量 `BERT_MODEL_HUB_HOST_PATH`。compose 做变量替换时只读** compose 文件所在目录**的 `.env`，因此：
+   - 若在 `docker/` 下执行 `docker-compose up`，在 **docker/.env** 中增加：
+     ```env
+     BERT_MODEL_HUB_HOST_PATH=/你的宿主机路径/到含 snapshots 的 hub 目录
+     ```
+   - 若在项目根目录执行 `docker-compose -f docker/docker-compose.yml up`，则可在根目录 `.env` 中设置上述变量。
+   目录下需有 `snapshots/<revision>/config.json` 或根目录直接含 `config.json`。
 
 3. **重新创建并启动容器**：
    ```bash

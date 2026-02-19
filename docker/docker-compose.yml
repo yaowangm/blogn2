@@ -18,6 +18,8 @@ services:
       # BERT 模型：默认路径，entrypoint 与 Python 会从挂载的 hub 自动解析到 snapshots/<revision>
       - MODEL_MODEL_PATH=/app/.cache/models/bert-model
       - MODEL_PREFER_LOCAL=true
+      # 宿主机模型路径（仅用于启动日志显示，与 volume 挂载源一致）
+      - BERT_MODEL_HOST_PATH=${BERT_MODEL_HUB_HOST_PATH:-}
       - MODEL_CACHE_DIR=/app/.cache/huggingface
       - HF_HOME=/app/.cache/huggingface
       - TRANSFORMERS_OFFLINE=1

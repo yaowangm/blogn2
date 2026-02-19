@@ -22,15 +22,19 @@ _HUB_DIRS = [
 
 def _resolve_model_path_to_snapshot(path: Optional[str]) -> Optional[str]:
     """
-    当配置的路径存在但无 config.json 时（如 compose 默认的 /app/.cache/models/bert-model），
-    从上述 _HUB_DIRS 的 snapshots/<revision> 中取第一个含 config.json 的目录并返回。
-    用于 Docker 离线加载 BERT 模型。
+    当配置的路径存在但无 config.json 时，从 _HUB_DIRS 解析：
+    若挂载目录自身含 config.json 则直接返回该目录，否则从 snapshots/<revision> 取第一个含 config.json 的目录。
     """
     if not path or not os.path.isdir(path):
         return path
     if os.path.isfile(os.path.join(path, "config.json")):
         return path
     for hub_dir in _HUB_DIRS:
+        if not os.path.isdir(hub_dir):
+            continue
+        # 挂载目录本身即为 snapshot（含 config.json）
+        if os.path.isfile(os.path.join(hub_dir, "config.json")):
+            return hub_dir
         snapshots_dir = os.path.join(hub_dir, "snapshots")
         if not os.path.isdir(snapshots_dir):
             continue
