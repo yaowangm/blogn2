@@ -153,7 +153,7 @@ python test_db.py
 - `CACHE_DEFAULT_TTL`: 默认缓存时间
 - `UPLOAD_DIR`: 文件上传目录
 - `AVATAR_DIR`: 用户头像目录
-- `MODEL_MODEL_NAME`: BERT 模型名称
+- `MODEL_MODEL_NAME`: Hugging Face 模型 ID（默认 `paraphrase-multilingual-MiniLM-L12-v2`）；无本地路径时按此名称下载，有本地路径时主要用于日志与回退。
 - `MODEL_MODEL_PATH`: 本地模型路径（可选；Docker 下由 entrypoint 解析到 snapshot）
 - `MODEL_PREFER_LOCAL`: 是否优先使用本地模型
 - `APP_ENV`: 应用环境

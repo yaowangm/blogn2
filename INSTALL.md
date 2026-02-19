@@ -193,6 +193,8 @@ print('BERT 模型下载完成')
 "
 ```
 
+- **MODEL_MODEL_NAME**（`.env` 中可选）：Hugging Face 上的模型 ID（默认 `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`）。当未配置本地模型路径或本地路径不可用时，应用会按此名称从 Hugging Face 下载模型；若已通过 `MODEL_MODEL_PATH` 或挂载使用本地模型，则主要用于日志与回退名称。
+- **MODEL_MODEL_PATH**（可选）：本地模型目录（需含 `config.json`）。设置后且 `MODEL_PREFER_LOCAL=true` 时优先使用本地模型，避免联网下载。
 - **缓存目录**：默认 `~/.cache/huggingface/hub`，需对该目录有写权限；可在 `.env` 中设置 `MODEL_CACHE_DIR` 指定其他目录。
 - **网络**：若无法直连 Hugging Face，可配置 `HF_ENDPOINT` 使用镜像，或将他人已下载的 `MODEL_CACHE_DIR` 目录拷贝到本机。
 - **Docker 部署**：模型通过挂载宿主机 HF hub 目录、由 entrypoint 与应用自动解析到 snapshot，无需在容器内下载，详见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
