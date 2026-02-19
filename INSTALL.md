@@ -195,6 +195,7 @@ print('BERT 模型下载完成')
 
 - **缓存目录**：默认 `~/.cache/huggingface/hub`，需对该目录有写权限；可在 `.env` 中设置 `MODEL_CACHE_DIR` 指定其他目录。
 - **网络**：若无法直连 Hugging Face，可配置 `HF_ENDPOINT` 使用镜像，或将他人已下载的 `MODEL_CACHE_DIR` 目录拷贝到本机。
+- **Docker 部署**：模型通过挂载宿主机 HF hub 目录、由 entrypoint 与应用自动解析到 snapshot，无需在容器内下载，详见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
 - 不使用智能搜索或暂不跑 BERT 相关测试时可跳过本步。
 
 ### 13. 验证安装

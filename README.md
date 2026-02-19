@@ -153,7 +153,9 @@ python test_db.py
 - `CACHE_DEFAULT_TTL`: 默认缓存时间
 - `UPLOAD_DIR`: 文件上传目录
 - `AVATAR_DIR`: 用户头像目录
-- `MODEL_MODEL_NAME`: BERT模型名称
+- `MODEL_MODEL_NAME`: BERT 模型名称
+- `MODEL_MODEL_PATH`: 本地模型路径（可选；Docker 下由 entrypoint 解析到 snapshot）
+- `MODEL_PREFER_LOCAL`: 是否优先使用本地模型
 - `APP_ENV`: 应用环境
 
 详细配置请参考 `.env.example` 文件。
@@ -177,7 +179,7 @@ BlogN集成了基于BERT的智能搜索系统：
 
 ### BERT 模型安装
 
-智能搜索依赖 **sentence-transformers** 的多语言 BERT 模型（默认：`paraphrase-multilingual-MiniLM-L12-v2`）。首次使用前需下载模型，详见 [INSTALL.md](INSTALL.md) 中的「下载 BERT 模型」步骤。相关环境变量见 `.env.example` 中的 `MODEL_*` 配置。
+智能搜索依赖 **sentence-transformers** 的多语言 BERT 模型（默认：`paraphrase-multilingual-MiniLM-L12-v2`）。首次使用前需下载模型，详见 [INSTALL.md](INSTALL.md) 中的「下载 BERT 模型」步骤。相关环境变量见 `.env.example` 中的 `MODEL_*` 配置。**Docker 部署**时在 compose 中挂载宿主机 HF hub 目录即可，entrypoint 与应用会自动解析到含 `config.json` 的 snapshot 路径，详见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
 
 ## 🛡️ 权限管理
 

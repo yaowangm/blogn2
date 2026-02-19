@@ -86,8 +86,8 @@ COPY --chown=appuser:appuser . .
 COPY --chown=appuser:appuser docker/docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 
-# 确保必要的目录存在并设置正确的权限（在切换用户之前，使用 root 权限）
-RUN mkdir -p /app/.cache/models /app/uploads /app/avatars && \
+# 确保缓存与上传目录存在（bert-model 为默认模型路径，可被 volume 挂载覆盖）
+RUN mkdir -p /app/.cache/models /app/.cache/models/bert-model /app/uploads /app/avatars && \
     chown -R appuser:appuser /app/.cache /app/uploads /app/avatars
 
 # 容器以 root 启动，entrypoint 中先启动 sendmail 再以 appuser 运行 uvicorn

@@ -1,6 +1,7 @@
 除非我明确要求，否则不要提交代码
 永远不要推送代码
 使用sudo blogn2-service restart来重启应用
+构建 Docker 时不要使用 --no-cache
 ---
 description:
 globs:

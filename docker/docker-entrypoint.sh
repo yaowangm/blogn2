@@ -45,6 +45,40 @@ else
     fi
 fi
 
+# --- BERT 模型路径：若当前路径无 config.json，从挂载的 HF hub 解析到 snapshots/<revision> ---
+if [ -z "$MODEL_PREFER_LOCAL" ]; then
+    export MODEL_PREFER_LOCAL=true
+fi
+# 从 hub 目录（含 snapshots/）中取第一个含 config.json 的 snapshot 路径
+_resolve_snapshot() {
+    local hub_dir="$1"
+    [ -d "$hub_dir/snapshots" ] || return 1
+    local snap
+    snap=$(ls -1d "$hub_dir/snapshots/"*/ 2>/dev/null | head -1)
+    [ -n "$snap" ] && [ -f "${snap}config.json" ] && echo "${snap%/}" && return 0
+    return 1
+}
+if [ -z "$MODEL_MODEL_PATH" ] || [ ! -f "$MODEL_MODEL_PATH/config.json" ]; then
+    SNAPSHOT_PATH=""
+    for HUB_DIR in "/app/.cache/models/bert-model-hub" "/app/.cache/huggingface/hub/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2"; do
+        SNAPSHOT_PATH=$(_resolve_snapshot "$HUB_DIR") || true
+        if [ -n "$SNAPSHOT_PATH" ]; then
+            export MODEL_MODEL_PATH="$SNAPSHOT_PATH"
+            echo "从 hub 解析到 snapshot: $MODEL_MODEL_PATH"
+            break
+        fi
+    done
+    [ -z "$MODEL_MODEL_PATH" ] && export MODEL_MODEL_PATH=/app/.cache/models/bert-model
+fi
+echo "MODEL_MODEL_PATH=$MODEL_MODEL_PATH"
+if [ -f "$MODEL_MODEL_PATH/config.json" ]; then
+    echo "模型目录有效（含 config.json）"
+elif [ -d "$MODEL_MODEL_PATH" ]; then
+    echo "⚠️  模型目录无 config.json，请挂载 HF hub 到 /app/.cache/models/bert-model-hub 或挂载 snapshot 到 $MODEL_MODEL_PATH"
+else
+    echo "⚠️  模型目录不存在，请检查 docker-compose volumes 挂载"
+fi
+
 # 检查必要的环境变量
 if [ -z "$DATABASE_URL" ]; then
     echo "❌ 错误: DATABASE_URL 环境变量未设置"
@@ -223,12 +257,11 @@ if [ "$1" = "uvicorn" ]; then
         fi
     done
     
-    # 如果没有指定 --log-level，则添加
+    # 显式传入 MODEL_*，确保 uvicorn 子进程使用 entrypoint 解析后的路径
     if [ "$HAS_LOG_LEVEL" = false ]; then
-        # 执行 uvicorn 命令，添加日志级别参数
-        exec uvicorn "${@:2}" --log-level "$LOG_LEVEL"
+        exec env MODEL_MODEL_PATH="$MODEL_MODEL_PATH" MODEL_PREFER_LOCAL="${MODEL_PREFER_LOCAL:-true}" uvicorn "${@:2}" --log-level "$LOG_LEVEL"
     else
-        exec uvicorn "${@:2}"
+        exec env MODEL_MODEL_PATH="$MODEL_MODEL_PATH" MODEL_PREFER_LOCAL="${MODEL_PREFER_LOCAL:-true}" uvicorn "${@:2}"
     fi
 else
     exec "$@"

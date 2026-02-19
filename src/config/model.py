@@ -13,6 +13,36 @@ from .utils import load_config_file, get_config_file_path
 # 加载配置文件（如果存在）
 load_config_file()
 
+# Docker 内 BERT 模型 hub 可能挂载的路径（与 docker-compose volume 一致），用于路径解析回退
+_HUB_DIRS = [
+    "/app/.cache/models/bert-model-hub",
+    "/app/.cache/huggingface/hub/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2",
+]
+
+
+def _resolve_model_path_to_snapshot(path: Optional[str]) -> Optional[str]:
+    """
+    当配置的路径存在但无 config.json 时（如 compose 默认的 /app/.cache/models/bert-model），
+    从上述 _HUB_DIRS 的 snapshots/<revision> 中取第一个含 config.json 的目录并返回。
+    用于 Docker 离线加载 BERT 模型。
+    """
+    if not path or not os.path.isdir(path):
+        return path
+    if os.path.isfile(os.path.join(path, "config.json")):
+        return path
+    for hub_dir in _HUB_DIRS:
+        snapshots_dir = os.path.join(hub_dir, "snapshots")
+        if not os.path.isdir(snapshots_dir):
+            continue
+        try:
+            for rev in sorted(os.listdir(snapshots_dir)):
+                snapshot = os.path.join(snapshots_dir, rev)
+                if os.path.isdir(snapshot) and os.path.isfile(os.path.join(snapshot, "config.json")):
+                    return snapshot
+        except OSError:
+            continue
+    return path
+
 
 class ModelSettings:
     """
@@ -34,8 +64,9 @@ class ModelSettings:
     
     @property
     def model_path(self) -> Optional[str]:
-        """本地模型路径"""
-        return os.getenv('MODEL_MODEL_PATH') or None
+        """本地模型路径（若配置的路径无 config.json 则自动解析到 HF hub 的 snapshot）"""
+        raw = os.getenv('MODEL_MODEL_PATH') or None
+        return _resolve_model_path_to_snapshot(raw)
     
     @property
     def device(self) -> str:

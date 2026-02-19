@@ -80,8 +80,10 @@ chmod -R 755 uploads avatars
 
 ### 4. 构建和启动容器
 
+> **构建约定**：请勿使用 `docker build --no-cache`。使用默认缓存可只重建变更层，避免重新下载所有依赖；仅在怀疑缓存损坏时再考虑 `--no-cache`。
+
 ```bash
-# 在项目根目录构建镜像
+# 在项目根目录构建镜像（使用缓存，仅重建变更层）
 docker build -f docker/Dockerfile -t blogn2-app .
 
 # 启动容器（在项目根目录执行）
@@ -191,13 +193,17 @@ docker logs blogn2-app
 
 4. **挂载模型缓存到容器**
    
-   找到模型缓存路径后，在启动容器时挂载：
+   使用 **docker-compose** 时，已配置 `MODEL_CACHE_DIR=/app/.cache/huggingface` 与 `HF_HOME=/app/.cache/huggingface`，只要在 `volumes` 中挂载宿主机 `~/.cache/huggingface` 到 `/app/.cache/huggingface`，容器会直接使用该目录中的 BERT 模型，避免出现 “No sentence-transformers model found ... Creating a new one with MEAN pooling”。
+   
+   若使用 **docker run**，找到模型缓存路径后，在启动容器时挂载：
    ```bash
    docker run -d \
      --name blogn2-app \
      --restart unless-stopped \
      --network host \
      -e BLOGN_CONFIG_FILE=/app/config.env \
+     -e MODEL_CACHE_DIR=/app/.cache/huggingface \
+     -e HF_HOME=/app/.cache/huggingface \
      -v $(pwd)/.env:/app/config.env:ro \
      -v /home/wy/pic/blogn_img/upload:/app/uploads \
      -v /home/wy/pic/blogn_img/userlogo:/app/avatars \
@@ -279,6 +285,27 @@ model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniL
 print('模型加载成功！')
 "
 ```
+
+**若仍报错 “couldn't find it in the cached files” / “couldn't connect to huggingface.co”**
+
+说明容器内未在挂载的缓存里找到模型（或无法联网）。当前 compose 已配置为**挂载 HF hub 模型目录**，entrypoint 会自动解析到 `snapshots/<revision>`（无需关心具体 revision 哈希）：
+
+1. **确认宿主机上存在 hub 目录**（含 `snapshots/` 子目录）：
+   ```bash
+   ls ~/.cache/huggingface/hub/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2/snapshots/
+   ```
+
+2. **宿主机路径**：若 BERT 在默认目录（`~/.cache/huggingface/hub/...`），无需改；若在**其它目录**，在项目根目录 `.env` 中增加：
+   ```env
+   BERT_MODEL_HUB_HOST_PATH=/你的宿主机路径/到含 snapshots 的 hub 目录
+   ```
+   例如 `/data/models/paraphrase-multilingual-MiniLM-L12-v2`（该目录下需有 `snapshots/<revision>/config.json`）。compose 会读取该变量作为 volume 宿主机路径，无需改 docker-compose.yml。
+
+3. **重新创建并启动容器**：
+   ```bash
+   cd docker && docker-compose up -d --force-recreate
+   ```
+   启动日志中应出现「从 hub 解析到 snapshot: ...」和「模型目录有效（含 config.json）」。
 
 **注意事项**
 
