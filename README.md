@@ -154,7 +154,7 @@ python test_db.py
 - `UPLOAD_DIR`: 文件上传目录
 - `AVATAR_DIR`: 用户头像目录
 - `MODEL_MODEL_NAME`: Hugging Face 模型 ID（默认 `paraphrase-multilingual-MiniLM-L12-v2`）；无本地路径时按此名称下载，有本地路径时主要用于日志与回退。
-- `MODEL_MODEL_PATH`: 容器内/本地模型路径（可选；Docker 下由 entrypoint 解析，宿主机模型目录由 `docker run -v` 或 compose 挂载指定，不通过 .env）
+- `MODEL_MODEL_PATH`: 容器内/本地模型路径（可选；Docker 下由 entrypoint 解析到挂载的 snapshot）
 - `MODEL_PREFER_LOCAL`: 是否优先使用本地模型
 - `APP_ENV`: 应用环境
 
@@ -179,7 +179,7 @@ BlogN集成了基于BERT的智能搜索系统：
 
 ### BERT 模型安装
 
-智能搜索依赖 **sentence-transformers** 的多语言 BERT 模型（默认：`paraphrase-multilingual-MiniLM-L12-v2`）。首次使用前需下载模型，详见 [INSTALL.md](INSTALL.md) 中的「下载 BERT 模型」步骤。相关环境变量见 `.env.example` 中的 `MODEL_*` 配置。**Docker 部署**时宿主机模型目录由 `docker run -v` 或 compose 的 volume 指定（不通过 .env），挂载到容器内后 entrypoint 与应用会自动解析到含 `config.json` 的 snapshot 路径，详见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
+智能搜索依赖 **sentence-transformers** 的多语言 BERT 模型（默认：`paraphrase-multilingual-MiniLM-L12-v2`）。首次使用前需下载模型，详见 [INSTALL.md](INSTALL.md) 中的「下载 BERT 模型」步骤。相关环境变量见 `.env.example` 中的 `MODEL_*` 配置。**Docker 部署**时宿主机模型目录在 `docker run` 的 `-v` 参数中指定（见上方「Docker run 参数说明」），挂载到容器内后 entrypoint 与应用会自动解析到含 `config.json` 的 snapshot 路径，详见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
 
 ## 🛡️ 权限管理
 
@@ -221,6 +221,43 @@ BlogN实现了完整的缓存系统：
 | **容器连宿主机 25 端口** | 使用 **host 网络**时，在配置中设置 `SMTP_HOST=localhost`、`SMTP_PORT=25`，容器内应用通过 SMTP 连接宿主机 25 端口发信，无需在容器内安装 sendmail |
 
 详细设计见 [doc/EMAIL_PASSWORD_RESET_DESIGN.md](doc/EMAIL_PASSWORD_RESET_DESIGN.md)，Docker 部署见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
+
+### Docker run 参数说明
+
+以下参数均在 `docker run` 命令行中配置，**不要**写入 `.env` / `.env.example`。
+
+| 参数 | 说明 |
+|------|------|
+| `--name blogn2-app` | 容器名称，便于 `docker logs` / `docker restart` 等操作 |
+| `--restart unless-stopped` | 容器退出时自动重启（除非手动 stop），保证服务常驻 |
+| `--network host` | 使用宿主机网络，容器内可直接访问本机 PostgreSQL、Redis、sendmail 等 |
+| `-e BLOGN_CONFIG_FILE=/app/config.env` | 告知应用从挂载的配置文件读取环境变量（数据库、Redis、日志等） |
+| `-v 宿主机路径/.env:/app/config.env:ro` | 将项目根目录的 `.env` 挂载为容器内配置文件，只读 |
+| `-v 宿主机上传目录:/app/uploads` | 上传文件持久化，宿主机路径按本机实际修改 |
+| `-v 宿主机头像目录:/app/avatars` | 用户头像持久化，宿主机路径按本机实际修改 |
+| `-v 宿主机HF缓存:/app/.cache/huggingface:ro` | Hugging Face 缓存（可选，若模型从宿主机挂载可省略） |
+| `-v 宿主机ModelScope缓存:/app/.cache/modelscope:ro` | ModelScope 缓存（可选） |
+| `-v 宿主机BERT模型目录:/app/.cache/models/bert-model-hub:ro` | BERT 模型 hub 目录（含 `snapshots/`），宿主机路径按本机实际修改；不挂载则无法使用智能搜索 |
+| `blogn2-app` | 镜像名（需先 `docker build -f docker/Dockerfile -t blogn2-app .`） |
+
+示例（宿主机路径请按本机修改）：
+
+```bash
+docker run -d \
+  --name blogn2-app \
+  --restart unless-stopped \
+  --network host \
+  -e BLOGN_CONFIG_FILE=/app/config.env \
+  -v /home/wy/blogn2/.env:/app/config.env:ro \
+  -v /home/wy/pic/blogn_img/upload:/app/uploads \
+  -v /home/wy/pic/blogn_img/userlogo:/app/avatars \
+  -v /home/wy/.cache/huggingface:/app/.cache/huggingface:ro \
+  -v /home/wy/.cache/modelscope:/app/.cache/modelscope:ro \
+  -v /home/wy/snap/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2:/app/.cache/models/bert-model-hub:ro \
+  blogn2-app
+```
+
+更多细节见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
 
 ---
 

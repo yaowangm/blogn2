@@ -87,8 +87,7 @@ chmod -R 755 uploads avatars
 docker build -f docker/Dockerfile -t blogn2-app .
 
 # 启动容器（在项目根目录执行）
-# 注意：需要将实际的图片目录挂载到容器中
-# 如果图片在 ../pic/blogn_img/upload，则挂载该目录
+# 以下参数均在 docker run 中配置，不要写入 .env
 docker run -d \
   --name blogn2-app \
   --restart unless-stopped \
@@ -99,15 +98,30 @@ docker run -d \
   -v /home/wy/pic/blogn_img/userlogo:/app/avatars \
   -v /home/wy/.cache/huggingface:/app/.cache/huggingface:ro \
   -v /home/wy/.cache/modelscope:/app/.cache/modelscope:ro \
+  -v /home/wy/snap/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2:/app/.cache/models/bert-model-hub:ro \
   blogn2-app
 
 # 查看日志
 docker logs -f blogn2-app
 ```
 
-> **说明**：
-> - Dockerfile 使用 CPU-only PyTorch，镜像更小，构建更快。构建时 PyTorch 安装层独立缓存，提高后续构建速度。
-> - 模型缓存目录路径 `/home/wy/.cache/huggingface` 和 `/home/wy/.cache/modelscope` 需要根据实际情况修改。
+**docker run 参数说明**（均不在 .env 中配置）：
+
+| 参数 | 说明 |
+|------|------|
+| `--name blogn2-app` | 容器名称 |
+| `--restart unless-stopped` | 退出时自动重启 |
+| `--network host` | 使用宿主机网络，访问本机 PostgreSQL、Redis、sendmail |
+| `-e BLOGN_CONFIG_FILE=/app/config.env` | 应用从该路径读取配置 |
+| `-v 宿主机/.env:/app/config.env:ro` | 挂载 .env 为容器内配置文件，只读 |
+| `-v 宿主机上传目录:/app/uploads` | 上传文件持久化 |
+| `-v 宿主机头像目录:/app/avatars` | 用户头像持久化 |
+| `-v 宿主机HF缓存:/app/.cache/huggingface:ro` | Hugging Face 缓存（可选） |
+| `-v 宿主机ModelScope缓存:/app/.cache/modelscope:ro` | ModelScope 缓存（可选） |
+| `-v 宿主机BERT模型目录:/app/.cache/models/bert-model-hub:ro` | BERT 模型 hub（含 snapshots/），不挂载则无法使用智能搜索 |
+| `blogn2-app` | 镜像名 |
+
+> **说明**：Dockerfile 使用 CPU-only PyTorch；宿主机路径请按本机实际修改。
 
 ### 5. 验证部署
 

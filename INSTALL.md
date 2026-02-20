@@ -197,7 +197,7 @@ print('BERT 模型下载完成')
 - **MODEL_MODEL_PATH**（可选）：本地/容器内模型目录（需含 `config.json`）。设置且 `MODEL_PREFER_LOCAL=true` 时优先使用本地模型。Docker 下宿主机模型目录**不通过 .env 配置**，由 `docker run -v` 或 compose 的 volume 指定。
 - **缓存目录**：默认 `~/.cache/huggingface/hub`，需对该目录有写权限；可在 `.env` 中设置 `MODEL_CACHE_DIR` 指定其他目录。
 - **网络**：若无法直连 Hugging Face，可配置 `HF_ENDPOINT` 使用镜像，或将他人已下载的 `MODEL_CACHE_DIR` 目录拷贝到本机。
-- **Docker 部署**：宿主机模型目录由 `docker run -v` 或 compose 的 volume 指定，挂载到容器内后由 entrypoint 与应用自动解析到 snapshot，详见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
+- **Docker 部署**：宿主机模型目录在 `docker run` 的 `-v` 参数中指定（见本文档「Docker 部署」一节），挂载到容器内后由 entrypoint 与应用自动解析到 snapshot，详见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
 - 不使用智能搜索或暂不跑 BERT 相关测试时可跳过本步。
 
 ### 13. 验证安装
@@ -324,6 +324,43 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
    # 查看应用日志
    tail -f app.log
    ```
+
+### Docker 部署（可选）
+
+若使用 Docker 运行应用，以下参数均在 `docker run` 命令行中配置，**不要**写入 `.env`。
+
+| 参数 | 说明 |
+|------|------|
+| `--name blogn2-app` | 容器名称 |
+| `--restart unless-stopped` | 退出时自动重启（除非手动 stop） |
+| `--network host` | 使用宿主机网络，访问本机 PostgreSQL、Redis、sendmail |
+| `-e BLOGN_CONFIG_FILE=/app/config.env` | 应用从该路径读取配置（即下方挂载的 .env） |
+| `-v 宿主机/.env:/app/config.env:ro` | 将项目根目录 `.env` 挂载为容器内配置文件，只读 |
+| `-v 宿主机上传目录:/app/uploads` | 上传文件持久化 |
+| `-v 宿主机头像目录:/app/avatars` | 用户头像持久化 |
+| `-v 宿主机HF缓存:/app/.cache/huggingface:ro` | Hugging Face 缓存（可选） |
+| `-v 宿主机ModelScope缓存:/app/.cache/modelscope:ro` | ModelScope 缓存（可选） |
+| `-v 宿主机BERT模型目录:/app/.cache/models/bert-model-hub:ro` | BERT 模型 hub 目录（含 `snapshots/`），不挂载则无法使用智能搜索 |
+| `blogn2-app` | 镜像名（需先执行 `docker build -f docker/Dockerfile -t blogn2-app .`） |
+
+示例（宿主机路径请按本机修改）：
+
+```bash
+docker run -d \
+  --name blogn2-app \
+  --restart unless-stopped \
+  --network host \
+  -e BLOGN_CONFIG_FILE=/app/config.env \
+  -v /path/to/blogn2/.env:/app/config.env:ro \
+  -v /path/to/upload:/app/uploads \
+  -v /path/to/avatars:/app/avatars \
+  -v /path/to/.cache/huggingface:/app/.cache/huggingface:ro \
+  -v /path/to/.cache/modelscope:/app/.cache/modelscope:ro \
+  -v /path/to/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2:/app/.cache/models/bert-model-hub:ro \
+  blogn2-app
+```
+
+更多细节见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
 
 ### 5. 重置管理员密码（如需要）
 
