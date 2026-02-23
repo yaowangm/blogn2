@@ -1,10 +1,11 @@
 # Dockerfile for BlogN2
 # 使用 CPU-only PyTorch 和排除测试依赖，减小镜像大小
-# 预期大小：~1.6GB
-# 
+# 预期大小：约 1.1–1.3GB（随 PyTorch/transformers 版本变化）
+#
 # 特性：
 # - 多阶段构建，减小最终镜像大小
 # - 使用 CPU-only PyTorch（torch==2.2.0+cpu）
+# - pip --no-cache-dir + 精简 venv（去掉 pycache、tests、pip）进一步减体积
 # - 优化构建缓存，PyTorch 安装层独立，提高构建速度
 # - 使用清华大学镜像源加速构建
 
@@ -33,19 +34,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# 升级 pip（使用清华镜像源）
-RUN pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
+# 升级 pip（使用清华镜像源，不保留缓存）
+RUN pip install --no-cache-dir --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 先安装 PyTorch CPU 版本（独立层，不依赖 requirements 文件，便于缓存）
 # 尝试多个源：先尝试官方 CPU 索引，失败则使用清华镜像
-RUN pip install --extra-index-url https://download.pytorch.org/whl/cpu torch==2.2.0+cpu || \
-    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple torch==2.2.0+cpu
+RUN pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu torch==2.2.0+cpu || \
+    pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple torch==2.2.0+cpu
 
 # 复制生产环境依赖文件（放在 PyTorch 安装之后，避免 requirements 变化导致 PyTorch 层缓存失效）
 COPY requirements-prod.txt .
 
-# 安装其他依赖（使用清华镜像源）
-RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements-prod.txt
+# 安装其他依赖（使用清华镜像源，不保留缓存）
+RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements-prod.txt
+
+# 精简 venv：删除 __pycache__、.pyc、以及各包内的 tests 目录（运行时不需要，可显著减小体积）
+RUN find /opt/venv -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
+    find /opt/venv -name "*.pyc" -delete 2>/dev/null || true && \
+    find /opt/venv -type d -name "tests" -path "*/site-packages/*" -exec rm -rf {} + 2>/dev/null || true
+
+# 运行时不需 pip，卸载以减小体积
+RUN /opt/venv/bin/python -m pip uninstall -y pip
 
 # 第二阶段：运行环境
 FROM python:3.12-slim
