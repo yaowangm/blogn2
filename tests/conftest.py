@@ -103,8 +103,8 @@ if _env_file.exists():
 # 测试环境禁止回退到网络下载：本地路径失败时立即报错，避免长时间尝试连接 Hugging Face
 os.environ["MODEL_FALLBACK_TO_HUGGINGFACE"] = "false"
 
-# 测试环境强制 CPU：部分环境 CUDA 可用但运行时报 "no kernel image"（如架构不匹配），统一用 CPU 保证测试稳定
-os.environ["MODEL_DEVICE"] = "cpu"
+# 测试环境不强制设备：get_model_device() 会根据 torch.cuda.get_arch_list() 判断当前 GPU 是否被 PyTorch 支持，不支持则自动用 CPU
+# 若需强制 CPU 可设置 os.environ["MODEL_DEVICE"] = "cpu"
 
 # 确保静态文件目录存在（用于测试）
 static_dir = project_root / "src" / "static"

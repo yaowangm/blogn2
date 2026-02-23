@@ -116,15 +116,24 @@ model_settings = ModelSettings()
 
 def get_model_device() -> str:
     """
-    获取模型设备配置
-    
-    Returns:
-        str: 设备名称 (cpu, cuda, cuda:0等)
+    获取模型设备配置。
+    auto 时：仅当 CUDA 可用且当前 GPU 架构在 PyTorch 编译支持列表内才返回 cuda，
+    否则返回 cpu，避免 no kernel image 等运行时错误。
     """
     if model_settings.device == "auto":
         try:
             import torch
-            return "cuda" if torch.cuda.is_available() else "cpu"
+            if not torch.cuda.is_available():
+                return "cpu"
+            # 当前 GPU 的 compute capability 是否在 PyTorch 编译支持的架构列表中
+            try:
+                major, minor = torch.cuda.get_device_capability(0)
+                arch = f"sm_{major}{minor}"
+                if arch in torch.cuda.get_arch_list():
+                    return "cuda"
+            except (RuntimeError, AttributeError):
+                pass
+            return "cpu"
         except ImportError:
             return "cpu"
     return model_settings.device

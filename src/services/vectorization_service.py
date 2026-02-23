@@ -123,7 +123,7 @@ class BERTVectorizationService:
         BERTVectorizationService._model = model
         BERTVectorizationService._model_loaded = True
         logger.info(f"已设置共享模型 (进程: {os.getpid()})")
-    
+
     def _load_model_sync(self):
         """
         同步加载sentence-transformers模型（在后台线程中执行）
