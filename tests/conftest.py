@@ -103,7 +103,7 @@ if _env_file.exists():
 # 测试环境禁止回退到网络下载：本地路径失败时立即报错，避免长时间尝试连接 Hugging Face
 os.environ["MODEL_FALLBACK_TO_HUGGINGFACE"] = "false"
 
-# 测试环境强制使用 CPU，避免 CUDA 在 executor 线程中 encode 时报 "no kernel image" 导致返回零向量
+# 测试环境强制 CPU：BERT 向量化在 executor 线程中 encode 时，CUDA 易报 "no kernel image"，导致返回零向量；统一用 CPU 保证测试稳定通过
 os.environ["MODEL_DEVICE"] = "cpu"
 
 # 确保静态文件目录存在（用于测试）
