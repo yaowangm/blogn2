@@ -23,6 +23,7 @@ import logging
 import os
 import re
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Any
 
 import numpy as np
@@ -54,7 +55,15 @@ class BERTVectorizationService:
     _model_loaded = False
     _loading = False
     _model = None
-    
+    # 单线程 executor：模型加载与 encode 在同一线程执行，避免 CUDA 跨线程报错
+    _executor: ThreadPoolExecutor = None
+
+    @classmethod
+    def _get_executor(cls) -> ThreadPoolExecutor:
+        if cls._executor is None:
+            cls._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bert_vectorization")
+        return cls._executor
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(BERTVectorizationService, cls).__new__(cls)
@@ -91,9 +100,9 @@ class BERTVectorizationService:
         try:
             logger.info(f"正在加载BERT模型: {self.model_name}")
             
-            # 在后台线程中加载模型
+            # 在专用单线程中加载模型（与 encode 同线程，避免 CUDA 跨线程错误）
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, self._load_model_sync)
+            await loop.run_in_executor(self._get_executor(), self._load_model_sync)
             
             BERTVectorizationService._model_loaded = True
             logger.info(f"BERT模型加载成功: {self.model_name}")
@@ -175,9 +184,9 @@ class BERTVectorizationService:
             # 预处理文本
             processed_text = self._preprocess_text(text)
             
-            # 在后台线程中进行向量化
+            # 在专用单线程中进行向量化（与 load 同线程，避免 CUDA 跨线程错误）
             loop = asyncio.get_event_loop()
-            vector = await loop.run_in_executor(None, self._vectorize_sync, processed_text)
+            vector = await loop.run_in_executor(self._get_executor(), self._vectorize_sync, processed_text)
             
             return vector
             
@@ -226,9 +235,9 @@ class BERTVectorizationService:
             # 预处理所有文本
             processed_texts = [self._preprocess_text(text) for text in texts]
             
-            # 在后台线程中进行批量向量化
+            # 在专用单线程中进行批量向量化（与 load 同线程，避免 CUDA 跨线程错误）
             loop = asyncio.get_event_loop()
-            vectors = await loop.run_in_executor(None, self._vectorize_batch_sync, processed_texts)
+            vectors = await loop.run_in_executor(self._get_executor(), self._vectorize_batch_sync, processed_texts)
             
             return vectors
             
