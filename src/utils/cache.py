@@ -410,9 +410,13 @@ def cache_metadata(ttl: int = None):
 
 # 文章相关缓存装饰器
 def cache_article_detail(ttl: int = None):
-    """文章详情缓存装饰器"""
-    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
-                          CacheKeyGenerator.article_detail(kwargs.get('article_id', 0)))
+    """文章详情缓存装饰器（按评论分页区分缓存键，避免分页时返回同一页缓存）"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
+                          CacheKeyGenerator.article_detail(
+                              kwargs.get('article_id', 0),
+                              kwargs.get('page', 1),
+                              kwargs.get('per_page', 10)
+                          ))
 
 
 def cache_article_comments(ttl: int = None):
@@ -548,8 +552,9 @@ def invalidate_article_cache():
 
 
 def invalidate_article_detail_cache(article_id: int):
-    """特定文章详情缓存失效装饰器"""
-    return invalidate_cache_pattern(f"article:detail:{article_id}")
+    """特定文章详情缓存失效装饰器（清除该文章所有评论分页的缓存）"""
+    pattern = f"{cache_settings.cache_prefix}:article:detail:{article_id}*"
+    return invalidate_cache_pattern(pattern)
 
 
 def invalidate_article_comments_cache(article_id: int):
@@ -573,11 +578,12 @@ async def clear_article_cache():
 
 
 async def clear_article_detail_cache(article_id: int):
-    """直接清除特定文章详情缓存"""
+    """直接清除特定文章详情缓存（含该文章所有评论分页）"""
     if cache_settings.enable_cache:
-        await cache_manager.clear_pattern(f"article:detail:{article_id}")
+        pattern = f"{cache_settings.cache_prefix}:article:detail:{article_id}*"
+        await cache_manager.clear_pattern(pattern)
         if cache_settings.cache_debug:
-            logger.debug(f"清除文章详情缓存: article:detail:{article_id}")
+            logger.debug(f"清除文章详情缓存: {pattern}")
 
 
 async def clear_article_comments_cache(article_id: int):
