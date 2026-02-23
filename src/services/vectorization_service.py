@@ -128,7 +128,7 @@ class BERTVectorizationService:
             # 如果配置了本地模型路径且优先使用本地模型
             if model_path and model_settings.prefer_local:
                 try:
-                    BERTVectorizationService._model = SentenceTransformer(model_path)
+                    BERTVectorizationService._model = SentenceTransformer(model_path, device=self.device)
                     logger.info(f"已加载模型: {self.model_name} (设备: {self.device}) - 使用本地缓存: {model_path}")
                     BERTVectorizationService._model_loaded = True
                     return
@@ -141,10 +141,10 @@ class BERTVectorizationService:
             # 从Hugging Face下载或使用模型名称
             cache_dir = get_model_cache_dir()
             if cache_dir:
-                BERTVectorizationService._model = SentenceTransformer(self.model_name, cache_folder=cache_dir)
+                BERTVectorizationService._model = SentenceTransformer(self.model_name, cache_folder=cache_dir, device=self.device)
                 logger.info(f"已加载模型: {self.model_name} (设备: {self.device}) - 从Hugging Face下载到: {cache_dir}")
             else:
-                BERTVectorizationService._model = SentenceTransformer(self.model_name)
+                BERTVectorizationService._model = SentenceTransformer(self.model_name, device=self.device)
                 logger.info(f"已加载模型: {self.model_name} (设备: {self.device}) - 从Hugging Face下载")
             
             BERTVectorizationService._model_loaded = True

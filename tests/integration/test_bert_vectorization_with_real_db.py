@@ -104,32 +104,23 @@ class TestBERTVectorizationIntegration:
     
     @pytest.mark.asyncio
     async def test_vectorization_service_basic_functionality(self):
-        """测试向量化服务基本功能"""
-        # 重置模型状态，确保测试隔离
-        BERTVectorizationService._model_loaded = False
-        BERTVectorizationService._loading = False
-        BERTVectorizationService._model = None
-        
-        # 创建向量化服务
+        """测试向量化服务基本功能（使用已加载模型，不重置单例以免二次加载导致零向量）"""
+        # 创建向量化服务（复用已加载模型，与 test_article_vectorization 等一致）
         vectorization_service = BERTVectorizationService()
-        
-        # 测试模型加载
         await vectorization_service.load_model()
         assert vectorization_service.is_model_loaded() == True
-        
+
         # 测试文本向量化
         test_text = "这是一个测试文本"
         vector = await vectorization_service.vectorize_text(test_text)
-        
+
         # 验证向量格式
         assert isinstance(vector, np.ndarray)
         assert vector.shape == (384,)  # 384维向量
         assert not np.any(np.isnan(vector)), "向量不应含 nan"
-        if np.linalg.norm(vector) <= 1e-6:
-            pytest.skip(
-                "模型返回零向量（可能因重置后加载失败或 encode 异常），"
-                "请确认 conftest 中 MODEL_MODEL_PATH 指向有效本地模型（如 ~/.cache/huggingface/hub/...）"
-            )
+        assert np.linalg.norm(vector) > 1e-6, (
+            "模型返回零向量，请确认 MODEL_MODEL_PATH / BERT_MODEL_HUB_HOST_PATH 指向有效本地模型"
+        )
         
         # 测试空文本处理
         empty_vector = await vectorization_service.vectorize_text("")
@@ -304,38 +295,32 @@ class TestBERTVectorizationIntegration:
     
     @pytest.mark.asyncio
     async def test_vectorization_quality(self):
-        """测试向量化质量"""
-        # 重置模型状态，确保测试隔离
-        BERTVectorizationService._model_loaded = False
-        BERTVectorizationService._loading = False
-        BERTVectorizationService._model = None
-        
+        """测试向量化质量（使用已加载模型，不重置单例以免二次加载导致零向量/nan）"""
         vectorization_service = BERTVectorizationService()
         await vectorization_service.load_model()
-        
+
         # 测试相似文本的向量相似度
         text1 = "机器学习算法"
         text2 = "机器学习方法"
         text3 = "深度学习技术"
-        
+
         vector1 = await vectorization_service.vectorize_text(text1)
         vector2 = await vectorization_service.vectorize_text(text2)
         vector3 = await vectorization_service.vectorize_text(text3)
-        
+
         # 计算余弦相似度（零向量会得到 nan，需先排除）
         def cosine_similarity(a, b):
             na, nb = np.linalg.norm(a), np.linalg.norm(b)
             if na < 1e-9 or nb < 1e-9:
                 return float("nan")
             return float(np.dot(a, b) / (na * nb))
-        
+
         sim_1_2 = cosine_similarity(vector1, vector2)
         sim_1_3 = cosine_similarity(vector1, vector3)
-        
-        if np.isnan(sim_1_2) or np.isnan(sim_1_3):
-            pytest.skip(
-                "向量为零或无效导致相似度为 nan，请检查模型是否正确加载（MODEL_MODEL_PATH / 本地模型路径）"
-            )
+
+        assert not np.isnan(sim_1_2) and not np.isnan(sim_1_3), (
+            "向量为零或无效导致相似度为 nan，请检查 MODEL_MODEL_PATH / 本地模型路径"
+        )
         # 相似文本应该有更高的相似度
         assert sim_1_2 > sim_1_3, f"相似文本相似度应更高: sim(1,2)={sim_1_2:.3f}, sim(1,3)={sim_1_3:.3f}"
         assert sim_1_2 > 0.5, f"相似度应较高: {sim_1_2:.3f}"
