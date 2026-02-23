@@ -95,6 +95,14 @@ class TestDataTracker:
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+# 始终从项目根目录加载 .env，保证 MODEL_MODEL_PATH 等配置生效（与运行 pytest 的 cwd 无关）
+_env_file = project_root / ".env"
+if _env_file.exists():
+    load_dotenv(_env_file, override=False)
+
+# 测试环境禁止回退到网络下载：本地路径失败时立即报错，避免长时间尝试连接 Hugging Face
+os.environ["MODEL_FALLBACK_TO_HUGGINGFACE"] = "false"
+
 # 确保静态文件目录存在（用于测试）
 static_dir = project_root / "src" / "static"
 static_dir.mkdir(parents=True, exist_ok=True)
@@ -112,24 +120,54 @@ _default_model_path_huggingface = os.path.expanduser(
     "~/.cache/huggingface/hub/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2"
 )
 
-def _get_test_local_model_path():
-    """返回可用的本地模型路径，优先 modelscope，其次 Hugging Face 缓存。"""
-    if os.path.exists(_default_model_path_modelscope):
-        return _default_model_path_modelscope
-    if os.path.exists(_default_model_path_huggingface):
-        # HF 缓存：实际模型在 snapshots/<revision>/ 下，SentenceTransformer 需要该目录
-        snapshots_dir = os.path.join(_default_model_path_huggingface, "snapshots")
-        if os.path.isdir(snapshots_dir):
-            try:
-                revs = sorted(os.listdir(snapshots_dir))
-                if revs:
-                    snapshot_path = os.path.join(snapshots_dir, revs[0])
-                    if os.path.isdir(snapshot_path):
-                        return snapshot_path
-            except OSError:
-                pass
-        return _default_model_path_huggingface
+def _path_has_config_json(path):
+    """判断目录下是否含 config.json（模型有效）。"""
+    return bool(path and os.path.isdir(path) and os.path.isfile(os.path.join(path, "config.json")))
+
+
+def _resolve_path_to_model_dir(path):
+    """若 path 含 config.json 则返回 path，否则若为 hub 目录则尝试 snapshots/<rev>，否则返回 None。"""
+    if not path or not os.path.isdir(path):
+        return None
+    path = os.path.abspath(os.path.expanduser(path.strip()))
+    if _path_has_config_json(path):
+        return path
+    snapshots_dir = os.path.join(path, "snapshots")
+    if os.path.isdir(snapshots_dir):
+        try:
+            for rev in sorted(os.listdir(snapshots_dir)):
+                snapshot_path = os.path.join(snapshots_dir, rev)
+                if _path_has_config_json(snapshot_path):
+                    return snapshot_path
+        except OSError:
+            pass
     return None
+
+
+def _get_test_local_model_path():
+    """返回可用的本地模型路径（必须含 config.json）。优先 BERT_MODEL_HUB_HOST_PATH，其次 modelscope，再 HF 缓存。"""
+    # .env 中常用于宿主机挂载的路径（Docker 用 MODEL_MODEL_PATH，宿主机可用此变量）
+    hub_host = os.getenv("BERT_MODEL_HUB_HOST_PATH")
+    if hub_host:
+        resolved = _resolve_path_to_model_dir(hub_host)
+        if resolved:
+            return resolved
+    if _path_has_config_json(_default_model_path_modelscope):
+        return _default_model_path_modelscope
+    resolved = _resolve_path_to_model_dir(_default_model_path_huggingface)
+    if resolved:
+        return resolved
+    return None
+
+
+def _configured_model_path_exists():
+    """判断 .env 中配置的 MODEL_MODEL_PATH 在当前机器上是否存在且含 config.json。"""
+    raw = os.getenv("MODEL_MODEL_PATH")
+    if not raw or not raw.strip():
+        return False
+    path = os.path.expanduser(raw.strip())
+    return _path_has_config_json(path)
+
 
 try:
     # 先加载配置工具
@@ -141,17 +179,30 @@ try:
     else:
         logger.debug("测试环境使用默认配置（未找到配置文件）")
     
-    # 在配置加载后，确保使用本地模型（优先级最高）
-    _test_local_model_path = _get_test_local_model_path()
-    if _test_local_model_path:
-        os.environ["MODEL_MODEL_PATH"] = _test_local_model_path
-        os.environ["MODEL_PREFER_LOCAL"] = "true"
-        os.environ["MODEL_FALLBACK_TO_HUGGINGFACE"] = "false"
-        logger.info(f"测试环境强制使用本地模型: {_test_local_model_path}")
-    elif not os.getenv("MODEL_MODEL_PATH"):
-        logger.warning(
-            f"本地模型路径不存在（已检查 modelscope 与 ~/.cache/huggingface/hub），将尝试从 Hugging Face 下载"
-        )
+    # 模型路径：优先使用 .env 中且在当前机器存在的路径；否则尝试本机可用路径（如 Docker 路径在宿主机不存在时）
+    configured_exists = _configured_model_path_exists()
+    if configured_exists:
+        logger.info(f"测试环境使用配置中的模型路径: {os.getenv('MODEL_MODEL_PATH')}")
+    else:
+        had_configured_path = bool(os.getenv("MODEL_MODEL_PATH"))
+        _test_local_model_path = _get_test_local_model_path()
+        if _test_local_model_path:
+            os.environ["MODEL_MODEL_PATH"] = _test_local_model_path
+            os.environ["MODEL_PREFER_LOCAL"] = "true"
+            os.environ["MODEL_FALLBACK_TO_HUGGINGFACE"] = "false"
+            logger.info(
+                f"测试环境：配置路径不可用，使用本机检测的模型路径: {_test_local_model_path}"
+                if had_configured_path
+                else f"测试环境使用自动检测的本地模型: {_test_local_model_path}"
+            )
+        elif os.getenv("MODEL_MODEL_PATH"):
+            logger.warning(
+                "测试环境：配置的模型路径在当前机器不存在（如 Docker 路径），且未检测到本机模型，BERT 相关测试将失败"
+            )
+        else:
+            logger.warning(
+                "本地模型路径不存在（已检查 modelscope 与 ~/.cache/huggingface/hub），BERT 相关测试将失败"
+            )
 
 except Exception as e:
     # 如果配置加载失败，记录但不中断测试
@@ -159,12 +210,14 @@ except Exception as e:
     import traceback
     logger.debug(traceback.format_exc())
     
-    # 即使配置加载失败，也尝试设置本地模型路径
-    _test_local_model_path = _get_test_local_model_path()
-    if _test_local_model_path:
-        os.environ["MODEL_MODEL_PATH"] = _test_local_model_path
-        os.environ["MODEL_PREFER_LOCAL"] = "true"
-        os.environ["MODEL_FALLBACK_TO_HUGGINGFACE"] = "false"
+    # 仅当未配置 MODEL_MODEL_PATH 时使用自动检测的路径
+    if not os.getenv("MODEL_MODEL_PATH"):
+        _test_local_model_path = _get_test_local_model_path()
+        if _test_local_model_path:
+            os.environ["MODEL_MODEL_PATH"] = _test_local_model_path
+            os.environ["MODEL_PREFER_LOCAL"] = "true"
+            os.environ["MODEL_FALLBACK_TO_HUGGINGFACE"] = "false"
+
 
 def cleanup_test_data_by_ids(tracker: TestDataTracker):
     """基于ID精确清理测试数据"""

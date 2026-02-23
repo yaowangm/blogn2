@@ -24,17 +24,24 @@ def _resolve_model_path_to_snapshot(path: Optional[str]) -> Optional[str]:
     """
     当配置的路径存在但无 config.json 时，从 _HUB_DIRS 解析：
     若挂载目录自身含 config.json 则直接返回该目录，否则从 snapshots/<revision> 取第一个含 config.json 的目录。
+    对传入路径会做 strip 和 expanduser，避免 .env 中带空格或 ~ 导致加载失败。
     """
-    if not path or not os.path.isdir(path):
+    if not path:
+        return None
+    path = path.strip()
+    if not path:
+        return None
+    path = os.path.expanduser(path)
+    if not os.path.isdir(path):
         return path
     if os.path.isfile(os.path.join(path, "config.json")):
-        return path
+        return os.path.abspath(path)
     for hub_dir in _HUB_DIRS:
         if not os.path.isdir(hub_dir):
             continue
         # 挂载目录本身即为 snapshot（含 config.json）
         if os.path.isfile(os.path.join(hub_dir, "config.json")):
-            return hub_dir
+            return os.path.abspath(hub_dir)
         snapshots_dir = os.path.join(hub_dir, "snapshots")
         if not os.path.isdir(snapshots_dir):
             continue
@@ -42,10 +49,10 @@ def _resolve_model_path_to_snapshot(path: Optional[str]) -> Optional[str]:
             for rev in sorted(os.listdir(snapshots_dir)):
                 snapshot = os.path.join(snapshots_dir, rev)
                 if os.path.isdir(snapshot) and os.path.isfile(os.path.join(snapshot, "config.json")):
-                    return snapshot
+                    return os.path.abspath(snapshot)
         except OSError:
             continue
-    return path
+    return os.path.abspath(path) if os.path.isdir(path) else path
 
 
 class ModelSettings:
