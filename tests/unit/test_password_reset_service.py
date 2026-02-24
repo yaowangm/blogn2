@@ -117,18 +117,18 @@ class TestPasswordResetService:
     async def test_reset_password_success(
         self, service, mock_user_repo, mock_token_repo, mock_auth_service, sample_token_record
     ):
-        """执行重置：合法 token 时更新密码并删除 token"""
+        """执行重置：合法 token 时通过 update_password_and_delete_token 在同一事务中更新密码并删除 token"""
         mock_token_repo.get_valid_token.return_value = sample_token_record
         mock_auth_service.hash_password.return_value = "hashed_new_pass"
-        mock_user_repo.update_password.return_value = True
-        mock_token_repo.delete_by_token.return_value = True
+        mock_token_repo.update_password_and_delete_token = AsyncMock()
 
         await service.reset_password("abc123token", "newpassword123")
 
         mock_token_repo.get_valid_token.assert_called_once_with("abc123token")
         mock_auth_service.hash_password.assert_called_once_with("newpassword123")
-        mock_user_repo.update_password.assert_called_once_with(1, "hashed_new_pass")
-        mock_token_repo.delete_by_token.assert_called_once_with("abc123token")
+        mock_token_repo.update_password_and_delete_token.assert_called_once_with(
+            user_id=1, hashed_password="hashed_new_pass", token="abc123token"
+        )
 
     @pytest.mark.asyncio
     async def test_reset_password_invalid_token_raises(self, service, mock_token_repo):
@@ -139,18 +139,20 @@ class TestPasswordResetService:
             await service.reset_password("invalid_token", "newpass")
 
         mock_token_repo.get_valid_token.assert_called_once_with("invalid_token")
-        mock_token_repo.delete_by_token.assert_not_called()
+        mock_token_repo.update_password_and_delete_token.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_reset_password_update_fails_raises(
         self, service, mock_user_repo, mock_token_repo, mock_auth_service, sample_token_record
     ):
-        """执行重置：update_password 失败时抛出 ValueError"""
+        """执行重置：update_password_and_delete_token 失败时抛出 ValueError"""
         mock_token_repo.get_valid_token.return_value = sample_token_record
         mock_auth_service.hash_password.return_value = "hashed"
-        mock_user_repo.update_password.return_value = False
+        mock_token_repo.update_password_and_delete_token = AsyncMock(
+            side_effect=ValueError("用户不存在")
+        )
 
-        with pytest.raises(ValueError, match="更新密码失败"):
+        with pytest.raises(ValueError, match="用户不存在"):
             await service.reset_password("abc123token", "newpass")
 
     @pytest.mark.asyncio
