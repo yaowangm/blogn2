@@ -105,11 +105,15 @@ class BERTVectorizationService:
             return
         
         if BERTVectorizationService._loading:
-            # 等待其他线程完成加载
+            # 等待其他协程完成加载，带超时避免加载线程异常时无限等待
+            wait_start = asyncio.get_event_loop().time()
             while BERTVectorizationService._loading:
                 await asyncio.sleep(0.1)
+                if asyncio.get_event_loop().time() - wait_start > 300:
+                    logger.warning("等待 BERT 模型加载超时(300s)，可能加载线程异常")
+                    return
             return
-        
+
         BERTVectorizationService._loading = True
         try:
             logger.info(f"正在加载BERT模型: {self.model_name}")
