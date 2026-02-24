@@ -195,6 +195,7 @@ print('BERT 模型下载完成')
 
 - **MODEL_MODEL_NAME**（`.env` 中可选）：Hugging Face 上的模型 ID（默认 `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`）。当未配置本地模型路径或本地路径不可用时，应用会按此名称从 Hugging Face 下载模型；若已通过挂载使用本地模型，则主要用于日志与回退名称。
 - **MODEL_MODEL_PATH**（可选）：本地/容器内模型目录（需含 `config.json`）。设置且 `MODEL_PREFER_LOCAL=true` 时优先使用本地模型。Docker 下宿主机模型目录**不通过 .env 配置**，由 `docker run -v` 或 compose 的 volume 指定。
+- **MODEL_DEVICE**（可选，默认 `auto`）：`auto` 时根据 `torch.cuda.get_arch_list()` 与当前 GPU 的 compute capability 判断，仅当当前 GPU 架构在 PyTorch 编译支持列表内才使用 CUDA，否则自动使用 CPU，避免 "no kernel image" 等错误；可显式设置 `cpu` 或 `cuda`。
 - **缓存目录**：默认 `~/.cache/huggingface/hub`，需对该目录有写权限；可在 `.env` 中设置 `MODEL_CACHE_DIR` 指定其他目录。
 - **网络**：若无法直连 Hugging Face，可配置 `HF_ENDPOINT` 使用镜像，或将他人已下载的 `MODEL_CACHE_DIR` 目录拷贝到本机。
 - **Docker 部署**：宿主机模型目录在 `docker run` 的 `-v` 参数中指定（见本文档「Docker 部署」一节），挂载到容器内后由 entrypoint 与应用自动解析到 snapshot，详见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
