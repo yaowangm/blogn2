@@ -40,8 +40,6 @@ class PasswordResetService:
         token = secrets.token_urlsafe(32)
         expires_at = datetime.utcnow() + timedelta(minutes=expire_minutes)
 
-        await self.token_repo.create(user_id=user.id, token=token, expires_at=expires_at)
-
         base_url = get_base_url().rstrip("/")
         reset_link = f"{base_url}/reset-password?token={token}"
 
@@ -50,6 +48,8 @@ class PasswordResetService:
         except Exception as e:
             logger.exception("Failed to send password reset email to %s: %s", email, e)
             raise
+        # 仅发信成功后再持久化 token，避免发信失败留下无效 token
+        await self.token_repo.create(user_id=user.id, token=token, expires_at=expires_at)
 
     async def reset_password(self, token: str, new_password: str) -> None:
         """
