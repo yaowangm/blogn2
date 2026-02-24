@@ -125,8 +125,10 @@ def get_model_device() -> str:
             import torch
             if not torch.cuda.is_available():
                 return "cpu"
-            # 当前 GPU 的 compute capability 是否在 PyTorch 编译支持的架构列表中
+            # 仅当存在 device 0 且其架构在 PyTorch 编译支持列表内时才用 cuda
             try:
+                if torch.cuda.device_count() < 1:
+                    return "cpu"
                 major, minor = torch.cuda.get_device_capability(0)
                 arch = f"sm_{major}{minor}"
                 if arch in torch.cuda.get_arch_list():
