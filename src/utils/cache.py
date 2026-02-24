@@ -186,10 +186,10 @@ class CacheManager:
             return False
     
     async def clear_pattern(self, pattern: str) -> bool:
-        """清除匹配模式的缓存"""
+        """清除匹配模式的缓存。pattern 可与键一致或省略前缀，内部会统一加前缀以匹配实际存储的键。"""
         if not self.is_available():
             return False
-        
+        pattern = _ensure_cache_prefix(pattern)
         try:
             cursor = 0
             deleted_count = 0
@@ -553,7 +553,7 @@ def invalidate_article_cache():
 
 def invalidate_article_detail_cache(article_id: int):
     """特定文章详情缓存失效装饰器（清除该文章所有评论分页的缓存）"""
-    pattern = f"{cache_settings.cache_prefix}:article:detail:{article_id}*"
+    pattern = f"article:detail:{article_id}*"
     return invalidate_cache_pattern(pattern)
 
 
@@ -580,7 +580,7 @@ async def clear_article_cache():
 async def clear_article_detail_cache(article_id: int):
     """直接清除特定文章详情缓存（含该文章所有评论分页）"""
     if cache_settings.enable_cache:
-        pattern = f"{cache_settings.cache_prefix}:article:detail:{article_id}*"
+        pattern = f"article:detail:{article_id}*"
         await cache_manager.clear_pattern(pattern)
         if cache_settings.cache_debug:
             logger.debug(f"清除文章详情缓存: {pattern}")
