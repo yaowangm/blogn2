@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Optional
 
 from src.models.password_reset_token import PasswordResetToken
+from src.models.user import User
 
 
 class PasswordResetTokenRepository:
@@ -35,6 +36,23 @@ class PasswordResetTokenRepository:
         )
         result = await self.session.exec(statement)
         return result.first()
+
+    async def update_password_and_delete_token(
+        self, user_id: int, hashed_password: str, token: str
+    ) -> None:
+        """
+        在同一事务中更新用户密码并删除 token，避免密码已改但 token 未删导致可重复使用。
+        """
+        user = await self.session.get(User, user_id)
+        if not user:
+            raise ValueError("用户不存在")
+        user.password = hashed_password
+        statement = select(PasswordResetToken).where(PasswordResetToken.token == token)
+        result = await self.session.exec(statement)
+        record = result.first()
+        if record:
+            await self.session.delete(record)
+        await self.session.commit()
 
     async def delete_by_token(self, token: str) -> bool:
         """使用后删除指定 token"""

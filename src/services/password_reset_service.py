@@ -61,11 +61,10 @@ class PasswordResetService:
             raise ValueError("链接无效或已过期，请重新申请重置密码")
 
         hashed = self.auth_service.hash_password(new_password)
-        ok = await self.user_repo.update_password(record.user_id, hashed)
-        if not ok:
-            raise ValueError("更新密码失败")
-
-        await self.token_repo.delete_by_token(token)
+        # 更新密码与删除 token 在同一事务中，避免密码已改但 token 未删导致可重复使用
+        await self.token_repo.update_password_and_delete_token(
+            user_id=record.user_id, hashed_password=hashed, token=token,
+        )
 
     async def is_token_valid(self, token: str) -> bool:
         """检查 token 是否有效且未过期"""
