@@ -151,6 +151,18 @@ def get_smtp_port() -> int:
         return 25
 
 
+def get_smtp_user() -> Optional[str]:
+    """获取 SMTP 认证用户名（可选，需要认证时与 SMTP_PASSWORD 一起配置）"""
+    v = os.getenv('SMTP_USER', '').strip()
+    return v or None
+
+
+def get_smtp_password() -> Optional[str]:
+    """获取 SMTP 认证密码（可选）"""
+    v = os.getenv('SMTP_PASSWORD', '').strip()
+    return v or None
+
+
 
 
 

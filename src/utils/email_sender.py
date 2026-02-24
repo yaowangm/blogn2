@@ -13,7 +13,14 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr
 
-from src.config.app import get_mail_from, get_smtp_host, get_smtp_port, get_reset_link_expire_minutes
+from src.config.app import (
+    get_mail_from,
+    get_smtp_host,
+    get_smtp_port,
+    get_smtp_user,
+    get_smtp_password,
+    get_reset_link_expire_minutes,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -62,10 +69,24 @@ def send_password_reset_email(to_email: str, reset_link: str, username: str) -> 
 def _send_via_smtp(
     msg: MIMEMultipart, mail_from: str, to_email: str, smtp_host: str
 ) -> None:
-    """通过 SMTP 连接宿主机 sendmail（如 Docker 内 SMTP_HOST=localhost）。"""
+    """通过 SMTP 连接宿主机 sendmail（如 Docker 内 SMTP_HOST=localhost）。支持可选 SMTP 认证。"""
     port = get_smtp_port()
+    smtp_user = get_smtp_user()
+    smtp_password = get_smtp_password()
+    # 连接超时与读写超时分离：连接 10s，发信 30s，避免慢邮件服务器导致误判
+    connect_timeout = 10
+    send_timeout = 30
     try:
-        with smtplib.SMTP(smtp_host, port, timeout=10) as smtp:
+        with smtplib.SMTP(smtp_host, port, timeout=connect_timeout) as smtp:
+            if smtp_user and smtp_password:
+                try:
+                    smtp.starttls()
+                except (smtplib.SMTPNotSupportedError, smtplib.SMTPResponseException, OSError):
+                    pass  # 部分服务器 25 端口不支持 STARTTLS，仍可尝试 AUTH
+                smtp.login(smtp_user, smtp_password)
+            sock = getattr(smtp, "sock", None)
+            if sock:
+                sock.settimeout(send_timeout)  # 发信阶段使用更长超时
             smtp.sendmail(mail_from, [to_email], msg.as_string())
         logger.info("Password reset email sent to %s via SMTP %s:%s", to_email, smtp_host, port)
     except Exception as e:
