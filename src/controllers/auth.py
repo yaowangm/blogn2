@@ -20,7 +20,7 @@ from src.services.auth_service import AuthService
 from src.services.user_service import UserService
 from src.services.password_reset_service import PasswordResetService
 from src.repositories.password_reset_token_repository import PasswordResetTokenRepository
-from src.utils.dependencies import get_user_service
+from src.utils.dependencies import get_user_service, get_password_reset_token_repository
 from src.utils.error_handlers import handle_api_errors
 from src.database import get_async_session
 
@@ -42,10 +42,9 @@ def get_auth_service(user_service: UserService = Depends(get_user_service)) -> A
 def get_password_reset_service(
     user_service: UserService = Depends(get_user_service),
     auth_service: AuthService = Depends(get_auth_service),
-    session: AsyncSession = Depends(get_async_session),
+    token_repo: PasswordResetTokenRepository = Depends(get_password_reset_token_repository),
 ) -> PasswordResetService:
-    """获取密码重置服务实例"""
-    token_repo = PasswordResetTokenRepository(session)
+    """获取密码重置服务实例（复用同请求的 token 仓库）"""
     return PasswordResetService(user_service.user_repo, token_repo, auth_service)
 
 @router.post("/login", response_model=LoginResponse)
