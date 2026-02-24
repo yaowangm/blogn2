@@ -64,6 +64,20 @@ class BERTVectorizationService:
             cls._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bert_vectorization")
         return cls._executor
 
+    @classmethod
+    def shutdown_executor(cls) -> None:
+        """
+        关闭线程池并释放资源。应在应用退出时调用（如 FastAPI lifespan 关闭阶段）。
+        可重复调用，已关闭时无操作。
+        """
+        if cls._executor is not None:
+            try:
+                cls._executor.shutdown(wait=False)
+            except Exception as e:
+                logger.warning(f"关闭 BERT 向量化线程池时出错: {e}")
+            finally:
+                cls._executor = None
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(BERTVectorizationService, cls).__new__(cls)

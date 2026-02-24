@@ -111,6 +111,8 @@ async def lifespan(app: FastAPI):
     from src.services.shared_model_cache import get_shared_model_cache
     shared_cache = get_shared_model_cache()
     shared_cache.cleanup()
+    from src.services.vectorization_service import BERTVectorizationService
+    BERTVectorizationService.shutdown_executor()
 
 
 # 创建FastAPI应用实例

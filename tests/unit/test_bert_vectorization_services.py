@@ -160,6 +160,59 @@ class TestBERTVectorizationService:
         assert info["max_length"] == 512
         assert info["vector_dimension"] == 384
 
+    def test_shutdown_executor_releases_executor(self):
+        """关闭后 _executor 被清空，且原线程池已 shutdown，无法再提交任务"""
+        # 触发创建线程池
+        old_executor = BERTVectorizationService._get_executor()
+        assert BERTVectorizationService._executor is old_executor
+
+        BERTVectorizationService.shutdown_executor()
+
+        assert BERTVectorizationService._executor is None
+        # 已关闭的 executor 不能再提交新任务
+        with pytest.raises(RuntimeError, match="cannot schedule new futures after shutdown"):
+            old_executor.submit(lambda: None)
+
+    def test_shutdown_executor_idempotent(self):
+        """多次调用 shutdown_executor 不报错，且 _executor 保持为 None"""
+        BERTVectorizationService._get_executor()
+        BERTVectorizationService.shutdown_executor()
+        assert BERTVectorizationService._executor is None
+
+        BERTVectorizationService.shutdown_executor()
+        BERTVectorizationService.shutdown_executor()
+        assert BERTVectorizationService._executor is None
+
+    def test_get_executor_after_shutdown_creates_new(self):
+        """关闭后再次 _get_executor() 会创建新的线程池，保证服务可继续使用"""
+        first = BERTVectorizationService._get_executor()
+        BERTVectorizationService.shutdown_executor()
+        assert BERTVectorizationService._executor is None
+
+        second = BERTVectorizationService._get_executor()
+        assert first is not second
+        assert BERTVectorizationService._executor is second
+        # 新 executor 可正常提交任务
+        f = second.submit(lambda: 42)
+        assert f.result() == 42
+        BERTVectorizationService.shutdown_executor()
+
+    def test_shutdown_executor_when_none_is_no_op(self):
+        """未创建过 executor 时调用 shutdown 不报错"""
+        BERTVectorizationService.shutdown_executor()
+        assert BERTVectorizationService._executor is None
+        BERTVectorizationService.shutdown_executor()
+        assert BERTVectorizationService._executor is None
+
+    def test_shutdown_executor_clears_even_if_shutdown_raises(self):
+        """shutdown 过程异常时仍会清空 _executor，避免泄漏"""
+        executor = BERTVectorizationService._get_executor()
+        with patch.object(executor, "shutdown", side_effect=RuntimeError("模拟异常")):
+            BERTVectorizationService.shutdown_executor()
+        assert BERTVectorizationService._executor is None
+        # 测试中未真正关闭，此处补关避免线程泄漏
+        executor.shutdown(wait=False)
+
 
 class TestVectorizationUpdateService:
     """向量化更新服务单元测试"""
