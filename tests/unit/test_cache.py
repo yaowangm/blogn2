@@ -6,11 +6,12 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, patch, MagicMock
 from src.utils.cache import (
-    cache_manager, 
-    cache_decorator, 
-    cache_blog_list, 
+    cache_manager,
+    _ensure_cache_prefix,
+    cache_decorator,
+    cache_blog_list,
     cache_user_profile,
-    CacheStats
+    CacheStats,
 )
 from src.config.cache import cache_settings, CacheKeyGenerator
 
@@ -93,6 +94,34 @@ class TestCacheManager:
         # 测试元数据缓存键
         metadata_key = CacheKeyGenerator.metadata()
         assert metadata_key == "metadata:site"
+
+    def test_ensure_cache_prefix_adds_prefix_when_missing(self):
+        """_ensure_cache_prefix：无前缀的 key 会加上 cache_prefix"""
+        prefix = cache_settings.cache_prefix
+        assert _ensure_cache_prefix("article:detail:1*") == f"{prefix}:article:detail:1*"
+        assert _ensure_cache_prefix("user:profile:1") == f"{prefix}:user:profile:1"
+
+    def test_ensure_cache_prefix_keeps_when_already_has_prefix(self):
+        """_ensure_cache_prefix：已有前缀的 key 不再重复添加"""
+        prefix = cache_settings.cache_prefix
+        key = f"{prefix}:article:detail:1*"
+        assert _ensure_cache_prefix(key) == key
+
+    @pytest.mark.asyncio
+    async def test_clear_pattern_applies_prefix_before_scan(self):
+        """clear_pattern 会先对 pattern 加前缀再 scan，与存储的 key 一致"""
+        await cache_manager.initialize()
+        if not cache_manager.is_available() or cache_manager._backend is None:
+            pytest.skip("缓存不可用或未初始化")
+        prefix = cache_settings.cache_prefix
+        with patch.object(
+            cache_manager._backend.redis, "scan", new_callable=AsyncMock
+        ) as mock_scan:
+            mock_scan.return_value = (0, [])
+            await cache_manager.clear_pattern("article:detail:123*")
+            mock_scan.assert_called_once()
+            call_kw = mock_scan.call_args[1]
+            assert call_kw["match"] == f"{prefix}:article:detail:123*"
 
 
 class TestCacheDecorator:

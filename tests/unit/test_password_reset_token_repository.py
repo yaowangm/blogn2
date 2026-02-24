@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 
 from src.repositories.password_reset_token_repository import PasswordResetTokenRepository
 from src.models.password_reset_token import PasswordResetToken
+from src.models.user import User
 
 
 class TestPasswordResetTokenRepository:
@@ -149,3 +150,63 @@ class TestPasswordResetTokenRepository:
         assert count == 0
         mock_session.delete.assert_not_called()
         mock_session.commit.assert_not_called()
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_update_password_and_delete_token_success(self, repo, mock_session, sample_record):
+        """update_password_and_delete_token：更新用户密码并删除 token，一次 commit"""
+        mock_user = MagicMock()
+        mock_user.password = "old"
+        mock_session.get = AsyncMock(return_value=mock_user)
+        mock_result = MagicMock()
+        mock_result.first.return_value = sample_record
+        mock_session.exec.return_value = mock_result
+        mock_session.delete = AsyncMock()
+        mock_session.commit = AsyncMock()
+
+        await repo.update_password_and_delete_token(
+            user_id=1, hashed_password="new_hashed", token="test_token_abc"
+        )
+
+        mock_session.get.assert_called_once_with(User, 1)
+        assert mock_user.password == "new_hashed"
+        mock_session.delete.assert_called_once_with(sample_record)
+        mock_session.commit.assert_called_once()
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_update_password_and_delete_token_user_not_found_raises(self, repo, mock_session):
+        """update_password_and_delete_token：用户不存在时抛出 ValueError"""
+        mock_session.get = AsyncMock(return_value=None)
+
+        with pytest.raises(ValueError, match="用户不存在"):
+            await repo.update_password_and_delete_token(
+                user_id=999, hashed_password="hashed", token="t"
+            )
+        mock_session.commit.assert_not_called()
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_create_retries_on_non_unique_error(self, repo, mock_session, sample_record):
+        """create：遇非唯一约束错误（如连接中断）时重试一次后成功"""
+        mock_session.refresh = AsyncMock()
+        mock_session.rollback = AsyncMock()
+        call_count = 0
+
+        async def commit_side_effect():
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise RuntimeError("connection lost")
+            return None
+
+        mock_session.commit = AsyncMock(side_effect=commit_side_effect)
+
+        result = await repo.create(
+            user_id=1, token="t", expires_at=sample_record.expires_at
+        )
+
+        assert mock_session.commit.call_count == 2
+        mock_session.rollback.assert_called_once()
+        mock_session.refresh.assert_called_once()
+        assert result.token == "t"

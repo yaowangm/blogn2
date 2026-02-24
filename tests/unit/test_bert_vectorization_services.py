@@ -56,7 +56,23 @@ class TestBERTVectorizationService:
             
             assert vectorization_service.is_model_loaded() == True
             mock_load.assert_called_once()
-    
+
+    @pytest.mark.asyncio
+    async def test_model_loading_wait_timeout_returns_without_hanging(self, vectorization_service):
+        """等待加载时 300s 超时后直接返回，不无限等待（避免加载线程异常时卡死）"""
+        BERTVectorizationService._model_loaded = False
+        BERTVectorizationService._loading = True
+        BERTVectorizationService._model = None
+        time_values = [0.0, 301.0]
+        mock_loop = MagicMock()
+        mock_loop.time.side_effect = lambda: time_values.pop(0) if time_values else 302.0
+        try:
+            with patch("asyncio.get_event_loop", return_value=mock_loop):
+                await vectorization_service.load_model()
+            assert vectorization_service.is_model_loaded() is False
+        finally:
+            BERTVectorizationService._loading = False
+
     @pytest.mark.asyncio
     async def test_text_vectorization(self, vectorization_service):
         """测试文本向量化"""
