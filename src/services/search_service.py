@@ -72,6 +72,11 @@ class HierarchicalSearchService:
             return default
 
     @staticmethod
+    def _escape_like_pattern(s: str) -> str:
+        """Escape \\, % and _ for safe literal use inside a LIKE/ILIKE pattern (PostgreSQL)."""
+        return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+    @staticmethod
     def _is_invalid_query_vector(vector: np.ndarray) -> bool:
         """查询向量无效（全零或含 nan）时无法做向量检索，应走关键词回退。"""
         if vector is None or len(vector) == 0:
@@ -497,13 +502,12 @@ class HierarchicalSearchService:
         if not query or not query.strip():
             return {"items": [], "total": 0, "has_more": False, "dynamic_threshold": 0.45}
         offset = (page - 1) * limit
-        kw = query.strip().replace("'", "''")
-        pattern = f"%{kw}%"
+        pattern = f"%{self._escape_like_pattern(query.strip())}%"
         sql = text("""
             SELECT pi.id, pi.name as title, pi.comment as content, u.name as author, pi.createtime, 1.0 as relevance_score
             FROM projectitem pi
             LEFT JOIN users u ON pi.userid = u.id
-            WHERE pi.status = 1 AND (pi.name ILIKE :pat OR pi.comment ILIKE :pat)
+            WHERE pi.status = 1 AND (pi.name ILIKE :pat ESCAPE '\\' OR pi.comment ILIKE :pat ESCAPE '\\')
             ORDER BY pi.createtime DESC
             LIMIT :lim OFFSET :off
         """)
@@ -511,7 +515,7 @@ class HierarchicalSearchService:
         items = result.fetchall()
         count_sql = text("""
             SELECT COUNT(*) FROM projectitem pi
-            WHERE pi.status = 1 AND (pi.name ILIKE :pat OR pi.comment ILIKE :pat)
+            WHERE pi.status = 1 AND (pi.name ILIKE :pat ESCAPE '\\' OR pi.comment ILIKE :pat ESCAPE '\\')
         """)
         count_result = await self.session.execute(count_sql, {"pat": pattern})
         total = count_result.fetchone()[0]
@@ -527,13 +531,12 @@ class HierarchicalSearchService:
         if not query or not query.strip():
             return {"items": [], "total": 0, "has_more": False}
         offset = (page - 1) * limit
-        kw = query.strip().replace("'", "''")
-        pattern = f"%{kw}%"
+        pattern = f"%{self._escape_like_pattern(query.strip())}%"
         sql = text("""
             SELECT p.id, p.subject as title, p.content, u.name as author, p.posttime, 1.0 as relevance_score
             FROM post p
             LEFT JOIN users u ON p.userid = u.id
-            WHERE p.status = 1 AND (p.subject ILIKE :pat OR p.content ILIKE :pat)
+            WHERE p.status = 1 AND (p.subject ILIKE :pat ESCAPE '\\' OR p.content ILIKE :pat ESCAPE '\\')
             ORDER BY p.posttime DESC
             LIMIT :lim OFFSET :off
         """)
@@ -541,7 +544,7 @@ class HierarchicalSearchService:
         items = result.fetchall()
         count_sql = text("""
             SELECT COUNT(*) FROM post p
-            WHERE p.status = 1 AND (p.subject ILIKE :pat OR p.content ILIKE :pat)
+            WHERE p.status = 1 AND (p.subject ILIKE :pat ESCAPE '\\' OR p.content ILIKE :pat ESCAPE '\\')
         """)
         count_result = await self.session.execute(count_sql, {"pat": pattern})
         total = count_result.fetchone()[0]
