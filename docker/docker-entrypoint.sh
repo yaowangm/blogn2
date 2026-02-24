@@ -73,13 +73,20 @@ if [ -z "$MODEL_MODEL_PATH" ] || [ ! -f "$MODEL_MODEL_PATH/config.json" ]; then
             break
         fi
     done
-    [ -z "$MODEL_MODEL_PATH" ] && export MODEL_MODEL_PATH=/app/.cache/models/bert-model
+    # 仅在解析成功时导出；解析失败时不设置默认路径，避免应用使用无效路径延迟报错
+    if [ -z "$MODEL_MODEL_PATH" ]; then
+        if [ -d /app/.cache/models/bert-model ] && [ -f /app/.cache/models/bert-model/config.json ]; then
+            export MODEL_MODEL_PATH=/app/.cache/models/bert-model
+        fi
+    fi
 fi
-echo "MODEL_MODEL_PATH=$MODEL_MODEL_PATH"
-if [ -f "$MODEL_MODEL_PATH/config.json" ]; then
+echo "MODEL_MODEL_PATH=${MODEL_MODEL_PATH:-<未设置>}"
+if [ -n "$MODEL_MODEL_PATH" ] && [ -f "$MODEL_MODEL_PATH/config.json" ]; then
     echo "模型目录有效（含 config.json）"
-elif [ -d "$MODEL_MODEL_PATH" ]; then
+elif [ -n "$MODEL_MODEL_PATH" ] && [ -d "$MODEL_MODEL_PATH" ]; then
     echo "⚠️  模型目录无 config.json，请挂载 HF hub 到 /app/.cache/models/bert-model-hub 或挂载 snapshot 到 $MODEL_MODEL_PATH"
+elif [ -z "$MODEL_MODEL_PATH" ]; then
+    echo "⚠️  未解析到有效模型路径，请挂载 BERT 模型目录或设置 MODEL_MODEL_PATH"
 else
     echo "⚠️  模型目录不存在，请检查 docker-compose volumes 挂载"
 fi
