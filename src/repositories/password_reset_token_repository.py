@@ -16,16 +16,23 @@ class PasswordResetTokenRepository:
         self.session = session
 
     async def create(self, user_id: int, token: str, expires_at: datetime) -> PasswordResetToken:
-        """插入一条密码重置令牌记录"""
-        record = PasswordResetToken(
-            user_id=user_id,
-            token=token,
-            expires_at=expires_at,
-        )
-        self.session.add(record)
-        await self.session.commit()
-        await self.session.refresh(record)
-        return record
+        """插入一条密码重置令牌记录。唯一约束冲突极罕见；遇其他可重试错误时重试一次。"""
+        for attempt in range(2):
+            record = PasswordResetToken(
+                user_id=user_id,
+                token=token,
+                expires_at=expires_at,
+            )
+            self.session.add(record)
+            try:
+                await self.session.commit()
+                await self.session.refresh(record)
+                return record
+            except Exception as e:
+                await self.session.rollback()
+                if attempt == 0 and "unique" not in str(e).lower() and "duplicate" not in str(e).lower():
+                    continue
+                raise
 
     async def get_valid_token(self, token: str) -> Optional[PasswordResetToken]:
         """根据 token 查询且未过期的记录"""
