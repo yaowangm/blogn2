@@ -3,6 +3,7 @@ set -e
 
 # Docker 启动脚本
 # 用于在容器启动时执行必要的检查和初始化
+# 密码重置邮件通过 SMTP 连接宿主机 sendmail（配置 SMTP_HOST=localhost 且使用 host 网络）
 
 echo "🚀 BlogN2 容器启动中..."
 
@@ -24,7 +25,7 @@ if config_file and Path(config_file).exists():
         # 检查是否匹配前缀或完全匹配特定变量
         if any(key.startswith(prefix) for prefix in [
             "DATABASE_", "CACHE_", "MODEL_", "APP_", "SECRET_", 
-            "DEBUG", "BASE_URL", "UPLOAD_", "AVATAR_"
+            "DEBUG", "BASE_URL", "UPLOAD_", "AVATAR_", "SMTP_", "MAIL_", "RESET_LINK"
         ]) or key in ["LOG_LEVEL"]:
             # 转义单引号
             value_escaped = value.replace("'", "'\"'\"'")
@@ -42,6 +43,52 @@ else
     else
         echo "⚠️  警告: BLOGN_CONFIG_FILE 未设置，使用环境变量或默认配置"
     fi
+fi
+
+# --- BERT 模型路径：若当前路径无 config.json，从挂载目录解析（支持直接含 config.json 或 hub 含 snapshots/）---
+if [ -z "$MODEL_PREFER_LOCAL" ]; then
+    export MODEL_PREFER_LOCAL=true
+fi
+# 返回可用的模型目录：若 hub_dir 自身含 config.json 则返回自身，否则取 snapshots/ 下第一个含 config.json 的目录
+_resolve_model_dir() {
+    local hub_dir="$1"
+    [ -d "$hub_dir" ] || return 1
+    if [ -f "$hub_dir/config.json" ]; then
+        echo "$hub_dir"
+        return 0
+    fi
+    [ -d "$hub_dir/snapshots" ] || return 1
+    local snap
+    snap=$(ls -1d "$hub_dir/snapshots/"*/ 2>/dev/null | head -1)
+    [ -n "$snap" ] && [ -f "${snap}config.json" ] && echo "${snap%/}" && return 0
+    return 1
+}
+if [ -z "$MODEL_MODEL_PATH" ] || [ ! -f "$MODEL_MODEL_PATH/config.json" ]; then
+    RESOLVED=""
+    for HUB_DIR in "/app/.cache/models/bert-model-hub" "/app/.cache/huggingface/hub/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2"; do
+        RESOLVED=$(_resolve_model_dir "$HUB_DIR") || true
+        if [ -n "$RESOLVED" ]; then
+            export MODEL_MODEL_PATH="$RESOLVED"
+            echo "从挂载目录解析到模型路径: $MODEL_MODEL_PATH"
+            break
+        fi
+    done
+    # 仅在解析成功时导出；解析失败时不设置默认路径，避免应用使用无效路径延迟报错
+    if [ -z "$MODEL_MODEL_PATH" ]; then
+        if [ -d /app/.cache/models/bert-model ] && [ -f /app/.cache/models/bert-model/config.json ]; then
+            export MODEL_MODEL_PATH=/app/.cache/models/bert-model
+        fi
+    fi
+fi
+echo "MODEL_MODEL_PATH=${MODEL_MODEL_PATH:-<未设置>}"
+if [ -n "$MODEL_MODEL_PATH" ] && [ -f "$MODEL_MODEL_PATH/config.json" ]; then
+    echo "模型目录有效（含 config.json）"
+elif [ -n "$MODEL_MODEL_PATH" ] && [ -d "$MODEL_MODEL_PATH" ]; then
+    echo "⚠️  模型目录无 config.json，请挂载 HF hub 到 /app/.cache/models/bert-model-hub 或挂载 snapshot 到 $MODEL_MODEL_PATH"
+elif [ -z "$MODEL_MODEL_PATH" ]; then
+    echo "⚠️  未解析到有效模型路径，请挂载 BERT 模型目录或设置 MODEL_MODEL_PATH"
+else
+    echo "⚠️  模型目录不存在，请检查 docker-compose volumes 挂载"
 fi
 
 # 检查必要的环境变量
@@ -199,6 +246,10 @@ echo "  - 模型缓存目录: ${MODEL_CACHE_DIR:-/app/.cache/models}"
 echo "  - 上传目录: ${UPLOAD_DIR:-/app/uploads}"
 echo "  - 头像目录: ${AVATAR_DIR:-/app/avatars}"
 
+# 容器内若使用宿主机路径（如 /home/...），该路径在容器中不存在，会导致 /upload/、/avatar/ 返回 404
+case "${UPLOAD_DIR:-/app/uploads}" in /home/*|/Users/*) echo "⚠️  上传目录为宿主机路径，容器内无法访问，图片会 404。请改为 UPLOAD_DIR=/app/uploads 并用 -v 挂载宿主机目录";; esac
+case "${AVATAR_DIR:-/app/avatars}" in /home/*|/Users/*) echo "⚠️  头像目录为宿主机路径，容器内无法访问。请改为 AVATAR_DIR=/app/avatars 并用 -v 挂载宿主机目录";; esac
+
 # 执行传入的命令
 echo "🚀 启动应用..."
 
@@ -218,17 +269,13 @@ if [ "$1" = "uvicorn" ]; then
         fi
     done
     
-    # 如果没有指定 --log-level，则添加
+    # 以 appuser 身份运行 uvicorn，避免容器内进程以 root 运行
     if [ "$HAS_LOG_LEVEL" = false ]; then
-        # 执行 uvicorn 命令，添加日志级别参数
-        # 注意：应用启动成功消息会在应用代码中通过 logger.warning() 输出
-        exec uvicorn "${@:2}" --log-level "$LOG_LEVEL"
+        exec gosu appuser env MODEL_MODEL_PATH="$MODEL_MODEL_PATH" MODEL_PREFER_LOCAL="${MODEL_PREFER_LOCAL:-true}" uvicorn "${@:2}" --log-level "$LOG_LEVEL"
     else
-        # 如果已经指定了 --log-level，直接执行，不添加
-        exec uvicorn "${@:2}"
+        exec gosu appuser env MODEL_MODEL_PATH="$MODEL_MODEL_PATH" MODEL_PREFER_LOCAL="${MODEL_PREFER_LOCAL:-true}" uvicorn "${@:2}"
     fi
 else
-    # 其他命令直接执行
     exec "$@"
 fi
 

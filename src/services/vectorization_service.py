@@ -23,6 +23,7 @@ import logging
 import os
 import re
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Any
 
 import numpy as np
@@ -54,7 +55,29 @@ class BERTVectorizationService:
     _model_loaded = False
     _loading = False
     _model = None
-    
+    # 单线程 executor：模型加载与 encode 在同一线程执行，避免 CUDA 跨线程报错
+    _executor: ThreadPoolExecutor = None
+
+    @classmethod
+    def _get_executor(cls) -> ThreadPoolExecutor:
+        if cls._executor is None:
+            cls._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bert_vectorization")
+        return cls._executor
+
+    @classmethod
+    def shutdown_executor(cls) -> None:
+        """
+        关闭线程池并释放资源。应在应用退出时调用（如 FastAPI lifespan 关闭阶段）。
+        可重复调用，已关闭时无操作。
+        """
+        if cls._executor is not None:
+            try:
+                cls._executor.shutdown(wait=False)
+            except Exception as e:
+                logger.warning(f"关闭 BERT 向量化线程池时出错: {e}")
+            finally:
+                cls._executor = None
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(BERTVectorizationService, cls).__new__(cls)
@@ -82,18 +105,23 @@ class BERTVectorizationService:
             return
         
         if BERTVectorizationService._loading:
-            # 等待其他线程完成加载
+            # 等待其他协程完成加载，带超时避免加载线程异常时无限等待
+            loop = asyncio.get_running_loop()
+            wait_start = loop.time()
             while BERTVectorizationService._loading:
                 await asyncio.sleep(0.1)
+                if loop.time() - wait_start > 300:
+                    logger.warning("等待 BERT 模型加载超时(300s)，可能加载线程异常")
+                    return
             return
-        
+
         BERTVectorizationService._loading = True
         try:
             logger.info(f"正在加载BERT模型: {self.model_name}")
             
-            # 在后台线程中加载模型
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, self._load_model_sync)
+            # 在专用单线程中加载模型（与 encode 同线程，避免 CUDA 跨线程错误）
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(self._get_executor(), self._load_model_sync)
             
             BERTVectorizationService._model_loaded = True
             logger.info(f"BERT模型加载成功: {self.model_name}")
@@ -114,7 +142,7 @@ class BERTVectorizationService:
         BERTVectorizationService._model = model
         BERTVectorizationService._model_loaded = True
         logger.info(f"已设置共享模型 (进程: {os.getpid()})")
-    
+
     def _load_model_sync(self):
         """
         同步加载sentence-transformers模型（在后台线程中执行）
@@ -128,7 +156,7 @@ class BERTVectorizationService:
             # 如果配置了本地模型路径且优先使用本地模型
             if model_path and model_settings.prefer_local:
                 try:
-                    BERTVectorizationService._model = SentenceTransformer(model_path)
+                    BERTVectorizationService._model = SentenceTransformer(model_path, device=self.device)
                     logger.info(f"已加载模型: {self.model_name} (设备: {self.device}) - 使用本地缓存: {model_path}")
                     BERTVectorizationService._model_loaded = True
                     return
@@ -141,10 +169,10 @@ class BERTVectorizationService:
             # 从Hugging Face下载或使用模型名称
             cache_dir = get_model_cache_dir()
             if cache_dir:
-                BERTVectorizationService._model = SentenceTransformer(self.model_name, cache_folder=cache_dir)
+                BERTVectorizationService._model = SentenceTransformer(self.model_name, cache_folder=cache_dir, device=self.device)
                 logger.info(f"已加载模型: {self.model_name} (设备: {self.device}) - 从Hugging Face下载到: {cache_dir}")
             else:
-                BERTVectorizationService._model = SentenceTransformer(self.model_name)
+                BERTVectorizationService._model = SentenceTransformer(self.model_name, device=self.device)
                 logger.info(f"已加载模型: {self.model_name} (设备: {self.device}) - 从Hugging Face下载")
             
             BERTVectorizationService._model_loaded = True
@@ -175,9 +203,9 @@ class BERTVectorizationService:
             # 预处理文本
             processed_text = self._preprocess_text(text)
             
-            # 在后台线程中进行向量化
-            loop = asyncio.get_event_loop()
-            vector = await loop.run_in_executor(None, self._vectorize_sync, processed_text)
+            # 在专用单线程中进行向量化（与 load 同线程，避免 CUDA 跨线程错误）
+            loop = asyncio.get_running_loop()
+            vector = await loop.run_in_executor(self._get_executor(), self._vectorize_sync, processed_text)
             
             return vector
             
@@ -226,9 +254,9 @@ class BERTVectorizationService:
             # 预处理所有文本
             processed_texts = [self._preprocess_text(text) for text in texts]
             
-            # 在后台线程中进行批量向量化
-            loop = asyncio.get_event_loop()
-            vectors = await loop.run_in_executor(None, self._vectorize_batch_sync, processed_texts)
+            # 在专用单线程中进行批量向量化（与 load 同线程，避免 CUDA 跨线程错误）
+            loop = asyncio.get_running_loop()
+            vectors = await loop.run_in_executor(self._get_executor(), self._vectorize_batch_sync, processed_texts)
             
             return vectors
             

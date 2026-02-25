@@ -62,6 +62,12 @@ MODEL_CACHE_DIR=/app/.cache/models
 APP_ENV=production
 BASE_URL=https://yourdomain.com
 SECRET_KEY=your-super-secret-jwt-key-change-in-production
+
+# 密码重置邮件：使用宿主机 sendmail（宿主机需安装并运行 sendmail）
+# 使用 host 网络时填 localhost，容器即可连到宿主机 25 端口
+MAIL_FROM=noreply@yourdomain.com
+SMTP_HOST=localhost
+SMTP_PORT=25
 ```
 
 ### 3. 创建必要的目录
@@ -74,13 +80,14 @@ chmod -R 755 uploads avatars
 
 ### 4. 构建和启动容器
 
+> **构建约定**：请勿使用 `docker build --no-cache`。使用默认缓存可只重建变更层，避免重新下载所有依赖；仅在怀疑缓存损坏时再考虑 `--no-cache`。
+
 ```bash
-# 在项目根目录构建镜像
+# 在项目根目录构建镜像（使用缓存，仅重建变更层）
 docker build -f docker/Dockerfile -t blogn2-app .
 
 # 启动容器（在项目根目录执行）
-# 注意：需要将实际的图片目录挂载到容器中
-# 如果图片在 ../pic/blogn_img/upload，则挂载该目录
+# 以下参数均在 docker run 中配置，不要写入 .env
 docker run -d \
   --name blogn2-app \
   --restart unless-stopped \
@@ -91,15 +98,30 @@ docker run -d \
   -v /home/wy/pic/blogn_img/userlogo:/app/avatars \
   -v /home/wy/.cache/huggingface:/app/.cache/huggingface:ro \
   -v /home/wy/.cache/modelscope:/app/.cache/modelscope:ro \
+  -v /home/wy/snap/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2:/app/.cache/models/bert-model-hub:ro \
   blogn2-app
 
 # 查看日志
 docker logs -f blogn2-app
 ```
 
-> **说明**：
-> - Dockerfile 使用 CPU-only PyTorch，镜像更小，构建更快。构建时 PyTorch 安装层独立缓存，提高后续构建速度。
-> - 模型缓存目录路径 `/home/wy/.cache/huggingface` 和 `/home/wy/.cache/modelscope` 需要根据实际情况修改。
+**docker run 参数说明**（均不在 .env 中配置）：
+
+| 参数 | 说明 |
+|------|------|
+| `--name blogn2-app` | 容器名称 |
+| `--restart unless-stopped` | 退出时自动重启 |
+| `--network host` | 使用宿主机网络，访问本机 PostgreSQL、Redis、sendmail |
+| `-e BLOGN_CONFIG_FILE=/app/config.env` | 应用从该路径读取配置 |
+| `-v 宿主机/.env:/app/config.env:ro` | 挂载 .env 为容器内配置文件，只读 |
+| `-v 宿主机上传目录:/app/uploads` | 上传文件持久化 |
+| `-v 宿主机头像目录:/app/avatars` | 用户头像持久化 |
+| `-v 宿主机HF缓存:/app/.cache/huggingface:ro` | Hugging Face 缓存（可选） |
+| `-v 宿主机ModelScope缓存:/app/.cache/modelscope:ro` | ModelScope 缓存（可选） |
+| `-v 宿主机BERT模型目录:/app/.cache/models/bert-model-hub:ro` | BERT 模型 hub（含 snapshots/），不挂载则无法使用智能搜索 |
+| `blogn2-app` | 镜像名 |
+
+> **说明**：Dockerfile 使用 CPU-only PyTorch；宿主机路径请按本机实际修改。
 
 ### 5. 验证部署
 
@@ -185,13 +207,17 @@ docker logs blogn2-app
 
 4. **挂载模型缓存到容器**
    
-   找到模型缓存路径后，在启动容器时挂载：
+   使用 **docker-compose** 时，已配置 `MODEL_CACHE_DIR=/app/.cache/huggingface` 与 `HF_HOME=/app/.cache/huggingface`，只要在 `volumes` 中挂载宿主机 `~/.cache/huggingface` 到 `/app/.cache/huggingface`，容器会直接使用该目录中的 BERT 模型，避免出现 “No sentence-transformers model found ... Creating a new one with MEAN pooling”。
+   
+   若使用 **docker run**，找到模型缓存路径后，在启动容器时挂载：
    ```bash
    docker run -d \
      --name blogn2-app \
      --restart unless-stopped \
      --network host \
      -e BLOGN_CONFIG_FILE=/app/config.env \
+     -e MODEL_CACHE_DIR=/app/.cache/huggingface \
+     -e HF_HOME=/app/.cache/huggingface \
      -v $(pwd)/.env:/app/config.env:ro \
      -v /home/wy/pic/blogn_img/upload:/app/uploads \
      -v /home/wy/pic/blogn_img/userlogo:/app/avatars \
@@ -273,6 +299,29 @@ model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniL
 print('模型加载成功！')
 "
 ```
+
+**若仍报错 “couldn't find it in the cached files” / “couldn't connect to huggingface.co”**
+
+说明容器内未在挂载的缓存里找到模型（或无法联网）。当前 compose 已配置为**挂载 HF hub 模型目录**，entrypoint 会自动解析到 `snapshots/<revision>`（无需关心具体 revision 哈希）：
+
+1. **确认宿主机上存在 hub 目录**（含 `snapshots/` 子目录）：
+   ```bash
+   ls ~/.cache/huggingface/hub/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2/snapshots/
+   ```
+
+2. **宿主机路径**：若 BERT 在默认目录（`~/.cache/huggingface/hub/...`），无需改；若在**其它目录**，需让 compose 读到变量 `BERT_MODEL_HUB_HOST_PATH`。compose 做变量替换时只读** compose 文件所在目录**的 `.env`，因此：
+   - 若在 `docker/` 下执行 `docker-compose up`，在 **docker/.env** 中增加：
+     ```env
+     BERT_MODEL_HUB_HOST_PATH=/你的宿主机路径/到含 snapshots 的 hub 目录
+     ```
+   - 若在项目根目录执行 `docker-compose -f docker/docker-compose.yml up`，则可在根目录 `.env` 中设置上述变量。
+   目录下需有 `snapshots/<revision>/config.json` 或根目录直接含 `config.json`。
+
+3. **重新创建并启动容器**：
+   ```bash
+   cd docker && docker-compose up -d --force-recreate
+   ```
+   启动日志中应出现「从 hub 解析到 snapshot: ...」和「模型目录有效（含 config.json）」。
 
 **注意事项**
 
@@ -562,6 +611,14 @@ else:
    print('Redis连接:', r.ping())
    "
    ```
+
+### 图片 /upload/ 或 /avatar/ 返回 404（目录正确、文件在宿主机存在）
+
+- 在 **Docker 容器内**，应用只能访问容器内的路径。若配置里写的是**宿主机路径**（如 `UPLOAD_DIR=/home/wy/pic/blogn_img/upload`），该路径在容器中不存在，`/upload/xxx` 会返回 404。
+- **正确做法**：在容器用的配置文件（如 `blogn_docker.cnf`）中设置为**容器内路径**，并通过 `-v` 把宿主机目录挂载到该路径：
+  - `UPLOAD_DIR=/app/uploads`，启动时加：`-v /home/wy/pic/blogn_img/upload:/app/uploads`
+  - `AVATAR_DIR=/app/avatars`，启动时加：`-v /home/wy/pic/blogn_img/userlogo:/app/avatars`
+- 修改后重启容器：`docker restart blogn2-app`。启动日志中若出现“上传目录为宿主机路径…”的提示，说明仍需按上述方式改为容器路径并挂载。
 
 ### 模型下载失败
 

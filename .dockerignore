@@ -13,13 +13,17 @@ env/
 ENV/
 .venv
 
-# Testing
+# Testing（不参与运行，排除以减小镜像）
+tests/
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
 coverage.xml
 *.cover
+
+# Scripts（仅本地/一次性使用，运行时不依赖）
+scripts/
 
 # IDE
 .vscode/

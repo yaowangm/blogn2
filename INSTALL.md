@@ -177,7 +177,31 @@ sudo apt install -y postgresql-16-pgvector
 psql -U blogn_user -d blogn_example -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
 
-### 12. 验证安装
+### 12. 下载 BERT 模型（智能搜索，可选）
+
+使用语义搜索或运行 BERT 相关测试前，需先下载模型（约 400MB，仅首次需要）：
+
+```bash
+# 确保已激活虚拟环境
+source venv/bin/activate
+
+# 下载默认模型到缓存目录（默认 ~/.cache/huggingface/hub）
+python -c "
+from sentence_transformers import SentenceTransformer
+SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+print('BERT 模型下载完成')
+"
+```
+
+- **MODEL_MODEL_NAME**（`.env` 中可选）：Hugging Face 上的模型 ID（默认 `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`）。当未配置本地模型路径或本地路径不可用时，应用会按此名称从 Hugging Face 下载模型；若已通过挂载使用本地模型，则主要用于日志与回退名称。
+- **MODEL_MODEL_PATH**（可选）：本地/容器内模型目录（需含 `config.json`）。设置且 `MODEL_PREFER_LOCAL=true` 时优先使用本地模型。Docker 下宿主机模型目录**不通过 .env 配置**，由 `docker run -v` 或 compose 的 volume 指定。
+- **MODEL_DEVICE**（可选，默认 `auto`）：`auto` 时根据 `torch.cuda.get_arch_list()` 与当前 GPU 的 compute capability 判断，仅当当前 GPU 架构在 PyTorch 编译支持列表内才使用 CUDA，否则自动使用 CPU，避免 "no kernel image" 等错误；可显式设置 `cpu` 或 `cuda`。
+- **缓存目录**：默认 `~/.cache/huggingface/hub`，需对该目录有写权限；可在 `.env` 中设置 `MODEL_CACHE_DIR` 指定其他目录。
+- **网络**：若无法直连 Hugging Face，可配置 `HF_ENDPOINT` 使用镜像，或将他人已下载的 `MODEL_CACHE_DIR` 目录拷贝到本机。
+- **Docker 部署**：宿主机模型目录在 `docker run` 的 `-v` 参数中指定（见本文档「Docker 部署」一节），挂载到容器内后由 entrypoint 与应用自动解析到 snapshot，详见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
+- 不使用智能搜索或暂不跑 BERT 相关测试时可跳过本步。
+
+### 13. 验证安装
 
 ```bash
 # 测试数据库连接
@@ -198,7 +222,7 @@ print('Redis连接成功:', r.ping())
 "
 ```
 
-### 13. 启动应用
+### 14. 启动应用
 
 ```bash
 # 确保在项目根目录
@@ -301,6 +325,43 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
    # 查看应用日志
    tail -f app.log
    ```
+
+### Docker 部署（可选）
+
+若使用 Docker 运行应用，以下参数均在 `docker run` 命令行中配置，**不要**写入 `.env`。
+
+| 参数 | 说明 |
+|------|------|
+| `--name blogn2-app` | 容器名称 |
+| `--restart unless-stopped` | 退出时自动重启（除非手动 stop） |
+| `--network host` | 使用宿主机网络，访问本机 PostgreSQL、Redis、sendmail |
+| `-e BLOGN_CONFIG_FILE=/app/config.env` | 应用从该路径读取配置（即下方挂载的 .env） |
+| `-v 宿主机/.env:/app/config.env:ro` | 将项目根目录 `.env` 挂载为容器内配置文件，只读 |
+| `-v 宿主机上传目录:/app/uploads` | 上传文件持久化 |
+| `-v 宿主机头像目录:/app/avatars` | 用户头像持久化 |
+| `-v 宿主机HF缓存:/app/.cache/huggingface:ro` | Hugging Face 缓存（可选） |
+| `-v 宿主机ModelScope缓存:/app/.cache/modelscope:ro` | ModelScope 缓存（可选） |
+| `-v 宿主机BERT模型目录:/app/.cache/models/bert-model-hub:ro` | BERT 模型 hub 目录（含 `snapshots/`），不挂载则无法使用智能搜索 |
+| `blogn2-app` | 镜像名（需先执行 `docker build -f docker/Dockerfile -t blogn2-app .`） |
+
+示例（宿主机路径请按本机修改）：
+
+```bash
+docker run -d \
+  --name blogn2-app \
+  --restart unless-stopped \
+  --network host \
+  -e BLOGN_CONFIG_FILE=/app/config.env \
+  -v /path/to/blogn2/.env:/app/config.env:ro \
+  -v /path/to/upload:/app/uploads \
+  -v /path/to/avatars:/app/avatars \
+  -v /path/to/.cache/huggingface:/app/.cache/huggingface:ro \
+  -v /path/to/.cache/modelscope:/app/.cache/modelscope:ro \
+  -v /path/to/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2:/app/.cache/models/bert-model-hub:ro \
+  blogn2-app
+```
+
+更多细节见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
 
 ### 5. 重置管理员密码（如需要）
 

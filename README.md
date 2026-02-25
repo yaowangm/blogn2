@@ -2,6 +2,8 @@
 
 一个基于FastAPI和现代Web技术构建的高性能博客平台，支持用户管理、博客发布、评论系统、智能搜索等功能。
 
+> **安装与配置**：环境要求、依赖安装、数据库初始化、BERT 模型等完整步骤请参阅 **[INSTALL.md](INSTALL.md)**。
+
 ## 🚀 主要特性
 
 - **高性能后端**: 基于FastAPI框架，支持异步操作
@@ -47,6 +49,7 @@ blogn2/
 │   ├── config/                   # 配置模块
 │   │   ├── app.py               # 应用配置
 │   │   ├── cache.py             # 缓存配置
+│   │   ├── model.py             # 模型/BERT 配置（路径、设备等）
 │   │   └── permissions.py       # 权限配置
 │   ├── controllers/              # API控制器
 │   │   ├── auth.py              # 认证控制器
@@ -104,79 +107,28 @@ blogn2/
 
 ## 🚀 快速开始
 
-### 环境要求
+详细的**安装与配置步骤**（环境要求、克隆与依赖、数据库与 pgvector、BERT 模型、启动与验证等）请参考 **[INSTALL.md](INSTALL.md)**。
 
-- **Python**: 3.12.3
-- **PostgreSQL**: 16.9 (支持pgvector扩展)
-- **Redis**: 7.0.15
-- **Git**: 用于代码下载
-
-> **注意**: 本文档基于上述版本测试，不保证在其他版本下可以正常运行。
-
-### 安装步骤
-
-详细的安装指南请参考 [INSTALL.md](INSTALL.md) 文件。
-
-#### 1. 克隆项目
-```bash
-git clone https://github.com/yaowangm/blogn2.git
-cd blogn2
-```
-
-#### 2. 创建虚拟环境
-```bash
-python3.12 -m venv venv
-source venv/bin/activate
-```
-
-#### 3. 安装依赖
-```bash
-pip install -r requirements.txt
-```
-
-#### 4. 配置环境变量
-```bash
-cp .env.example .env
-# 编辑 .env 文件，配置数据库和Redis连接信息
-```
-
-#### 5. 初始化数据库
-```bash
-# 创建数据库和用户
-psql -U postgres -c "CREATE USER blogn_user WITH PASSWORD 'blogn_password';"
-psql -U postgres -c "CREATE DATABASE blogn_example OWNER blogn_user;"
-
-# 导入示例数据
-psql -U blogn_user -d blogn_example -f data/blogn_example.sql
-```
-
-#### 6. 启动应用
-```bash
-python run.py
-```
-
-### 默认管理员账户
-
-- **用户名**: `admin`
-- **密码**: `testpasswd`
-- **权限**: 管理员
+完成安装后执行 `python run.py` 启动应用。默认管理员账户：**用户名** `admin`，**密码** `testpasswd`。
 
 ## 🧪 测试
 
 ### 运行测试
 ```bash
+# 激活虚拟环境（推荐）
+source venv/bin/activate   # Linux/macOS；Windows: venv\Scripts\activate
+
 # 运行所有测试
-python tests/run_tests.py all
+python -m pytest
 
-# 运行单元测试
-python tests/run_tests.py unit
+# 仅运行单元测试（不包含需 BERT 的集成/性能测试）
+python -m pytest tests/unit/
 
-# 运行集成测试
-python tests/run_tests.py integration
-
-# 生成覆盖率报告
-python tests/run_tests.py coverage
+# 若未下载 BERT 模型，可跳过相关测试以避免失败
+python -m pytest --ignore=tests/integration/test_bert_vectorization_with_real_db.py --ignore=tests/performance/test_bert_vectorization_performance.py
 ```
+
+也可使用 `tests/run_tests.py`：`python tests/run_tests.py all`、`unit`、`integration`、`coverage`。
 
 ### 测试特定功能
 ```bash
@@ -202,10 +154,13 @@ python test_db.py
 - `CACHE_DEFAULT_TTL`: 默认缓存时间
 - `UPLOAD_DIR`: 文件上传目录
 - `AVATAR_DIR`: 用户头像目录
-- `MODEL_MODEL_NAME`: BERT模型名称
+- `MODEL_MODEL_NAME`: Hugging Face 模型 ID（默认 `paraphrase-multilingual-MiniLM-L12-v2`）；无本地路径时按此名称下载，有本地路径时主要用于日志与回退。
+- `MODEL_MODEL_PATH`: 容器内/本地模型路径（可选；Docker 下由 entrypoint 解析到挂载的 snapshot）
+- `MODEL_DEVICE`: 运行设备，`auto`（默认）时仅当当前 GPU 在 PyTorch 编译支持列表内才用 CUDA，否则用 CPU；可显式设为 `cpu` 或 `cuda`。
+- `MODEL_PREFER_LOCAL`: 是否优先使用本地模型
 - `APP_ENV`: 应用环境
 
-详细配置请参考 `.env.example` 文件。
+详细配置请参考 `.env.example` 文件；模型设备与 BERT 配置见 [doc/MODEL_CONFIGURATION.md](doc/MODEL_CONFIGURATION.md)。
 
 ## 📚 API文档
 
@@ -224,6 +179,10 @@ BlogN集成了基于BERT的智能搜索系统：
 - **混合搜索**: 结合语义搜索和关键词搜索
 - **多语言支持**: 支持中文和英文搜索
 
+### BERT 模型安装
+
+智能搜索依赖 **sentence-transformers** 的多语言 BERT 模型（默认：`paraphrase-multilingual-MiniLM-L12-v2`）。首次使用前需下载模型，详见 [INSTALL.md](INSTALL.md) 中的「下载 BERT 模型」步骤。相关环境变量见 `.env.example` 中的 `MODEL_*` 配置。**Docker 部署**时宿主机模型目录在 `docker run` 的 `-v` 参数中指定（见上方「Docker run 参数说明」），挂载到容器内后 entrypoint 与应用会自动解析到含 `config.json` 的 snapshot 路径，详见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
+
 ## 🛡️ 权限管理
 
 系统提供细粒度的权限控制：
@@ -241,6 +200,68 @@ BlogN实现了完整的缓存系统：
 - **智能失效**: 基于数据变更的缓存失效
 - **性能监控**: 实时缓存命中率统计
 - **配置管理**: 环境变量配置缓存策略
+
+## 📋 部署时需手动完成的事项
+
+以下功能或配置需在部署环境中由管理员手动完成，代码与镜像中未自动完成：
+
+### 邮件重置密码（sendmail）
+
+| 步骤 | 说明 |
+|------|------|
+| **1. 安装 sendmail** | 宿主机安装：`sudo apt install sendmail`（Ubuntu/Debian） |
+| **2. 配置 sendmail** | 编辑 `/etc/mail/sendmail.mc`，设置 `MASQUERADE_AS(bloggern.com)` 等使发件人域名与站点一致；执行 `sudo make -C /etc/mail` 后 `sudo systemctl restart sendmail` |
+| **3. 环境变量** | 在 `.env` 中配置：`MAIL_FROM`、`RESET_LINK_EXPIRE_MINUTES`、`BASE_URL`；Docker 部署时另设 `SMTP_HOST=localhost`、`SMTP_PORT=25`（使用宿主机 sendmail） |
+| **4. 创建重置令牌表** | 首次部署或升级后执行：`python scripts/init_db.py`，以创建 `password_reset_tokens` 表 |
+| **5. DNS/SPF（可选）** | 在域名 DNS 中配置 SPF 记录（如 `v=spf1 ip4:发信服务器公网IP ~all`）以提高送达率、减少被判为垃圾邮件 |
+
+### Docker 部署（宿主机 sendmail）
+
+| 步骤 | 说明 |
+|------|------|
+| **宿主机运行 sendmail** | 宿主机安装并启动 sendmail，监听 25 端口（见上表） |
+| **容器连宿主机 25 端口** | 使用 **host 网络**时，在配置中设置 `SMTP_HOST=localhost`、`SMTP_PORT=25`，容器内应用通过 SMTP 连接宿主机 25 端口发信，无需在容器内安装 sendmail |
+
+详细设计见 [doc/EMAIL_PASSWORD_RESET_DESIGN.md](doc/EMAIL_PASSWORD_RESET_DESIGN.md)，Docker 部署见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
+
+### Docker run 参数说明
+
+以下参数均在 `docker run` 命令行中配置，**不要**写入 `.env` / `.env.example`。
+
+| 参数 | 说明 |
+|------|------|
+| `--name blogn2-app` | 容器名称，便于 `docker logs` / `docker restart` 等操作 |
+| `--restart unless-stopped` | 容器退出时自动重启（除非手动 stop），保证服务常驻 |
+| `--network host` | 使用宿主机网络，容器内可直接访问本机 PostgreSQL、Redis、sendmail 等 |
+| `-e BLOGN_CONFIG_FILE=/app/config.env` | 告知应用从挂载的配置文件读取环境变量（数据库、Redis、日志等） |
+| `-v 宿主机路径/.env:/app/config.env:ro` | 将项目根目录的 `.env` 挂载为容器内配置文件，只读 |
+| `-v 宿主机上传目录:/app/uploads` | 上传文件持久化，宿主机路径按本机实际修改 |
+| `-v 宿主机头像目录:/app/avatars` | 用户头像持久化，宿主机路径按本机实际修改 |
+| `-v 宿主机HF缓存:/app/.cache/huggingface:ro` | Hugging Face 缓存（可选，若模型从宿主机挂载可省略） |
+| `-v 宿主机ModelScope缓存:/app/.cache/modelscope:ro` | ModelScope 缓存（可选） |
+| `-v 宿主机BERT模型目录:/app/.cache/models/bert-model-hub:ro` | BERT 模型 hub 目录（含 `snapshots/`），宿主机路径按本机实际修改；不挂载则无法使用智能搜索 |
+| `blogn2-app` | 镜像名（需先 `docker build -f docker/Dockerfile -t blogn2-app .`） |
+
+示例（宿主机路径请按本机修改）：
+
+```bash
+docker run -d \
+  --name blogn2-app \
+  --restart unless-stopped \
+  --network host \
+  -e BLOGN_CONFIG_FILE=/app/config.env \
+  -v /home/wy/blogn2/.env:/app/config.env:ro \
+  -v /home/wy/pic/blogn_img/upload:/app/uploads \
+  -v /home/wy/pic/blogn_img/userlogo:/app/avatars \
+  -v /home/wy/.cache/huggingface:/app/.cache/huggingface:ro \
+  -v /home/wy/.cache/modelscope:/app/.cache/modelscope:ro \
+  -v /home/wy/snap/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2:/app/.cache/models/bert-model-hub:ro \
+  blogn2-app
+```
+
+更多细节见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
+
+---
 
 ## 🚨 注意事项
 

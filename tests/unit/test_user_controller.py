@@ -9,7 +9,8 @@ from src.controllers.user import (
     get_user_summary,
     get_new_users,
     get_user_count,
-    get_user_by_id
+    get_user_by_id,
+    reset_user_password,
 )
 from src.services.user_service import UserService
 from src.database import User
@@ -175,4 +176,126 @@ class TestUserController:
         
         # 验证异常信息
         assert exc_info.value.status_code == 500
-        assert "数据库连接错误" in exc_info.value.detail 
+        assert "数据库连接错误" in exc_info.value.detail
+
+
+class TestResetUserPassword:
+    """用户控制器：重置密码接口（管理员可重置任意用户、普通用户仅可重置自己）"""
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_admin_resets_any_user_success(self):
+        """管理员重置任意用户密码：返回 200，并调用服务更新密码"""
+        mock_service = AsyncMock(spec=UserService)
+        mock_service.get_user_by_id.return_value = {"id": 2, "name": "other"}
+        mock_service.reset_user_password = AsyncMock(return_value=None)
+        admin_user = {"id": 1, "state": 10}
+
+        result = await reset_user_password(
+            user_id=2,
+            password_data={"new_password": "ValidPass1"},
+            user_service=mock_service,
+            current_user=admin_user,
+        )
+
+        assert result == {"message": "密码重置成功"}
+        mock_service.get_user_by_id.assert_called_once_with(2)
+        mock_service.reset_user_password.assert_called_once_with(2, "ValidPass1")
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_user_resets_own_password_success(self):
+        """普通用户重置自己的密码：返回 200"""
+        mock_service = AsyncMock(spec=UserService)
+        mock_service.get_user_by_id.return_value = {"id": 1, "name": "self"}
+        mock_service.reset_user_password = AsyncMock(return_value=None)
+        normal_user = {"id": 1, "state": 1}
+
+        result = await reset_user_password(
+            user_id=1,
+            password_data={"new_password": "MyNewPass1"},
+            user_service=mock_service,
+            current_user=normal_user,
+        )
+
+        assert result == {"message": "密码重置成功"}
+        mock_service.reset_user_password.assert_called_once_with(1, "MyNewPass1")
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_user_resets_other_password_returns_403(self):
+        """普通用户重置他人密码：返回 403"""
+        mock_service = AsyncMock(spec=UserService)
+        mock_service.get_user_by_id.return_value = {"id": 2, "name": "other"}
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reset_user_password(
+                user_id=2,
+                password_data={"new_password": "ValidPass1"},
+                user_service=mock_service,
+                current_user={"id": 1, "state": 1},
+            )
+
+        assert exc_info.value.status_code == 403
+        assert "无权限" in str(exc_info.value.detail)
+        mock_service.reset_user_password.assert_not_called()
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_reset_password_target_user_not_found_returns_404(self):
+        """目标用户不存在：返回 404"""
+        mock_service = AsyncMock(spec=UserService)
+        mock_service.get_user_by_id.return_value = None
+        admin_user = {"id": 1, "state": 10}
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reset_user_password(
+                user_id=999,
+                password_data={"new_password": "ValidPass1"},
+                user_service=mock_service,
+                current_user=admin_user,
+            )
+
+        assert exc_info.value.status_code == 404
+        assert exc_info.value.detail == "用户不存在"
+        mock_service.reset_user_password.assert_not_called()
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_reset_password_invalid_password_returns_400(self):
+        """新密码不符合规则（如过短、无大写）：返回 400 及校验文案"""
+        mock_service = AsyncMock(spec=UserService)
+        mock_service.get_user_by_id.return_value = {"id": 2}
+        admin_user = {"id": 1, "state": 10}
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reset_user_password(
+                user_id=2,
+                password_data={"new_password": "short"},
+                user_service=mock_service,
+                current_user=admin_user,
+            )
+
+        assert exc_info.value.status_code == 400
+        assert "8" in str(exc_info.value.detail) or "字符" in str(exc_info.value.detail)
+        mock_service.reset_user_password.assert_not_called()
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_reset_password_no_upper_case_returns_400(self):
+        """新密码缺少大写字母：返回 400"""
+        mock_service = AsyncMock(spec=UserService)
+        mock_service.get_user_by_id.return_value = {"id": 2}
+        admin_user = {"id": 1, "state": 10}
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reset_user_password(
+                user_id=2,
+                password_data={"new_password": "alllower123"},
+                user_service=mock_service,
+                current_user=admin_user,
+            )
+
+        assert exc_info.value.status_code == 400
+        assert "大写" in str(exc_info.value.detail)
+        mock_service.reset_user_password.assert_not_called()

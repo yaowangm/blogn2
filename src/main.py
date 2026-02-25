@@ -86,6 +86,14 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("缓存系统初始化失败，将使用无缓存模式")
     
+    # BERT 模型路径（启动时输出，便于排查挂载与解析）
+    from src.config.model import get_model_path
+    model_path = get_model_path()
+    host_path = os.getenv("BERT_MODEL_HOST_PATH")
+    if host_path:
+        logger.warning(f"BERT 模型: 宿主机路径={host_path} -> 容器内使用={model_path or '(未解析)'}")
+    else:
+        logger.warning(f"BERT 模型路径(容器内): {model_path or '(未设置，将使用 model_name)'}")
     # 预加载BERT模型（使用跨进程共享缓存）
     model_cache = await initialize_model_cache()
     if model_cache is not None:
@@ -103,6 +111,8 @@ async def lifespan(app: FastAPI):
     from src.services.shared_model_cache import get_shared_model_cache
     shared_cache = get_shared_model_cache()
     shared_cache.cleanup()
+    from src.services.vectorization_service import BERTVectorizationService
+    BERTVectorizationService.shutdown_executor()
 
 
 # 创建FastAPI应用实例

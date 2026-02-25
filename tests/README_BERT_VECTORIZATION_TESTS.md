@@ -127,6 +127,8 @@ PYTEST_VERBOSE=1          # 详细输出
 PYTEST_COVERAGE=1         # 生成覆盖率报告
 ```
 
+**设备选择**：测试不强制 `MODEL_DEVICE`。当为 `auto` 时，由 `get_model_device()` 根据 `torch.cuda.get_arch_list()` 与当前 GPU 的 compute capability 判断；仅当 GPU 架构在 PyTorch 编译支持列表内才使用 CUDA，否则自动使用 CPU，无需在测试环境单独设置。
+
 ### 测试数据管理
 
 - **自动清理：** 所有测试都会自动清理创建的测试数据

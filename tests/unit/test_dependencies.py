@@ -1,6 +1,13 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from src.utils.dependencies import create_service_dependency, get_metadata_service, get_user_service, get_blog_service
+from src.utils.dependencies import (
+    create_service_dependency,
+    get_metadata_service,
+    get_user_service,
+    get_blog_service,
+    get_password_reset_token_repository,
+)
+from src.repositories.password_reset_token_repository import PasswordResetTokenRepository
 
 
 class TestDependencies:
@@ -86,4 +93,18 @@ class TestDependencies:
     @pytest.mark.unit
     def test_get_blog_service_is_callable(self):
         """测试get_blog_service是可调用函数"""
-        assert callable(get_blog_service) 
+        assert callable(get_blog_service)
+
+    @pytest.mark.unit
+    def test_get_password_reset_token_repository_is_callable(self):
+        """测试 get_password_reset_token_repository 是可调用函数"""
+        assert callable(get_password_reset_token_repository)
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_password_reset_token_repository_returns_repo_with_session(self):
+        """get_password_reset_token_repository 返回传入 session 的 token 仓库，供同请求复用"""
+        mock_session = AsyncMock()
+        result = await get_password_reset_token_repository(session=mock_session)
+        assert isinstance(result, PasswordResetTokenRepository)
+        assert result.session is mock_session 

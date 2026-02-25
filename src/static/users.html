@@ -278,6 +278,54 @@
             transform: none;
         }
 
+        .reset-password-button {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        .reset-password-button:hover {
+            background-color: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .reset-password-modal {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            padding: var(--spacing-6);
+            max-width: 420px;
+            width: 90%;
+        }
+        .reset-password-modal h3 { margin: 0 0 var(--spacing-4) 0; font-size: 1.25rem; color: var(--gray-900); }
+        .reset-password-modal .form-hint { color: var(--gray-500); font-size: var(--font-size-sm); margin: 0 0 var(--spacing-3) 0; line-height: 1.4; }
+        .reset-password-modal .form-group { margin-bottom: var(--spacing-4); }
+        .reset-password-modal .form-label { display: block; font-weight: 500; color: var(--gray-700); font-size: var(--font-size-sm); margin-bottom: var(--spacing-2); }
+        .reset-password-modal .form-input { width: 100%; padding: var(--spacing-3); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: var(--font-size-base); box-sizing: border-box; }
+        .reset-password-modal .form-input.error { border-color: var(--error-color); }
+        .reset-password-modal .form-error { color: var(--error-color); font-size: var(--font-size-sm); margin-top: var(--spacing-1); display: none; }
+        .reset-password-modal .form-error.show { display: block; }
+        .reset-password-modal .modal-actions { display: flex; gap: var(--spacing-3); justify-content: flex-end; margin-top: var(--spacing-6); }
+        .reset-password-modal .modal-actions button { padding: var(--spacing-2) var(--spacing-4); border-radius: var(--radius-md); font-size: var(--font-size-base); font-weight: 500; cursor: pointer; }
+        .reset-password-modal .btn-cancel { background: var(--gray-100); color: var(--gray-700); border: none; }
+        .reset-password-modal .btn-cancel:hover { background: var(--gray-200); }
+        .reset-password-modal .btn-submit { background: var(--primary-color); color: white; border: none; }
+        .reset-password-modal .btn-submit:hover:not(:disabled) { background: var(--primary-hover); }
+        .reset-password-modal .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .suggested-password-row .suggested-password-wrap { display: flex; gap: var(--spacing-2); align-items: center; }
+        .suggested-password-row .suggested-password-wrap .form-input { flex: 1; }
+        .reset-password-modal .btn-refresh-suggested { padding: var(--spacing-2) var(--spacing-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); background: var(--gray-100); color: var(--gray-700); border: 1px solid var(--gray-300); cursor: pointer; white-space: nowrap; }
+        .reset-password-modal .btn-refresh-suggested:hover { background: var(--gray-200); }
+
         @keyframes slideIn {
             from {
                 opacity: 0;
@@ -376,6 +424,37 @@
         </div>
     </main>
 
+    <div id="resetPasswordModal" class="modal-overlay" aria-hidden="true">
+        <div class="reset-password-modal" role="dialog" aria-labelledby="resetPasswordModalTitle">
+            <h3 id="resetPasswordModalTitle">重置密码</h3>
+            <p class="form-hint">8–30 个字符，须包含大写字母、小写字母和数字，仅限可打印英文与符号（空格到 ~）。</p>
+            <form id="resetPasswordForm">
+                <input type="hidden" id="resetPasswordUserId" name="user_id" value="">
+                <div class="form-group">
+                    <label for="resetPasswordNew">新密码</label>
+                    <input type="password" id="resetPasswordNew" name="new_password" class="form-input" placeholder="请输入新密码" minlength="8" maxlength="30" autocomplete="new-password">
+                    <div class="form-error" id="resetPasswordNewError"></div>
+                </div>
+                <div class="form-group">
+                    <label for="resetPasswordConfirm">确认密码</label>
+                    <input type="password" id="resetPasswordConfirm" class="form-input" placeholder="再次输入新密码" autocomplete="new-password">
+                    <div class="form-error" id="resetPasswordConfirmError"></div>
+                </div>
+                <div class="form-group suggested-password-row">
+                    <label for="resetPasswordSuggested">参考密码（可复制使用）</label>
+                    <div class="suggested-password-wrap">
+                        <input type="text" id="resetPasswordSuggested" class="form-input" readonly placeholder="点击刷新生成">
+                        <button type="button" class="btn-refresh-suggested" id="resetPasswordRefreshSuggested" title="重新生成">刷新</button>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" id="resetPasswordCancel">取消</button>
+                    <button type="submit" class="btn-submit" id="resetPasswordSubmit">确认重置</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <footer-component></footer-component>
 
         <script src="/static/js/utils/html-utils.js"></script>
@@ -386,6 +465,7 @@
     
     <!-- 用户管理工具 -->
     <script src="/static/js/utils/user-manager.js"></script>
+    <script src="/static/js/utils/password-validation.js"></script>
     <script src="/static/js/components/navigation-card.js"></script>
     <script>
         /**
@@ -628,23 +708,30 @@
              * @returns {string} 操作按钮HTML
              */
             renderUserActions(user) {
-                // 只有非管理员用户才显示冻结/恢复按钮
+                const resetBtn = `
+                    <button class="action-button reset-password-button"
+                            data-user-id="${user.id}"
+                            data-user-name="${this.escapeHtml(user.name)}"
+                            data-action="reset-password">
+                        重置密码
+                    </button>
+                `;
+                // 管理员用户只显示重置密码
                 if (user.state === 10) {
-                    return '<span style="color: var(--gray-400);">-</span>';
+                    return resetBtn;
                 }
-
                 const isFrozen = user.state === 2 || user.state === 0;
                 const buttonText = isFrozen ? '恢复' : '冻结';
                 const buttonClass = isFrozen ? 'action-button restore-button' : 'action-button freeze-button';
                 const action = isFrozen ? 'restore' : 'freeze';
-
                 return `
-                    <button class="${buttonClass}" 
-                            data-user-id="${user.id}" 
+                    <button class="${buttonClass}"
+                            data-user-id="${user.id}"
                             data-user-name="${this.escapeHtml(user.name)}"
                             data-action="${action}">
                         ${buttonText}
                     </button>
+                    ${resetBtn}
                 `;
             }
 
@@ -722,6 +809,8 @@
                             this.freezeUser(userId, userName);
                         } else if (action === 'restore') {
                             this.restoreUser(userId, userName);
+                        } else if (action === 'reset-password') {
+                            this.showResetPasswordModal(userId, userName);
                         }
                     });
                 });
@@ -873,11 +962,173 @@
                     }
                 }, 3000);
             }
+
+            /**
+             * 显示重置密码弹窗
+             * @param {string} userId - 用户ID
+             * @param {string} userName - 用户名
+             */
+            showResetPasswordModal(userId, userName) {
+                const modal = document.getElementById('resetPasswordModal');
+                const titleEl = document.getElementById('resetPasswordModalTitle');
+                const userIdInput = document.getElementById('resetPasswordUserId');
+                const newInput = document.getElementById('resetPasswordNew');
+                const confirmInput = document.getElementById('resetPasswordConfirm');
+                if (!modal || !titleEl || !userIdInput) return;
+                titleEl.textContent = `为 ${this.escapeHtml(userName)} 重置密码`;
+                userIdInput.value = userId;
+                newInput.value = '';
+                confirmInput.value = '';
+                newInput.classList.remove('error');
+                confirmInput.classList.remove('error');
+                document.getElementById('resetPasswordNewError').classList.remove('show');
+                document.getElementById('resetPasswordNewError').textContent = '';
+                document.getElementById('resetPasswordConfirmError').classList.remove('show');
+                document.getElementById('resetPasswordConfirmError').textContent = '';
+                this.refreshSuggestedPassword();
+                modal.classList.add('show');
+                modal.setAttribute('aria-hidden', 'false');
+                setTimeout(() => newInput.focus(), 100);
+            }
+
+            /**
+             * 生成符合规则的随机密码（8–30 字符，含大小写与数字，可打印 ASCII）
+             * @returns {string}
+             */
+            _generateRandomPassword() {
+                const len = 16;
+                const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+                const lower = 'abcdefghjkmnpqrstuvwxyz';
+                const digit = '23456789';
+                const other = '!@#$%^&*()-_=+[]{}|;:,.<>?';
+                const all = upper + lower + digit + other;
+                const pick = (s) => s[Math.floor(Math.random() * s.length)];
+                let arr = [pick(upper), pick(lower), pick(digit)];
+                for (let i = 3; i < len; i++) arr.push(pick(all));
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr.join('');
+            }
+
+            /**
+             * 刷新并显示参考密码
+             */
+            refreshSuggestedPassword() {
+                const el = document.getElementById('resetPasswordSuggested');
+                if (el) el.value = this._generateRandomPassword();
+            }
+
+            /**
+             * 关闭重置密码弹窗
+             */
+            hideResetPasswordModal() {
+                const modal = document.getElementById('resetPasswordModal');
+                if (modal) {
+                    modal.classList.remove('show');
+                    modal.setAttribute('aria-hidden', 'true');
+                }
+            }
+
+            /**
+             * 密码规则校验（与注册、重置页一致，使用共享 passwordRuleError）
+             * @param {string} pwd
+             * @returns {string|null} 错误信息或 null
+             */
+            _passwordRuleError(pwd) {
+                return window.passwordRuleError(pwd);
+            }
+
+            /**
+             * 绑定重置密码弹窗事件
+             */
+            bindResetPasswordModal() {
+                const modal = document.getElementById('resetPasswordModal');
+                const form = document.getElementById('resetPasswordForm');
+                const cancelBtn = document.getElementById('resetPasswordCancel');
+                const refreshSuggestedBtn = document.getElementById('resetPasswordRefreshSuggested');
+                const newInput = document.getElementById('resetPasswordNew');
+                const confirmInput = document.getElementById('resetPasswordConfirm');
+                const newError = document.getElementById('resetPasswordNewError');
+                const confirmError = document.getElementById('resetPasswordConfirmError');
+                if (!modal || !form) return;
+
+                if (refreshSuggestedBtn) refreshSuggestedBtn.addEventListener('click', () => this.refreshSuggestedPassword());
+                cancelBtn.addEventListener('click', () => this.hideResetPasswordModal());
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) this.hideResetPasswordModal();
+                });
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const newPwd = newInput.value;
+                    const confirmPwd = confirmInput.value;
+                    newError.classList.remove('show');
+                    newError.textContent = '';
+                    confirmError.classList.remove('show');
+                    confirmError.textContent = '';
+                    newInput.classList.remove('error');
+                    confirmInput.classList.remove('error');
+
+                    const pwdErr = this._passwordRuleError(newPwd);
+                    if (pwdErr) {
+                        newError.textContent = pwdErr;
+                        newError.classList.add('show');
+                        newInput.classList.add('error');
+                        newInput.focus();
+                        return;
+                    }
+                    if (newPwd !== confirmPwd) {
+                        confirmError.textContent = '两次输入的密码不一致';
+                        confirmError.classList.add('show');
+                        confirmInput.classList.add('error');
+                        confirmInput.focus();
+                        return;
+                    }
+
+                    this.submitResetPassword();
+                });
+            }
+
+            /**
+             * 提交重置密码请求
+             */
+            async submitResetPassword() {
+                const userId = document.getElementById('resetPasswordUserId').value;
+                const newPwd = document.getElementById('resetPasswordNew').value;
+                const submitBtn = document.getElementById('resetPasswordSubmit');
+                if (!userId) return;
+                submitBtn.disabled = true;
+                try {
+                    const response = await fetch(`/api/users/${userId}/reset-password`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ new_password: newPwd })
+                    });
+                    if (response.ok) {
+                        this.showMessage('密码重置成功', 'success');
+                        this.hideResetPasswordModal();
+                        await this.loadUsers(this.currentPage);
+                    } else {
+                        const err = await response.json();
+                        this.showMessage(`重置失败: ${err.detail || '未知错误'}`, 'error');
+                    }
+                } catch (e) {
+                    console.error('重置密码失败', e);
+                    this.showMessage('重置密码失败，请稍后重试', 'error');
+                } finally {
+                    submitBtn.disabled = false;
+                }
+            }
         }
 
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', () => {
-            new UsersListPage();
+            const page = new UsersListPage();
+            page.bindResetPasswordModal();
         });
     </script>
 </body>

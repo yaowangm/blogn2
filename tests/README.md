@@ -30,7 +30,8 @@ tests/
 └── integration/                   # 集成测试
     ├── test_api_endpoints.py      # API端点测试（Mock版本）
     ├── test_api_endpoints_with_real_db.py # API端点测试（真实数据库版本）
-    └── test_basic_endpoints.py    # 基础端点测试（快速验证）
+    ├── test_basic_endpoints.py    # 基础端点测试（快速验证）
+    └── test_bert_vectorization_with_real_db.py # BERT 向量化集成测试（真实数据库）
 ```
 
 ## 测试类型
@@ -203,7 +204,7 @@ assert "expected message" in str(exc_info.value)
    - 检查 `PYTHONPATH` 设置
 
 2. **数据库连接错误**
-   - 测试使用SQLite内存数据库
+   - 集成测试（含 BERT 向量化）使用真实 PostgreSQL，需配置 `DATABASE_URL`
    - 确保测试环境变量正确设置
 
 3. **异步测试失败**

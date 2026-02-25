@@ -694,6 +694,15 @@ class UserProfileCard extends BaseComponent {
     }
 
     /**
+     * 密码规则校验（与注册、邮件重置一致，使用共享 passwordRuleError）
+     * @param {string} pwd
+     * @returns {string|null} 错误信息或 null
+     */
+    _passwordRuleError(pwd) {
+        return window.passwordRuleError(pwd);
+    }
+
+    /**
      * 处理重置密码
      */
     async handleResetPassword() {
@@ -703,9 +712,10 @@ class UserProfileCard extends BaseComponent {
         // 清除之前的错误信息
         this.clearResetPasswordError();
 
-        // 验证密码
-        if (newPassword.length < 6) {
-            this.showResetPasswordError('密码长度至少6位');
+        // 验证密码（与注册、邮件重置规则一致：8–30 字符，大小写+数字，可打印 ASCII）
+        const pwdErr = this._passwordRuleError(newPassword);
+        if (pwdErr) {
+            this.showResetPasswordError(pwdErr);
             return;
         }
 

@@ -79,7 +79,8 @@ class TestArticleCommentsWithRealDB:
         assert "comment_id" in data
         assert data["message"] == "评论创建成功"
         
-        # 验证评论已保存到数据库
+        # 清除 session 缓存后再查，确保读到 API 已提交的数据
+        real_sync_session_with_commit.expire_all()
         comment_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == data["comment_id"])
         )

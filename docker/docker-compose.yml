@@ -15,6 +15,15 @@ services:
       # 配置文件路径（容器内路径，必须通过 volume 挂载）
       # 配置文件应包含所有应用配置（DATABASE_URL, CACHE_REDIS_HOST 等）
       - BLOGN_CONFIG_FILE=${BLOGN_CONFIG_FILE:-/app/config.env}
+      # BERT 模型：默认路径，entrypoint 与 Python 会从挂载的 hub 自动解析到 snapshots/<revision>
+      - MODEL_MODEL_PATH=/app/.cache/models/bert-model
+      - MODEL_PREFER_LOCAL=true
+      # 宿主机模型路径（仅用于启动日志显示，与 volume 挂载源一致）
+      - BERT_MODEL_HOST_PATH=${BERT_MODEL_HUB_HOST_PATH:-}
+      - MODEL_CACHE_DIR=/app/.cache/huggingface
+      - HF_HOME=/app/.cache/huggingface
+      - TRANSFORMERS_OFFLINE=1
+      - HF_HUB_OFFLINE=1
     volumes:
       # 挂载配置文件（从项目根目录的 .env 或 docker/config.env）
       # 如果使用项目根目录的 .env 文件：
@@ -26,10 +35,11 @@ services:
       - ../uploads:/app/uploads
       - ../avatars:/app/avatars
       
-      # 挂载本地模型缓存目录（使用 host 路径）
-      # 注意：需要根据实际路径修改，或使用环境变量 MODEL_CACHE_HOST_PATH
-      - /home/wy/.cache/huggingface:/app/.cache/huggingface:ro
-      - /home/wy/.cache/modelscope:/app/.cache/modelscope:ro
+      # HuggingFace 缓存（宿主机路径可在 .env 中设置 HF_CACHE_HOST_PATH、BERT_MODEL_HUB_HOST_PATH 覆盖）
+      - ${HF_CACHE_HOST_PATH:-/home/wy/.cache/huggingface}:/app/.cache/huggingface:ro
+      - ${MODELSCOPE_CACHE_HOST_PATH:-/home/wy/.cache/modelscope}:/app/.cache/modelscope:ro
+      # BERT 模型：宿主机上 HF hub 目录（含 snapshots/ 子目录），可在 .env 中设置 BERT_MODEL_HUB_HOST_PATH
+      - ${BERT_MODEL_HUB_HOST_PATH:-/home/wy/.cache/huggingface/hub/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2}:/app/.cache/models/bert-model-hub:ro
     # 使用 host 网络模式，不需要 networks 配置
     # networks:
     #   - blogn2-network

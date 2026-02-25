@@ -12,6 +12,7 @@ from src.repositories.project_item_repository import ProjectItemRepository
 from src.repositories.project_repository import ProjectRepository
 from src.repositories.post_repository import PostRepository
 from src.repositories.glovar_repository import GlovarRepository
+from src.repositories.password_reset_token_repository import PasswordResetTokenRepository
 from src.services.metadata_service import MetadataService
 from src.services.user_service import UserService
 from src.services.blog_service import BlogService
@@ -63,3 +64,10 @@ get_blog_service = create_service_dependency(
     PostRepository,
     GlovarRepository
 )
+
+
+async def get_password_reset_token_repository(
+    session: AsyncSession = Depends(get_async_session),
+) -> PasswordResetTokenRepository:
+    """每请求复用同一 session 的 token 仓库，与 get_user_service 等模式一致。"""
+    return PasswordResetTokenRepository(session)

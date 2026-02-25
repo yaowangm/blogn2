@@ -6,6 +6,7 @@
 
 import os
 import logging
+from typing import Optional
 
 from .utils import load_config_file, get_config_file_path
 
@@ -99,6 +100,67 @@ def get_upload_dir() -> str:
         str: 文件上传目录路径，从环境变量UPLOAD_DIR读取，默认为../pic/blogn_img/upload
     """
     return os.getenv('UPLOAD_DIR', '../pic/blogn_img/upload')
+
+
+def get_mail_from() -> str:
+    """
+    获取密码重置邮件发件人地址
+    
+    Returns:
+        str: 发件人邮箱，从环境变量 MAIL_FROM 读取
+    """
+    return os.getenv('MAIL_FROM', 'noreply@localhost')
+
+
+def get_reset_link_expire_minutes() -> int:
+    """
+    获取密码重置链接有效期（分钟）
+    
+    Returns:
+        int: 有效期分钟数，从环境变量 RESET_LINK_EXPIRE_MINUTES 读取，默认 60
+    """
+    try:
+        return int(os.getenv('RESET_LINK_EXPIRE_MINUTES', '60'))
+    except (ValueError, TypeError):
+        return 60
+
+
+def get_smtp_host() -> Optional[str]:
+    """
+    获取 SMTP 主机（用于连接宿主机 sendmail）。
+    - 若设置则通过 SMTP 发信；未设置或空则使用本机 sendmail 命令。
+    - Docker 内未设置时默认为 localhost，通过 SMTP 连宿主机 25 端口发信（不依赖容器内安装 sendmail）。
+    """
+    v = os.getenv('SMTP_HOST', '').strip()
+    if v:
+        return v
+    try:
+        from .utils import is_docker_container
+        if is_docker_container():
+            return 'localhost'
+    except Exception:
+        pass
+    return None
+
+
+def get_smtp_port() -> int:
+    """获取 SMTP 端口，默认 25"""
+    try:
+        return int(os.getenv('SMTP_PORT', '25'))
+    except (ValueError, TypeError):
+        return 25
+
+
+def get_smtp_user() -> Optional[str]:
+    """获取 SMTP 认证用户名（可选，需要认证时与 SMTP_PASSWORD 一起配置）"""
+    v = os.getenv('SMTP_USER', '').strip()
+    return v or None
+
+
+def get_smtp_password() -> Optional[str]:
+    """获取 SMTP 认证密码（可选）"""
+    v = os.getenv('SMTP_PASSWORD', '').strip()
+    return v or None
 
 
 
