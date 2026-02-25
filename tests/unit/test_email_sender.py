@@ -7,7 +7,12 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-from src.utils.email_sender import send_password_reset_email, _send_via_smtp
+from src.utils.email_sender import (
+    send_password_reset_email,
+    _send_via_smtp,
+    _send_via_sendmail,
+    _SENDMAIL_COMMUNICATE_TIMEOUT,
+)
 
 
 class TestSendViaSmtp:
@@ -70,3 +75,41 @@ class TestSendViaSmtp:
                         assert args[1] == "noreply@example.com"
                         assert args[2] == "u@x.com"
                         assert args[3] == "smtp.example.com"
+
+
+class TestSendViaSendmail:
+    """_send_via_sendmail 单元测试（含超时）"""
+
+    @pytest.mark.unit
+    def test_sendmail_communicate_called_with_timeout(self):
+        """sendmail 子进程 communicate 带超时，避免无限阻塞"""
+        msg = MagicMock()
+        msg.as_bytes.return_value = b""
+        with patch("src.utils.email_sender.subprocess.Popen") as mock_popen:
+            proc = MagicMock()
+            proc.communicate.return_value = (None, b"")
+            proc.returncode = 0
+            mock_popen.return_value = proc
+
+            _send_via_sendmail(msg, "user@example.com")
+
+            proc.communicate.assert_called_once()
+            call_kw = proc.communicate.call_args[1]
+            assert call_kw.get("timeout") == _SENDMAIL_COMMUNICATE_TIMEOUT
+
+    @pytest.mark.unit
+    def test_sendmail_timeout_expired_kills_and_raises(self):
+        """sendmail 超时则 kill 进程并抛出 RuntimeError"""
+        import subprocess
+        msg = MagicMock()
+        msg.as_bytes.return_value = b""
+        with patch("src.utils.email_sender.subprocess.Popen") as mock_popen:
+            proc = MagicMock()
+            proc.communicate.side_effect = subprocess.TimeoutExpired("sendmail", 30)
+            mock_popen.return_value = proc
+
+            with pytest.raises(RuntimeError) as exc_info:
+                _send_via_sendmail(msg, "user@example.com")
+            assert "超时" in str(exc_info.value)
+            proc.kill.assert_called_once()
+            proc.wait.assert_called_once()

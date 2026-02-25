@@ -94,8 +94,12 @@ def _send_via_smtp(
         raise RuntimeError(f"发送邮件失败: {e}") from e
 
 
+# sendmail 子进程超时（秒），与 SMTP 发信超时一致，避免 DNS/队列阻塞导致线程池耗尽
+_SENDMAIL_COMMUNICATE_TIMEOUT = 30
+
+
 def _send_via_sendmail(msg: MIMEMultipart, to_email: str) -> None:
-    """通过本机 sendmail 命令发送。"""
+    """通过本机 sendmail 命令发送。带超时避免子进程卡死阻塞 executor 线程。"""
     try:
         proc = subprocess.Popen(
             ["sendmail", "-t", "-oi"],
@@ -103,7 +107,15 @@ def _send_via_sendmail(msg: MIMEMultipart, to_email: str) -> None:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
         )
-        _, stderr = proc.communicate(input=msg.as_bytes())
+        try:
+            _, stderr = proc.communicate(input=msg.as_bytes(), timeout=_SENDMAIL_COMMUNICATE_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+            logger.error("sendmail timed out after %s s", _SENDMAIL_COMMUNICATE_TIMEOUT)
+            raise RuntimeError(
+                f"发送邮件超时（{_SENDMAIL_COMMUNICATE_TIMEOUT} 秒），请检查本机 sendmail 或改用 SMTP"
+            ) from None
         if proc.returncode != 0:
             err = (stderr or b"").decode("utf-8", errors="replace").strip()
             logger.error("sendmail failed: returncode=%s stderr=%s", proc.returncode, err)
