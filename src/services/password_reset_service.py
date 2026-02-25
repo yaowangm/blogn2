@@ -45,7 +45,7 @@ class PasswordResetService:
         reset_link = f"{base_url}/reset-password?token={token}"
 
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             await loop.run_in_executor(
                 None,
                 lambda: send_password_reset_email(
