@@ -114,7 +114,7 @@ class TestPasswordResetService:
         mock_token_repo.create.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("src.services.password_reset_service.asyncio.get_event_loop")
+    @patch("src.services.password_reset_service.asyncio.get_running_loop")
     @patch("src.services.password_reset_service.send_password_reset_email")
     @patch("src.services.password_reset_service.get_reset_link_expire_minutes", return_value=60)
     @patch("src.services.password_reset_service.get_base_url", return_value="https://blog.example.com")

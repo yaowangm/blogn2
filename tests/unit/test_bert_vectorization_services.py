@@ -67,7 +67,7 @@ class TestBERTVectorizationService:
         mock_loop = MagicMock()
         mock_loop.time.side_effect = lambda: time_values.pop(0) if time_values else 302.0
         try:
-            with patch("asyncio.get_event_loop", return_value=mock_loop):
+            with patch("asyncio.get_running_loop", return_value=mock_loop):
                 await vectorization_service.load_model()
             assert vectorization_service.is_model_loaded() is False
         finally:
