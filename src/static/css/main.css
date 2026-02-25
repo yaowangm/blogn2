@@ -315,6 +315,79 @@ a:hover {
     .container {
         padding: 0 var(--spacing-3);
     }
+    
+    /* 左侧栏卡片可折叠：仅显示标题行，点击展开/收起 */
+    .sidebar-left-collapsible {
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        background: var(--white);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: var(--spacing-4);
+        overflow: hidden;
+    }
+    
+    .sidebar-left-collapsible-header {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+        padding: var(--spacing-3) var(--spacing-4);
+        background: var(--gray-50);
+        border-bottom: 1px solid var(--gray-200);
+        cursor: pointer;
+        user-select: none;
+        min-height: 48px;
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    .sidebar-left-collapsible-header:hover {
+        background: var(--gray-100);
+    }
+    
+    .sidebar-left-collapsible-title {
+        flex: 1;
+        font-size: var(--font-size-lg);
+        font-weight: 600;
+        color: var(--gray-800);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .sidebar-left-collapsible-toggle {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: transparent;
+        color: var(--gray-600);
+        cursor: pointer;
+        border-radius: var(--radius-md);
+        transition: transform var(--transition-fast);
+    }
+    
+    .sidebar-left-collapsible-toggle:hover {
+        background: var(--gray-200);
+        color: var(--gray-800);
+    }
+    
+    .sidebar-left-collapsible-toggle svg {
+        transition: transform var(--transition-fast);
+    }
+    
+    .sidebar-left-collapsible:not(.collapsed) .sidebar-left-collapsible-toggle svg {
+        transform: rotate(180deg);
+    }
+    
+    .sidebar-left-collapsible-content {
+        display: block;
+    }
+    
+    .sidebar-left-collapsible.collapsed .sidebar-left-collapsible-content {
+        display: none;
+    }
 }
 
 @media (max-width: 768px) {
