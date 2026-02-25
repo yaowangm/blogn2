@@ -383,9 +383,6 @@ class HierarchicalSearchService:
             }
             
         except Exception as e:
-            # 使用logger而不是print
-            import logging
-            logger = logging.getLogger(__name__)
             logger.error(f"搜索服务错误: {e}")
             
             # 返回空结果而不是抛出异常
