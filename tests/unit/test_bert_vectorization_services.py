@@ -396,18 +396,24 @@ class TestHierarchicalSearchService:
     
     @pytest.mark.asyncio
     async def test_search_error_handling(self, search_service):
-        """测试搜索错误处理"""
+        """测试搜索错误处理：异常时返回降级结果且使用模块级 logger 记录错误"""
         # 模拟向量化服务出错
         search_service.vectorization_service.vectorize_text.side_effect = Exception("向量化失败")
-        
-        result = await search_service.search("测试查询")
-        
+
+        with patch("src.services.search_service.logger") as mock_logger:
+            result = await search_service.search("测试查询")
+
         assert "items" in result
         assert "total" in result
         assert "error" in result
         assert result["items"] == []
         assert result["total"] == 0
         assert "向量化失败" in result["error"]
+        # 确认使用模块级 logger 记录错误（无 except 内重复 import）
+        mock_logger.error.assert_called_once()
+        call_msg = mock_logger.error.call_args[0][0]
+        assert "搜索服务错误" in call_msg
+        assert "向量化失败" in call_msg
     
     def test_vector_conversion(self, search_service):
         """测试向量转换功能"""
