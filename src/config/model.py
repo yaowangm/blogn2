@@ -131,7 +131,9 @@ def get_model_device() -> str:
                     return "cpu"
                 major, minor = torch.cuda.get_device_capability(0)
                 arch = f"sm_{major}{minor}"
-                if arch in torch.cuda.get_arch_list():
+                arch_list = torch.cuda.get_arch_list()
+                # 支持带后缀的架构名（如 sm_90a），部分 PyTorch 构建仅列出 sm_90a 而无 sm_90
+                if arch in arch_list or any(a.startswith(arch) for a in arch_list):
                     return "cuda"
             except (RuntimeError, AttributeError):
                 pass
