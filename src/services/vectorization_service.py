@@ -106,10 +106,11 @@ class BERTVectorizationService:
         
         if BERTVectorizationService._loading:
             # 等待其他协程完成加载，带超时避免加载线程异常时无限等待
-            wait_start = asyncio.get_event_loop().time()
+            loop = asyncio.get_running_loop()
+            wait_start = loop.time()
             while BERTVectorizationService._loading:
                 await asyncio.sleep(0.1)
-                if asyncio.get_event_loop().time() - wait_start > 300:
+                if loop.time() - wait_start > 300:
                     logger.warning("等待 BERT 模型加载超时(300s)，可能加载线程异常")
                     return
             return
@@ -119,7 +120,7 @@ class BERTVectorizationService:
             logger.info(f"正在加载BERT模型: {self.model_name}")
             
             # 在专用单线程中加载模型（与 encode 同线程，避免 CUDA 跨线程错误）
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             await loop.run_in_executor(self._get_executor(), self._load_model_sync)
             
             BERTVectorizationService._model_loaded = True
@@ -203,7 +204,7 @@ class BERTVectorizationService:
             processed_text = self._preprocess_text(text)
             
             # 在专用单线程中进行向量化（与 load 同线程，避免 CUDA 跨线程错误）
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             vector = await loop.run_in_executor(self._get_executor(), self._vectorize_sync, processed_text)
             
             return vector
@@ -254,7 +255,7 @@ class BERTVectorizationService:
             processed_texts = [self._preprocess_text(text) for text in texts]
             
             # 在专用单线程中进行批量向量化（与 load 同线程，避免 CUDA 跨线程错误）
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             vectors = await loop.run_in_executor(self._get_executor(), self._vectorize_batch_sync, processed_texts)
             
             return vectors
