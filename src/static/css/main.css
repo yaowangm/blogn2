@@ -116,6 +116,11 @@ body {
     align-items: start;
 }
 
+/* 防止网格子项被内容撑开导致移动端向右溢出（加载后宽内容如代码块、表格会撑破布局） */
+.content-grid > * {
+    min-width: 0;
+}
+
 /* 侧边栏 */
 .sidebar {
     display: flex;

@@ -429,6 +429,12 @@ class ArticleContentCard extends BaseComponent {
                 @import url('/static/css/common-components.css');
                 @import url('/static/css/components.css');
                 
+                :host {
+                    display: block;
+                    max-width: 100%;
+                    min-width: 0;
+                }
+                
                 .article-content {
                     line-height: 1.8;
                     word-wrap: break-word;
@@ -453,14 +459,14 @@ class ArticleContentCard extends BaseComponent {
                     text-align: justify;
                 }
                 
-                /* 代码块样式修复 - 防止变形并添加滚动条 */
+                /* 代码块样式修复 - 防止变形并添加滚动条；移动端用 100% 避免向右溢出 */
                 .markdown-content pre {
                     overflow-x: auto !important;
                     overflow-y: hidden !important;
                     white-space: pre !important;
                     word-wrap: normal !important;
                     word-break: normal !important;
-                    max-width: 700px !important;
+                    max-width: min(700px, 100%) !important;
                     box-sizing: border-box !important;
                 }
                 
@@ -471,6 +477,24 @@ class ArticleContentCard extends BaseComponent {
                     display: block !important;
                     overflow-x: auto !important;
                     max-width: 100% !important;
+                }
+                
+                /* Markdown 表格在移动端不撑破布局，横向滚动 */
+                .markdown-content table {
+                    display: block !important;
+                    max-width: 100% !important;
+                    overflow-x: auto !important;
+                }
+                .markdown-content thead,
+                .markdown-content tbody {
+                    display: table-row-group;
+                }
+                .markdown-content tr {
+                    display: table-row;
+                }
+                .markdown-content th,
+                .markdown-content td {
+                    display: table-cell;
                 }
                 
                 .article-attachment {
