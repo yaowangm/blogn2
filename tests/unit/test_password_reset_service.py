@@ -100,18 +100,18 @@ class TestPasswordResetService:
     @patch("src.services.password_reset_service.send_password_reset_email")
     @patch("src.services.password_reset_service.get_reset_link_expire_minutes", return_value=60)
     @patch("src.services.password_reset_service.get_base_url", return_value="https://blog.example.com")
-    async def test_request_reset_email_raises_propagates(
+    async def test_request_reset_email_failure_does_not_raise_no_enumeration(
         self, mock_base_url, mock_expire_minutes, mock_send_email, service, mock_user_repo, mock_token_repo, sample_user
     ):
-        """申请重置：发信抛异常时原样抛出"""
+        """申请重置：发信失败时不抛异常、不创建 token，与未注册邮箱行为一致，防止枚举"""
         mock_user_repo.get_by_email.return_value = sample_user
-        mock_token_repo.create.return_value = MagicMock(token="t")
         mock_send_email.side_effect = RuntimeError("SMTP failed")
 
         with patch("src.services.password_reset_service.secrets") as mock_secrets:
             mock_secrets.token_urlsafe.return_value = "t"
-            with pytest.raises(RuntimeError, match="SMTP failed"):
-                await service.request_reset("test@example.com")
+            await service.request_reset("test@example.com")
+
+        mock_token_repo.create.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_reset_password_success(

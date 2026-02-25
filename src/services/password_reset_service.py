@@ -4,6 +4,7 @@
 处理申请重置、执行重置及邮件发送。
 """
 
+import asyncio
 import secrets
 import logging
 from datetime import datetime, timedelta
@@ -44,10 +45,17 @@ class PasswordResetService:
         reset_link = f"{base_url}/reset-password?token={token}"
 
         try:
-            send_password_reset_email(to_email=user.email, reset_link=reset_link, username=user.name)
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(
+                None,
+                lambda: send_password_reset_email(
+                    to_email=user.email, reset_link=reset_link, username=user.name
+                ),
+            )
         except Exception as e:
             logger.exception("Failed to send password reset email to %s: %s", email, e)
-            raise
+            # 不发 500，与「邮箱未注册」行为一致，防止通过响应差异枚举已注册邮箱
+            return
         # 仅发信成功后再持久化 token，避免发信失败留下无效 token
         await self.token_repo.create(user_id=user.id, token=token, expires_at=expires_at)
 

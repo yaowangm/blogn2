@@ -118,10 +118,10 @@ class TestCacheManager:
             cache_manager._backend.redis, "scan", new_callable=AsyncMock
         ) as mock_scan:
             mock_scan.return_value = (0, [])
-            await cache_manager.clear_pattern("article:detail:123*")
+            await cache_manager.clear_pattern("article:detail:123:*")
             mock_scan.assert_called_once()
             call_kw = mock_scan.call_args[1]
-            assert call_kw["match"] == f"{prefix}:article:detail:123*"
+            assert call_kw["match"] == f"{prefix}:article:detail:123:*"
 
 
 class TestCacheDecorator:

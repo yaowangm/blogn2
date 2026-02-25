@@ -269,11 +269,11 @@ if [ "$1" = "uvicorn" ]; then
         fi
     done
     
-    # 显式传入 MODEL_*，确保 uvicorn 子进程使用 entrypoint 解析后的路径
+    # 以 appuser 身份运行 uvicorn，避免容器内进程以 root 运行
     if [ "$HAS_LOG_LEVEL" = false ]; then
-        exec env MODEL_MODEL_PATH="$MODEL_MODEL_PATH" MODEL_PREFER_LOCAL="${MODEL_PREFER_LOCAL:-true}" uvicorn "${@:2}" --log-level "$LOG_LEVEL"
+        exec gosu appuser env MODEL_MODEL_PATH="$MODEL_MODEL_PATH" MODEL_PREFER_LOCAL="${MODEL_PREFER_LOCAL:-true}" uvicorn "${@:2}" --log-level "$LOG_LEVEL"
     else
-        exec env MODEL_MODEL_PATH="$MODEL_MODEL_PATH" MODEL_PREFER_LOCAL="${MODEL_PREFER_LOCAL:-true}" uvicorn "${@:2}"
+        exec gosu appuser env MODEL_MODEL_PATH="$MODEL_MODEL_PATH" MODEL_PREFER_LOCAL="${MODEL_PREFER_LOCAL:-true}" uvicorn "${@:2}"
     fi
 else
     exec "$@"
