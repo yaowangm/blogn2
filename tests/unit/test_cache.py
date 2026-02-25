@@ -12,6 +12,7 @@ from src.utils.cache import (
     cache_blog_list,
     cache_user_profile,
     CacheStats,
+    clear_article_detail_cache,
 )
 from src.config.cache import cache_settings, CacheKeyGenerator
 
@@ -122,6 +123,16 @@ class TestCacheManager:
             mock_scan.assert_called_once()
             call_kw = mock_scan.call_args[1]
             assert call_kw["match"] == f"{prefix}:article:detail:123:*"
+
+    @pytest.mark.asyncio
+    async def test_article_detail_cache_pattern_uses_colon_before_wildcard(self):
+        """文章详情失效 pattern 为 article:detail:{id}:*，避免 article:detail:1* 误匹配 10、123 等"""
+        with patch.object(cache_manager, "clear_pattern", new_callable=AsyncMock) as mock_clear:
+            with patch.object(cache_settings, "enable_cache", True):
+                await clear_article_detail_cache(1)
+                await clear_article_detail_cache(10)
+        mock_clear.assert_any_call("article:detail:1:*")
+        mock_clear.assert_any_call("article:detail:10:*")
 
 
 class TestCacheDecorator:

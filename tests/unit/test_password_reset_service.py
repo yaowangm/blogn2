@@ -114,6 +114,36 @@ class TestPasswordResetService:
         mock_token_repo.create.assert_not_called()
 
     @pytest.mark.asyncio
+    @patch("src.services.password_reset_service.asyncio.get_event_loop")
+    @patch("src.services.password_reset_service.send_password_reset_email")
+    @patch("src.services.password_reset_service.get_reset_link_expire_minutes", return_value=60)
+    @patch("src.services.password_reset_service.get_base_url", return_value="https://blog.example.com")
+    async def test_request_reset_sends_email_via_executor(
+        self, mock_base_url, mock_expire_minutes, mock_send_email, mock_get_loop, service, mock_user_repo, mock_token_repo, sample_user
+    ):
+        """申请重置：发信通过 run_in_executor 执行，不阻塞事件循环"""
+        mock_user_repo.get_by_email.return_value = sample_user
+        mock_token_repo.create.return_value = MagicMock(token="t")
+        run_in_executor = AsyncMock(return_value=None)
+        mock_loop = MagicMock()
+        mock_loop.run_in_executor = run_in_executor
+        mock_get_loop.return_value = mock_loop
+
+        with patch("src.services.password_reset_service.secrets") as mock_secrets:
+            mock_secrets.token_urlsafe.return_value = "t"
+            await service.request_reset("test@example.com")
+
+        run_in_executor.assert_called_once()
+        assert run_in_executor.call_args[0][0] is None
+        fn = run_in_executor.call_args[0][1]
+        fn()
+        mock_send_email.assert_called_once_with(
+            to_email="test@example.com",
+            reset_link="https://blog.example.com/reset-password?token=t",
+            username="testuser",
+        )
+
+    @pytest.mark.asyncio
     async def test_reset_password_success(
         self, service, mock_user_repo, mock_token_repo, mock_auth_service, sample_token_record
     ):
