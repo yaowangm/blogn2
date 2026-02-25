@@ -54,3 +54,25 @@ class TestGetModelDevice:
                         # 仅 sm_90a 无 sm_90 时，startswith 匹配仍应选 cuda
                         with patch("torch.cuda.get_arch_list", return_value=["sm_90a", "sm_89"]):
                             assert get_model_device() == "cuda"
+
+
+class TestResolveModelPathToSnapshot:
+    """_resolve_model_path_to_snapshot 路径解析与告警"""
+
+    @pytest.mark.unit
+    def test_warns_when_configured_path_exists_without_config_json(self):
+        """配置路径存在但无 config.json 时打 warning，避免静默回退到无关目录"""
+        configured = "/app/configured_model"
+        with patch("src.config.model.logger") as mock_logger:
+            with patch("src.config.model.os.path.isdir") as mock_isdir:
+                with patch("src.config.model.os.path.isfile") as mock_isfile:
+                    with patch("src.config.model.os.path.abspath", side_effect=lambda x: x):
+                        mock_isdir.return_value = True
+                        mock_isfile.return_value = False
+                        with patch("src.config.model._HUB_DIRS", []):
+                            result = _resolve_model_path_to_snapshot(configured)
+        assert result == configured
+        mock_logger.warning.assert_called_once()
+        call_args = mock_logger.warning.call_args[0]
+        assert "无 config.json" in call_args[0]
+        assert call_args[1] == configured

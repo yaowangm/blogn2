@@ -5,10 +5,13 @@
 包含模型路径、设备选择、性能参数等配置项。
 """
 
+import logging
 import os
 from typing import Optional
 
 from .utils import load_config_file, get_config_file_path
+
+logger = logging.getLogger(__name__)
 
 # 加载配置文件（如果存在）
 load_config_file()
@@ -36,6 +39,11 @@ def _resolve_model_path_to_snapshot(path: Optional[str]) -> Optional[str]:
         return path
     if os.path.isfile(os.path.join(path, "config.json")):
         return os.path.abspath(path)
+    # 配置路径存在但无 config.json，回退到 _HUB_DIRS 可能加载到无关模型，打日志避免静默误用
+    logger.warning(
+        "MODEL_MODEL_PATH 指向的目录存在但无 config.json，将尝试从 Docker 挂载目录解析: %s",
+        path,
+    )
     for hub_dir in _HUB_DIRS:
         if not os.path.isdir(hub_dir):
             continue
