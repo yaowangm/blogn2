@@ -3,6 +3,8 @@
  */
 (function () {
     const BREAKPOINT = 1024;
+    /** 左侧栏中始终不折叠的组件（任何情况下都完整显示） */
+    const NO_COLLAPSE_TAGS = new Set(['blog-profile-card']);
     const TITLE_MAP = {
         'blog-profile-card': '博客信息',
         'blog-navigation-card': '博客导航',
@@ -99,9 +101,10 @@
     function applyMobile(sidebar) {
         const children = Array.from(sidebar.children);
         children.forEach(function (el) {
-            if (isCollapsibleElement(el)) {
-                wrapCard(sidebar, el);
-            }
+            if (!isCollapsibleElement(el)) return;
+            const tag = el.tagName && el.tagName.toLowerCase();
+            if (NO_COLLAPSE_TAGS.has(tag)) return;
+            wrapCard(sidebar, el);
         });
     }
 
