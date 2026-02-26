@@ -7,8 +7,8 @@ SERVICE_NAME="blogn2"
 SERVICE_USER="wy"
 SERVICE_HOME="$(dirname "$(dirname "$(readlink -f "$0")")")"
 SERVICE_SCRIPT="run.py"
-PID_FILE="/var/run/blogn2.pid"
-LOG_FILE="/var/log/blogn2.log"
+PID_FILE="/tmp/blogn2.pid"
+LOG_FILE="/tmp/blogn2.log"
 
 # 颜色定义
 RED='\033[0;31m'
@@ -49,7 +49,7 @@ start() {
     }
     
     # 使用nohup启动应用
-    nohup bash -c "cd $SERVICE_HOME && source venv/bin/activate && python $SERVICE_SCRIPT" > "$LOG_FILE" 2>&1 &
+    nohup bash -c "cd $SERVICE_HOME && source /home/`whoami`/blogn2-env/bin/activate && python $SERVICE_SCRIPT" > "$LOG_FILE" 2>&1 &
     local bash_pid=$!
     
     # 等待一下让进程启动，然后找到Python进程的PID
