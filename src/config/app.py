@@ -96,10 +96,18 @@ def get_upload_dir() -> str:
     """
     获取文件上传目录
     
-    Returns:
-        str: 文件上传目录路径，从环境变量UPLOAD_DIR读取，默认为../pic/blogn_img/upload
+    本地与 Docker 共用 .env：本地填宿主机路径，Docker 由 compose 覆盖为容器路径并挂载同一目录。
     """
     return os.getenv('UPLOAD_DIR', '../pic/blogn_img/upload')
+
+
+def get_avatar_dir() -> str:
+    """
+    获取用户头像目录
+    
+    本地与 Docker 共用 .env：本地填宿主机路径，Docker 由 compose 覆盖为容器路径并挂载同一目录。
+    """
+    return os.getenv('AVATAR_DIR', '../pic/blogn_img/userlogo')
 
 
 def get_mail_from() -> str:
@@ -184,7 +192,7 @@ def validate_app_config() -> dict:
         "max_file_size": int(os.getenv('MAX_FILE_SIZE', '10485760')),
         "allowed_file_types": os.getenv('ALLOWED_FILE_TYPES', 'image/jpeg,image/png,image/gif'),
         "upload_dir": get_upload_dir(),
-        "avatar_dir": os.getenv('AVATAR_DIR', '../pic/blogn_img/userlogo'),
+        "avatar_dir": get_avatar_dir(),
         "config_source": str(config_file) if config_file else "defaults"
     }
     

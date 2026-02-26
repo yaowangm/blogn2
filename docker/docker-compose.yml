@@ -24,6 +24,9 @@ services:
       - HF_HOME=/app/.cache/huggingface
       - TRANSFORMERS_OFFLINE=1
       - HF_HUB_OFFLINE=1
+      # 容器内使用固定路径；宿主机目录由 .env 的 UPLOAD_DIR/AVATAR_DIR 提供，compose 挂载到容器
+      - UPLOAD_DIR=/app/uploads
+      - AVATAR_DIR=/app/avatars
     volumes:
       # 挂载配置文件（从项目根目录的 .env 或 docker/config.env）
       # 如果使用项目根目录的 .env 文件：
@@ -31,9 +34,9 @@ services:
       # 或者使用 docker 目录下的配置文件：
       # - ./config.env:/app/config.env:ro
       
-      # 挂载上传目录（持久化存储，路径相对于项目根目录）
-      - ../uploads:/app/uploads
-      - ../avatars:/app/avatars
+      # 挂载上传/头像目录（.env 中 UPLOAD_DIR/AVATAR_DIR 为宿主机路径，本地与 Docker 共用同一配置）
+      - ${UPLOAD_DIR:-../uploads}:/app/uploads
+      - ${AVATAR_DIR:-../avatars}:/app/avatars
       
       # HuggingFace 缓存（宿主机路径可在 .env 中设置 HF_CACHE_HOST_PATH、BERT_MODEL_HUB_HOST_PATH 覆盖）
       - ${HF_CACHE_HOST_PATH:-/home/wy/.cache/huggingface}:/app/.cache/huggingface:ro
