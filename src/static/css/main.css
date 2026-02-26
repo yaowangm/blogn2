@@ -123,15 +123,17 @@ body {
     min-width: 0;
 }
 
-/* 侧边栏：用相邻兄弟 margin-top 控制卡片间距（兼容自定义元素），卡片自身 margin 置 0 */
+/* 侧边栏：桌面端用 flex gap，卡片自身 margin 置 0 */
 .sidebar {
     display: flex;
     flex-direction: column;
+    gap: var(--card-gap);
     --card-margin: 0;
 }
 
+/* 单栏时 flex gap 对部分自定义元素不生效，改用相邻兄弟 margin（见 @media 1024px） */
 .sidebar > * + * {
-    margin-top: var(--card-gap);
+    margin-top: 0;
 }
 
 /* 卡片基础样式 */
@@ -320,6 +322,14 @@ a:hover {
     
     .container {
         padding: 0 var(--spacing-3);
+    }
+    
+    /* 单栏时用 margin-top 保证卡片间距（flex gap 对部分自定义元素不生效） */
+    .sidebar {
+        gap: 0;
+    }
+    .sidebar > * + * {
+        margin-top: var(--card-gap);
     }
     
     /* 左侧栏卡片可折叠：仅显示标题行，点击展开/收起 */
