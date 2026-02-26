@@ -39,8 +39,8 @@ start() {
     fi
     
     # 创建日志文件目录
-    sudo touch "$LOG_FILE"
-    sudo chown "$SERVICE_USER:$SERVICE_USER" "$LOG_FILE"
+    touch "$LOG_FILE"
+    chown "$SERVICE_USER:$SERVICE_USER" "$LOG_FILE"
     
     # 切换到项目目录并启动应用
     cd "$SERVICE_HOME" || {
