@@ -177,7 +177,7 @@ class CommentSettingsCard extends BaseComponent {
                     box-shadow: var(--shadow-sm);
                     border: 1px solid var(--gray-200);
                     overflow: hidden;
-                    margin-bottom: var(--spacing-4);
+                    margin-bottom: var(--card-margin);
                 }
                 
                 .card-body {

@@ -123,12 +123,15 @@ body {
     min-width: 0;
 }
 
-/* 侧边栏：仅用 gap 控制卡片间距，卡片自身 margin 置 0 避免叠加 */
+/* 侧边栏：用相邻兄弟 margin-top 控制卡片间距（兼容自定义元素），卡片自身 margin 置 0 */
 .sidebar {
     display: flex;
     flex-direction: column;
-    gap: var(--card-gap);
     --card-margin: 0;
+}
+
+.sidebar > * + * {
+    margin-top: var(--card-gap);
 }
 
 /* 卡片基础样式 */
