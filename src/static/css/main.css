@@ -54,6 +54,7 @@
     --font-size-4xl: 2.25rem;
     
     /* 间距 */
+    --card-gap: 10px; /* 卡片之间垂直间距，统一由此处继承 */
     --spacing-1: 0.25rem;
     --spacing-2: 0.5rem;
     --spacing-3: 0.75rem;
@@ -125,7 +126,7 @@ body {
 .sidebar {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-6);
+    gap: var(--card-gap);
 }
 
 /* 卡片基础样式 */
@@ -309,7 +310,7 @@ a:hover {
 @media (max-width: 1024px) {
     .content-grid {
         grid-template-columns: 1fr;
-        gap: var(--spacing-6);
+        gap: var(--card-gap);
     }
     
     .container {
@@ -322,7 +323,7 @@ a:hover {
         border-radius: var(--radius-lg);
         background: var(--white);
         box-shadow: var(--shadow-sm);
-        margin-bottom: var(--spacing-4);
+        margin-bottom: var(--card-gap);
         overflow: hidden;
     }
     
@@ -396,7 +397,7 @@ a:hover {
     }
     
     .content-grid {
-        gap: var(--spacing-4);
+        gap: var(--card-gap);
     }
     
     .card-body {
