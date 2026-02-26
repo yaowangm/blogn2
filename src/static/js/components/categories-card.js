@@ -202,7 +202,7 @@ class CategoriesCard extends BaseComponent {
                     box-shadow: var(--shadow-md);
                     border: 1px solid var(--gray-200);
                     overflow: hidden;
-                    margin-bottom: var(--spacing-6);
+                    margin-bottom: var(--card-margin);
                 }
 
                 .card-header {

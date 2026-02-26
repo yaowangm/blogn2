@@ -9,7 +9,7 @@
     --card-shadow-hover: var(--shadow-lg);
     --card-radius: var(--radius-xl);
     --card-padding: var(--spacing-6);
-    --card-margin: var(--spacing-6);
+    --card-margin: var(--card-gap);
     
     /* 卡片头部样式 */
     --card-header-bg: var(--gray-50);

@@ -54,7 +54,8 @@
     --font-size-4xl: 2.25rem;
     
     /* 间距 */
-    --card-gap: 10px; /* 卡片之间垂直间距，统一由此处继承 */
+    --card-gap: 20px; /* 卡片之间垂直间距，统一由此处继承 */
+    --card-margin: var(--card-gap); /* 卡片 margin，侧栏内由 .sidebar 覆盖为 0 */
     --spacing-1: 0.25rem;
     --spacing-2: 0.5rem;
     --spacing-3: 0.75rem;
@@ -122,11 +123,12 @@ body {
     min-width: 0;
 }
 
-/* 侧边栏 */
+/* 侧边栏：仅用 gap 控制卡片间距，卡片自身 margin 置 0 避免叠加 */
 .sidebar {
     display: flex;
     flex-direction: column;
     gap: var(--card-gap);
+    --card-margin: 0;
 }
 
 /* 卡片基础样式 */

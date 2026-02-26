@@ -276,7 +276,7 @@ class BlogPostsListCard extends BaseComponent {
                     box-shadow: var(--shadow-sm);
                     border: 1px solid var(--gray-200);
                     overflow: hidden;
-                    margin-bottom: var(--spacing-6);
+                    margin-bottom: var(--card-margin);
                 }
                 
                 /* 博文列表容器样式 */
