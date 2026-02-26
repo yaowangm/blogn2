@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
     if host_path:
         logger.warning(f"BERT 模型: 宿主机路径={host_path} -> 容器内使用={model_path or '(未解析)'}")
     else:
-        logger.warning(f"BERT 模型路径(容器内): {model_path or '(未设置，将使用 model_name)'}")
+        logger.warning(f"BERT 模型路径: {model_path or '(未设置，将使用 model_name)'}")
     # 预加载BERT模型（使用跨进程共享缓存）
     model_cache = await initialize_model_cache()
     if model_cache is not None:
