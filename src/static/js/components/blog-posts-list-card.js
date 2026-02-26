@@ -269,14 +269,14 @@ class BlogPostsListCard extends BaseComponent {
                 .error { text-align: center; padding: var(--spacing-6); color: var(--error-color); background: var(--gray-50); border-radius: var(--radius-lg); }
                 .empty-state { text-align: center; padding: var(--spacing-6); color: var(--gray-500); }
                 
-                /* 卡片样式 */
+                /* 卡片样式：根 .card 不设 margin，由父级 .sidebar 的 gap 统一控制间距，避免双倍间距 */
                 .card {
                     background: var(--white);
                     border-radius: var(--radius-lg);
                     box-shadow: var(--shadow-sm);
                     border: 1px solid var(--gray-200);
                     overflow: hidden;
-                    margin-bottom: var(--card-margin);
+                    margin-bottom: 0;
                 }
                 
                 /* 博文列表容器样式 */
