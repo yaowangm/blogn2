@@ -332,13 +332,12 @@ a:hover {
         margin-top: var(--card-gap);
     }
     
-    /* 左侧栏卡片可折叠：仅显示标题行，点击展开/收起 */
+    /* 左侧栏卡片可折叠：仅显示标题行，点击展开/收起；间距由 .sidebar > * + * 的 margin-top 统一控制 */
     .sidebar-left-collapsible {
         border: 1px solid var(--gray-200);
         border-radius: var(--radius-lg);
         background: var(--white);
         box-shadow: var(--shadow-sm);
-        margin-bottom: var(--card-gap);
         overflow: hidden;
     }
     
