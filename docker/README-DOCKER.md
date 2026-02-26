@@ -614,11 +614,9 @@ else:
 
 ### 图片 /upload/ 或 /avatar/ 返回 404（目录正确、文件在宿主机存在）
 
-- 在 **Docker 容器内**，应用只能访问容器内的路径。若配置里写的是**宿主机路径**（如 `UPLOAD_DIR=/home/wy/pic/blogn_img/upload`），该路径在容器中不存在，`/upload/xxx` 会返回 404。
-- **正确做法**：在容器用的配置文件（如 `blogn_docker.cnf`）中设置为**容器内路径**，并通过 `-v` 把宿主机目录挂载到该路径：
-  - `UPLOAD_DIR=/app/uploads`，启动时加：`-v /home/wy/pic/blogn_img/upload:/app/uploads`
-  - `AVATAR_DIR=/app/avatars`，启动时加：`-v /home/wy/pic/blogn_img/userlogo:/app/avatars`
-- 修改后重启容器：`docker restart blogn2-app`。启动日志中若出现“上传目录为宿主机路径…”的提示，说明仍需按上述方式改为容器路径并挂载。
+- **同一份 .env 用于本地与 Docker**：在 `.env` 中配置**宿主机路径**（如 `UPLOAD_DIR=/home/you/pic/blogn_img/upload`、`AVATAR_DIR=/home/you/pic/blogn_img/userlogo`）。本地直接启动时应用会使用该路径；使用 **docker-compose** 时，compose 会覆盖为容器内路径（`UPLOAD_DIR=/app/uploads`、`AVATAR_DIR=/app/avatars`），并把 .env 中的宿主机目录挂载到容器内，因此无需单独写一份“容器用”配置。
+- 若使用 **docker run**（非 compose）：需在命令行用 `-e UPLOAD_DIR=/app/uploads`、`-e AVATAR_DIR=/app/avatars` 覆盖，并用 `-v 宿主机上传目录:/app/uploads`、`-v 宿主机头像目录:/app/avatars` 挂载。
+- 修改后重启容器：`docker restart blogn2-app`。
 
 ### 模型下载失败
 

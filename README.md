@@ -152,8 +152,8 @@ python test_db.py
 - `CACHE_REDIS_HOST`: Redis服务器地址
 - `CACHE_ENABLE_CACHE`: 是否启用缓存
 - `CACHE_DEFAULT_TTL`: 默认缓存时间
-- `UPLOAD_DIR`: 文件上传目录
-- `AVATAR_DIR`: 用户头像目录
+- `UPLOAD_DIR`: 文件上传目录（本地与 Docker 共用同一 .env：本地填宿主机路径；Docker 由 compose 覆盖为容器路径并挂载此处目录）
+- `AVATAR_DIR`: 用户头像目录（同上，本地与 Docker 共用）
 - `MODEL_MODEL_NAME`: Hugging Face 模型 ID（默认 `paraphrase-multilingual-MiniLM-L12-v2`）；无本地路径时按此名称下载，有本地路径时主要用于日志与回退。
 - `MODEL_MODEL_PATH`: 容器内/本地模型路径（可选；Docker 下由 entrypoint 解析到挂载的 snapshot）
 - `MODEL_DEVICE`: 运行设备，`auto`（默认）时仅当当前 GPU 在 PyTorch 编译支持列表内才用 CUDA，否则用 CPU；可显式设为 `cpu` 或 `cuda`。
@@ -226,7 +226,7 @@ BlogN实现了完整的缓存系统：
 
 ### Docker run 参数说明
 
-以下参数均在 `docker run` 命令行中配置，**不要**写入 `.env` / `.env.example`。
+以下参数均在 `docker run` 命令行中配置（`.env` 中的 `UPLOAD_DIR`、`AVATAR_DIR` 为宿主机路径，本地与 docker-compose 共用；`docker run` 时用下方 `-v` 挂载同一路径即可）。
 
 | 参数 | 说明 |
 |------|------|
@@ -235,8 +235,8 @@ BlogN实现了完整的缓存系统：
 | `--network host` | 使用宿主机网络，容器内可直接访问本机 PostgreSQL、Redis、sendmail 等 |
 | `-e BLOGN_CONFIG_FILE=/app/config.env` | 告知应用从挂载的配置文件读取环境变量（数据库、Redis、日志等） |
 | `-v 宿主机路径/.env:/app/config.env:ro` | 将项目根目录的 `.env` 挂载为容器内配置文件，只读 |
-| `-v 宿主机上传目录:/app/uploads` | 上传文件持久化，宿主机路径按本机实际修改 |
-| `-v 宿主机头像目录:/app/avatars` | 用户头像持久化，宿主机路径按本机实际修改 |
+| `-v 宿主机上传目录:/app/uploads` | 上传文件持久化，可与 .env 中 `UPLOAD_DIR` 一致 |
+| `-v 宿主机头像目录:/app/avatars` | 用户头像持久化，可与 .env 中 `AVATAR_DIR` 一致 |
 | `-v 宿主机HF缓存:/app/.cache/huggingface:ro` | Hugging Face 缓存（可选，若模型从宿主机挂载可省略） |
 | `-v 宿主机ModelScope缓存:/app/.cache/modelscope:ro` | ModelScope 缓存（可选） |
 | `-v 宿主机BERT模型目录:/app/.cache/models/bert-model-hub:ro` | BERT 模型 hub 目录（含 `snapshots/`），宿主机路径按本机实际修改；不挂载则无法使用智能搜索 |
