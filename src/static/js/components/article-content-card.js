@@ -428,6 +428,7 @@ class ArticleContentCard extends BaseComponent {
             style.textContent = `
                 @import url('/static/css/common-components.css');
                 @import url('/static/css/components.css');
+                .card { margin-bottom: 0; }
                 
                 :host {
                     display: block;

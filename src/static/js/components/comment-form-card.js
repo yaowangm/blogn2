@@ -257,7 +257,7 @@ class CommentFormCard extends BaseComponent {
             const style = document.createElement('style');
             style.textContent = `
                 .comment-form-card {
-                    margin-bottom: var(--card-margin);
+                    margin-bottom: 0;
                 }
                 .card-header {
                     padding: var(--spacing-4) var(--spacing-6);

@@ -533,6 +533,7 @@ class ArticleHeaderCard extends BaseComponent {
             const style = document.createElement('style');
             style.textContent = `
                 @import url('/static/css/common-components.css');
+                .card { margin-bottom: 0; }
                 
                 .article-title h1 {
                     font-size: var(--font-size-3xl);
