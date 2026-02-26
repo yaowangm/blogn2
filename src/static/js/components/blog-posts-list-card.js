@@ -65,17 +65,14 @@ class BlogPostsListCard extends BaseComponent {
     }
 
     async checkOwnership() {
-        if (!this.projectId) {
-            return;
-        }
-
+        if (!this.projectId) return;
         try {
-            const projectResponse = await fetch(`/api/projects/${this.projectId}`);
-            if (projectResponse.ok) {
-                this.projectData = await projectResponse.json();
+            const projectData = await BaseComponent.getProject(this.projectId);
+            if (projectData) {
+                this.projectData = projectData;
                 if (typeof UserManager !== 'undefined' && UserManager.isLoggedIn()) {
                     const currentUser = UserManager.getCurrentUser();
-                    this.isOwner = currentUser.id === this.projectData.userid;
+                    this.isOwner = currentUser.id === projectData.userid;
                 }
             }
         } catch (error) {

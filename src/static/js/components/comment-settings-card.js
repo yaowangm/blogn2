@@ -43,14 +43,9 @@ class CommentSettingsCard extends BaseComponent {
      */
     async loadArticleData() {
         try {
-            // 获取认证头
-            const headers = UserManager.createHeaders();
-            
-            const response = await fetch(`/api/articles/${this.articleId}`, {
-                headers: headers
-            });
-            if (response.ok) {
-                this.articleData = await response.json();
+            const articleData = await BaseComponent.getArticle(this.articleId);
+            if (articleData) {
+                this.articleData = articleData;
             } else {
                 this.hide();
             }

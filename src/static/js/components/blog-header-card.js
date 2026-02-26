@@ -30,18 +30,12 @@ class BlogHeaderCard extends BaseComponent {
         }
 
         try {
-            // 获取博客信息
-            const response = await fetch(`/api/projects/${this.projectId}`);
-            if (response.ok) {
-                this.blogData = await response.json();
-            } else if (response.status === 404) {
-                // 如果博客不存在，跳转到错误页面
+            const blogData = await BaseComponent.getProject(this.projectId);
+            if (blogData === null) {
                 window.location.href = '/static/error.html';
                 return;
-            } else {
-                // 其他错误，使用模拟数据
-                this.blogData = this.getMockBlogData();
             }
+            this.blogData = blogData;
             
             // 检查是否为当前用户的博客
             this.checkIfCurrentUserBlog();
@@ -67,12 +61,9 @@ class BlogHeaderCard extends BaseComponent {
         try {
             this.loading = true;
             this.render();
-            
-            const response = await fetch(`/api/projects/${this.projectId}`);
-            if (!response.ok) {
-                throw new Error('Failed to fetch blog data');
-            }
-            this.blogData = await response.json();
+            const blogData = await BaseComponent.getProject(this.projectId);
+            if (blogData === null) throw new Error('Project not found');
+            this.blogData = blogData;
             
             // 更新页面标题
             this.updatePageTitle();

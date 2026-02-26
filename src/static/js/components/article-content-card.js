@@ -45,24 +45,14 @@ class ArticleContentCard extends BaseComponent {
      */
     async loadArticleData() {
         try {
-            // 获取认证头
-            const headers = UserManager.createHeaders();
-            
-            const response = await fetch(`/api/articles/${this.articleId}`, {
-                headers: headers
-            });
-            if (response.ok) {
-                this.articleData = await response.json();
-            } else if (response.status === 404) {
-                // 文章不存在，跳转到错误页面
+            const articleData = await BaseComponent.getArticle(this.articleId);
+            if (articleData === null) {
                 window.location.href = '/static/error.html';
                 return;
-            } else {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
+            this.articleData = articleData;
         } catch (error) {
             this.logError('Failed to load article data', error);
-            // 加载失败，跳转到错误页面
             window.location.href = '/static/error.html';
         }
     }

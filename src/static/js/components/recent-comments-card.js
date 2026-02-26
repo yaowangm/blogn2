@@ -99,12 +99,8 @@ class RecentCommentsCard extends BaseComponent {
         if (!articleId) return null;
         
         try {
-            // 直接通过API获取文章信息来获得项目ID
-            const response = await fetch(`/api/articles/${articleId}`);
-            if (response.ok) {
-                const articleData = await response.json();
-                return articleData.project?.id;
-            }
+            const articleData = await BaseComponent.getArticle(articleId);
+            if (articleData) return articleData.project?.id;
         } catch (error) {
             console.warn('Failed to fetch article data for project ID:', error);
         }

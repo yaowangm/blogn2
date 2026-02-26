@@ -14,9 +14,8 @@ class CategoriesCard extends BaseComponent {
 
     async connectedCallback() {
         this.render();
-        await this.checkOwnership();
-        this.render(); // 重新渲染以显示维护按钮
-        this.loadData();
+        await Promise.all([this.checkOwnership(), this.loadData()]);
+        this.render();
     }
 
     async checkOwnership() {
@@ -40,10 +39,8 @@ class CategoriesCard extends BaseComponent {
         }
 
         try {
-            // 获取博客信息
-            const response = await fetch(`/api/projects/${this.projectId}`);
-            if (response.ok) {
-                const blogData = await response.json();
+            const blogData = await BaseComponent.getProject(this.projectId);
+            if (blogData) {
                 const currentUser = UserManager.getCurrentUser();
                 this.isOwner = currentUser.id === blogData.userid;
             } else {
@@ -154,13 +151,8 @@ class CategoriesCard extends BaseComponent {
             this.categories = this.getMockCategories();
         } finally {
             this.loading = false;
-            // 重新检查所有权状态并渲染
-            await this.checkOwnership();
             this.render();
-            // 延迟添加事件监听器，确保DOM已经渲染
-            setTimeout(() => {
-                this.addEventListeners();
-            }, 100);
+            setTimeout(() => this.addEventListeners(), 100);
         }
     }
 

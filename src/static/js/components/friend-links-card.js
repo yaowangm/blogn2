@@ -17,9 +17,9 @@ class FriendLinksCard extends BaseComponent {
 
     async connectedCallback() {
         this.projectId = this.getProjectIdFromUrl();
-        await this.checkOwnership();
         this.render();
-        this.loadData();
+        await Promise.all([this.checkOwnership(), this.loadData()]);
+        this.render();
     }
 
     getProjectIdFromUrl() {
@@ -47,17 +47,10 @@ class FriendLinksCard extends BaseComponent {
         // 检查是否为管理员（state为10表示管理员）
         this.isAdmin = currentUser.state === 10;
 
-        // 检查是否为博客所有者
         if (this.projectId) {
             try {
-                // 获取博客信息
-                const response = await fetch(`/api/projects/${this.projectId}`);
-                if (response.ok) {
-                    const blogData = await response.json();
-                    this.isOwner = currentUser.id === blogData.userid;
-                } else {
-                    this.isOwner = false;
-                }
+                const blogData = await BaseComponent.getProject(this.projectId);
+                this.isOwner = blogData ? currentUser.id === blogData.userid : false;
             } catch (error) {
                 console.error('检查所有权失败:', error);
                 this.isOwner = false;
@@ -85,7 +78,6 @@ class FriendLinksCard extends BaseComponent {
             this.friendLinks = [];
         } finally {
             this.loading = false;
-            await this.checkOwnership();
             this.render();
             this.addEventListeners();
         }

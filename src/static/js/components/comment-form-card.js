@@ -47,10 +47,8 @@ class CommentFormCard extends BaseComponent {
      */
     async loadArticleData() {
         try {
-            const response = await fetch(`/api/articles/${this.articleId}`);
-            if (response.ok) {
-                this.articleData = await response.json();
-            }
+            const articleData = await BaseComponent.getArticle(this.articleId);
+            if (articleData) this.articleData = articleData;
         } catch (error) {
             // 静默处理错误
         }

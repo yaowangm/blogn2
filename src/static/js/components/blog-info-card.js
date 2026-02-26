@@ -55,14 +55,12 @@ class BlogInfoCard extends BaseComponent {
             
             const userData = await userResponse.json();
             
-            // 检查用户是否有博客项目
             if (userData.projectid) {
-                // 用户有博客，获取博客详细信息
-                const response = await fetch(`/api/projects/${userData.projectid}`, { headers });
-                if (response.ok) {
-                    this.blogData = await response.json();
+                const projectData = await BaseComponent.getProject(userData.projectid);
+                if (projectData) {
+                    this.blogData = projectData;
                 } else {
-                    throw new Error(`获取博客信息失败: ${response.status}`);
+                    throw new Error('获取博客信息失败');
                 }
             } else {
                 // 用户没有博客，显示开通博客选项

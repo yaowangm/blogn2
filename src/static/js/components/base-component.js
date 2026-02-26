@@ -11,6 +11,11 @@
  * 所有自定义Web组件都应该继承此类以获得基础功能。
  */
 class BaseComponent extends HTMLElement {
+    static _projectCache = {};
+    static _projectPromises = {};
+    static _articleCache = {};
+    static _articlePromises = {};
+
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
@@ -314,6 +319,57 @@ class BaseComponent extends HTMLElement {
         if (page === null || page === '') return 1;
         const n = parseInt(page, 10);
         return isNaN(n) || n < 1 ? 1 : n;
+    }
+
+    /**
+     * 全站共享：按 projectId 获取项目数据，同页多组件只请求一次
+     * @param {number} projectId
+     * @returns {Promise<object|null>} 成功返回数据，404 返回 null
+     */
+    static async getProject(projectId) {
+        if (!projectId) return null;
+        if (BaseComponent._projectCache[projectId]) return BaseComponent._projectCache[projectId];
+        if (BaseComponent._projectPromises[projectId]) return BaseComponent._projectPromises[projectId];
+        const p = (async () => {
+            try {
+                const res = await fetch(`/api/projects/${projectId}`);
+                if (res.status === 404) return null;
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                BaseComponent._projectCache[projectId] = data;
+                return data;
+            } finally {
+                delete BaseComponent._projectPromises[projectId];
+            }
+        })();
+        BaseComponent._projectPromises[projectId] = p;
+        return p;
+    }
+
+    /**
+     * 全站共享：按 articleId 获取文章数据，同页多组件只请求一次
+     * @param {number} articleId
+     * @returns {Promise<object|null>} 成功返回数据，404 返回 null
+     */
+    static async getArticle(articleId) {
+        if (!articleId) return null;
+        if (BaseComponent._articleCache[articleId]) return BaseComponent._articleCache[articleId];
+        if (BaseComponent._articlePromises[articleId]) return BaseComponent._articlePromises[articleId];
+        const headers = (typeof UserManager !== 'undefined' && UserManager.createHeaders) ? UserManager.createHeaders() : {};
+        const p = (async () => {
+            try {
+                const res = await fetch(`/api/articles/${articleId}`, { headers });
+                if (res.status === 404) return null;
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                BaseComponent._articleCache[articleId] = data;
+                return data;
+            } finally {
+                delete BaseComponent._articlePromises[articleId];
+            }
+        })();
+        BaseComponent._articlePromises[articleId] = p;
+        return p;
     }
 
     /**

@@ -103,9 +103,9 @@ class EditPostForm extends BaseComponent {
      */
     async loadArticleData() {
         try {
-            const response = await fetch(`/api/articles/${this.articleId}`);
-            if (response.ok) {
-                this.originalArticleData = await response.json();
+            const articleData = await BaseComponent.getArticle(this.articleId);
+            if (articleData) {
+                this.originalArticleData = articleData;
                 
                 // 重置图片状态
                 this.imageDeleted = false;
@@ -161,10 +161,8 @@ class EditPostForm extends BaseComponent {
                 
                 // 重新渲染表单以显示数据
                 this.render();
-            } else if (response.status === 404) {
-                this.showError('文章不存在');
             } else {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                this.showError('文章不存在');
             }
         } catch (error) {
             this.logError('Failed to load article data', error);
