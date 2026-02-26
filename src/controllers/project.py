@@ -97,18 +97,11 @@ async def get_project_posts(
     else:
         # 获取原创文章
         project_item_repo = ProjectItemRepository(session)
-        
-        # 计算偏移量
         offset = (page - 1) * limit
-        
-        # 检查是否为管理员，决定是否包含已删除的文章
         is_admin = permission_manager.can_manage_system(current_user)
         should_include_deleted = include_deleted and is_admin
-        
-        # 获取文章列表
         posts = await project_item_repo.get_by_project_id_and_folder(project_id, folderid, limit, offset, should_include_deleted)
         
-        # 获取总数 - 使用预存储的recordcount字段，避免实时查询
         if folderid:
             # 如果指定了文件夹，直接从folders表获取
             folder_repo = FolderRepository(session)
@@ -123,7 +116,6 @@ async def get_project_posts(
                 # 如果获取失败，回退到实时查询
                 total = await project_item_repo.count_by_project_id_and_folder(project_id, folderid)
         else:
-            # 如果没有指定文件夹，统计项目下所有文件夹的文章总数
             total = await project_item_repo.get_count_from_folder_recordcount(project_id)
         
         # 获取分类信息

@@ -63,11 +63,13 @@ class BlogListCard extends BaseComponent {
 
 
     connectedCallback() {
-        // 检查是否应该显示分类信息
         this.showCategoryInfo = this.shouldShowCategoryInfo();
         this.currentFolderId = this.getCurrentFolderId();
+        // 从 URL 读取 page，直接加载对应页（如 /blog/12?page=24 加载第 24 页）
+        const initialPage = typeof this.getCurrentPageFromUrl === 'function' ? this.getCurrentPageFromUrl() : 1;
+        this.currentPage = initialPage;
         this.render();
-        this.loadContent();
+        this.loadContent(initialPage);
         this.addEventListeners();
     }
 
@@ -138,14 +140,19 @@ class BlogListCard extends BaseComponent {
         this.totalPosts = data.total || this.posts.length;
         this.totalPages = Math.ceil(this.totalPosts / this.pageSize);
         this.loading = false;
-        
-        // 从API响应中获取分类信息
         if (data.category) {
             this.currentCategoryName = data.category;
         }
-        
-        // 更新导航栏
         this.updatePagination();
+        // 通知父级 blog-posts-list-card 同步总数，供分页校验
+        const host = this.getRootNode().host;
+        if (host && host !== this && typeof host.dispatchEvent === 'function') {
+            host.dispatchEvent(new CustomEvent('blog-list-content-updated', {
+                detail: { totalPosts: this.totalPosts, totalPages: this.totalPages },
+                bubbles: true,
+                composed: true
+            }));
+        }
         
         const cardBody = this.shadowRoot.querySelector('.card-body');
         

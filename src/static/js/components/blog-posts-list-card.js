@@ -21,28 +21,34 @@ class BlogPostsListCard extends BaseComponent {
     }
 
     connectedCallback() {
-        // 同步初始化基本属性
         this.projectId = this.getProjectIdFromUrl();
         this.currentFolderId = this.getCurrentFolderId();
-        
-        // 立即渲染基本结构
+        this.currentPage = this.getCurrentPageFromUrl();
+        // 不阻塞：先渲染内层 blog-list-card，由它单独请求文章列表，避免重复请求
+        this.loading = false;
         this.render();
-        
-        // 添加事件监听器（必须在异步操作之前）
         this.addCategoryEventListeners();
         this.addEventListeners();
-        
-        // 异步执行其他初始化操作
+        this.addBlogListContentListener();
         this.initializeAsync();
+    }
+    
+    /** 监听内层 blog-list-card 加载完成，同步 totalPosts/totalPages 供分页用 */
+    addBlogListContentListener() {
+        this.addEventListener('blog-list-content-updated', (e) => {
+            if (e.detail && typeof e.detail.totalPosts === 'number') {
+                this.totalPosts = e.detail.totalPosts;
+            }
+            if (e.detail && typeof e.detail.totalPages === 'number') {
+                this.totalPages = e.detail.totalPages;
+            }
+        });
     }
     
     async initializeAsync() {
         try {
-            // 检查所有权
             await this.checkOwnership();
-            
-            // 加载数据
-            this.loadData();
+            this.render();
         } catch (error) {
             console.error('组件初始化失败:', error);
         }
@@ -64,19 +70,13 @@ class BlogPostsListCard extends BaseComponent {
         }
 
         try {
-            // 获取项目信息
             const projectResponse = await fetch(`/api/projects/${this.projectId}`);
             if (projectResponse.ok) {
                 this.projectData = await projectResponse.json();
-                
-                // 检查当前用户是否为博客所有者
-                if (UserManager.isLoggedIn()) {
+                if (typeof UserManager !== 'undefined' && UserManager.isLoggedIn()) {
                     const currentUser = UserManager.getCurrentUser();
                     this.isOwner = currentUser.id === this.projectData.userid;
                 }
-                
-                // 所有权检查完成后重新渲染，确保按钮显示状态正确
-                this.render();
             }
         } catch (error) {
             console.error('检查博客所有权失败:', error);

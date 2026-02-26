@@ -305,6 +305,18 @@ class BaseComponent extends HTMLElement {
     }
 
     /**
+     * 从 URL 查询参数获取当前页码（用于博客列表分页）
+     * @returns {number} 页码，默认为 1
+     */
+    getCurrentPageFromUrl() {
+        const url = new URL(window.location.href);
+        const page = url.searchParams.get('page');
+        if (page === null || page === '') return 1;
+        const n = parseInt(page, 10);
+        return isNaN(n) || n < 1 ? 1 : n;
+    }
+
+    /**
      * 获取文章ID
      * 从URL中获取文章ID
      * 支持 /article/{article_id} 和 /edit-article/{article_id} 两种URL格式
