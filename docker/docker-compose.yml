@@ -34,7 +34,9 @@ services:
       # 或者使用 docker 目录下的配置文件：
       # - ./config.env:/app/config.env:ro
       
-      # 挂载上传/头像目录（.env 中 UPLOAD_DIR/AVATAR_DIR 为宿主机路径，本地与 Docker 共用同一配置）
+      # 挂载上传/头像目录：宿主机路径由 运行 docker-compose 时的环境 提供（见下方说明）
+      # 请从项目根目录执行：docker-compose -f docker/docker-compose.yml up
+      # 这样会使用项目根 .env 中的 UPLOAD_DIR、AVATAR_DIR 做卷挂载；若从 docker/ 目录执行且未设置这两项，会挂载 ../uploads、../avatars（常为空，导致图片不显示）
       - ${UPLOAD_DIR:-../uploads}:/app/uploads
       - ${AVATAR_DIR:-../avatars}:/app/avatars
       

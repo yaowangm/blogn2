@@ -246,9 +246,10 @@ echo "  - 模型缓存目录: ${MODEL_CACHE_DIR:-/app/.cache/models}"
 echo "  - 上传目录: ${UPLOAD_DIR:-/app/uploads}"
 echo "  - 头像目录: ${AVATAR_DIR:-/app/avatars}"
 
-# 容器内若使用宿主机路径（如 /home/...），该路径在容器中不存在，会导致 /upload/、/avatar/ 返回 404
-case "${UPLOAD_DIR:-/app/uploads}" in /home/*|/Users/*) echo "⚠️  上传目录为宿主机路径，容器内无法访问，图片会 404。请改为 UPLOAD_DIR=/app/uploads 并用 -v 挂载宿主机目录";; esac
-case "${AVATAR_DIR:-/app/avatars}" in /home/*|/Users/*) echo "⚠️  头像目录为宿主机路径，容器内无法访问。请改为 AVATAR_DIR=/app/avatars 并用 -v 挂载宿主机目录";; esac
+# 容器内必须使用容器路径，否则 /upload/、/avatar/ 会 404（宿主机路径在容器内不存在）
+# 强制覆盖为容器路径，volume 已把宿主机目录挂载到此处
+export UPLOAD_DIR=/app/uploads
+export AVATAR_DIR=/app/avatars
 
 # 执行传入的命令
 echo "🚀 启动应用..."
