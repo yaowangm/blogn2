@@ -1,10 +1,10 @@
 除非我明确要求，否则不要提交代码
 永远不要推送代码
 运行测试时，先调用source ~/blogn2-env/bin/activate;进入虚拟环境
-使用sudo blogn2-service restart来重启应用
+使用scripts/blogn2-service restart来重启本地应用
 构建 Docker 时不要使用 --no-cache
 ---
-description:
+description: 操作规则
 globs:
 alwaysApply: true
 ---
