@@ -313,210 +313,134 @@ class BatchVectorizationService:
 
 ## 5. 搜索服务
 
-### 5.1 分层搜索策略
+当前实现统一在 `HierarchicalSearchService`（`src/services/search_service.py`）中：文章检索入口为 `hybrid_search_articles`，采用「all_segments → best_segments → article_scores → ranked」单次 SQL + 应用层过量拉取与过滤。**与代码一致的描述见 5.3**；5.1、5.2 为概念与权重说明。
+
+### 5.1 分层搜索策略（概念）
 
 #### 5.1.1 相似度计算策略
-在基于BERT的全文检索中，我们采用**最大段相似度**策略而非段相似度之和，原因如下：
+在基于 BERT 的全文检索中，我们采用**最大段相似度**策略而非段相似度之和，原因如下：
 
 1. **语义匹配的准确性**: 最大段相似度能够准确识别文档中最相关的片段，避免不相关片段对整体相似度的干扰
 2. **避免长度偏差**: 段相似度之和会导致长文档在搜索中具有不公平的优势，即使其相关性较低
 3. **提高搜索精度**: 最大段相似度更符合用户期望，即找到包含最相关内容片段的文档
-4. **计算效率**: 使用`MIN()`函数和窗口函数可以高效地找到最佳匹配片段
+4. **计算效率**: 使用窗口函数可高效得到每篇的最佳匹配片段
 
-```python
-class HierarchicalSearchService:
-    def __init__(self, db_session):
-        self.db = db_session
-    
-    async def search(self, query: str, limit: int = 10) -> List[Dict]:
-        """分层搜索"""
-        # 1. 查询向量化
-        query_vector = await self.vectorize_query(query)
-        
-        # 2. 快速筛选（基于内容向量）
-        candidates = await self.fast_search(query_vector, limit=50)
-        
-        # 3. 精确匹配（基于片段向量）
-        detailed_results = await self.detailed_search(candidates, query_vector)
-        
-        # 4. 结果排序
-        return self.rank_results(detailed_results, limit)
-    
-    async def fast_search(self, query_vector: np.ndarray, limit: int) -> List[Dict]:
-        """快速搜索（基于聚合向量）"""
-        query = """
-        SELECT 
-            av.projectitem_id,
-            av.title_text,
-            av.content_text,
-            (av.title_vector <=> %s) * 0.3 + (av.content_vector <=> %s) * 0.7 AS distance
-        FROM article_vectors av
-        WHERE av.avg_confidence > 0.7
-        ORDER BY distance
-        LIMIT %s
-        """
-        
-        result = await self.db.execute(query, [
-            self.vector_to_json(query_vector),
-            self.vector_to_json(query_vector),
-            limit
-        ])
-        
-        return result.fetchall()
-    
-    async def detailed_search(self, candidates: List[Dict], query_vector: np.ndarray) -> List[Dict]:
-        """详细搜索（基于片段向量，使用最大段相似度）"""
-        candidate_ids = [c['projectitem_id'] for c in candidates]
-        
-        query = """
-        WITH best_segments AS (
-            SELECT 
-                av.projectitem_id,
-                csv.segment_index,
-                csv.segment_text,
-                csv.start_char_pos,
-                csv.end_char_pos,
-                (csv.segment_vector <=> %s) AS segment_distance,
-                ROW_NUMBER() OVER (PARTITION BY av.projectitem_id ORDER BY (csv.segment_vector <=> %s)) as rn
-            FROM article_vectors av
-            JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
-            WHERE av.projectitem_id = ANY(%s)
-                AND csv.confidence_score > 0.8
-        )
-        SELECT 
-            projectitem_id,
-            segment_index,
-            segment_text,
-            start_char_pos,
-            end_char_pos,
-            segment_distance
-        FROM best_segments
-        WHERE rn = 1
-        ORDER BY segment_distance
-        """
-        
-        result = await self.db.execute(query, [
-            self.vector_to_json(query_vector),
-            self.vector_to_json(query_vector),
-            candidate_ids
-        ])
-        
-        return result.fetchall()
+**说明**：当前代码并未采用「先 fast_search 再 detailed_search」的两阶段，而是一体化混合检索（见 5.3.6）。
+
+#### 5.1.2 性能优化查询（概念）
+使用 `DISTINCT ON` / `ROW_NUMBER()` 按篇取最佳片段、`confidence_score >= 0.8` 过滤，与实现中 `best_segments` 的 `DISTINCT ON (projectitem_id)` 思路一致。实际 SQL 结构见 5.3.6。
+
+### 5.2 混合搜索权重（当前实现）
+
+`HierarchicalSearchService.hybrid_search_articles` 使用 **文章级 10% + 片段级 90%**（`article_weight=0.1`, `segment_weight=0.9`），文章级内部为标题 30%、内容 70%。相似度为 `1 - (vector <=> query_vector)`（越大越相似），组合公式见 5.3.1。早期文档中的 0.6/0.4 权重已废弃。
+
+### 5.3 业务场景与实现细节（当前实现）
+
+本节对应代码：`src/services/search_service.py` 中的 `HierarchicalSearchService`，以及控制器 `src/controllers/search.py` 的搜索接口。以下为已实现的业务场景与对应实现要点。
+
+#### 5.3.1 阈值与常量
+
+| 常量 | 值 | 用途 |
+|------|-----|------|
+| `DEFAULT_THRESHOLD` | 0.55 | 默认相似度 55%，用于：兜底（当 `relevance_score` 为 0 或缺失时）、关键词回退时的返回值 |
+| `TITLE_ONLY_MIN_SIMILARITY` | 0.85 | 无正文文章仅当「组合相似度 ≥ 85%」时才保留，避免标题与查询仅泛匹配（如「上头像」对「邱华栋」）仍被展示 |
+
+**组合相似度公式**（ranked 与过滤一致）：
+
+```text
+relevance_score = COALESCE(article_similarity, 0) * 0.1 + segment_similarity * 0.9
 ```
 
-#### 5.1.2 性能优化查询
-为了高效计算最大段相似度，我们使用以下优化策略：
+- 有正文：SQL 侧仅保留 `relevance_score >= TITLE_ONLY_MIN_SIMILARITY`（0.85）的文档。
+- 无正文：同样要求 `relevance_score >= 0.85`，因此标题与查询语义接近（如标题即「邱华栋」）可命中，标题仅泛匹配则被排除。
 
-```sql
--- 优化后的最大段相似度查询
-WITH ranked_segments AS (
-    SELECT 
-        av.projectitem_id,
-        csv.segment_index,
-        csv.segment_text,
-        csv.start_char_pos,
-        csv.end_char_pos,
-        (csv.segment_vector <=> %s) AS segment_distance,
-        ROW_NUMBER() OVER (
-            PARTITION BY av.projectitem_id 
-            ORDER BY (csv.segment_vector <=> %s)
-        ) as similarity_rank
-    FROM article_vectors av
-    JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
-    WHERE csv.confidence_score >= 0.8
-        AND av.projectitem_id = ANY(%s)
-)
-SELECT 
-    projectitem_id,
-    segment_index,
-    segment_text,
-    start_char_pos,
-    end_char_pos,
-    segment_distance
-FROM ranked_segments
-WHERE similarity_rank = 1
-ORDER BY segment_distance
-LIMIT %s;
-```
+#### 5.3.2 相似度展示与兜底（避免前端 0%）
 
-**性能优化要点**：
-- 使用`ROW_NUMBER()`窗口函数避免子查询
-- 在`ORDER BY`子句中直接计算相似度，利用索引
-- 通过`PARTITION BY`确保每个文档只返回最佳片段
-- 添加`confidence_score`过滤条件提高质量
+**场景**：向量检索或格式化后可能出现 `relevance_score` 为 0 或缺失，前端会显示「0% 相似度」。
 
-### 5.2 混合搜索
-```python
-class HybridSearchService:
-    async def hybrid_search(self, query_vector: np.ndarray, 
-                           article_weight: float = 0.6,
-                           segment_weight: float = 0.4,
-                           limit: int = 10) -> List[Dict]:
-        """混合搜索：结合文章级和片段级相似度，使用最大段相似度"""
-        query = """
-        WITH article_scores AS (
-            SELECT 
-                av.projectitem_id,
-                av.title_text,
-                av.content_text,
-                (av.title_vector <=> %s) * 0.3 + (av.content_vector <=> %s) * 0.7 AS article_distance
-            FROM article_vectors av
-            WHERE av.avg_confidence > 0.7
-        ),
-        best_segments AS (
-            SELECT 
-                av.projectitem_id,
-                MIN(csv.segment_vector <=> %s) AS best_segment_distance
-            FROM article_vectors av
-            JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
-            WHERE csv.confidence_score >= 0.8
-            GROUP BY av.projectitem_id
-        )
-        SELECT 
-            as.projectitem_id,
-            as.title_text,
-            as.content_text,
-            as.article_distance * %s + bs.best_segment_distance * %s AS combined_distance
-        FROM article_scores as
-        JOIN best_segments bs ON as.projectitem_id = bs.projectitem_id
-        ORDER BY combined_distance
-        LIMIT %s
-        """
-        
-        result = await self.db.execute(query, [
-            self.vector_to_json(query_vector),
-            self.vector_to_json(query_vector),
-            self.vector_to_json(query_vector),
-            article_weight,
-            segment_weight,
-            limit
-        ])
-        
-        return result.fetchall()
-```
+**实现**：
+
+1. **服务层** `_clamp_items_relevance(items, threshold)`（`search_service.py`）：仅当 `relevance_score` 为 0 或缺失时，将其设为当前请求的 `dynamic_threshold`（或 `DEFAULT_THRESHOLD`），有真实分数则不改。
+2. **控制器层**（`search.py`）：对返回的 `results` 中每条做同样逻辑：`relevance_score = dynamic_threshold if (cur <= 0) else cur`，保证前端不会收到 0。
+
+SQL 中不再对 `relevance_score` 做 `GREATEST(..., threshold)`，直接返回原始相似度，由上述两层做兜底。
+
+#### 5.3.3 作者/标题关键词匹配与第一页合并
+
+**场景**：用户搜作者名（如「左轻侯」）或标题/内容关键词时，希望标题或作者匹配的结果能出现在首屏。
+
+**实现**：
+
+1. **关键词检索**：`_keyword_search_articles` / `_keyword_search_comments` 的 WHERE 中增加作者名条件，例如 `u.name ILIKE :pat`，与标题、内容一起参与 ILIKE 匹配。
+2. **仅第一页合并**：`search()` 中当 `type` 为 `articles` 或 `all` 且 `page == 1` 时，调用 `_merge_keyword_into_article_results()`，将关键词结果与向量结果合并。
+3. **合并逻辑** `_merge_keyword_into_article_items(vector_items, keyword_items, limit)`：
+   - 仅合并「有正文」的关键词条：`(content or comment).strip()` 为空则跳过，避免仅作者匹配的无内容文章（如标题无关）被提到前面。
+   - 去重：已出现在 `vector_items` 的 id 不再重复加入。
+   - 关键词命中项赋予 `relevance_score = 0.95`，与向量结果按 `relevance_score` 降序排序后取前 `limit` 条。
+
+#### 5.3.4 无正文文章：标题泛匹配排除、精确匹配保留
+
+**场景**：无正文文章若标题与查询仅语义泛匹配（如「上头像」对「邱华栋」约 60%），不应排在前面；若标题即查询词（如「邱华栋」）或高度相关，应可被搜到。
+
+**实现**：
+
+1. **SQL 侧**（`hybrid_search_articles` 的 `ranked` CTE）：统一条件为  
+   `(COALESCE(art.article_similarity, 0) * 0.1 + bs.segment_similarity * 0.9) >= TITLE_ONLY_MIN_SIMILARITY`（0.85）。  
+   即不论有无正文，仅保留组合相似度 ≥ 0.85 的文档，无正文且标题仅泛匹配（如 60%）会被过滤。
+2. **应用层兜底**（过量拉取循环内）：对每批格式化后的结果再次过滤，保留「有正文」或「`relevance_score >= TITLE_ONLY_MIN_SIMILARITY`」的条目，再参与累积与分页，避免因 SQL 版本或浮点差异导致少量漏网。
+
+效果：标题为「邱华栋」的无正文文章可因高相似度保留；标题为「上头像」的无正文文章因相似度不足 0.85 被排除。
+
+#### 5.3.5 每页固定条数与 total 为实际有效条数
+
+**场景**：分页后每页应尽量为固定条数（如 10 条），且「找到 X 个结果」的 X（total）应与实际符合条件的结果数一致，不出现 total 很大但前几页条数很少或为空的情况。
+
+**实现**：
+
+1. **过量拉取 + 应用层过滤**（`hybrid_search_articles`）：
+   - 按批从数据库拉取（每批 `batch_size = max(limit*5, 50)`），对每批结果格式化后应用「有正文 或 relevance_score ≥ 0.85」的过滤，将有效条目加入 `all_valid`。
+   - 循环直到本批返回行数 < `batch_size`（无更多数据）为止，保证所有符合条件的结果都被计入。
+2. **分页与 total**：
+   - `items_for_page = all_valid[(page-1)*limit : page*limit]`，保证每页最多 `limit` 条且顺序按相似度。
+   - `total = len(all_valid)`，不再单独跑 count_sql，total 与真实有效条数一致。
+   - `has_more = (page * limit) < total`。
+
+这样既保证「每页最多 limit 条」的稳定分页，又保证 total 与结果条数一致；最后一页可能不足 limit 条，属正常。
+
+#### 5.3.6 混合搜索权重与 SQL 结构概要
+
+- **权重**：文章级 10%、片段级 90%（`article_weight=0.1`, `segment_weight=0.9`）；文章级内部为标题 30%、内容 70%。
+- **流程概要**：  
+  `all_segments`（标题片段 + 内容片段）→ `best_segments`（每篇取相似度最高的一段，且相似度 ≥ `adjusted_threshold`）→ `article_scores`（文章级相似度）→ `ranked`（组合相似度 ≥ 0.85）→ 应用层按批拉取、过滤、累积 → 分页取 `items_for_page`，`total = len(all_valid)`。
+
+#### 5.3.7 测试覆盖
+
+单元测试位于 `tests/unit/test_bert_vectorization_services.py` 的 `TestHierarchicalSearchService`，覆盖包括：
+
+- **常量**：`test_constants` 校验 `DEFAULT_THRESHOLD == 0.55`、`TITLE_ONLY_MIN_SIMILARITY == 0.85`。
+- **关键词合并**：`test_merge_keyword_skips_no_content`（无正文不并入）、`test_merge_keyword_keeps_items_with_content`（有正文并入并 0.95）、`test_merge_keyword_respects_limit_and_dedup`（去重与 limit）。
+- **混合搜索过滤与分页**：`test_hybrid_search_filters_low_relevance_no_content`（无正文且低相似度被过滤）、`test_hybrid_search_page_size_and_total`（每页条数 ≤ limit、total 为有效条数）、`test_hybrid_search_pagination_second_page`（第二页条数与 has_more、total 一致）。
+- **相似度兜底**：`test_clamp_items_relevance`（仅 0/缺失时改为阈值）；**行解析**：`test_row_relevance_extraction`（从 tuple/Row/dict 正确取 `relevance_score`）。
+
+本地验证建议：修改搜索逻辑后运行上述单元测试，并对搜索 API 做一次 curl 或前端验证（如搜索「邱华栋」检查无 id=1022、total 与每页条数符合预期）。
 
 ## 6. API设计
 
-### 6.1 搜索API端点
-```python
-@router.get("/api/search")
-async def search_articles(
-    q: str = Query(..., description="搜索关键词"),
-    type: str = Query("all", description="搜索类型: all/articles/comments"),
-    limit: int = Query(10, ge=1, le=100, description="返回结果数量"),
-    offset: int = Query(0, ge=0, description="分页偏移"),
-    session: AsyncSession = Depends(get_async_session)
-):
-    """全文检索API"""
-    search_service = HierarchicalSearchService(session)
-    results = await search_service.search(q, limit)
-    
-    return {
-        "query": q,
-        "total": len(results),
-        "results": results
-    }
-```
+### 6.1 搜索API端点（当前实现）
+
+路由：`GET /search`（控制器 `src/controllers/search.py`）。需传入向量化服务（如通过 `request.app.state.model_cache` 或 `get_cached_model()`）和异步会话。
+
+**请求参数**：
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `q` | string | 搜索关键词（必填） |
+| `type` | string | 搜索类型：`all` / `articles` / `comments`，默认 `all` |
+| `sort` | string | 排序：`relevance` / `date` / `popularity`，默认 `relevance` |
+| `page` | int | 页码，从 1 开始，默认 1 |
+| `limit` | int | 每页条数，默认 10，上限 100 |
+
+**响应**：`search_service.search()` 返回的 `items`、`total`、`has_more`、`dynamic_threshold` 等经控制器组装后返回；控制器会对每条结果的 `relevance_score` 做兜底（0 或缺失时设为 `dynamic_threshold`）。返回字段包括 `query`、`type`、`sort`、`page`、`limit`、`total`、`results`、`has_more`、`search_time`、`dynamic_threshold`、`search_method` 等。
 
 ### 6.2 管理API端点
 ```python
@@ -734,6 +658,11 @@ class VectorSearchConfig:
 ## 11. 测试策略
 
 ### 11.1 单元测试
+
+搜索相关业务场景的单元测试见 **5.3.7 测试覆盖**，位于 `tests/unit/test_bert_vectorization_services.py` 的 `TestHierarchicalSearchService`，覆盖阈值常量、关键词合并（无正文不并入/去重/limit）、混合搜索过滤与分页、相似度兜底与行解析等。
+
+通用向量化与分割示例：
+
 ```python
 class TestVectorizationService:
     async def test_short_text_vectorization(self):
@@ -742,7 +671,7 @@ class TestVectorizationService:
         text = "这是一篇短文章"
         vector = await service.vectorize_text(text)
         
-        assert vector.shape == (768,)
+        assert vector.shape == (384,)  # 当前模型 384 维
         assert not np.allclose(vector, 0)
     
     async def test_long_text_segmentation(self):
@@ -818,7 +747,9 @@ class TestSearchIntegration:
 
 ---
 
-**文档版本**: v1.0  
+**文档版本**: v1.1  
 **创建日期**: 2024年12月  
-**最后更新**: 2024年12月  
-**维护者**: BlogN2开发团队
+**最后更新**: 2025年2月  
+**维护者**: BlogN2开发团队  
+
+**v1.1 更新说明**：新增「5.3 业务场景与实现细节」，汇总相似度兜底、作者/标题关键词合并、无正文文章过滤、分页与 total 一致等场景及对应代码实现与测试覆盖；修正 5.1/5.2 为概念说明并注明当前实现以 5.3 为准（混合权重 0.1/0.9）；6.1 按当前搜索 API（page、sort、控制器兜底）更新。
