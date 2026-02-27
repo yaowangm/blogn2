@@ -98,12 +98,14 @@ async def lifespan(app: FastAPI):
     model_cache = await initialize_model_cache()
     if model_cache is not None:
         logger.info("BERT模型缓存初始化成功")
+        app.state.model_cache = model_cache  # 供搜索等接口使用同一实例，避免请求时拿到错误模型
     else:
         logger.warning("BERT模型缓存初始化失败，搜索功能将使用降级方案")
-    
+        app.state.model_cache = None
+
     # 应用启动成功（使用 warning 级别，确保在 warning 日志级别下也能显示）
     logger.warning("✅ 应用启动成功，服务已就绪")
-    
+
     yield
     
     # 关闭事件：清理资源

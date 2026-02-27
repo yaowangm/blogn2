@@ -13,20 +13,25 @@ from src.services.shared_model_cache import get_shared_model_cache
 logger = logging.getLogger(__name__)
 
 async def initialize_model_cache() -> Optional[BERTVectorizationService]:
-    """初始化模型缓存并返回模型实例"""
+    """初始化模型缓存并返回模型实例。
+    在 BERT 的专用 executor 线程中加载模型，使后续 vectorize_text 的 encode 与加载在同一线程执行，
+    避免「主线程加载、子线程 encode」的跨线程使用导致本地返回零向量、与 Docker 行为不一致。"""
     try:
         logger.info(f"进程 {os.getpid()} 正在初始化BERT模型缓存...")
         
-        # 使用共享模型缓存
         shared_cache = get_shared_model_cache()
         
-        # 从配置获取模型信息
         from src.config.model import get_model_name, get_model_path
         model_name = get_model_name()
         model_path = get_model_path()
         
-        # 初始化共享模型
-        success = shared_cache.initialize_model(model_name, model_path)
+        # 在 BERT 专用 executor 线程中初始化，与后续 vectorize_text 的 encode 同线程，保证本地/Docker 一致
+        loop = asyncio.get_event_loop()
+        executor = BERTVectorizationService._get_executor()
+        success = await loop.run_in_executor(
+            executor,
+            lambda: shared_cache.initialize_model(model_name, model_path),
+        )
         
         if success:
             # 创建BERTVectorizationService实例，使用共享模型

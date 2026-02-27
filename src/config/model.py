@@ -117,7 +117,7 @@ class ModelSettings:
     
     @property
     def model_path(self) -> Optional[str]:
-        """本地模型路径（若配置的路径无 config.json 则自动解析到 HF hub 的 snapshot）"""
+        """本地模型路径（从环境变量 MODEL_MODEL_PATH 读取；若路径无 config.json 则自动解析到 HF hub 的 snapshot）。"""
         raw = os.getenv('MODEL_MODEL_PATH') or None
         return _resolve_model_path_to_snapshot(raw)
     

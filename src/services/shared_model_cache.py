@@ -13,6 +13,8 @@ from multiprocessing import Manager
 from typing import Optional, Dict, Any
 from sentence_transformers import SentenceTransformer
 
+from src.config.model import get_model_device
+
 logger = logging.getLogger(__name__)
 
 class SharedModelCache:
@@ -59,13 +61,13 @@ class SharedModelCache:
                 
                 logger.info(f"进程 {os.getpid()} 开始初始化模型: {model_name}")
                 
-                # 初始化模型
+                device = get_model_device()
                 if model_path and os.path.exists(model_path):
-                    model = SentenceTransformer(model_path)
+                    model = SentenceTransformer(model_path, device=device)
                     logger.info(f"从本地路径加载模型: {model_path}")
                 else:
-                    model = SentenceTransformer(model_name)
-                    logger.info(f"从Hugging Face下载模型: {model_name}")
+                    model = SentenceTransformer(model_name, device=device)
+                    logger.info(f"从Hugging Face加载模型: {model_name}")
                 
                 # 将模型信息存储到共享字典
                 self.shared_dict.update({
@@ -115,12 +117,12 @@ class SharedModelCache:
                 logger.error("共享字典中缺少模型名称")
                 return False
             
-            # 重新加载模型（每个进程都需要加载到自己的内存）
+            device = get_model_device()
             if model_path and os.path.exists(model_path):
-                self._model = SentenceTransformer(model_path)
+                self._model = SentenceTransformer(model_path, device=device)
                 logger.info(f"进程 {os.getpid()} 从本地路径加载模型: {model_path}")
             else:
-                self._model = SentenceTransformer(model_name)
+                self._model = SentenceTransformer(model_name, device=device)
                 logger.info(f"进程 {os.getpid()} 从Hugging Face加载模型: {model_name}")
             
             self._is_initialized = True
