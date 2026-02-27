@@ -308,76 +308,36 @@ class HierarchicalSearchService:
             SELECT id, title, content, author, createtime, relevance_score, best_match_text, match_type
             FROM ranked
             ORDER BY relevance_score DESC
-            LIMIT {limit} OFFSET {offset}
+            LIMIT {{batch_limit}} OFFSET {{batch_offset}}
         """
         
-        result = await self.session.exec(text(sql))
-        items = result.fetchall()
+        # 过量拉取再过滤，保证每页返回固定条数：每批取 batch_size 条，过滤后累积；拉取到无更多数据为止，用实际有效条数作 total
+        batch_size = max(limit * 5, 50)
+        all_valid: List[Dict[str, Any]] = []
+        batch_offset = 0
         
-        # 获取总数（与 ranked 条件一致：使用组合相似度，无正文须 >= TITLE_ONLY_MIN）
-        count_sql = f"""
-            WITH all_segments AS (
-                SELECT 
-                    av.projectitem_id,
-                    av.title_vector as segment_vector
-                FROM article_vectors av
-                WHERE av.title_vector IS NOT NULL
-                AND av.projectitem_id IN (
-                    SELECT DISTINCT av2.projectitem_id FROM article_vectors av2
-                    LEFT JOIN projectitem pi2 ON av2.projectitem_id = pi2.id
-                    WHERE pi2.status = 1
-                )
-                UNION ALL
-                SELECT 
-                    av.projectitem_id,
-                    csv.segment_vector
-                FROM article_vectors av
-                JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
-                LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
-                WHERE pi.status = 1
-                AND csv.confidence_score >= 0.8
-                AND LENGTH(TRIM(csv.segment_text)) >= {min_segment_length}
-            ),
-            best_segments AS (
-                SELECT DISTINCT ON (projectitem_id)
-                    projectitem_id,
-                    (1 - (segment_vector <=> '{query_vector_json}'::vector)) as segment_similarity
-                FROM all_segments
-                WHERE (1 - (segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
-                ORDER BY projectitem_id, (1 - (segment_vector <=> '{query_vector_json}'::vector)) DESC
-            ),
-            article_scores AS (
-                SELECT 
-                    av.projectitem_id,
-                    (1 - (av.title_vector <=> '{query_vector_json}'::vector)) * 0.3 +
-                    (1 - (av.content_vector <=> '{query_vector_json}'::vector)) * 0.7 as article_similarity
-                FROM article_vectors av
-                LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
-                WHERE pi.status = 1
-                AND av.title_vector IS NOT NULL
-                AND av.content_vector IS NOT NULL
-            )
-            SELECT COUNT(DISTINCT bs.projectitem_id)
-            FROM best_segments bs
-            JOIN projectitem pi ON bs.projectitem_id = pi.id
-            LEFT JOIN article_scores art ON bs.projectitem_id = art.projectitem_id
-            WHERE (COALESCE(art.article_similarity, 0) * 0.1 + bs.segment_similarity * 0.9) >= {TITLE_ONLY_MIN_SIMILARITY}
-        """
-        count_result = await self.session.exec(text(count_sql))
-        total = count_result.fetchone()[0]
+        while True:
+            batch_sql = sql.replace("{batch_limit}", str(batch_size)).replace("{batch_offset}", str(batch_offset))
+            result = await self.session.exec(text(batch_sql))
+            batch_items = result.fetchall()
+            if not batch_items:
+                break
+            formatted_batch = [self._format_hybrid_article_result(row) for row in batch_items]
+            for x in formatted_batch:
+                if (x.get("content") or "").strip() or self._safe_float(x.get("relevance_score"), 0) >= TITLE_ONLY_MIN_SIMILARITY:
+                    all_valid.append(x)
+            if len(batch_items) < batch_size:
+                break
+            batch_offset += batch_size
         
-        formatted = [self._format_hybrid_article_result(item) for item in items]
-        # 后过滤：无正文且相似度低于 TITLE_ONLY_MIN 的条目排除（与 SQL 一致，确保“上头像”类不出现）
-        formatted = [
-            x for x in formatted
-            if (x.get("content") or "").strip()
-            or self._safe_float(x.get("relevance_score"), 0) >= TITLE_ONLY_MIN_SIMILARITY
-        ]
-        self._clamp_items_relevance(formatted, dynamic_threshold)
+        items_for_page = all_valid[(page - 1) * limit : page * limit]
+        total = len(all_valid)
+        
+        self._clamp_items_relevance(items_for_page, dynamic_threshold)
         return {
-            "items": formatted,
+            "items": items_for_page,
             "total": total,
-            "has_more": (offset + len(items)) < total,
+            "has_more": (page * limit) < total,
             "dynamic_threshold": self._safe_float(dynamic_threshold),
             "search_strategy": "hybrid_optimized"
         }
