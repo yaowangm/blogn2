@@ -457,6 +457,39 @@ class TestHierarchicalSearchService:
         assert formatted["type"] == "comment"
         assert formatted["relevance_score"] == 0.85
 
+    def test_row_relevance_extraction(self, search_service):
+        """测试从查询行中正确解析 relevance_score（列名/索引/字典）"""
+        # 元组/列表：按索引 5 取值
+        row_tuple = (1, "t", "c", "a", None, 0.72, None, None)
+        assert HierarchicalSearchService._row_relevance(row_tuple, index=5) == 0.72
+        assert HierarchicalSearchService._row_relevance((1, 2, 3), index=5, default=0.5) == 0.5
+        # 带 _mapping 的 Row 模拟
+        row_mapping = MagicMock()
+        row_mapping._mapping = {"relevance_score": 0.88}
+        assert HierarchicalSearchService._row_relevance(row_mapping) == 0.88
+        # 字典式（keys + []）
+        row_dict = {"relevance_score": 0.6}
+        assert HierarchicalSearchService._row_relevance(row_dict) == 0.6
+
+    def test_clamp_items_relevance(self, search_service):
+        """仅当 relevance_score 为 0 或缺失时设为阈值，有真实分数则保留"""
+        threshold = 0.5
+        items = [
+            {"id": 1, "relevance_score": 0.3},
+            {"id": 2, "relevance_score": 0.8},
+            {"id": 3, "relevance_score": 0.0},
+            {"id": 4},  # 无 relevance_score
+        ]
+        HierarchicalSearchService._clamp_items_relevance(items, threshold)
+        assert items[0]["relevance_score"] == 0.3  # 保留真实分数
+        assert items[1]["relevance_score"] == 0.8
+        assert items[2]["relevance_score"] == 0.5  # 0 时用阈值兜底
+        assert items[3]["relevance_score"] == 0.5  # 缺失时补阈值
+        # 阈值为 0 时不修改
+        items2 = [{"id": 1, "relevance_score": 0.2}]
+        HierarchicalSearchService._clamp_items_relevance(items2, 0.0)
+        assert items2[0]["relevance_score"] == 0.2
+
 
 class TestVectorizationIntegration:
     """向量化集成测试（模拟环境）"""

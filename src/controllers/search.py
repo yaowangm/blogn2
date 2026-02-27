@@ -11,7 +11,8 @@ from typing import Optional, Dict, Any, List
 from src.database import get_async_session
 from src.utils.auth_dependencies import get_optional_current_user
 from src.services.model_cache import get_cached_model
-from src.services.search_service import HierarchicalSearchService
+from src.services.search_service import HierarchicalSearchService, DEFAULT_THRESHOLD
+from src.config.model import get_model_path
 
 logger = logging.getLogger(__name__)
 
@@ -38,14 +39,16 @@ async def search_content(
     - 多种排序方式
     """
     try:
-        # 使用预加载的模型缓存，如果失败则使用降级方案
+        # 优先使用 lifespan 中初始化的同一模型实例（Docker 下避免与请求时 get_cached_model 不一致）
         search_method = "bert"  # 默认使用BERT搜索
         model_error = False  # 标记模型是否出错
-        
-        try:
-            vectorization_service = get_cached_model()
-            search_service = HierarchicalSearchService(vectorization_service, session)
-        except RuntimeError:
+        vectorization_service = getattr(request.app.state, "model_cache", None)
+        if vectorization_service is None:
+            try:
+                vectorization_service = get_cached_model()
+            except RuntimeError:
+                vectorization_service = None
+        if vectorization_service is None:
             # 模型缓存未初始化，返回错误而不是创建新实例
             search_method = "bert_model_error"  # 模型加载失败
             model_error = True
@@ -63,7 +66,9 @@ async def search_content(
                 "search_method": "bert_model_error",
                 "error": "BERT模型未初始化，请稍后重试"
             }
-        
+
+        search_service = HierarchicalSearchService(vectorization_service, session)
+
         # 参数验证
         if not q or not q.strip():
             raise HTTPException(status_code=400, detail="搜索关键词不能为空")
@@ -102,7 +107,15 @@ async def search_content(
                 "error": str(e)
             }
         
-        return {
+        th = results.get("dynamic_threshold", DEFAULT_THRESHOLD)
+        for it in results.get("items", []):
+            try:
+                cur = float(it.get("relevance_score") or 0)
+            except (TypeError, ValueError):
+                cur = 0
+            # 仅当分数缺失或≤0 时用阈值兜底，避免前端显示 0%
+            it["relevance_score"] = th if cur <= 0 else cur
+        resp = {
             "query": q,
             "type": type,
             "sort": sort,
@@ -113,14 +126,49 @@ async def search_content(
             "has_more": results.get("has_more", False),
             "search_time": results.get("search_time", 0),
             "search_method": search_method,
-            "dynamic_threshold": results.get("dynamic_threshold", 0.6)
+            "dynamic_threshold": th
         }
+        # 诊断：当前使用的模型路径。与“当初写入 article_vectors 时用的路径”须一致（同一 snapshot），否则向量空间不一致会搜出大量无关结果
+        try:
+            resp["model_path"] = get_model_path() or ""
+        except Exception:
+            resp["model_path"] = ""
+        # 若结果数异常多：可能是当前进程解析到的模型路径与写库时不同（例如本地用 ~/.cache/.../snapshots/A，Docker 用挂载的 .../snapshots/B）
+        if resp.get("total", 0) > 200 and resp.get("search_method") == "bert":
+            resp["_hint"] = "结果过多可能因当前模型路径与写库时不一致（对比本地与 Docker 的 model_path 及 snapshot 是否相同）。可在本环境调用 POST /api/admin/vectorization/reindex-all 全量重算向量后再试"
+        return resp
         
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"搜索错误: {e}")
         raise HTTPException(status_code=500, detail="搜索服务暂时不可用，请稍后重试")
+
+@router.get("/search/debug-vector")
+async def debug_search_vector(
+    request: Request,
+    q: str = Query("左轻侯", description="用于向量化的文本"),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    诊断接口：返回当前模型路径及查询文本的向量（前5维、范数），用于对比本地与 Docker 是否使用同一模型。
+    """
+    try:
+        vec_service = getattr(request.app.state, "model_cache", None) or get_cached_model()
+        import numpy as np
+        v = await vec_service.vectorize_text(q.strip() or "左轻侯")
+        norm = float(np.linalg.norm(v)) if v is not None and len(v) else 0
+        first_5 = v[:5].tolist() if v is not None and len(v) >= 5 else (v.tolist() if v is not None else [])
+        return {
+            "query": q or "左轻侯",
+            "model_path": get_model_path() or "",
+            "vector_norm": round(norm, 6),
+            "vector_first_5": first_5,
+            "from_app_state": getattr(request.app.state, "model_cache", None) is not None,
+        }
+    except Exception as e:
+        return {"error": str(e), "model_path": get_model_path() or ""}
+
 
 @router.get("/api/search/suggestions")
 async def get_search_suggestions(
