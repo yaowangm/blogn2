@@ -31,6 +31,8 @@ logger = logging.getLogger(__name__)
 
 # 默认相似度阈值 55%，仅用于兜底（0/缺失时）及关键词回退时的返回值
 DEFAULT_THRESHOLD = 0.55
+# 无正文文章仅当标题与查询相似度 >= 此值时才保留（避免“上头像”等泛匹配），有正文仍用动态阈值
+TITLE_ONLY_MIN_SIMILARITY = 0.85
 
 
 class HierarchicalSearchService:
@@ -102,13 +104,17 @@ class HierarchicalSearchService:
     def _merge_keyword_into_article_items(
         vector_items: List[Dict], keyword_items: List[Dict], limit: int
     ) -> List[Dict]:
-        """第一页时：把关键词（含作者名）匹配并入向量结果，按相似度排序后取前 limit 条。"""
+        """第一页时：把关键词（含作者名）匹配并入向量结果；无正文文章不并入，避免仅靠作者匹配的无内容条目标题无关却排前面。"""
         seen = {it["id"] for it in vector_items}
         combined = list(vector_items)
         for kw in keyword_items:
-            if kw.get("id") not in seen:
-                combined.append({**kw, "relevance_score": 0.95})
-                seen.add(kw["id"])
+            if kw.get("id") in seen:
+                continue
+            content = (kw.get("content") or kw.get("comment") or "").strip()
+            if not content:
+                continue
+            combined.append({**kw, "relevance_score": 0.95})
+            seen.add(kw["id"])
         combined.sort(key=lambda x: HierarchicalSearchService._safe_float(x.get("relevance_score", 0)), reverse=True)
         return combined[:limit]
 
@@ -221,7 +227,7 @@ class HierarchicalSearchService:
         keyword_length = len(query.strip()) if query else 0
         min_segment_length = max(3, keyword_length)
         
-        # 优化的混合搜索SQL：包含标题片段的片段级搜索
+        # 有正文：按动态阈值；无正文：仅当标题与查询相似度 >= TITLE_ONLY_MIN_SIMILARITY 时保留（标题即“邱华栋”可搜到，“上头像”等泛匹配排除）
         sql = f"""
             WITH all_segments AS (
                 -- 标题作为特殊片段（权重更高）
@@ -236,8 +242,7 @@ class HierarchicalSearchService:
                 FROM article_vectors av
                 WHERE av.title_vector IS NOT NULL
                 AND av.projectitem_id IN (
-                    SELECT DISTINCT av2.projectitem_id 
-                    FROM article_vectors av2
+                    SELECT DISTINCT av2.projectitem_id FROM article_vectors av2
                     LEFT JOIN projectitem pi2 ON av2.projectitem_id = pi2.id
                     WHERE pi2.status = 1
                 )
@@ -298,7 +303,7 @@ class HierarchicalSearchService:
                 LEFT JOIN projectitem pi ON bs.projectitem_id = pi.id
                 LEFT JOIN users u ON pi.userid = u.id
                 LEFT JOIN article_scores art ON bs.projectitem_id = art.projectitem_id
-                WHERE (COALESCE(art.article_similarity, 0) * 0.1 + bs.segment_similarity * 0.9) >= {adjusted_threshold}
+                WHERE (COALESCE(art.article_similarity, 0) * 0.1 + bs.segment_similarity * 0.9) >= {TITLE_ONLY_MIN_SIMILARITY}
             )
             SELECT id, title, content, author, createtime, relevance_score, best_match_text, match_type
             FROM ranked
@@ -309,7 +314,7 @@ class HierarchicalSearchService:
         result = await self.session.exec(text(sql))
         items = result.fetchall()
         
-        # 获取总数
+        # 获取总数（与 ranked 条件一致：使用组合相似度，无正文须 >= TITLE_ONLY_MIN）
         count_sql = f"""
             WITH all_segments AS (
                 SELECT 
@@ -318,14 +323,11 @@ class HierarchicalSearchService:
                 FROM article_vectors av
                 WHERE av.title_vector IS NOT NULL
                 AND av.projectitem_id IN (
-                    SELECT DISTINCT av2.projectitem_id 
-                    FROM article_vectors av2
+                    SELECT DISTINCT av2.projectitem_id FROM article_vectors av2
                     LEFT JOIN projectitem pi2 ON av2.projectitem_id = pi2.id
                     WHERE pi2.status = 1
                 )
-                
                 UNION ALL
-                
                 SELECT 
                     av.projectitem_id,
                     csv.segment_vector
@@ -343,14 +345,34 @@ class HierarchicalSearchService:
                 FROM all_segments
                 WHERE (1 - (segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
                 ORDER BY projectitem_id, (1 - (segment_vector <=> '{query_vector_json}'::vector)) DESC
+            ),
+            article_scores AS (
+                SELECT 
+                    av.projectitem_id,
+                    (1 - (av.title_vector <=> '{query_vector_json}'::vector)) * 0.3 +
+                    (1 - (av.content_vector <=> '{query_vector_json}'::vector)) * 0.7 as article_similarity
+                FROM article_vectors av
+                LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
+                WHERE pi.status = 1
+                AND av.title_vector IS NOT NULL
+                AND av.content_vector IS NOT NULL
             )
-            SELECT COUNT(DISTINCT projectitem_id)
-            FROM best_segments
+            SELECT COUNT(DISTINCT bs.projectitem_id)
+            FROM best_segments bs
+            JOIN projectitem pi ON bs.projectitem_id = pi.id
+            LEFT JOIN article_scores art ON bs.projectitem_id = art.projectitem_id
+            WHERE (COALESCE(art.article_similarity, 0) * 0.1 + bs.segment_similarity * 0.9) >= {TITLE_ONLY_MIN_SIMILARITY}
         """
         count_result = await self.session.exec(text(count_sql))
         total = count_result.fetchone()[0]
         
         formatted = [self._format_hybrid_article_result(item) for item in items]
+        # 后过滤：无正文且相似度低于 TITLE_ONLY_MIN 的条目排除（与 SQL 一致，确保“上头像”类不出现）
+        formatted = [
+            x for x in formatted
+            if (x.get("content") or "").strip()
+            or self._safe_float(x.get("relevance_score"), 0) >= TITLE_ONLY_MIN_SIMILARITY
+        ]
         self._clamp_items_relevance(formatted, dynamic_threshold)
         return {
             "items": formatted,
@@ -487,6 +509,7 @@ class HierarchicalSearchService:
             LEFT JOIN users u ON pi.userid = u.id
             LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
             WHERE pi.status = 1
+            AND pi.comment IS NOT NULL AND LENGTH(TRIM(pi.comment)) > 0
             AND (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
             AND LENGTH(TRIM(csv.segment_text)) >= {min_segment_length}
             ORDER BY av.projectitem_id, (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) DESC
@@ -503,6 +526,7 @@ class HierarchicalSearchService:
         LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
         LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
         WHERE pi.status = 1
+        AND pi.comment IS NOT NULL AND LENGTH(TRIM(pi.comment)) > 0
         AND (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
         AND LENGTH(TRIM(csv.segment_text)) >= {min_segment_length}
         """
