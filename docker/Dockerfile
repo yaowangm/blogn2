@@ -6,8 +6,9 @@
 # - 多阶段构建，减小最终镜像大小
 # - 使用 CPU-only PyTorch（torch==2.2.0+cpu）
 # - pip --no-cache-dir + 精简 venv（去掉 pycache、tests、pip）进一步减体积
-# - 优化构建缓存，PyTorch 安装层独立，提高构建速度
 # - 使用清华大学镜像源加速构建
+#
+# 若需构建时复用 pip/apt 缓存，需先安装 Docker buildx 插件后再启用 BuildKit。
 
 # 第一阶段：构建依赖
 FROM python:3.12-slim AS builder
@@ -38,7 +39,6 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 先安装 PyTorch CPU 版本（独立层，不依赖 requirements 文件，便于缓存）
-# 尝试多个源：先尝试官方 CPU 索引，失败则使用清华镜像
 RUN pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu torch==2.2.0+cpu || \
     pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple torch==2.2.0+cpu
 
