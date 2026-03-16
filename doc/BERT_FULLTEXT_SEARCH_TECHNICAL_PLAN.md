@@ -330,9 +330,20 @@ class BatchVectorizationService:
 #### 5.1.2 性能优化查询（概念）
 使用 `DISTINCT ON` / `ROW_NUMBER()` 按篇取最佳片段、`confidence_score >= 0.8` 过滤，与实现中 `best_segments` 的 `DISTINCT ON (projectitem_id)` 思路一致。实际 SQL 结构见 5.3.6。
 
-### 5.2 混合搜索权重（当前实现）
+### 5.2 混合搜索权重与双通道排布（当前实现）
 
-`HierarchicalSearchService.hybrid_search_articles` 使用 **文章级 10% + 片段级 90%**（`article_weight=0.1`, `segment_weight=0.9`），文章级内部为标题 30%、内容 70%。相似度为 `1 - (vector <=> query_vector)`（越大越相似），组合公式见 5.3.1。早期文档中的 0.6/0.4 权重已废弃。
+1. **语义候选（hybrid_search_articles 内部）**  
+   - 仍使用 **文章级 10% + 片段级 90%**（`article_weight=0.1`, `segment_weight=0.9`），文章级内部为标题 30%、内容 70%。  
+   - 相似度为 `1 - (vector <=> query_vector)`（越大越相似），组合公式见 5.3.1。  
+2. **最终排序（search() 顶层）**  
+   - 搜索服务不再直接使用 SQL 侧的组合相似度做“唯一排序依据”，而是同时考虑：  
+     - **lexical_score**：标题/正文/作者是否包含查询串（关键词通道）；  
+     - **semantic_score**：由向量检索得到的相似度（语义通道）。  
+   - 根据查询类型（短中文实体/普通短语/长查询）在应用层做加权：  
+     - 短中文实体：词面匹配权重更高（lexical 0.7 + semantic 0.3）；  
+     - 长查询：语义权重更高（lexical 0.3 + semantic 0.7）；  
+     - 其他：约 0.5 / 0.5。  
+   - 这使得查询如“爱因斯坦”一类在**真实包含该串的文档**上有更稳定的召回。
 
 ### 5.3 业务场景与实现细节（当前实现）
 
@@ -342,17 +353,17 @@ class BatchVectorizationService:
 
 | 常量 | 值 | 用途 |
 |------|-----|------|
-| `DEFAULT_THRESHOLD` | 0.55 | 默认相似度 55%，用于：兜底（当 `relevance_score` 为 0 或缺失时）、关键词回退时的返回值 |
-| `TITLE_ONLY_MIN_SIMILARITY` | 0.85 | 无正文文章仅当「组合相似度 ≥ 85%」时才保留，避免标题与查询仅泛匹配（如「上头像」对「邱华栋」）仍被展示 |
+| `DEFAULT_THRESHOLD` | 0.55 | 相似度兜底阈值，用于：`relevance_score` 为 0 或缺失时的展示兜底（避免前端显示 0%）、以及无向量时的关键词搜索默认阈值 |
+| `TITLE_ONLY_MIN_SIMILARITY` | 0.85 | 仅在语义候选生成阶段（`hybrid_search_articles` 内部）用于过滤“无正文+低相关标题”的候选，避免类似「上头像」这类泛匹配标题进入语义候选池 |
 
-**组合相似度公式**（ranked 与过滤一致）：
+**组合相似度公式（语义候选阶段）**：
 
 ```text
-relevance_score = COALESCE(article_similarity, 0) * 0.1 + segment_similarity * 0.9
+semantic_relevance = COALESCE(article_similarity, 0) * 0.1 + segment_similarity * 0.9
 ```
 
-- 有正文：SQL 侧仅保留 `relevance_score >= TITLE_ONLY_MIN_SIMILARITY`（0.85）的文档。
-- 无正文：同样要求 `relevance_score >= 0.85`，因此标题与查询语义接近（如标题即「邱华栋」）可命中，标题仅泛匹配则被排除。
+- 有正文：在生成语义候选时，主要依赖片段相似度与动态阈值过滤，`TITLE_ONLY_MIN_SIMILARITY` 只起到兜底作用。  
+- 无正文：仅当 `semantic_relevance >= TITLE_ONLY_MIN_SIMILARITY` 时才作为语义候选，避免无正文+低语义相关标题被后续排序带入前几页；但若标题文本本身包含查询串，则关键词通道仍可将其召回。
 
 #### 5.3.2 相似度展示与兜底（避免前端 0%）
 
@@ -365,47 +376,60 @@ relevance_score = COALESCE(article_similarity, 0) * 0.1 + segment_similarity * 0
 
 SQL 中不再对 `relevance_score` 做 `GREATEST(..., threshold)`，直接返回原始相似度，由上述两层做兜底。
 
-#### 5.3.3 作者/标题关键词匹配与第一页合并
+#### 5.3.3 作者/标题关键词匹配与双通道合并
 
-**场景**：用户搜作者名（如「左轻侯」）或标题/内容关键词时，希望标题或作者匹配的结果能出现在首屏。
+**场景**：用户搜作者名（如「左轻侯」）、具体实体（如「爱因斯坦」）或明显关键词时，希望“文本中确实包含该串”的结果优先展示。
 
-**实现**：
+**实现（最新版）**：
 
-1. **关键词检索**：`_keyword_search_articles` / `_keyword_search_comments` 的 WHERE 中增加作者名条件，例如 `u.name ILIKE :pat`，与标题、内容一起参与 ILIKE 匹配。
-2. **仅第一页合并**：`search()` 中当 `type` 为 `articles` 或 `all` 且 `page == 1` 时，调用 `_merge_keyword_into_article_results()`，将关键词结果与向量结果合并。
-3. **合并逻辑** `_merge_keyword_into_article_items(vector_items, keyword_items, limit)`：
-   - 仅合并「有正文」的关键词条：`(content or comment).strip()` 为空则跳过，避免仅作者匹配的无内容文章（如标题无关）被提到前面。
-   - 去重：已出现在 `vector_items` 的 id 不再重复加入。
-   - 关键词命中项赋予 `relevance_score = 0.95`，与向量结果按 `relevance_score` 降序排序后取前 `limit` 条。
+1. **关键词检索通道（lexical）**：  
+   - `_keyword_search_articles` / `_keyword_search_comments` 在 WHERE 中对标题、正文与作者名做 `ILIKE` 匹配。  
+   - 对关键词结果在应用层打 `lexical_score`：  
+     - 若标题/正文/作者中包含完整查询串，则记为 1.0；  
+     - 否则（只是 ILIKE 命中）则记为 0.5。  
+2. **语义检索通道（semantic）**：  
+   - 使用 `hybrid_search_articles` / `_search_comments` 生成语义候选，得到 `semantic_score`。  
+3. **统一合并与排序**：  
+   - 将两通道的候选按 ID 合并，保留更高的 `semantic_score`，并对 `lexical_score` / `semantic_score` 做批内归一化。  
+   - 根据查询类型（短中文实体/长查询等）选择权重，计算最终 `relevance_score = w_lex * lexical + w_sem * semantic` 并排序。  
+4. **强兜底规则（articles, page=1）**：  
+   - 若第一页结果中没有任何“标题/正文/作者真正包含查询串”的条目，则从候选中强制提取若干此类条目，插入到榜首再补满 `limit` 条，避免用户遇到“明明有这几个字却完全搜不到”的体验。
 
 #### 5.3.4 无正文文章：标题泛匹配排除、精确匹配保留
 
-**场景**：无正文文章若标题与查询仅语义泛匹配（如「上头像」对「邱华栋」约 60%），不应排在前面；若标题即查询词（如「邱华栋」）或高度相关，应可被搜到。
+**场景**：  
+- 无正文文章若标题与查询仅语义泛匹配（如「上头像」对「邱华栋」约 60%），不应排在前面；  
+- 若标题即查询词（如「邱华栋」/「爱因斯坦」）或高度相关，应可被搜到。
 
-**实现**：
+**实现（语义候选 + 双通道）**：
 
-1. **SQL 侧**（`hybrid_search_articles` 的 `ranked` CTE）：统一条件为  
-   `(COALESCE(art.article_similarity, 0) * 0.1 + bs.segment_similarity * 0.9) >= TITLE_ONLY_MIN_SIMILARITY`（0.85）。  
-   即不论有无正文，仅保留组合相似度 ≥ 0.85 的文档，无正文且标题仅泛匹配（如 60%）会被过滤。
-2. **应用层兜底**（过量拉取循环内）：对每批格式化后的结果再次过滤，保留「有正文」或「`relevance_score >= TITLE_ONLY_MIN_SIMILARITY`」的条目，再参与累积与分页，避免因 SQL 版本或浮点差异导致少量漏网。
+1. **语义候选阶段**（`hybrid_search_articles` 的 `ranked` CTE）：  
+   - 对“无正文+语义相似度低于 `TITLE_ONLY_MIN_SIMILARITY`”的标题，直接在候选层剔除，避免这类条目凭借向量噪声挤入候选池。  
+2. **关键词通道补充**：  
+   - 只要标题文本本身包含查询串（如标题恰为「邱华栋」或「爱因斯坦」），即使语义相似度略低，仍会通过关键词通道进入候选池，并在最终排序时获得较高 `lexical_score`。  
 
-效果：标题为「邱华栋」的无正文文章可因高相似度保留；标题为「上头像」的无正文文章因相似度不足 0.85 被排除。
+效果：  
+- 类似“上头像”这类与查询仅有语义泛关联但既无正文、又不包含查询串的标题会被过滤；  
+- 真实标题为实体词本身的无正文文章仍能通过关键词通道被稳定召回。
 
-#### 5.3.5 每页固定条数与 total 为实际有效条数
+#### 5.3.5 每页固定条数、分页与候选池限制
 
-**场景**：分页后每页应尽量为固定条数（如 10 条），且「找到 X 个结果」的 X（total）应与实际符合条件的结果数一致，不出现 total 很大但前几页条数很少或为空的情况。
+**场景**：  
+分页后每页应尽量为固定条数（如 10 条），且前几页的结果质量和排序要稳定，同时又要避免“深度分页”对向量检索和 SQL 带来过大压力。
 
-**实现**：
+**实现（最新版）**：
 
-1. **过量拉取 + 应用层过滤**（`hybrid_search_articles`）：
-   - 按批从数据库拉取（每批 `batch_size = max(limit*5, 50)`），对每批结果格式化后应用「有正文 或 relevance_score ≥ 0.85」的过滤，将有效条目加入 `all_valid`。
-   - 循环直到本批返回行数 < `batch_size`（无更多数据）为止，保证所有符合条件的结果都被计入。
-2. **分页与 total**：
-   - `items_for_page = all_valid[(page-1)*limit : page*limit]`，保证每页最多 `limit` 条且顺序按相似度。
-   - `total = len(all_valid)`，不再单独跑 count_sql，total 与真实有效条数一致。
-   - `has_more = (page * limit) < total`。
+1. **语义候选（articles, `hybrid_search_articles`）**：  
+   - 仍然按批从数据库拉取（每批 `batch_size = max(limit*5, 50)`），过滤后累积到 `all_valid`。  
+   - 对于仅 `type="articles"` 的场景，分页与 `total` 逻辑与此前版本一致：  
+     - `items_for_page = all_valid[(page-1)*limit : page*limit]`；  
+     - `total = len(all_valid)`；  
+     - `has_more = (page * limit) < total`。  
+2. **双通道合并与候选池（search 顶层）**：  
+   - 为保证性能，顶层只从关键词/语义两通道各取前 `limit*5` 条作为候选池（评论亦然），在此集合内做排序和分页。  
+   - 换言之，对于特别多的匹配结果，只保证“前若干页”（由候选池大小决定）结果的质量和完整性，而不是支持无限深度分页。  
 
-这样既保证「每页最多 limit 条」的稳定分页，又保证 total 与结果条数一致；最后一页可能不足 limit 条，属正常。
+这样既保证了**前几页的排序质量与分页稳定**，又避免了在向量检索场景下对“第几百页”的深度分页开销失控。
 
 #### 5.3.6 混合搜索权重与 SQL 结构概要
 
@@ -413,7 +437,7 @@ SQL 中不再对 `relevance_score` 做 `GREATEST(..., threshold)`，直接返回
 - **流程概要**：  
   `all_segments`（标题片段 + 内容片段）→ `best_segments`（每篇取相似度最高的一段，且相似度 ≥ `adjusted_threshold`）→ `article_scores`（文章级相似度）→ `ranked`（组合相似度 ≥ 0.85）→ 应用层按批拉取、过滤、累积 → 分页取 `items_for_page`，`total = len(all_valid)`。
 
-#### 5.3.7 测试覆盖
+#### 5.3.7 测试覆盖与评估脚本
 
 单元测试位于 `tests/unit/test_bert_vectorization_services.py` 的 `TestHierarchicalSearchService`，覆盖包括：
 
@@ -422,7 +446,10 @@ SQL 中不再对 `relevance_score` 做 `GREATEST(..., threshold)`，直接返回
 - **混合搜索过滤与分页**：`test_hybrid_search_filters_low_relevance_no_content`（无正文且低相似度被过滤）、`test_hybrid_search_page_size_and_total`（每页条数 ≤ limit、total 为有效条数）、`test_hybrid_search_pagination_second_page`（第二页条数与 has_more、total 一致）。
 - **相似度兜底**：`test_clamp_items_relevance`（仅 0/缺失时改为阈值）；**行解析**：`test_row_relevance_extraction`（从 tuple/Row/dict 正确取 `relevance_score`）。
 
-本地验证建议：修改搜索逻辑后运行上述单元测试，并对搜索 API 做一次 curl 或前端验证（如搜索「邱华栋」检查无 id=1022、total 与每页条数符合预期）。
+本地验证建议：  
+- 修改搜索逻辑后运行上述单元测试；  
+- 对搜索 API 做一次 curl 或前端验证（如搜索「邱华栋」检查无 id=1022、total 与每页条数符合预期）；  
+- 运行评估脚本 `scripts/eval_fulltext_search.py`，通过“从真实文章中抽取短语再反查”的方式量化 `Recall@K` / `MRR@K`，对比不同参数组合（例如候选池大小、lexical/semantic 权重）对召回率和排序质量的影响。
 
 ## 6. API设计
 

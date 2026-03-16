@@ -1,6 +1,6 @@
 #!/bin/bash
 # BlogN2 FastAPI Service Script
-# 使用方法: sudo ./blogn2-service {start|stop|restart|status}
+# 使用方法: ./blogn2-service {start|stop|restart|status}
 
 # 服务配置
 SERVICE_NAME="blogn2"
@@ -48,8 +48,8 @@ start() {
         return 1
     }
     
-    # 使用nohup启动应用
-    nohup bash -c "cd $SERVICE_HOME && source /home/`whoami`/blogn2-env/bin/activate && python $SERVICE_SCRIPT" > "$LOG_FILE" 2>&1 &
+    # 使用 nohup 启动应用，并在其内部重定向日志（依赖当前用户有权限运行服务）
+    nohup bash -c "cd \"$SERVICE_HOME\" && source \"/home/$SERVICE_USER/blogn2-env/bin/activate\" && python \"$SERVICE_SCRIPT\" >> \"$LOG_FILE\" 2>&1" &
     local bash_pid=$!
     
     # 等待一下让进程启动，然后找到Python进程的PID

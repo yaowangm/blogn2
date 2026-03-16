@@ -283,6 +283,10 @@ docker run -d \
 
 本项目采用 BSD 3-Clause 许可证 - 查看 [BSD 3-Clause License](https://opensource.org/licenses/BSD-3-Clause) 了解详情。
 
+### 第三方组件与致谢
+
+- `.cursor/rules/analyze-pr-changes.mdc` 文件基于开源项目 [AI-PR-Reviewer-Tasks](https://github.com/holasoymalva/AI-PR-Reviewer-Tasks) 中的同名规则改编而来。原始项目由 `holasoymalva` 等贡献者维护，并在 **Apache License 2.0** 许可下发布。根据该许可条款，我们在此明确标注来源与许可证信息；完整许可证文本可参阅其仓库中的 `LICENSE` 文件或 [Apache License 2.0 官方页面](http://www.apache.org/licenses/LICENSE-2.0)。
+
 ## 📞 联系方式
 
 - 项目主页: [GitHub Repository](https://github.com/yaowangm/blogn2)
