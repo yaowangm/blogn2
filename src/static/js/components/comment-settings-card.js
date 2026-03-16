@@ -43,14 +43,9 @@ class CommentSettingsCard extends BaseComponent {
      */
     async loadArticleData() {
         try {
-            // 获取认证头
-            const headers = UserManager.createHeaders();
-            
-            const response = await fetch(`/api/articles/${this.articleId}`, {
-                headers: headers
-            });
-            if (response.ok) {
-                this.articleData = await response.json();
+            const articleData = await BaseComponent.getArticle(this.articleId);
+            if (articleData) {
+                this.articleData = articleData;
             } else {
                 this.hide();
             }
@@ -177,7 +172,7 @@ class CommentSettingsCard extends BaseComponent {
                     box-shadow: var(--shadow-sm);
                     border: 1px solid var(--gray-200);
                     overflow: hidden;
-                    margin-bottom: var(--spacing-4);
+                    margin-bottom: 0;
                 }
                 
                 .card-body {

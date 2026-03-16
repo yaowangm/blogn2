@@ -11,6 +11,7 @@ class MessagesListCard extends BaseComponent {
 
 
     connectedCallback() {
+        this.currentPage = this.getCurrentPageFromUrl();
         this.render();
         this.loadMessages();
         this.setupPaginationListener();

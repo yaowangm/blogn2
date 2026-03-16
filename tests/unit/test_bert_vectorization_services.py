@@ -18,9 +18,15 @@ import numpy as np
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import List, Dict, Any
 
+from datetime import datetime
+
 from src.services.vectorization_service import BERTVectorizationService
 from src.services.vectorization_update_service import VectorizationUpdateService
-from src.services.search_service import HierarchicalSearchService
+from src.services.search_service import (
+    HierarchicalSearchService,
+    DEFAULT_THRESHOLD,
+    TITLE_ONLY_MIN_SIMILARITY,
+)
 
 
 class TestBERTVectorizationService:
@@ -435,7 +441,6 @@ class TestHierarchicalSearchService:
     def test_result_formatting(self, search_service):
         """测试结果格式化"""
         # 测试文章结果格式化
-        from datetime import datetime
         article_item = (1, "测试标题", "测试内容", "测试作者", datetime(2024, 1, 1, 10, 0, 0), 0.95)
         formatted = search_service._format_article_result(article_item)
         
@@ -456,6 +461,190 @@ class TestHierarchicalSearchService:
         assert formatted["author"] == "评论作者"
         assert formatted["type"] == "comment"
         assert formatted["relevance_score"] == 0.85
+
+    def test_row_relevance_extraction(self, search_service):
+        """测试从查询行中正确解析 relevance_score（列名/索引/字典）"""
+        # 元组/列表：按索引 5 取值
+        row_tuple = (1, "t", "c", "a", None, 0.72, None, None)
+        assert HierarchicalSearchService._row_relevance(row_tuple, index=5) == 0.72
+        assert HierarchicalSearchService._row_relevance((1, 2, 3), index=5, default=0.5) == 0.5
+        # 带 _mapping 的 Row 模拟
+        row_mapping = MagicMock()
+        row_mapping._mapping = {"relevance_score": 0.88}
+        assert HierarchicalSearchService._row_relevance(row_mapping) == 0.88
+        # 字典式（keys + []）
+        row_dict = {"relevance_score": 0.6}
+        assert HierarchicalSearchService._row_relevance(row_dict) == 0.6
+
+    def test_clamp_items_relevance(self, search_service):
+        """仅当 relevance_score 为 0 或缺失时设为阈值，有真实分数则保留"""
+        threshold = 0.5
+        items = [
+            {"id": 1, "relevance_score": 0.3},
+            {"id": 2, "relevance_score": 0.8},
+            {"id": 3, "relevance_score": 0.0},
+            {"id": 4},  # 无 relevance_score
+        ]
+        HierarchicalSearchService._clamp_items_relevance(items, threshold)
+        assert items[0]["relevance_score"] == 0.3  # 保留真实分数
+        assert items[1]["relevance_score"] == 0.8
+        assert items[2]["relevance_score"] == 0.5  # 0 时用阈值兜底
+        assert items[3]["relevance_score"] == 0.5  # 缺失时补阈值
+        # 阈值为 0 时不修改
+        items2 = [{"id": 1, "relevance_score": 0.2}]
+        HierarchicalSearchService._clamp_items_relevance(items2, 0.0)
+        assert items2[0]["relevance_score"] == 0.2
+
+    def test_constants(self):
+        """搜索阈值常量：默认 55%，无正文最低 85%"""
+        assert DEFAULT_THRESHOLD == 0.55
+        assert TITLE_ONLY_MIN_SIMILARITY == 0.85
+
+    def test_merge_keyword_skips_no_content(self):
+        """关键词合并：无正文的条目不并入，避免仅作者匹配的无内容条目标题无关却排前面"""
+        vector_items = [
+            {"id": 1, "title": "A", "content": "有内容", "relevance_score": 0.9},
+        ]
+        keyword_items = [
+            {"id": 2, "title": "上头像", "content": None, "relevance_score": 0},   # 无正文，不并入
+            {"id": 3, "title": "邱华栋", "content": "", "relevance_score": 0},      # 空正文，不并入
+            {"id": 4, "title": "某文", "content": "   ", "relevance_score": 0},    # 仅空白，不并入
+        ]
+        merged = HierarchicalSearchService._merge_keyword_into_article_items(
+            vector_items, keyword_items, limit=10
+        )
+        ids = [x["id"] for x in merged]
+        assert 2 not in ids
+        assert 3 not in ids
+        assert 4 not in ids
+        assert 1 in ids
+
+    def test_merge_keyword_keeps_items_with_content(self):
+        """关键词合并：有正文的关键词条并入并参与排序，取前 limit 条"""
+        vector_items = [
+            {"id": 1, "title": "V1", "content": "正文1", "relevance_score": 0.7},
+        ]
+        keyword_items = [
+            {"id": 2, "title": "邱华栋大骂王朔", "content": "长正文", "relevance_score": 0},
+            {"id": 3, "title": "另一篇", "content": "有", "relevance_score": 0},
+        ]
+        merged = HierarchicalSearchService._merge_keyword_into_article_items(
+            vector_items, keyword_items, limit=10
+        )
+        assert len(merged) == 3
+        ids = [x["id"] for x in merged]
+        assert 2 in ids and 3 in ids
+        # 关键词并入项应被赋予 0.95
+        for x in merged:
+            if x["id"] in (2, 3):
+                assert x["relevance_score"] == 0.95
+        # 按 relevance 降序，0.95 在前
+        assert merged[0]["relevance_score"] == 0.95
+
+    def test_merge_keyword_respects_limit_and_dedup(self):
+        """关键词合并：去重（已在向量结果中的不重复添加），且最多返回 limit 条"""
+        vector_items = [
+            {"id": 1, "title": "A", "content": "x", "relevance_score": 0.9},
+            {"id": 2, "title": "B", "content": "x", "relevance_score": 0.8},
+        ]
+        keyword_items = [
+            {"id": 2, "title": "B", "content": "x", "relevance_score": 0},  # 已存在，不重复
+            {"id": 3, "title": "C", "content": "x", "relevance_score": 0},
+        ]
+        merged = HierarchicalSearchService._merge_keyword_into_article_items(
+            vector_items, keyword_items, limit=3
+        )
+        assert len(merged) == 3
+        assert merged[0]["id"] == 3 and merged[0]["relevance_score"] == 0.95
+        assert merged[1]["id"] == 1
+        assert merged[2]["id"] == 2
+
+    @pytest.mark.asyncio
+    async def test_hybrid_search_filters_low_relevance_no_content(self, search_service):
+        """混合搜索：无正文且相似度 < TITLE_ONLY_MIN 的条目被过滤，不进入结果"""
+        # 模拟一批行：有“无正文+低分”的 1022、有正文的 724、无正文但高分的 999
+        dt = datetime(2007, 2, 2, 22, 35, 10)
+        rows_batch1 = [
+            (724, "邱华栋大骂王朔", "长正文内容", "左轻侯", dt, 0.95, "片段", "content"),
+            (1022, "上头像", None, "在北之北", dt, 0.6, "上头像", "title"),   # 无正文+低分，应被过滤
+            (999, "邱华栋", "", "某作者", dt, 0.9, "邱华栋", "title"),        # 无正文但>=0.85，保留
+        ]
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = rows_batch1
+        empty_result = MagicMock()
+        empty_result.fetchall.return_value = []
+
+        search_service.session.exec = AsyncMock(side_effect=[mock_result, empty_result])
+
+        out = await search_service.hybrid_search_articles(
+            "[0.1,0.2]", "relevance", page=1, limit=10, query="邱华栋"
+        )
+        ids = [x["id"] for x in out["items"]]
+        assert 1022 not in ids
+        assert 724 in ids
+        assert 999 in ids
+        assert out["total"] == 2
+
+    @pytest.mark.asyncio
+    async def test_hybrid_search_page_size_and_total(self, search_service):
+        """混合搜索：每页条数不超过 limit，total 为实际有效条数"""
+        dt = datetime(2007, 2, 2, 22, 35, 10)
+        # 第一批：5 条，其中 3 条有效（有正文或 relevance>=0.85）
+        rows1 = [
+            (1, "T1", "有", "A", dt, 0.9, "x", "content"),
+            (2, "T2", None, "A", dt, 0.5, "x", "title"),   # 无正文且<0.85，过滤
+            (3, "T3", "有", "A", dt, 0.88, "x", "content"),
+            (4, "T4", None, "A", dt, 0.9, "x", "title"),   # 无正文但>=0.85，保留
+            (5, "T5", "", "A", dt, 0.6, "x", "title"),    # 无正文且<0.85，过滤
+        ]
+        mock1 = MagicMock()
+        mock1.fetchall.return_value = rows1
+        mock_empty = MagicMock()
+        mock_empty.fetchall.return_value = []
+
+        search_service.session.exec = AsyncMock(side_effect=[mock1, mock_empty])
+
+        out = await search_service.hybrid_search_articles(
+            "[0.1,0.2]", "relevance", page=1, limit=10, query="q"
+        )
+        assert len(out["items"]) <= 10
+        assert out["total"] == 3  # 仅 1,3,4 有效
+        assert out["has_more"] is False
+        ids = [x["id"] for x in out["items"]]
+        assert 2 not in ids and 5 not in ids
+
+    @pytest.mark.asyncio
+    async def test_hybrid_search_pagination_second_page(self, search_service):
+        """混合搜索：第二页返回有效条目的 (limit, 2*limit) 段，total 为实际有效条数"""
+        dt = datetime(2007, 2, 2, 22, 35, 10)
+        # 单批返回 4 条有效（有正文），然后无更多数据；batch_size=50 故一批即结束
+        rows = [
+            (1, "T1", "有", "A", dt, 0.9, "x", "content"),
+            (2, "T2", "有", "A", dt, 0.88, "x", "content"),
+            (3, "T3", "有", "A", dt, 0.85, "x", "content"),
+            (4, "T4", "有", "A", dt, 0.82, "x", "content"),
+        ]
+        mock_batch = MagicMock()
+        mock_batch.fetchall.return_value = rows
+        mock_empty = MagicMock()
+        mock_empty.fetchall.return_value = []
+
+        search_service.session.exec = AsyncMock(side_effect=[mock_batch, mock_empty])
+
+        page1 = await search_service.hybrid_search_articles(
+            "[0.1,0.2]", "relevance", page=1, limit=2, query="q"
+        )
+        assert len(page1["items"]) == 2
+        assert page1["total"] == 4
+        assert page1["has_more"] is True
+
+        search_service.session.exec = AsyncMock(side_effect=[mock_batch, mock_empty])
+        page2 = await search_service.hybrid_search_articles(
+            "[0.1,0.2]", "relevance", page=2, limit=2, query="q"
+        )
+        assert len(page2["items"]) == 2
+        assert page2["total"] == 4
+        assert page2["has_more"] is False
 
 
 class TestVectorizationIntegration:

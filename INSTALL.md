@@ -133,7 +133,7 @@ APP_ENV=development
 DEBUG=true
 SECRET_KEY=your-super-secret-jwt-key-change-in-production
 
-# 文件上传配置
+# 文件上传配置（本地与 Docker 共用：填宿主机路径；Docker 由 compose 覆盖并挂载）
 UPLOAD_DIR=../pic/blogn_img/upload
 AVATAR_DIR=../pic/blogn_img/userlogo
 ```
@@ -328,7 +328,7 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 
 ### Docker 部署（可选）
 
-若使用 Docker 运行应用，以下参数均在 `docker run` 命令行中配置，**不要**写入 `.env`。
+若使用 Docker 运行应用，以下参数在 `docker run` 命令行中配置（**不要**把 `BLOGN_CONFIG_FILE` 等写入 `.env`）。**.env 中的 `UPLOAD_DIR`、`AVATAR_DIR` 为宿主机路径**：使用 **docker-compose** 时 compose 会据此挂载并覆盖为容器路径；使用 **docker run** 时需用下表中的 `-e`、`-v` 覆盖并挂载。
 
 | 参数 | 说明 |
 |------|------|
@@ -337,8 +337,8 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 | `--network host` | 使用宿主机网络，访问本机 PostgreSQL、Redis、sendmail |
 | `-e BLOGN_CONFIG_FILE=/app/config.env` | 应用从该路径读取配置（即下方挂载的 .env） |
 | `-v 宿主机/.env:/app/config.env:ro` | 将项目根目录 `.env` 挂载为容器内配置文件，只读 |
-| `-v 宿主机上传目录:/app/uploads` | 上传文件持久化 |
-| `-v 宿主机头像目录:/app/avatars` | 用户头像持久化 |
+| `-v 宿主机上传目录:/app/uploads` | 上传文件持久化（可与 .env 中 UPLOAD_DIR 一致） |
+| `-v 宿主机头像目录:/app/avatars` | 用户头像持久化（可与 .env 中 AVATAR_DIR 一致） |
 | `-v 宿主机HF缓存:/app/.cache/huggingface:ro` | Hugging Face 缓存（可选） |
 | `-v 宿主机ModelScope缓存:/app/.cache/modelscope:ro` | ModelScope 缓存（可选） |
 | `-v 宿主机BERT模型目录:/app/.cache/models/bert-model-hub:ro` | BERT 模型 hub 目录（含 `snapshots/`），不挂载则无法使用智能搜索 |

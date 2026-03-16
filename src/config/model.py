@@ -23,10 +23,46 @@ _HUB_DIRS = [
 ]
 
 
+def _resolve_hub_dir_to_snapshot(hub_dir: str) -> Optional[str]:
+    """若 hub 目录自身含 config.json 则返回该目录，否则从 snapshots/<revision> 取第一个含 config.json 的目录。"""
+    if not os.path.isdir(hub_dir):
+        return None
+    hub_dir = os.path.abspath(os.path.expanduser(hub_dir))
+    if os.path.isfile(os.path.join(hub_dir, "config.json")):
+        return hub_dir
+    snapshots_dir = os.path.join(hub_dir, "snapshots")
+    if not os.path.isdir(snapshots_dir):
+        return None
+    try:
+        for rev in sorted(os.listdir(snapshots_dir)):
+            snapshot = os.path.join(snapshots_dir, rev)
+            if os.path.isdir(snapshot) and os.path.isfile(os.path.join(snapshot, "config.json")):
+                return os.path.abspath(snapshot)
+    except OSError:
+        pass
+    return None
+
+
+def _get_local_fallback_dirs() -> list:
+    """本地运行时的候选模型目录（当 MODEL_MODEL_PATH 为容器路径且不存在时使用）。"""
+    home = os.path.expanduser("~")
+    candidates = []
+    env_host = os.getenv("BERT_MODEL_HUB_HOST_PATH")
+    if env_host:
+        candidates.append(env_host.strip())
+    candidates.extend([
+        os.path.join(home, ".cache", "huggingface", "hub", "models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2"),
+        os.path.join(home, ".cache", "modelscope", "hub", "models", "sentence-transformers", "paraphrase-multilingual-MiniLM-L12-v2"),
+    ])
+    return candidates
+
+
 def _resolve_model_path_to_snapshot(path: Optional[str]) -> Optional[str]:
     """
     当配置的路径存在但无 config.json 时，从 _HUB_DIRS 解析：
     若挂载目录自身含 config.json 则直接返回该目录，否则从 snapshots/<revision> 取第一个含 config.json 的目录。
+    当配置的路径不存在（如本地运行时 .env 里仍是容器路径 MODEL_MODEL_PATH=/app/...）时，
+    尝试本地候选目录（BERT_MODEL_HUB_HOST_PATH、~/.cache/huggingface、~/.cache/modelscope）。
     对传入路径会做 strip 和 expanduser，避免 .env 中带空格或 ~ 导致加载失败。
     """
     if not path:
@@ -36,7 +72,17 @@ def _resolve_model_path_to_snapshot(path: Optional[str]) -> Optional[str]:
         return None
     path = os.path.expanduser(path)
     if not os.path.isdir(path):
-        return path
+        # 配置路径不存在（常见为本地启动时 .env 中仍为容器路径）
+        logger.info(
+            "MODEL_MODEL_PATH 指向的路径在当前机器不存在（可能为容器路径），尝试本地候选路径: %s",
+            path,
+        )
+        for hub_dir in _get_local_fallback_dirs():
+            resolved = _resolve_hub_dir_to_snapshot(hub_dir)
+            if resolved:
+                logger.info("使用本地模型路径: %s", resolved)
+                return resolved
+        return None
     if os.path.isfile(os.path.join(path, "config.json")):
         return os.path.abspath(path)
     # 配置路径存在但无 config.json，回退到 _HUB_DIRS 可能加载到无关模型，打日志避免静默误用
@@ -45,22 +91,10 @@ def _resolve_model_path_to_snapshot(path: Optional[str]) -> Optional[str]:
         path,
     )
     for hub_dir in _HUB_DIRS:
-        if not os.path.isdir(hub_dir):
-            continue
-        # 挂载目录本身即为 snapshot（含 config.json）
-        if os.path.isfile(os.path.join(hub_dir, "config.json")):
-            return os.path.abspath(hub_dir)
-        snapshots_dir = os.path.join(hub_dir, "snapshots")
-        if not os.path.isdir(snapshots_dir):
-            continue
-        try:
-            for rev in sorted(os.listdir(snapshots_dir)):
-                snapshot = os.path.join(snapshots_dir, rev)
-                if os.path.isdir(snapshot) and os.path.isfile(os.path.join(snapshot, "config.json")):
-                    return os.path.abspath(snapshot)
-        except OSError:
-            continue
-    return os.path.abspath(path) if os.path.isdir(path) else path
+        resolved = _resolve_hub_dir_to_snapshot(hub_dir)
+        if resolved:
+            return resolved
+    return os.path.abspath(path)
 
 
 class ModelSettings:
@@ -83,7 +117,7 @@ class ModelSettings:
     
     @property
     def model_path(self) -> Optional[str]:
-        """本地模型路径（若配置的路径无 config.json 则自动解析到 HF hub 的 snapshot）"""
+        """本地模型路径（从环境变量 MODEL_MODEL_PATH 读取；若路径无 config.json 则自动解析到 HF hub 的 snapshot）。"""
         raw = os.getenv('MODEL_MODEL_PATH') or None
         return _resolve_model_path_to_snapshot(raw)
     

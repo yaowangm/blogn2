@@ -29,6 +29,11 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 logger = logging.getLogger(__name__)
 
+# 默认相似度阈值 55%，仅用于兜底（0/缺失时）及关键词回退时的返回值
+DEFAULT_THRESHOLD = 0.55
+# 无正文文章仅当标题与查询相似度 >= 此值时才保留（避免“上头像”等泛匹配），有正文仍用动态阈值
+TITLE_ONLY_MIN_SIMILARITY = 0.85
+
 
 class HierarchicalSearchService:
     """
@@ -72,19 +77,77 @@ class HierarchicalSearchService:
             return default
 
     @staticmethod
+    def _row_relevance(row: Any, index: int = 5, default: float = 0.0) -> float:
+        """从 SQL 结果行取 relevance_score：索引 → _mapping → 字典 key。"""
+        try:
+            if hasattr(row, "__getitem__") and len(row) > index:
+                return HierarchicalSearchService._safe_float(row[index], default)
+            if hasattr(row, "_mapping") and "relevance_score" in row._mapping:
+                return HierarchicalSearchService._safe_float(row._mapping["relevance_score"], default)
+            if isinstance(row, dict) and "relevance_score" in row:
+                return HierarchicalSearchService._safe_float(row["relevance_score"], default)
+        except (TypeError, IndexError, KeyError):
+            pass
+        return default
+
+    @staticmethod
+    def _clamp_items_relevance(items: List[Dict], threshold: float) -> None:
+        """仅当 relevance_score 为 0 或缺失时设为 threshold，避免前端显示 0%；有真实分数则不改。"""
+        if threshold <= 0:
+            return
+        for it in items:
+            cur = HierarchicalSearchService._safe_float(it.get("relevance_score"), 0.0) if "relevance_score" in it else 0.0
+            if cur <= 0:
+                it["relevance_score"] = threshold
+
+    @staticmethod
+    def _merge_keyword_into_article_items(
+        vector_items: List[Dict], keyword_items: List[Dict], limit: int
+    ) -> List[Dict]:
+        """第一页时：把关键词（含作者名）匹配并入向量结果；无正文文章不并入，避免仅靠作者匹配的无内容条目标题无关却排前面。"""
+        seen = {it["id"] for it in vector_items}
+        combined = list(vector_items)
+        for kw in keyword_items:
+            if kw.get("id") in seen:
+                continue
+            content = (kw.get("content") or kw.get("comment") or "").strip()
+            if not content:
+                continue
+            combined.append({**kw, "relevance_score": 0.95})
+            seen.add(kw["id"])
+        combined.sort(key=lambda x: HierarchicalSearchService._safe_float(x.get("relevance_score", 0)), reverse=True)
+        return combined[:limit]
+
+    async def _merge_keyword_into_article_results(
+        self, article_results: Dict[str, Any], query: str, limit: int
+    ) -> Dict[str, Any]:
+        """第一页且有关键词时：把关键词（标题/内容/作者）匹配并入文章结果并重排序。"""
+        if not query or not query.strip():
+            return article_results
+        kw = await self._keyword_search_articles(query.strip(), 1, limit * 2)
+        article_results["items"] = self._merge_keyword_into_article_items(
+            article_results.get("items", []), kw.get("items", []), limit
+        )
+        return article_results
+
+    @staticmethod
     def _escape_like_pattern(s: str) -> str:
         """Escape \\, % and _ for safe literal use inside a LIKE/ILIKE pattern (PostgreSQL)."""
         return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
     @staticmethod
     def _is_invalid_query_vector(vector: np.ndarray) -> bool:
-        """查询向量无效（全零或含 nan）时无法做向量检索，应走关键词回退。"""
+        """查询向量无效（全零、含 nan、或范数过小）时无法做向量检索，应走关键词回退。"""
         if vector is None or len(vector) == 0:
             return True
         try:
             if np.any(np.isnan(vector)):
                 return True
             if np.all(vector == 0):
+                return True
+            # 范数过小说明模型输出异常，避免误匹配大量结果
+            norm = float(np.linalg.norm(vector))
+            if norm < 1e-6:
                 return True
             return False
         except Exception:
@@ -104,8 +167,8 @@ class HierarchicalSearchService:
         Returns:
             float: 动态阈值 (0.1-0.9)
         """
-        # 基础阈值，针对中文查询优化
-        base_threshold = 0.45
+        # 基础阈值（默认 55%），再按查询长度/复杂度微调
+        base_threshold = DEFAULT_THRESHOLD
         
         # 根据查询长度调整阈值
         query_length = len(query.strip())
@@ -164,7 +227,7 @@ class HierarchicalSearchService:
         keyword_length = len(query.strip()) if query else 0
         min_segment_length = max(3, keyword_length)
         
-        # 优化的混合搜索SQL：包含标题片段的片段级搜索
+        # 有正文：按动态阈值；无正文：仅当标题与查询相似度 >= TITLE_ONLY_MIN_SIMILARITY 时保留（标题即“邱华栋”可搜到，“上头像”等泛匹配排除）
         sql = f"""
             WITH all_segments AS (
                 -- 标题作为特殊片段（权重更高）
@@ -179,8 +242,7 @@ class HierarchicalSearchService:
                 FROM article_vectors av
                 WHERE av.title_vector IS NOT NULL
                 AND av.projectitem_id IN (
-                    SELECT DISTINCT av2.projectitem_id 
-                    FROM article_vectors av2
+                    SELECT DISTINCT av2.projectitem_id FROM article_vectors av2
                     LEFT JOIN projectitem pi2 ON av2.projectitem_id = pi2.id
                     WHERE pi2.status = 1
                 )
@@ -226,74 +288,56 @@ class HierarchicalSearchService:
                 WHERE pi.status = 1
                 AND av.title_vector IS NOT NULL
                 AND av.content_vector IS NOT NULL
-            )
-            SELECT 
-                bs.projectitem_id as id,
-                pi.name as title,
-                pi.comment as content,
-                u.name as author,
-                pi.createtime,
-                -- 混合相似度：10%文章级 + 90%片段级
-                (COALESCE(art.article_similarity, 0) * 0.1 + 
-                 bs.segment_similarity * 0.9) as relevance_score,
-                bs.segment_text as best_match_text,
-                bs.segment_type as match_type
-            FROM best_segments bs
-            LEFT JOIN projectitem pi ON bs.projectitem_id = pi.id
-            LEFT JOIN users u ON pi.userid = u.id
-            LEFT JOIN article_scores art ON bs.projectitem_id = art.projectitem_id
-            ORDER BY relevance_score DESC
-            LIMIT {limit} OFFSET {offset}
-        """
-        
-        result = await self.session.exec(text(sql))
-        items = result.fetchall()
-        
-        # 获取总数
-        count_sql = f"""
-            WITH all_segments AS (
-                SELECT 
-                    av.projectitem_id,
-                    av.title_vector as segment_vector
-                FROM article_vectors av
-                WHERE av.title_vector IS NOT NULL
-                AND av.projectitem_id IN (
-                    SELECT DISTINCT av2.projectitem_id 
-                    FROM article_vectors av2
-                    LEFT JOIN projectitem pi2 ON av2.projectitem_id = pi2.id
-                    WHERE pi2.status = 1
-                )
-                
-                UNION ALL
-                
-                SELECT 
-                    av.projectitem_id,
-                    csv.segment_vector
-                FROM article_vectors av
-                JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
-                LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
-                WHERE pi.status = 1
-                AND csv.confidence_score >= 0.8
-                AND LENGTH(TRIM(csv.segment_text)) >= {min_segment_length}
             ),
-            best_segments AS (
-                SELECT DISTINCT ON (projectitem_id)
-                    projectitem_id,
-                    (1 - (segment_vector <=> '{query_vector_json}'::vector)) as segment_similarity
-                FROM all_segments
-                WHERE (1 - (segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
-                ORDER BY projectitem_id, (1 - (segment_vector <=> '{query_vector_json}'::vector)) DESC
+            ranked AS (
+                SELECT 
+                    bs.projectitem_id as id,
+                    pi.name as title,
+                    pi.comment as content,
+                    u.name as author,
+                    pi.createtime,
+                    (COALESCE(art.article_similarity, 0) * 0.1 + bs.segment_similarity * 0.9) as relevance_score,
+                    bs.segment_text as best_match_text,
+                    bs.segment_type as match_type
+                FROM best_segments bs
+                LEFT JOIN projectitem pi ON bs.projectitem_id = pi.id
+                LEFT JOIN users u ON pi.userid = u.id
+                LEFT JOIN article_scores art ON bs.projectitem_id = art.projectitem_id
+                WHERE (COALESCE(art.article_similarity, 0) * 0.1 + bs.segment_similarity * 0.9) >= {TITLE_ONLY_MIN_SIMILARITY}
             )
-            SELECT COUNT(DISTINCT projectitem_id)
-            FROM best_segments
+            SELECT id, title, content, author, createtime, relevance_score, best_match_text, match_type
+            FROM ranked
+            ORDER BY relevance_score DESC
+            LIMIT {{batch_limit}} OFFSET {{batch_offset}}
         """
-        count_result = await self.session.exec(text(count_sql))
-        total = count_result.fetchone()[0]
         
+        # 过量拉取再过滤，保证每页返回固定条数：每批取 batch_size 条，过滤后累积；拉取到无更多数据为止，用实际有效条数作 total
+        batch_size = max(limit * 5, 50)
+        all_valid: List[Dict[str, Any]] = []
+        batch_offset = 0
+        
+        while True:
+            batch_sql = sql.replace("{batch_limit}", str(batch_size)).replace("{batch_offset}", str(batch_offset))
+            result = await self.session.exec(text(batch_sql))
+            batch_items = result.fetchall()
+            if not batch_items:
+                break
+            formatted_batch = [self._format_hybrid_article_result(row) for row in batch_items]
+            for x in formatted_batch:
+                if (x.get("content") or "").strip() or self._safe_float(x.get("relevance_score"), 0) >= TITLE_ONLY_MIN_SIMILARITY:
+                    all_valid.append(x)
+            if len(batch_items) < batch_size:
+                break
+            batch_offset += batch_size
+        
+        items_for_page = all_valid[(page - 1) * limit : page * limit]
+        total = len(all_valid)
+        
+        self._clamp_items_relevance(items_for_page, dynamic_threshold)
         return {
-            "items": [self._format_hybrid_article_result(item) for item in items],
+            "items": items_for_page,
             "total": total,
-            "has_more": (offset + len(items)) < total,
+            "has_more": (page * limit) < total,
             "dynamic_threshold": self._safe_float(dynamic_threshold),
             "search_strategy": "hybrid_optimized"
         }
@@ -322,7 +366,7 @@ class HierarchicalSearchService:
             query_vector = await self.vectorization_service.vectorize_text(query)
             # 向量无效（全零或含 nan）时无法做向量检索，改用关键词回退
             if self._is_invalid_query_vector(query_vector):
-                logger.info("查询向量无效，使用关键词回退搜索: query=%s", query[:50] if query else "")
+                logger.warning("查询向量无效（全零/含 nan/范数过小），使用关键词回退搜索: query=%s", query[:50] if query else "")
                 if search_type == "articles":
                     results = await self._keyword_search_articles(query, page, limit)
                 elif search_type == "comments":
@@ -337,7 +381,7 @@ class HierarchicalSearchService:
                         "items": all_items,
                         "total": art.get("total", 0) + com.get("total", 0),
                         "has_more": len(all_items) == limit,
-                        "dynamic_threshold": 0.45
+                        "dynamic_threshold": DEFAULT_THRESHOLD
                     }
                 search_time = self._safe_float(round(time.time() - start_time, 3))
                 return {
@@ -345,30 +389,31 @@ class HierarchicalSearchService:
                     "total": results.get("total", 0),
                     "has_more": results.get("has_more", False),
                     "search_time": search_time,
-                    "dynamic_threshold": self._safe_float(results.get("dynamic_threshold", 0.45))
+                    "dynamic_threshold": self._safe_float(results.get("dynamic_threshold", DEFAULT_THRESHOLD))
                 }
             query_vector_json = self._vector_to_json(query_vector)
             
-            # 2. 根据搜索类型执行不同的搜索策略
+            # 2. 按类型执行搜索；第一页时并入关键词（含作者名）匹配
             if search_type == "articles":
-                # 使用优化的混合搜索策略（10%文章级 + 90%片段级）
                 results = await self.hybrid_search_articles(query_vector_json, sort_by, page, limit, query)
+                if page == 1:
+                    results = await self._merge_keyword_into_article_results(results, query, limit)
             elif search_type == "comments":
                 results = await self._search_comments(query_vector_json, sort_by, page, limit, query)
-            else:  # all - 使用混合搜索策略
-                # 对于混合搜索，先搜索文章，再搜索评论
+            else:
                 article_results = await self.hybrid_search_articles(query_vector_json, sort_by, page, limit, query)
+                if page == 1:
+                    article_results = await self._merge_keyword_into_article_results(article_results, query, limit)
                 comment_results = await self._search_comments(query_vector_json, sort_by, page, limit, query)
-                
-                # 合并结果
                 all_items = article_results.get("items", []) + comment_results.get("items", [])
+                all_items.sort(key=lambda x: self._safe_float(x.get("relevance_score", 0)), reverse=True)
+                all_items = all_items[:limit]
                 total_count = article_results.get("total", 0) + comment_results.get("total", 0)
-                
                 results = {
                     "items": all_items,
                     "total": total_count,
-                    "has_more": article_results.get("has_more", False) or comment_results.get("has_more", False),
-                    "dynamic_threshold": article_results.get("dynamic_threshold", 0.45),
+                    "has_more": total_count > limit or article_results.get("has_more", False) or comment_results.get("has_more", False),
+                    "dynamic_threshold": article_results.get("dynamic_threshold", DEFAULT_THRESHOLD),
                     "search_strategy": "hybrid_optimized"
                 }
             
@@ -379,7 +424,7 @@ class HierarchicalSearchService:
                 "total": results.get("total", 0),
                 "has_more": results.get("has_more", False),
                 "search_time": search_time,
-                "dynamic_threshold": self._safe_float(results.get("dynamic_threshold", 0.45))
+                "dynamic_threshold": self._safe_float(results.get("dynamic_threshold", DEFAULT_THRESHOLD))
             }
             
         except Exception as e:
@@ -424,6 +469,7 @@ class HierarchicalSearchService:
             LEFT JOIN users u ON pi.userid = u.id
             LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
             WHERE pi.status = 1
+            AND pi.comment IS NOT NULL AND LENGTH(TRIM(pi.comment)) > 0
             AND (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
             AND LENGTH(TRIM(csv.segment_text)) >= {min_segment_length}
             ORDER BY av.projectitem_id, (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) DESC
@@ -440,14 +486,17 @@ class HierarchicalSearchService:
         LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
         LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
         WHERE pi.status = 1
+        AND pi.comment IS NOT NULL AND LENGTH(TRIM(pi.comment)) > 0
         AND (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
         AND LENGTH(TRIM(csv.segment_text)) >= {min_segment_length}
         """
         count_result = await self.session.exec(text(count_sql))
         total = count_result.fetchone()[0]
-            
+        
+        formatted = [self._format_article_result(item) for item in items]
+        self._clamp_items_relevance(formatted, dynamic_threshold)
         return {
-            "items": [self._format_article_result(item) for item in items],
+            "items": formatted,
             "total": total,
             "has_more": (offset + len(items)) < total,
             "dynamic_threshold": self._safe_float(dynamic_threshold)
@@ -495,16 +544,16 @@ class HierarchicalSearchService:
         }
     
     async def _keyword_search_articles(self, query: str, page: int, limit: int) -> Dict[str, Any]:
-        """关键词回退：当向量无效时按标题、内容 ILIKE 搜索文章。"""
+        """关键词搜索：标题/内容/作者名 ILIKE 匹配（向量无效时回退，或第一页与向量结果合并）。"""
         if not query or not query.strip():
-            return {"items": [], "total": 0, "has_more": False, "dynamic_threshold": 0.45}
+            return {"items": [], "total": 0, "has_more": False, "dynamic_threshold": DEFAULT_THRESHOLD}
         offset = (page - 1) * limit
         pattern = f"%{self._escape_like_pattern(query.strip())}%"
         sql = text("""
             SELECT pi.id, pi.name as title, pi.comment as content, u.name as author, pi.createtime, 1.0 as relevance_score
             FROM projectitem pi
             LEFT JOIN users u ON pi.userid = u.id
-            WHERE pi.status = 1 AND (pi.name ILIKE :pat ESCAPE '\\' OR pi.comment ILIKE :pat ESCAPE '\\')
+            WHERE pi.status = 1 AND (pi.name ILIKE :pat ESCAPE '\\' OR pi.comment ILIKE :pat ESCAPE '\\' OR u.name ILIKE :pat ESCAPE '\\')
             ORDER BY pi.createtime DESC
             LIMIT :lim OFFSET :off
         """)
@@ -512,7 +561,8 @@ class HierarchicalSearchService:
         items = result.fetchall()
         count_sql = text("""
             SELECT COUNT(*) FROM projectitem pi
-            WHERE pi.status = 1 AND (pi.name ILIKE :pat ESCAPE '\\' OR pi.comment ILIKE :pat ESCAPE '\\')
+            LEFT JOIN users u ON pi.userid = u.id
+            WHERE pi.status = 1 AND (pi.name ILIKE :pat ESCAPE '\\' OR pi.comment ILIKE :pat ESCAPE '\\' OR u.name ILIKE :pat ESCAPE '\\')
         """)
         count_result = await self.session.execute(count_sql, {"pat": pattern})
         total = count_result.fetchone()[0]
@@ -520,11 +570,11 @@ class HierarchicalSearchService:
             "items": [self._format_article_result(item) for item in items],
             "total": total,
             "has_more": (offset + len(items)) < total,
-            "dynamic_threshold": 0.45
+            "dynamic_threshold": DEFAULT_THRESHOLD
         }
     
     async def _keyword_search_comments(self, query: str, page: int, limit: int) -> Dict[str, Any]:
-        """关键词回退：当向量无效时按标题、内容 ILIKE 搜索评论。"""
+        """关键词搜索：标题/内容/作者名 ILIKE 匹配（向量无效时回退）。"""
         if not query or not query.strip():
             return {"items": [], "total": 0, "has_more": False}
         offset = (page - 1) * limit
@@ -533,7 +583,7 @@ class HierarchicalSearchService:
             SELECT p.id, p.subject as title, p.content, u.name as author, p.posttime, 1.0 as relevance_score
             FROM post p
             LEFT JOIN users u ON p.userid = u.id
-            WHERE p.status = 1 AND (p.subject ILIKE :pat ESCAPE '\\' OR p.content ILIKE :pat ESCAPE '\\')
+            WHERE p.status = 1 AND (p.subject ILIKE :pat ESCAPE '\\' OR p.content ILIKE :pat ESCAPE '\\' OR u.name ILIKE :pat ESCAPE '\\')
             ORDER BY p.posttime DESC
             LIMIT :lim OFFSET :off
         """)
@@ -541,7 +591,8 @@ class HierarchicalSearchService:
         items = result.fetchall()
         count_sql = text("""
             SELECT COUNT(*) FROM post p
-            WHERE p.status = 1 AND (p.subject ILIKE :pat ESCAPE '\\' OR p.content ILIKE :pat ESCAPE '\\')
+            LEFT JOIN users u ON p.userid = u.id
+            WHERE p.status = 1 AND (p.subject ILIKE :pat ESCAPE '\\' OR p.content ILIKE :pat ESCAPE '\\' OR u.name ILIKE :pat ESCAPE '\\')
         """)
         count_result = await self.session.execute(count_sql, {"pat": pattern})
         total = count_result.fetchone()[0]
@@ -549,28 +600,6 @@ class HierarchicalSearchService:
             "items": [self._format_comment_result(item) for item in items],
             "total": total,
             "has_more": (offset + len(items)) < total
-        }
-    
-    async def _search_all(self, query_vector_json: str, sort_by: str, page: int, limit: int, query: str = "") -> Dict[str, Any]:
-        """搜索所有内容"""
-        # 分别搜索文章和评论，使用更大的limit确保有足够的结果
-        articles_result = await self._search_articles(query_vector_json, sort_by, page, limit, query)
-        comments_result = await self._search_comments(query_vector_json, sort_by, page, limit, query)
-        
-        # 合并结果
-        all_items = articles_result.get("items", []) + comments_result.get("items", [])
-        
-        # 按相关性排序（使用 _safe_float 避免 nan 导致排序或 JSON 异常）
-        all_items.sort(key=lambda x: self._safe_float(x.get("relevance_score", 0)), reverse=True)
-        
-        # 限制结果数量
-        all_items = all_items[:limit]
-        
-        return {
-            "items": all_items,
-            "total": articles_result.get("total", 0) + comments_result.get("total", 0),
-            "has_more": len(all_items) == limit,
-            "dynamic_threshold": self._safe_float(articles_result.get("dynamic_threshold", 0.45))
         }
     
     def _vector_to_json(self, vector: np.ndarray) -> str:
@@ -616,7 +645,7 @@ class HierarchicalSearchService:
             "content": item[2],
             "author": item[3],
             "created_at": item[4].isoformat() if item[4] else None,
-            "relevance_score": self._safe_float(item[5]),
+            "relevance_score": self._row_relevance(item),
             "type": "article"
         }
     
@@ -636,7 +665,7 @@ class HierarchicalSearchService:
             "content": item[2],
             "author": item[3],
             "created_at": item[4].isoformat() if item[4] else None,
-            "relevance_score": self._safe_float(item[5]),
+            "relevance_score": self._row_relevance(item),
             "best_match_text": item[6] if len(item) > 6 else None,
             "match_type": item[7] if len(item) > 7 else "content",
             "type": "article",
@@ -659,6 +688,6 @@ class HierarchicalSearchService:
             "content": item[2],
             "author": item[3],
             "created_at": item[4].isoformat() if item[4] else None,
-            "relevance_score": self._safe_float(item[5]),
+            "relevance_score": self._row_relevance(item),
             "type": "comment"
         }

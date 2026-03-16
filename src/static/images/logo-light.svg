@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" fill="#3b82f6" rx="4"/>
-  <text x="16" y="22" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="white">BN</text>
+  <rect width="32" height="32" fill="#0A66C2" rx="4"/>
+  <text x="16" y="20" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="white">
+    <tspan font-weight="100">Blog</tspan><tspan font-weight="800" fill="red">N</tspan>
+  </text>
 </svg>

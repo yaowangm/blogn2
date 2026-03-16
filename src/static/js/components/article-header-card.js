@@ -77,29 +77,17 @@ class ArticleHeaderCard extends BaseComponent {
      */
     async loadArticleData() {
         try {
-            // 获取认证头
-            const headers = UserManager.createHeaders();
-            
-            const response = await fetch(`/api/articles/${this.articleId}`, {
-                headers: headers
-            });
-            if (response.ok) {
-                this.articleData = await response.json();
-                
-                // 检查是否为文章作者
-                if (this.currentUser && this.articleData.author) {
-                    this.isAuthor = this.currentUser.id === this.articleData.author.id;
-                }
-            } else if (response.status === 404) {
-                // 文章不存在，跳转到错误页面
+            const articleData = await BaseComponent.getArticle(this.articleId);
+            if (articleData === null) {
                 window.location.href = '/static/error.html';
                 return;
-            } else {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            this.articleData = articleData;
+            if (this.currentUser && articleData.author) {
+                this.isAuthor = this.currentUser.id === articleData.author.id;
             }
         } catch (error) {
             this.logError('Failed to load article data', error);
-            // 加载失败，跳转到错误页面
             window.location.href = '/static/error.html';
         }
     }
@@ -533,6 +521,7 @@ class ArticleHeaderCard extends BaseComponent {
             const style = document.createElement('style');
             style.textContent = `
                 @import url('/static/css/common-components.css');
+                .card { margin-bottom: 0; }
                 
                 .article-title h1 {
                     font-size: var(--font-size-3xl);

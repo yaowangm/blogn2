@@ -18,6 +18,7 @@ class SubscriptionsListCard extends BaseComponent {
 
     connectedCallback() {
         this.projectId = this.getProjectIdFromUrl();
+        this.currentPage = this.getCurrentPageFromUrl();
         this.render();
         this.initializeAsync();
         this.addEventListeners();
@@ -29,36 +30,28 @@ class SubscriptionsListCard extends BaseComponent {
 
     async initializeAsync() {
         try {
-            // 检查所有权
-            await this.checkOwnership();
-            
-            // 加载订阅博客列表
-            this.loadSubscriptions();
+            await Promise.all([
+                this.checkOwnership(),
+                this.loadSubscriptions(this.currentPage)
+            ]);
+            this.render();
         } catch (error) {
             console.error('组件初始化失败:', error);
         }
     }
 
     async checkOwnership() {
-        if (!this.projectId) {
-            return;
-        }
-
+        if (!this.projectId) return;
         try {
-            // 获取项目信息
-            const projectResponse = await fetch(`/api/projects/${this.projectId}`);
-            if (projectResponse.ok) {
-                this.projectData = await projectResponse.json();
-                
-                // 检查当前用户是否为博客所有者
+            const projectData = await BaseComponent.getProject(this.projectId);
+            if (projectData) {
+                this.projectData = projectData;
                 if (UserManager.isLoggedIn()) {
                     const currentUser = UserManager.getCurrentUser();
-                    this.isOwner = currentUser.id === this.projectData.userid;
+                    this.isOwner = currentUser.id === projectData.userid;
                 } else {
                     this.isOwner = false;
                 }
-                
-                // 所有权检查完成后重新渲染
                 this.render();
             }
         } catch (error) {
@@ -215,7 +208,7 @@ class SubscriptionsListCard extends BaseComponent {
                     box-shadow: var(--shadow-sm);
                     border: 1px solid var(--gray-200);
                     overflow: hidden;
-                    margin-bottom: var(--spacing-6);
+                    margin-bottom: var(--card-margin);
                 }
                 
                 .card-header {

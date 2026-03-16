@@ -29,22 +29,16 @@ class BlogNavigationCard extends BaseComponent {
         }
 
         try {
-            // 先获取项目信息，从中获取用户ID
-            const projectResponse = await fetch(`/api/projects/${this.projectId}`);
-            if (projectResponse.ok) {
-                const projectData = await projectResponse.json();
-                
-                // 获取用户信息，包括intropiid
-                if (projectData.userid) {
-                    const userResponse = await fetch(`/api/users/${projectData.userid}`);
-                    if (userResponse.ok) {
-                        this.userData = await userResponse.json();
-                    }
-                }
-            } else if (projectResponse.status === 404) {
-                // 如果博客不存在，跳转到错误页面
+            const projectData = await BaseComponent.getProject(this.projectId);
+            if (projectData === null) {
                 window.location.href = '/static/error.html';
                 return;
+            }
+            if (projectData.userid) {
+                const userResponse = await fetch(`/api/users/${projectData.userid}`);
+                if (userResponse.ok) {
+                    this.userData = await userResponse.json();
+                }
             }
         } catch (error) {
             console.error('Error loading user data:', error);
@@ -68,7 +62,7 @@ class BlogNavigationCard extends BaseComponent {
                     box-shadow: var(--shadow-md);
                     border: 1px solid var(--gray-200);
                     overflow: hidden;
-                    margin-bottom: var(--spacing-6);
+                    margin-bottom: var(--card-margin);
                 }
 
                 .card-header {

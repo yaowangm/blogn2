@@ -66,17 +66,15 @@ class BlogProfileCard extends BaseComponent {
                             
                             // 检查用户是否有博客项目
                             if (this.userData.projectid) {
-                                // 用户有博客，获取博客详细信息
-                                const projectResponse = await fetch(`/api/projects/${this.userData.projectid}`, { headers });
-                                if (projectResponse.ok) {
-                                    this.projectData = await projectResponse.json();
-                                    this.projectId = this.projectData.id;
+                                const projectData = await BaseComponent.getProject(this.userData.projectid);
+                                if (projectData) {
+                                    this.projectData = projectData;
+                                    this.projectId = projectData.id;
                                 }
                             } else {
                                 // 用户没有博客
                                 this.projectData = null;
                             }
-                            
                             this.loading = false;
                             this.render();
                             return;
@@ -100,17 +98,11 @@ class BlogProfileCard extends BaseComponent {
                 const articleId = this.getArticleId();
                 if (articleId) {
                     try {
-                        const articleResponse = await fetch(`/api/articles/${articleId}`);
-                        if (articleResponse.ok) {
-                            const articleData = await articleResponse.json();
-                            if (articleData.project?.id) {
-                                this.projectId = articleData.project.id;
-                            } else {
-                                this.showError('无法获取博客ID');
-                                return;
-                            }
+                        const articleData = await BaseComponent.getArticle(articleId);
+                        if (articleData?.project?.id) {
+                            this.projectId = articleData.project.id;
                         } else {
-                            this.showError('无法获取文章信息');
+                            this.showError('无法获取博客ID');
                             return;
                         }
                     } catch (error) {
@@ -129,22 +121,17 @@ class BlogProfileCard extends BaseComponent {
         }
 
         try {
-            // 获取项目信息
-            const projectResponse = await fetch(`/api/projects/${this.projectId}`);
-            if (projectResponse.ok) {
-                this.projectData = await projectResponse.json();
-                
-                // 获取用户信息
-                if (this.projectData.userid) {
-                    const userResponse = await fetch(`/api/users/${this.projectData.userid}`);
-                    if (userResponse.ok) {
-                        this.userData = await userResponse.json();
-                    }
-                }
-            } else if (projectResponse.status === 404) {
-                // 如果博客不存在，跳转到错误页面
+            const projectData = await BaseComponent.getProject(this.projectId);
+            if (projectData === null) {
                 window.location.href = '/static/error.html';
                 return;
+            }
+            this.projectData = projectData;
+            if (projectData.userid) {
+                const userResponse = await fetch(`/api/users/${projectData.userid}`);
+                if (userResponse.ok) {
+                    this.userData = await userResponse.json();
+                }
             }
         } catch (error) {
             console.error('Error loading blog profile data:', error);
@@ -172,7 +159,7 @@ class BlogProfileCard extends BaseComponent {
                     box-shadow: var(--shadow-md);
                     border: 1px solid var(--gray-200);
                     overflow: hidden;
-                    margin-bottom: var(--spacing-6);
+                    margin-bottom: var(--card-margin);
                     transition: all 0.2s ease;
                 }
 
@@ -297,7 +284,7 @@ class BlogProfileCard extends BaseComponent {
 
             <div class="card">
                 ${this.loading ? this.renderLoading() : 
-                  this.userData ? this.renderContent() : 
+                  (this.projectData || this.userData) ? this.renderContent() : 
                   this.renderError()}
             </div>
         `;
@@ -312,14 +299,14 @@ class BlogProfileCard extends BaseComponent {
     }
 
     renderContent() {
-        // 安全处理所有文本字段，防止HTML注入和XSS攻击
-        const safeAvatarText = this.userData.name ? this.escapeHtml(this.userData.name.charAt(0).toUpperCase()) : '?';
+        // 安全处理所有文本字段，防止HTML注入和XSS攻击；允许仅有 projectData 无 userData 时仍显示
+        const safeAvatarText = (this.userData && this.userData.name) ? this.escapeHtml(this.userData.name.charAt(0).toUpperCase()) : '?';
         const safeBlogName = this.projectData ? this.escapeHtml(this.projectData.name || '未命名博客') : '暂无博客';
-        const safeUserName = this.escapeHtml(this.userData.name || '未知用户');
-        
+        const safeUserName = (this.userData && this.userData.name) ? this.escapeHtml(this.userData.name) : '未知用户';
+
         // 构建头像路径 - 用户资料卡片使用大头像格式
         let avatarPath = null;
-        if (this.userData.id) {
+        if (this.userData && this.userData.id) {
             const prefix = Math.floor(this.userData.id / 10000) + 1;
             // 用户资料卡片使用大头像：/avatar/prefix/userid.jpg
             avatarPath = `/avatar/${prefix}/${this.userData.id}.jpg`;

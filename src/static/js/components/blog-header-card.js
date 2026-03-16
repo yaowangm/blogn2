@@ -30,18 +30,12 @@ class BlogHeaderCard extends BaseComponent {
         }
 
         try {
-            // 获取博客信息
-            const response = await fetch(`/api/projects/${this.projectId}`);
-            if (response.ok) {
-                this.blogData = await response.json();
-            } else if (response.status === 404) {
-                // 如果博客不存在，跳转到错误页面
+            const blogData = await BaseComponent.getProject(this.projectId);
+            if (blogData === null) {
                 window.location.href = '/static/error.html';
                 return;
-            } else {
-                // 其他错误，使用模拟数据
-                this.blogData = this.getMockBlogData();
             }
+            this.blogData = blogData;
             
             // 检查是否为当前用户的博客
             this.checkIfCurrentUserBlog();
@@ -67,12 +61,9 @@ class BlogHeaderCard extends BaseComponent {
         try {
             this.loading = true;
             this.render();
-            
-            const response = await fetch(`/api/projects/${this.projectId}`);
-            if (!response.ok) {
-                throw new Error('Failed to fetch blog data');
-            }
-            this.blogData = await response.json();
+            const blogData = await BaseComponent.getProject(this.projectId);
+            if (blogData === null) throw new Error('Project not found');
+            this.blogData = blogData;
             
             // 更新页面标题
             this.updatePageTitle();
@@ -136,6 +127,8 @@ class BlogHeaderCard extends BaseComponent {
         this.shadowRoot.innerHTML = `
             <style>
                 @import url('/static/css/common-components.css');
+                /* 根 .card 不设 margin，由父级 .sidebar 的 gap 统一控制间距，避免双倍间距 */
+                .card { margin-bottom: 0; }
                 .card-header { padding: var(--spacing-8) var(--spacing-6); background: var(--gray-50); color: var(--gray-800); text-align: center; border-bottom: 1px solid var(--gray-200); }
                 .blog-title { margin: 0 0 var(--spacing-4) 0; font-size: var(--font-size-3xl); font-weight: 700; color: var(--gray-800); }
                 .blog-description { margin: 0; font-size: var(--font-size-lg); color: var(--gray-600); opacity: 0.9; line-height: 1.6; max-width: 650px; margin-left: auto; margin-right: auto; }

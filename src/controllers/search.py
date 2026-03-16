@@ -11,8 +11,7 @@ from typing import Optional, Dict, Any, List
 from src.database import get_async_session
 from src.utils.auth_dependencies import get_optional_current_user
 from src.services.model_cache import get_cached_model
-from src.services.search_service import HierarchicalSearchService
-
+from src.services.search_service import HierarchicalSearchService, DEFAULT_THRESHOLD
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -38,14 +37,16 @@ async def search_content(
     - 多种排序方式
     """
     try:
-        # 使用预加载的模型缓存，如果失败则使用降级方案
+        # 优先使用 lifespan 中初始化的同一模型实例（Docker 下避免与请求时 get_cached_model 不一致）
         search_method = "bert"  # 默认使用BERT搜索
         model_error = False  # 标记模型是否出错
-        
-        try:
-            vectorization_service = get_cached_model()
-            search_service = HierarchicalSearchService(vectorization_service, session)
-        except RuntimeError:
+        vectorization_service = getattr(request.app.state, "model_cache", None)
+        if vectorization_service is None:
+            try:
+                vectorization_service = get_cached_model()
+            except RuntimeError:
+                vectorization_service = None
+        if vectorization_service is None:
             # 模型缓存未初始化，返回错误而不是创建新实例
             search_method = "bert_model_error"  # 模型加载失败
             model_error = True
@@ -63,7 +64,9 @@ async def search_content(
                 "search_method": "bert_model_error",
                 "error": "BERT模型未初始化，请稍后重试"
             }
-        
+
+        search_service = HierarchicalSearchService(vectorization_service, session)
+
         # 参数验证
         if not q or not q.strip():
             raise HTTPException(status_code=400, detail="搜索关键词不能为空")
@@ -102,7 +105,15 @@ async def search_content(
                 "error": str(e)
             }
         
-        return {
+        th = results.get("dynamic_threshold", DEFAULT_THRESHOLD)
+        for it in results.get("items", []):
+            try:
+                cur = float(it.get("relevance_score") or 0)
+            except (TypeError, ValueError):
+                cur = 0
+            # 仅当分数缺失或≤0 时用阈值兜底，避免前端显示 0%
+            it["relevance_score"] = th if cur <= 0 else cur
+        resp = {
             "query": q,
             "type": type,
             "sort": sort,
@@ -113,8 +124,9 @@ async def search_content(
             "has_more": results.get("has_more", False),
             "search_time": results.get("search_time", 0),
             "search_method": search_method,
-            "dynamic_threshold": results.get("dynamic_threshold", 0.6)
+            "dynamic_threshold": th
         }
+        return resp
         
     except HTTPException:
         raise

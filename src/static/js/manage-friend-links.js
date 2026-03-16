@@ -93,14 +93,11 @@ class FriendLinksManager {
                     return;
                 }
             } else {
-                // 检查是否为博客所有者
-                const response = await fetch(`/api/projects/${this.projectId}`);
-                if (!response.ok) {
+                const blogData = await BaseComponent.getProject(this.projectId);
+                if (blogData === null) {
                     this.showError('无法获取博客信息');
                     return;
                 }
-                
-                const blogData = await response.json();
                 const isOwner = currentUser.id === blogData.userid;
                 
                 if (!isOwner && !isAdmin) {

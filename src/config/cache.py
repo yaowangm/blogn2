@@ -284,7 +284,7 @@ class CacheKeyGenerator:
         return CacheKeyGenerator._build_key("project", "detail", project_id)
     
     @staticmethod
-    def project_posts(project_id: int, page: int = 1, page_size: int = 10, post_type: str = "original") -> str:
+    def project_posts(project_id: int, page: int = 1, page_size: int = 10, post_type: str = "original", folder_id: Optional[int] = None) -> str:
         """
         项目文章列表缓存键
         
@@ -293,11 +293,12 @@ class CacheKeyGenerator:
             page: 页码
             page_size: 每页数量
             post_type: 文章类型
+            folder_id: 文件夹ID（可选，用于按分类筛选时区分缓存）
             
         Returns:
             str: 项目文章列表缓存键
         """
-        return CacheKeyGenerator._build_key("project", "posts", project_id, page, page_size, post_type)
+        return CacheKeyGenerator._build_key("project", "posts", project_id, page, page_size, post_type, folder_id if folder_id is not None else "all")
     
     @staticmethod
     def project_comments(project_id: int) -> str:

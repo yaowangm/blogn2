@@ -449,7 +449,8 @@ def cache_project_posts(ttl: int = None):
                               kwargs.get('project_id', 0),
                               kwargs.get('page', 1),
                               kwargs.get('limit', 10),
-                              kwargs.get('type', 'original')
+                              kwargs.get('type', 'original'),
+                              kwargs.get('folderid'),
                           ))
 
 
