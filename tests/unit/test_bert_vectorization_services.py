@@ -371,6 +371,7 @@ class TestHierarchicalSearchService:
         """创建模拟数据库会话"""
         session = AsyncMock()
         session.exec = AsyncMock()
+        session.execute = AsyncMock()
         return session
     
     @pytest.fixture
@@ -499,6 +500,96 @@ class TestHierarchicalSearchService:
         """搜索阈值常量：默认 55%，无正文最低 85%"""
         assert DEFAULT_THRESHOLD == 0.55
         assert TITLE_ONLY_MIN_SIMILARITY == 0.85
+
+    def test_classify_query(self, search_service):
+        """查询分类：短中文实体/长查询/普通关键词"""
+        assert search_service._classify_query("爱因斯坦") == "simple_entity"
+        assert search_service._classify_query("周树人") == "simple_entity"
+        assert search_service._classify_query("machine learning") == "keyword_phrase"
+        assert search_service._classify_query("这是一段明显超过二十个字符的长查询用于单元测试覆盖逻辑") == "long_query"
+
+    @pytest.mark.asyncio
+    async def test_search_articles_dual_channel_merge_and_pagination(self, search_service):
+        """articles：关键词+语义双通道合并，按 page/limit 切片返回不同页内容"""
+        # 向量有效，走双通道
+        search_service.vectorization_service.vectorize_text = AsyncMock(return_value=np.ones(384))
+
+        # 关键词候选（5*limit），语义候选（5*limit），二者部分重叠
+        search_service._keyword_search_articles = AsyncMock(
+            return_value={
+                "items": [
+                    {"id": 1, "title": "爱因斯坦", "content": "包含爱因斯坦", "author": "A", "relevance_score": 1.0, "type": "article"},
+                    {"id": 2, "title": "T2", "content": "包含爱因斯坦", "author": "B", "relevance_score": 1.0, "type": "article"},
+                    {"id": 3, "title": "T3", "content": "包含爱因斯坦", "author": "C", "relevance_score": 1.0, "type": "article"},
+                    {"id": 4, "title": "T4", "content": "包含爱因斯坦", "author": "D", "relevance_score": 1.0, "type": "article"},
+                ],
+                "total": 4,
+                "has_more": False,
+                "dynamic_threshold": DEFAULT_THRESHOLD,
+            }
+        )
+        search_service.hybrid_search_articles = AsyncMock(
+            return_value={
+                "items": [
+                    {"id": 3, "title": "T3", "content": "包含爱因斯坦", "author": "C", "relevance_score": 0.9, "type": "article"},
+                    {"id": 5, "title": "T5", "content": "包含爱因斯坦", "author": "E", "relevance_score": 0.8, "type": "article"},
+                ],
+                "total": 2,
+                "has_more": False,
+                "dynamic_threshold": DEFAULT_THRESHOLD,
+            }
+        )
+
+        page1 = await search_service.search(query="爱因斯坦", search_type="articles", page=1, limit=2)
+        page2 = await search_service.search(query="爱因斯坦", search_type="articles", page=2, limit=2)
+
+        assert [x["id"] for x in page1["items"]] != [x["id"] for x in page2["items"]]
+        assert len(page1["items"]) <= 2 and len(page2["items"]) <= 2
+        assert page1["total"] >= 4  # 合并后至少 4 条
+
+    @pytest.mark.asyncio
+    async def test_search_articles_vector_invalid_uses_keyword_only(self, search_service):
+        """向量无效时：articles 只走关键词通道，不调用语义通道"""
+        search_service.vectorization_service.vectorize_text = AsyncMock(return_value=np.zeros(384))
+        search_service._keyword_search_articles = AsyncMock(
+            return_value={"items": [{"id": 1, "title": "爱因斯坦", "content": "xx", "author": "a", "relevance_score": 1.0, "type": "article"}],
+                          "total": 1, "has_more": False, "dynamic_threshold": DEFAULT_THRESHOLD}
+        )
+        search_service.hybrid_search_articles = AsyncMock(return_value={"items": [], "total": 0, "has_more": False, "dynamic_threshold": DEFAULT_THRESHOLD})
+
+        out = await search_service.search(query="爱因斯坦", search_type="articles", page=1, limit=10)
+        assert out["total"] >= 1
+        search_service.hybrid_search_articles.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_search_all_pagination_changes_page(self, search_service):
+        """all：合并文章+评论候选后分页切片，不同页应返回不同 items"""
+        search_service.vectorization_service.vectorize_text = AsyncMock(return_value=np.ones(384))
+
+        # 文章候选：6 条
+        search_service._keyword_search_articles = AsyncMock(
+            return_value={
+                "items": [{"id": i, "title": f"A{i}", "content": "包含爱因斯坦", "author": "u", "relevance_score": 1.0, "type": "article"} for i in range(1, 7)],
+                "total": 6,
+                "has_more": False,
+                "dynamic_threshold": DEFAULT_THRESHOLD,
+            }
+        )
+        search_service.hybrid_search_articles = AsyncMock(return_value={"items": [], "total": 0, "has_more": False, "dynamic_threshold": DEFAULT_THRESHOLD})
+
+        # 评论候选：4 条
+        search_service._search_comments = AsyncMock(
+            return_value={
+                "items": [{"id": 100 + i, "title": f"C{i}", "content": "包含爱因斯坦", "author": "u", "relevance_score": 0.6, "type": "comment"} for i in range(1, 5)],
+                "total": 4,
+                "has_more": False,
+            }
+        )
+
+        p1 = await search_service.search(query="爱因斯坦", search_type="all", page=1, limit=5)
+        p2 = await search_service.search(query="爱因斯坦", search_type="all", page=2, limit=5)
+        assert [x["id"] for x in p1["items"]] != [x["id"] for x in p2["items"]]
+        assert p1["total"] >= 10
 
     def test_merge_keyword_skips_no_content(self):
         """关键词合并：无正文的条目不并入，避免仅作者匹配的无内容条目标题无关却排前面"""
