@@ -201,6 +201,23 @@ class HierarchicalSearchService:
         # 确保阈值在合理范围内
         return max(0.1, min(0.9, dynamic_threshold))
     
+    def _classify_query(self, query: str) -> str:
+        """
+        粗略判断查询类型：
+        - simple_entity: 短中文实体词（2-6 个汉字、无空格）
+        - keyword_phrase: 一般长度关键词/短语
+        - long_query: 较长或复杂查询
+        """
+        if not query:
+            return "keyword_phrase"
+        q = query.strip()
+        # 全是中文且长度在 2-6 之间，视为实体
+        if 2 <= len(q) <= 6 and all("\u4e00" <= ch <= "\u9fff" for ch in q):
+            return "simple_entity"
+        if len(q) > 20:
+            return "long_query"
+        return "keyword_phrase"
+
     async def hybrid_search_articles(self, query_vector_json: str, sort_by: str, page: int, limit: int, query: str = "") -> Dict[str, Any]:
         """
         混合搜索文章（优化版：10%文章级 + 90%片段级）
@@ -362,59 +379,182 @@ class HierarchicalSearchService:
         start_time = time.time()
         
         try:
-            # 1. 将查询文本向量化
+            # 1. 将查询文本向量化（如果向量无效，语义通道会自动降级为仅关键词）
             query_vector = await self.vectorization_service.vectorize_text(query)
-            # 向量无效（全零或含 nan）时无法做向量检索，改用关键词回退
-            if self._is_invalid_query_vector(query_vector):
-                logger.warning("查询向量无效（全零/含 nan/范数过小），使用关键词回退搜索: query=%s", query[:50] if query else "")
-                if search_type == "articles":
-                    results = await self._keyword_search_articles(query, page, limit)
-                elif search_type == "comments":
-                    results = await self._keyword_search_comments(query, page, limit)
-                else:
-                    art = await self._keyword_search_articles(query, page, limit)
-                    com = await self._keyword_search_comments(query, page, limit)
-                    all_items = art.get("items", []) + com.get("items", [])
-                    all_items.sort(key=lambda x: self._safe_float(x.get("relevance_score", 0)), reverse=True)
-                    all_items = all_items[:limit]
-                    results = {
-                        "items": all_items,
-                        "total": art.get("total", 0) + com.get("total", 0),
-                        "has_more": len(all_items) == limit,
-                        "dynamic_threshold": DEFAULT_THRESHOLD
-                    }
-                search_time = self._safe_float(round(time.time() - start_time, 3))
-                return {
-                    "items": results.get("items", []),
-                    "total": results.get("total", 0),
-                    "has_more": results.get("has_more", False),
-                    "search_time": search_time,
-                    "dynamic_threshold": self._safe_float(results.get("dynamic_threshold", DEFAULT_THRESHOLD))
-                }
-            query_vector_json = self._vector_to_json(query_vector)
-            
-            # 2. 按类型执行搜索；第一页时并入关键词（含作者名）匹配
-            if search_type == "articles":
-                results = await self.hybrid_search_articles(query_vector_json, sort_by, page, limit, query)
-                if page == 1:
-                    results = await self._merge_keyword_into_article_results(results, query, limit)
-            elif search_type == "comments":
-                results = await self._search_comments(query_vector_json, sort_by, page, limit, query)
+            query_vector_json: str = ""
+            vector_valid = not self._is_invalid_query_vector(query_vector)
+            if vector_valid:
+                query_vector_json = self._vector_to_json(query_vector)
             else:
-                article_results = await self.hybrid_search_articles(query_vector_json, sort_by, page, limit, query)
-                if page == 1:
-                    article_results = await self._merge_keyword_into_article_results(article_results, query, limit)
-                comment_results = await self._search_comments(query_vector_json, sort_by, page, limit, query)
-                all_items = article_results.get("items", []) + comment_results.get("items", [])
-                all_items.sort(key=lambda x: self._safe_float(x.get("relevance_score", 0)), reverse=True)
-                all_items = all_items[:limit]
-                total_count = article_results.get("total", 0) + comment_results.get("total", 0)
+                logger.warning("查询向量无效（全零/含 nan/范数过小），本次仅使用关键词检索: query=%s", query[:50] if query else "")
+
+            query_type = self._classify_query(query or "")
+            results: Dict[str, Any]
+
+            # 2. 文章搜索：同时使用关键词 + 语义通道，再在应用层合并
+            if search_type == "articles":
+                # 关键词通道：始终启用，保证包含查询串的文章尽量被召回
+                kw_results = await self._keyword_search_articles(query, page=1, limit=limit * 5)
+                # 语义通道：仅在向量有效时启用；否则为空
+                if vector_valid:
+                    sem_results = await self.hybrid_search_articles(query_vector_json, sort_by, page=1, limit=limit * 5, query=query)
+                else:
+                    sem_results = {"items": [], "total": 0, "has_more": False, "dynamic_threshold": DEFAULT_THRESHOLD}
+
+                merged_items: List[Dict[str, Any]] = []
+                by_id: Dict[Any, Dict[str, Any]] = {}
+
+                # 为关键词结果打一个粗略 lexical_score
+                for it in kw_results.get("items", []):
+                    text = ((it.get("title") or "") + " " + (it.get("content") or "") + " " + (it.get("author") or "")).strip()
+                    contains = 1.0 if query and query in text else 0.5
+                    item = dict(it)
+                    item["lexical_score"] = contains
+                    item["semantic_score"] = float(item.get("relevance_score") or 0.0)
+                    by_id[item["id"]] = item
+
+                # 合并语义结果
+                for it in sem_results.get("items", []):
+                    existing = by_id.get(it["id"])
+                    if existing:
+                        # 保留更高的语义分
+                        existing["semantic_score"] = max(
+                            existing.get("semantic_score", 0.0),
+                            float(it.get("relevance_score") or 0.0),
+                        )
+                    else:
+                        item = dict(it)
+                        item["lexical_score"] = 0.0
+                        item["semantic_score"] = float(item.get("relevance_score") or 0.0)
+                        by_id[item["id"]] = item
+
+                merged_items = list(by_id.values())
+
+                # 简单归一化与加权打分
+                if merged_items:
+                    max_lex = max(self._safe_float(x.get("lexical_score"), 0.0) for x in merged_items) or 1.0
+                    max_sem = max(self._safe_float(x.get("semantic_score"), 0.0) for x in merged_items) or 1.0
+                else:
+                    max_lex = max_sem = 1.0
+
+                if query_type == "simple_entity":
+                    w_lex, w_sem = 0.7, 0.3
+                elif query_type == "long_query":
+                    w_lex, w_sem = 0.3, 0.7
+                else:
+                    w_lex, w_sem = 0.5, 0.5
+
+                for x in merged_items:
+                    lex_n = self._safe_float(x.get("lexical_score"), 0.0) / max_lex
+                    sem_n = self._safe_float(x.get("semantic_score"), 0.0) / max_sem
+                    x["relevance_score"] = w_lex * lex_n + w_sem * sem_n
+
+                merged_items.sort(key=lambda x: self._safe_float(x.get("relevance_score"), 0.0), reverse=True)
+
+                total = len(merged_items)
+                start = (page - 1) * limit
+                end = page * limit
+                page_items = merged_items[start:end]
+
+                # 兜底：若第一页结果中没有任何真正包含查询串的文章，则将包含查询串的关键词命中提前插入
+                if page == 1 and query:
+                    def contains_query(it: Dict[str, Any]) -> bool:
+                        text = ((it.get("title") or "") + " " + (it.get("content") or "") + " " + (it.get("author") or "")).strip()
+                        return query in text
+
+                    if not any(contains_query(it) for it in page_items):
+                        keyword_hits = [it for it in merged_items if contains_query(it)]
+                        if keyword_hits:
+                            # 将前若干关键词命中放到最前面，再补满 limit
+                            front = keyword_hits[: min(len(keyword_hits), limit)]
+                            remaining = [it for it in merged_items if it not in front]
+                            page_items = (front + remaining)[:limit]
+
+                self._clamp_items_relevance(page_items, DEFAULT_THRESHOLD)
                 results = {
-                    "items": all_items,
+                    "items": page_items,
+                    "total": total,
+                    "has_more": end < total,
+                    "dynamic_threshold": DEFAULT_THRESHOLD,
+                    "search_strategy": "hybrid_lexical_semantic_v2",
+                }
+
+            elif search_type == "comments":
+                # 评论：保持现有向量搜索为主，向量无效时用关键词回退
+                if vector_valid:
+                    results = await self._search_comments(query_vector_json, sort_by, page, limit, query)
+                    results["dynamic_threshold"] = DEFAULT_THRESHOLD
+                else:
+                    results = await self._keyword_search_comments(query, page, limit)
+
+            else:
+                # all：文章用新方案，评论按上面逻辑搜索，再合并后做分页
+                # 先搜索文章
+                kw_results = await self._keyword_search_articles(query, page=1, limit=limit * 5)
+                if vector_valid:
+                    sem_results = await self.hybrid_search_articles(query_vector_json, sort_by, page=1, limit=limit * 5, query=query)
+                else:
+                    sem_results = {"items": [], "total": 0, "has_more": False, "dynamic_threshold": DEFAULT_THRESHOLD}
+
+                merged_items: List[Dict[str, Any]] = []
+                by_id: Dict[Any, Dict[str, Any]] = {}
+                for it in kw_results.get("items", []):
+                    item = dict(it)
+                    text = ((item.get("title") or "") + " " + (item.get("content") or "") + " " + (item.get("author") or "")).strip()
+                    contains = 1.0 if query and query in text else 0.5
+                    item["lexical_score"] = contains
+                    item["semantic_score"] = float(item.get("relevance_score") or 0.0)
+                    by_id[item["id"]] = item
+                for it in sem_results.get("items", []):
+                    existing = by_id.get(it["id"])
+                    if existing:
+                        existing["semantic_score"] = max(
+                            existing.get("semantic_score", 0.0),
+                            float(it.get("relevance_score") or 0.0),
+                        )
+                    else:
+                        item = dict(it)
+                        item["lexical_score"] = 0.0
+                        item["semantic_score"] = float(item.get("relevance_score") or 0.0)
+                        by_id[item["id"]] = item
+                merged_items = list(by_id.values())
+                if merged_items:
+                    max_lex = max(self._safe_float(x.get("lexical_score"), 0.0) for x in merged_items) or 1.0
+                    max_sem = max(self._safe_float(x.get("semantic_score"), 0.0) for x in merged_items) or 1.0
+                else:
+                    max_lex = max_sem = 1.0
+                if query_type == "simple_entity":
+                    w_lex, w_sem = 0.7, 0.3
+                elif query_type == "long_query":
+                    w_lex, w_sem = 0.3, 0.7
+                else:
+                    w_lex, w_sem = 0.5, 0.5
+                for x in merged_items:
+                    lex_n = self._safe_float(x.get("lexical_score"), 0.0) / max_lex
+                    sem_n = self._safe_float(x.get("semantic_score"), 0.0) / max_sem
+                    x["relevance_score"] = w_lex * lex_n + w_sem * sem_n
+                merged_items.sort(key=lambda x: self._safe_float(x.get("relevance_score"), 0.0), reverse=True)
+
+                # 评论结果：拉取前若干条作为候选池，再与文章结果一起分页
+                if vector_valid:
+                    comment_results = await self._search_comments(query_vector_json, sort_by, page=1, limit=limit * 5, query=query)
+                else:
+                    comment_results = await self._keyword_search_comments(query, page=1, limit=limit * 5)
+
+                all_items = merged_items + comment_results.get("items", [])
+                all_items.sort(key=lambda x: self._safe_float(x.get("relevance_score", 0.0)), reverse=True)
+
+                total_count = len(all_items)
+                start = (page - 1) * limit
+                end = page * limit
+                page_items = all_items[start:end]
+                self._clamp_items_relevance(page_items, DEFAULT_THRESHOLD)
+                results = {
+                    "items": page_items,
                     "total": total_count,
-                    "has_more": total_count > limit or article_results.get("has_more", False) or comment_results.get("has_more", False),
-                    "dynamic_threshold": article_results.get("dynamic_threshold", DEFAULT_THRESHOLD),
-                    "search_strategy": "hybrid_optimized"
+                    "has_more": end < total_count,
+                    "dynamic_threshold": DEFAULT_THRESHOLD,
+                    "search_strategy": "hybrid_lexical_semantic_v2"
                 }
             
             # 3. 计算搜索时间
