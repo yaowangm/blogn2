@@ -21,7 +21,7 @@ import json
 import logging
 import math
 import time
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 import numpy as np
 from sqlalchemy import text
@@ -218,7 +218,26 @@ class HierarchicalSearchService:
             return "long_query"
         return "keyword_phrase"
 
-    async def hybrid_search_articles(self, query_vector_json: str, sort_by: str, page: int, limit: int, query: str = "") -> Dict[str, Any]:
+    @staticmethod
+    def _candidate_pool_size(page: int, limit: int, *, factor: int = 5, min_cap: int = 50, max_cap: int = 200) -> int:
+        """
+        计算候选池大小（用于顶层 search 的 lexical/semantic 候选获取）。
+
+        目标：既能覆盖当前请求页码的切片，又避免随 API limit 放大导致 DB/应用层开销失控。
+        """
+        end = max(1, int(page)) * max(1, int(limit))
+        desired = end * max(1, int(factor))
+        return max(min_cap, min(max_cap, desired))
+
+    async def hybrid_search_articles(
+        self,
+        query_vector_json: str,
+        sort_by: str,
+        page: int,
+        limit: int,
+        query: str = "",
+        max_items: Optional[int] = None,
+    ) -> Dict[str, Any]:
         """
         混合搜索文章（优化版：10%文章级 + 90%片段级）
         
@@ -329,7 +348,8 @@ class HierarchicalSearchService:
         """
         
         # 过量拉取再过滤，保证每页返回固定条数：每批取 batch_size 条，过滤后累积；拉取到无更多数据为止，用实际有效条数作 total
-        batch_size = max(limit * 5, 50)
+        # batch_size 上限用于避免外部传入较大 limit 时 DB 批量拉取过大
+        batch_size = max(min(limit * 5, 250), 50)
         all_valid: List[Dict[str, Any]] = []
         batch_offset = 0
         
@@ -343,11 +363,16 @@ class HierarchicalSearchService:
             for x in formatted_batch:
                 if (x.get("content") or "").strip() or self._safe_float(x.get("relevance_score"), 0) >= TITLE_ONLY_MIN_SIMILARITY:
                     all_valid.append(x)
+                    if max_items is not None and len(all_valid) >= max_items:
+                        break
+            if max_items is not None and len(all_valid) >= max_items:
+                break
             if len(batch_items) < batch_size:
                 break
             batch_offset += batch_size
         
         items_for_page = all_valid[(page - 1) * limit : page * limit]
+        # 若 max_items 生效，则 total 代表“候选池内的有效条目数”，并不一定是全量真实匹配数
         total = len(all_valid)
         
         self._clamp_items_relevance(items_for_page, dynamic_threshold)
@@ -393,11 +418,20 @@ class HierarchicalSearchService:
 
             # 2. 文章搜索：同时使用关键词 + 语义通道，再在应用层合并
             if search_type == "articles":
+                lexical_n = self._candidate_pool_size(page, limit, factor=5, min_cap=50, max_cap=200)
+                semantic_n = self._candidate_pool_size(page, limit, factor=5, min_cap=50, max_cap=200)
                 # 关键词通道：始终启用，保证包含查询串的文章尽量被召回
-                kw_results = await self._keyword_search_articles(query, page=1, limit=limit * 5)
+                kw_results = await self._keyword_search_articles(query, page=1, limit=lexical_n)
                 # 语义通道：仅在向量有效时启用；否则为空
                 if vector_valid:
-                    sem_results = await self.hybrid_search_articles(query_vector_json, sort_by, page=1, limit=limit * 5, query=query)
+                    sem_results = await self.hybrid_search_articles(
+                        query_vector_json,
+                        sort_by,
+                        page=1,
+                        limit=semantic_n,
+                        query=query,
+                        max_items=semantic_n,
+                    )
                 else:
                     sem_results = {"items": [], "total": 0, "has_more": False, "dynamic_threshold": DEFAULT_THRESHOLD}
 
@@ -410,7 +444,8 @@ class HierarchicalSearchService:
                     contains = 1.0 if query and query in text else 0.5
                     item = dict(it)
                     item["lexical_score"] = contains
-                    item["semantic_score"] = float(item.get("relevance_score") or 0.0)
+                    # 关键词候选不应“冒充”语义命中；语义分只来自语义通道
+                    item["semantic_score"] = 0.0
                     by_id[item["id"]] = item
 
                 # 合并语义结果
@@ -489,10 +524,20 @@ class HierarchicalSearchService:
 
             else:
                 # all：文章用新方案，评论按上面逻辑搜索，再合并后做分页
+                lexical_n = self._candidate_pool_size(page, limit, factor=5, min_cap=50, max_cap=200)
+                semantic_n = self._candidate_pool_size(page, limit, factor=5, min_cap=50, max_cap=200)
+                comment_n = self._candidate_pool_size(page, limit, factor=3, min_cap=30, max_cap=200)
                 # 先搜索文章
-                kw_results = await self._keyword_search_articles(query, page=1, limit=limit * 5)
+                kw_results = await self._keyword_search_articles(query, page=1, limit=lexical_n)
                 if vector_valid:
-                    sem_results = await self.hybrid_search_articles(query_vector_json, sort_by, page=1, limit=limit * 5, query=query)
+                    sem_results = await self.hybrid_search_articles(
+                        query_vector_json,
+                        sort_by,
+                        page=1,
+                        limit=semantic_n,
+                        query=query,
+                        max_items=semantic_n,
+                    )
                 else:
                     sem_results = {"items": [], "total": 0, "has_more": False, "dynamic_threshold": DEFAULT_THRESHOLD}
 
@@ -503,7 +548,7 @@ class HierarchicalSearchService:
                     text = ((item.get("title") or "") + " " + (item.get("content") or "") + " " + (item.get("author") or "")).strip()
                     contains = 1.0 if query and query in text else 0.5
                     item["lexical_score"] = contains
-                    item["semantic_score"] = float(item.get("relevance_score") or 0.0)
+                    item["semantic_score"] = 0.0
                     by_id[item["id"]] = item
                 for it in sem_results.get("items", []):
                     existing = by_id.get(it["id"])
@@ -537,9 +582,9 @@ class HierarchicalSearchService:
 
                 # 评论结果：拉取前若干条作为候选池，再与文章结果一起分页
                 if vector_valid:
-                    comment_results = await self._search_comments(query_vector_json, sort_by, page=1, limit=limit * 5, query=query)
+                    comment_results = await self._search_comments(query_vector_json, sort_by, page=1, limit=comment_n, query=query)
                 else:
-                    comment_results = await self._keyword_search_comments(query, page=1, limit=limit * 5)
+                    comment_results = await self._keyword_search_comments(query, page=1, limit=comment_n)
 
                 all_items = merged_items + comment_results.get("items", [])
                 all_items.sort(key=lambda x: self._safe_float(x.get("relevance_score", 0.0)), reverse=True)
