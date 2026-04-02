@@ -118,9 +118,12 @@
 
     function update() {
         const width = window.innerWidth;
+        const singleColumn = width <= BREAKPOINT;
+        document.body.classList.toggle('layout-single-column', singleColumn);
+
         const sidebars = document.querySelectorAll('.sidebar.sidebar-left');
         sidebars.forEach(function (sidebar) {
-            if (width <= BREAKPOINT) {
+            if (singleColumn) {
                 applyMobile(sidebar);
             } else {
                 applyDesktop(sidebar);
