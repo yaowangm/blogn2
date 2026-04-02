@@ -14,6 +14,7 @@ from src.utils.cache import (
     cache_project_detail, cache_project_posts, cache_project_comments,
     cache_project_categories, cache_project_external_links, cache_project_rss,
     cache_project_stats, cache_user_projects, invalidate_project_post_list_caches,
+    invalidate_project_categories_cache, invalidate_blog_directory_caches,
 )
 from src.utils.auth_dependencies import get_current_user, get_optional_current_user
 from src.utils.permission_manager import permission_manager
@@ -214,44 +215,6 @@ async def get_project_recent_comments(
     
     return comments_data
 
-@router.get("/projects/{project_id}/categories", response_model=List[Dict[str, Any]])
-@cache_project_categories()  # 使用环境变量配置的缓存时间
-async def get_project_categories(
-    project_id: int,
-    session: AsyncSession = Depends(get_async_session)
-):
-    """
-    获取指定项目的分类列表
-    
-    Args:
-        project_id: 项目ID
-        session: 数据库会话
-        
-    Returns:
-        List[Dict[str, Any]]: 分类列表
-    """
-    folder_repo = FolderRepository(session)
-    
-    try:
-        # 从数据库获取项目的文件夹列表
-        folders = await folder_repo.get_by_project_id(project_id)
-        
-        # 转换为API响应格式
-        categories = []
-        for folder in folders:
-            categories.append({
-                "id": folder.id,
-                "name": folder.name,
-                "count": folder.recordcount or 0,  # 使用folders表中的recordcount字段
-                "color": "#3b82f6"  # 默认颜色
-            })
-        
-        return categories
-        
-    except Exception as e:
-        # 如果获取失败，返回空列表
-        return []
-
 @router.get("/projects/{project_id}/external-links", response_model=List[Dict[str, Any]])
 @cache_project_external_links()  # 使用环境变量配置的缓存时间
 async def get_project_external_links(
@@ -446,17 +409,19 @@ async def create_project(
             from src.services.global_stats_service import GlobalStatsService
             stats_service = GlobalStatsService(session)
             await stats_service.update_project_count(increment=True)
-            
-            return {
+
+            payload = {
                 "id": created_project.id,
                 "name": created_project.name,
                 "comment": created_project.comment,
                 "userid": created_project.userid,
                 "createtime": created_project.createtime,
                 "updatetime": created_project.updatetime,
-                "state": created_project.state
+                "state": created_project.state,
             }
-            
+        await invalidate_blog_directory_caches(userid)
+        return payload
+
     except Exception as e:
         # 事务会自动回滚
         raise HTTPException(status_code=500, detail=f"创建博客失败: {str(e)}")
@@ -749,7 +714,9 @@ async def update_project(
         await project_repo.sync_updatetime_from_latest_published_article(project_id)
         await session.commit()
         updated_project = await project_repo.get_by_id(project_id)
-        
+
+        await invalidate_project_post_list_caches(project_id, project.userid)
+
         return {
             "id": updated_project.id,
             "name": updated_project.name,
@@ -764,7 +731,8 @@ async def update_project(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"更新项目失败: {str(e)}")
 
-@router.get("/projects/{project_id}/categories")
+@router.get("/projects/{project_id}/categories", response_model=List[Dict[str, Any]])
+@cache_project_categories()  # 使用环境变量配置的缓存时间
 async def get_project_categories(
     project_id: int,
     session: AsyncSession = Depends(get_async_session)
@@ -857,7 +825,9 @@ async def create_category(
         session.add(folder)
         await session.commit()
         await session.refresh(folder)
-        
+
+        await invalidate_project_categories_cache(project_id)
+
         return {
             "id": folder.id,
             "name": folder.name,
@@ -915,7 +885,9 @@ async def update_category(
         folder.name = category_data["name"].strip()
         await session.commit()
         await session.refresh(folder)
-        
+
+        await invalidate_project_categories_cache(project_id)
+
         return {
             "id": folder.id,
             "name": folder.name,
@@ -975,7 +947,10 @@ async def delete_category(
         # 删除分类
         session.delete(folder)
         await session.commit()
-        
+
+        await invalidate_project_categories_cache(project_id)
+        await invalidate_project_post_list_caches(project_id, project.userid)
+
         # 返回删除结果，包含处理的文章数量
         message = "分类删除成功"
         if updated_articles_count > 0:

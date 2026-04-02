@@ -12,7 +12,11 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from src.models.post import Post
 from src.repositories.post_repository import PostRepository
 from src.repositories.project_item_repository import ProjectItemRepository
-from src.utils.cache import clear_article_detail_cache, clear_article_comments_cache
+from src.utils.cache import (
+    clear_article_detail_cache,
+    clear_article_comments_cache,
+    invalidate_project_recent_comments_cache,
+)
 from src.utils.time_utils import TimeUtils
 
 
@@ -112,7 +116,9 @@ class CommentHandler:
             # 失效相关缓存
             await clear_article_detail_cache(article_id)
             await clear_article_comments_cache(article_id)
-            
+            if article.projectid:
+                await invalidate_project_recent_comments_cache(article.projectid)
+
             return {
                 "success": True,
                 "message": "评论创建成功",
@@ -198,7 +204,9 @@ class CommentHandler:
             # 失效相关缓存
             await clear_article_detail_cache(article_id)
             await clear_article_comments_cache(article_id)
-            
+            if article.projectid:
+                await invalidate_project_recent_comments_cache(article.projectid)
+
             return {
                 "success": True,
                 "message": "评论删除成功"
