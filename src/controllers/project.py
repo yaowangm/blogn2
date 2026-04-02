@@ -13,7 +13,7 @@ from src.models.folder import Folder
 from src.utils.cache import (
     cache_project_detail, cache_project_posts, cache_project_comments,
     cache_project_categories, cache_project_external_links, cache_project_rss,
-    cache_project_stats, cache_user_projects
+    cache_project_stats, cache_user_projects, invalidate_project_post_list_caches,
 )
 from src.utils.auth_dependencies import get_current_user, get_optional_current_user
 from src.utils.permission_manager import permission_manager
@@ -662,7 +662,9 @@ async def create_post(
         
         # 提交事务（所有操作在同一个事务中）
         await session.commit()
-        
+
+        await invalidate_project_post_list_caches(project_id, project.userid)
+
         # 广播新文章给所有订阅者
         try:
             from src.services.broadcast_service import BroadcastService

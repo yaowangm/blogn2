@@ -23,7 +23,14 @@ from src.repositories.project_repository import ProjectRepository
 from src.repositories.post_repository import PostRepository
 from src.repositories.attachment_repository import AttachmentRepository
 from src.models.post import Post
-from src.utils.cache import cache_article_detail, cache_article_comments, cache_article_attachments, clear_article_detail_cache, clear_article_comments_cache
+from src.utils.cache import (
+    cache_article_detail,
+    cache_article_comments,
+    cache_article_attachments,
+    clear_article_detail_cache,
+    clear_article_comments_cache,
+    invalidate_project_post_list_caches,
+)
 from src.utils.auth_dependencies import get_current_user, get_optional_current_user
 from src.utils.permission_manager import permission_manager
 from src.utils.permission_decorators import require_auth
@@ -623,7 +630,10 @@ async def update_article(
             project_repo = ProjectRepository(session)
             await project_repo.sync_updatetime_from_latest_published_article(updated_article.projectid)
             await session.commit()
-        
+            await invalidate_project_post_list_caches(
+                updated_article.projectid, updated_article.userid
+            )
+
         return {"message": "文章更新成功"}
         
     except HTTPException:
@@ -691,11 +701,14 @@ async def delete_article(
         
         # 提交事务
         await session.commit()
-        
+
+        pid, uid = article.projectid, article.userid
         # 失效相关缓存
         await clear_article_detail_cache(article_id)
         await clear_article_comments_cache(article_id)
-        
+        if pid:
+            await invalidate_project_post_list_caches(pid, uid)
+
         return {"message": "文章删除成功"}
         
     except HTTPException:
@@ -738,7 +751,9 @@ async def permanently_delete_article(
         article = await project_item_repo.get_by_id(article_id)
         if not article:
             raise HTTPException(status_code=404, detail="文章不存在")
-        
+
+        post_project_id, post_user_id = article.projectid, article.userid
+
         # 记录文章状态，用于后续统计更新
         was_deleted = article.itemtype == ArticleStatus.DELETED
         
@@ -779,11 +794,13 @@ async def permanently_delete_article(
         
         # 提交事务
         await session.commit()
-        
+
         # 失效相关缓存
         await clear_article_detail_cache(article_id)
         await clear_article_comments_cache(article_id)
-        
+        if post_project_id:
+            await invalidate_project_post_list_caches(post_project_id, post_user_id)
+
         return {"message": "文章已彻底删除"}
         
     except HTTPException:
