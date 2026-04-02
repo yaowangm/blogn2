@@ -293,6 +293,62 @@ class TestArticleControllerSimple:
         # 向量化更新等逻辑可能对 session.commit，再加上控制器在同步博客时间后的一次 commit
         assert self.mock_session.commit.await_count == 2
 
+    @patch('src.services.stats_service.StatsService')
+    @patch('src.services.vectorization_update_service.get_vectorization_update_service')
+    @patch('src.controllers.article.clear_article_comments_cache', new_callable=AsyncMock)
+    @patch('src.controllers.article.clear_article_detail_cache', new_callable=AsyncMock)
+    @patch('src.controllers.article.permission_manager')
+    @patch('src.controllers.article.ProjectRepository')
+    @patch('src.controllers.article.ProjectItemRepository')
+    async def test_update_article_folder_only_skips_content_timestamps(
+        self,
+        mock_item_repo_class,
+        mock_project_repo_class,
+        mock_permission,
+        mock_clear_detail,
+        mock_clear_comments,
+        mock_get_vec,
+        mock_stats_class,
+    ):
+        """仅改分类时不应更新 updatetime / lastmodifytime"""
+        self.mock_article.folderid = 1
+        self.mock_article.name = "标题"
+        self.mock_article.comment = "正文"
+        self.mock_article.attachment = "img.png"
+
+        mock_repo = AsyncMock()
+        mock_item_repo_class.return_value = mock_repo
+        mock_repo.get_by_id = AsyncMock(return_value=self.mock_article)
+        mock_repo.update = AsyncMock(return_value=self.mock_article)
+        mock_permission.can_manage_system.return_value = True
+
+        mock_stats_inst = MagicMock()
+        mock_stats_inst.handle_article_folder_change = AsyncMock()
+        mock_stats_class.return_value = mock_stats_inst
+
+        mock_project_repo = MagicMock()
+        mock_project_repo.sync_updatetime_from_latest_published_article = AsyncMock()
+        mock_project_repo_class.return_value = mock_project_repo
+
+        mock_vec_svc = MagicMock()
+        mock_vec_svc.update_article_vectors = AsyncMock()
+        mock_get_vec.return_value = mock_vec_svc
+
+        self.mock_session.commit = AsyncMock()
+
+        from src.controllers.article import update_article
+
+        await update_article(
+            article_id=1,
+            article_data={"folderid": 0},
+            session=self.mock_session,
+            current_user=self.mock_user,
+        )
+
+        kw = mock_repo.update.call_args.kwargs
+        assert "updatetime" not in kw
+        assert "lastmodifytime" not in kw
+
     @patch('src.services.vectorization_update_service.get_vectorization_update_service')
     @patch('src.controllers.article.clear_article_comments_cache', new_callable=AsyncMock)
     @patch('src.controllers.article.clear_article_detail_cache', new_callable=AsyncMock)

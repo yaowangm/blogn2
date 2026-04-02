@@ -520,7 +520,8 @@ async def create_post(
         # 计算文章内容的字节长度
         comment_content = post_data["comment"]
         itemsize = len(comment_content.encode('utf-8'))
-        
+
+        published_at = TimeUtils.now_utc()
         new_post = ProjectItem(
             projectid=project_id,
             name=post_data["name"],
@@ -535,9 +536,9 @@ async def create_post(
             folderid=post_data.get("folderid"),
             status=post_data.get("status", 1),
             allowpost=post_data.get("allowpost", 1),
-            createtime=TimeUtils.now_utc(),
-            updatetime=TimeUtils.now_utc(),
-            lastmodifytime=TimeUtils.now_utc()
+            createtime=published_at,
+            updatetime=published_at,
+            lastmodifytime=None,
         )
         
         # 处理临时文件移动
@@ -996,7 +997,7 @@ async def admin_recalculate_all_project_updatetimes(
     current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
-    重新计算所有博客的 project.updatetime（与已发布文章的发表/编辑时间一致）。
+    重新计算所有博客的 project.updatetime（GREATEST(最新发文 createtime, 最新修改 lastmodifytime)，不用文章 updatetime）。
     仅管理员可调用。
     """
     if not permission_manager.can_manage_system(current_user):

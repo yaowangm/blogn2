@@ -9,25 +9,29 @@ from src.models.project_item import ProjectItem
 from src.constants import ArticleStatus
 
 
-def _published_articles_max_time_expr():
-    """单博客内：可见文章 per-item 取 createtime/updatetime/lastmodifytime 最晚，再 max 聚合（标量子查询，与 project 行相关）。"""
-    per_item_latest = func.greatest(
-        ProjectItem.createtime,
-        ProjectItem.updatetime,
-        ProjectItem.lastmodifytime,
+def _blog_updatetime_from_articles_expr():
+    """
+    与当前 project 行相关：可见文章上 MAX(createtime) 与 MAX(lastmodifytime) 取 GREATEST；
+    最外层 COALESCE(..., project.createtime) 用于「没有任何一条可见文章」时（空博客、或
+    全部文章都不满足 status/itemtype 条件），而不是说「文章没填 createtime」。
+    正常发表的文章都会带 createtime；若无可见行，两个 MAX 在 SQL 里均为 NULL，GREATEST
+    亦为 NULL，此时用博客自身的创建时间作为 project.updatetime。不使用 projectitem.updatetime。
+    """
+    visible = (
+        ProjectItem.projectid == Project.id,
+        ProjectItem.status == 1,
+        or_(
+            ProjectItem.itemtype.is_(None),
+            ProjectItem.itemtype != ArticleStatus.DELETED,
+        ),
     )
-    return (
-        select(func.max(per_item_latest))
-        .where(ProjectItem.projectid == Project.id)
-        .where(ProjectItem.status == 1)
-        .where(
-            or_(
-                ProjectItem.itemtype.is_(None),
-                ProjectItem.itemtype != ArticleStatus.DELETED,
-            )
-        )
-        .scalar_subquery()
+    max_createtime = (
+        select(func.max(ProjectItem.createtime)).where(*visible).scalar_subquery()
     )
+    max_lastmodify = (
+        select(func.max(ProjectItem.lastmodifytime)).where(*visible).scalar_subquery()
+    )
+    return func.coalesce(func.greatest(max_createtime, max_lastmodify), Project.createtime)
 
 
 class ProjectRepository:
@@ -104,14 +108,15 @@ class ProjectRepository:
         self, project_id: int, project: Optional[Project] = None
     ) -> None:
         """
-        一条 UPDATE：将 project.updatetime 设为可见文章时间的 max(greatest(...))，
-        无文章则为该行 project.createtime。全部在数据库内完成，不用应用层聚合。
+        一条 UPDATE：GREATEST(MAX(可见 createtime), MAX(可见 lastmodifytime))，再 COALESCE
+        到 project.createtime（仅当该博客下没有任何「可见」文章时两个 MAX 全为 NULL）。
+        不使用 projectitem.updatetime。
         """
-        subq = _published_articles_max_time_expr()
+        rhs = _blog_updatetime_from_articles_expr()
         stmt = (
             update(Project)
             .where(Project.id == project_id)
-            .values(updatetime=func.coalesce(subq, Project.createtime))
+            .values(updatetime=rhs)
         )
         await self.session.execute(stmt)
         if project is not None:
@@ -119,10 +124,7 @@ class ProjectRepository:
 
     async def sync_all_projects_updatetime(self) -> int:
         """一条 UPDATE 重算所有博客的 updatetime，并 commit。"""
-        subq = _published_articles_max_time_expr()
-        stmt = update(Project).values(
-            updatetime=func.coalesce(subq, Project.createtime)
-        )
+        stmt = update(Project).values(updatetime=_blog_updatetime_from_articles_expr())
         result = await self.session.execute(stmt)
         await self.session.commit()
         return result.rowcount or 0

@@ -2,9 +2,12 @@ import pytest
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy.dialects import postgresql
-from sqlalchemy import update, func
+from sqlalchemy import update
 
-from src.repositories.project_repository import ProjectRepository, _published_articles_max_time_expr
+from src.repositories.project_repository import (
+    ProjectRepository,
+    _blog_updatetime_from_articles_expr,
+)
 from src.models.project import Project
 from src.models.project_item import ProjectItem
 from src.constants import ArticleStatus
@@ -141,14 +144,10 @@ class TestProjectRepository:
         mock_session.exec.assert_called_once()
 
     @pytest.mark.unit
-    def test_sync_updatetime_sql_uses_greatest_and_includes_null_itemtype(self):
-        """UPDATE 内嵌子查询应对每篇文章取 greatest，并包含 itemtype IS NULL"""
-        subq = _published_articles_max_time_expr()
-        stmt = (
-            update(Project)
-            .where(Project.id == 7)
-            .values(updatetime=func.coalesce(subq, Project.createtime))
-        )
+    def test_sync_updatetime_sql_uses_max_create_max_modify_greatest(self):
+        """blog updatetime = GREATEST(MAX(createtime), MAX(lastmodifytime))，不使用 projectitem.updatetime"""
+        rhs = _blog_updatetime_from_articles_expr()
+        stmt = update(Project).where(Project.id == 7).values(updatetime=rhs)
         compiled = str(
             stmt.compile(
                 dialect=postgresql.dialect(),
@@ -156,7 +155,9 @@ class TestProjectRepository:
             )
         ).lower()
         assert "greatest" in compiled
+        assert compiled.count("max(") >= 2
         assert "lastmodifytime" in compiled
+        assert "projectitem.updatetime" not in compiled
         assert "is null" in compiled
         assert "update project" in compiled
 

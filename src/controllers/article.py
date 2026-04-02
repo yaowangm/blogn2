@@ -447,10 +447,6 @@ async def update_article(
         import os
         from src.config.app import validate_app_config
         
-        # 计算文章内容长度（字节数）
-        content = article_data.get("comment", "")
-        itemsize = len(content.encode('utf-8')) if content else 0
-        
         # 检查是否需要删除旧图片
         old_attachment = article.attachment
         new_attachment = article_data.get("attachment")
@@ -502,7 +498,29 @@ async def update_article(
         folderid = article_data.get("folderid")
         if folderid is None:
             folderid = 0
-        
+
+        eff_name = article_data["name"] if "name" in article_data else article.name
+        eff_comment = article_data["comment"] if "comment" in article_data else article.comment
+        itemsize = len(eff_comment.encode("utf-8")) if eff_comment else 0
+        if "attachment" in article_data:
+            eff_attachment = article_data["attachment"]
+        else:
+            eff_attachment = article.attachment
+
+        content_changed = (
+            eff_name != article.name
+            or eff_comment != article.comment
+            or (eff_attachment or "") != (article.attachment or "")
+        )
+        if "attachments" in article_data:
+            from src.repositories.attachment_repository import AttachmentRepository
+            att_repo_chk = AttachmentRepository(session)
+            existing_atts = await att_repo_chk.get_by_project_item_id(article_id)
+            old_gallery = sorted((a.linkstr or "") for a in existing_atts)
+            req_list = article_data.get("attachments") or []
+            new_gallery = sorted((item.get("relative_path") or "") for item in req_list)
+            content_changed = content_changed or (old_gallery != new_gallery)
+
         update_data = {
             "name": article_data.get("name"),
             "comment": article_data.get("comment"),
@@ -512,10 +530,12 @@ async def update_article(
             "allowpost": article_data.get("allowpost", 1),
             "attachment": article_data.get("attachment"),
             "itemsize": itemsize,
-            "updatetime": TimeUtils.now_utc(),
-            "lastmodifytime": TimeUtils.now_utc()
         }
-        
+        if content_changed:
+            now_ts = TimeUtils.now_utc()
+            update_data["updatetime"] = now_ts
+            update_data["lastmodifytime"] = now_ts
+
         # 移除None值（但保留folderid=0）
         update_data = {k: v for k, v in update_data.items() if v is not None or k == "folderid"}
         
