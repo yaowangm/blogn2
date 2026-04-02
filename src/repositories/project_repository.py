@@ -1,27 +1,33 @@
 from sqlmodel import select, func
-from sqlalchemy import or_
+from sqlalchemy import or_, update
 from sqlmodel.ext.asyncio.session import AsyncSession
-from typing import Any, List, Optional
-from datetime import datetime, timedelta
+from typing import List, Optional
 
 from src.models.project import Project
 from src.models.user import User
 from src.models.project_item import ProjectItem
 from src.constants import ArticleStatus
-from src.utils.time_utils import TimeUtils
 
 
-def _scalar_first(result) -> Any:
-    """将 session.exec 单列表查询的 first() 转为单个标量（兼容 datetime 与单元素 Row/tuple）。"""
-    raw = result.first()
-    if raw is None:
-        return None
-    if isinstance(raw, datetime):
-        return raw
-    try:
-        return raw[0]
-    except (TypeError, IndexError, KeyError):
-        return raw
+def _published_articles_max_time_expr():
+    """单博客内：可见文章 per-item 取 createtime/updatetime/lastmodifytime 最晚，再 max 聚合（标量子查询，与 project 行相关）。"""
+    per_item_latest = func.greatest(
+        ProjectItem.createtime,
+        ProjectItem.updatetime,
+        ProjectItem.lastmodifytime,
+    )
+    return (
+        select(func.max(per_item_latest))
+        .where(ProjectItem.projectid == Project.id)
+        .where(ProjectItem.status == 1)
+        .where(
+            or_(
+                ProjectItem.itemtype.is_(None),
+                ProjectItem.itemtype != ArticleStatus.DELETED,
+            )
+        )
+        .scalar_subquery()
+    )
 
 
 class ProjectRepository:
@@ -98,47 +104,28 @@ class ProjectRepository:
         self, project_id: int, project: Optional[Project] = None
     ) -> None:
         """
-        将 project.updatetime 同步为当前博客可见文章中，
-        每篇文章取 createtime / updatetime / lastmodifytime 的最晚时刻，再对全博客取 max。
-        非删除条件：itemtype 为 NULL（历史数据）或 itemtype != 已删除。
-        无符合条件文章时回退为 project.createtime。
+        一条 UPDATE：将 project.updatetime 设为可见文章时间的 max(greatest(...))，
+        无文章则为该行 project.createtime。全部在数据库内完成，不用应用层聚合。
         """
-        per_item_latest = func.greatest(
-            ProjectItem.createtime,
-            ProjectItem.updatetime,
-            ProjectItem.lastmodifytime,
+        subq = _published_articles_max_time_expr()
+        stmt = (
+            update(Project)
+            .where(Project.id == project_id)
+            .values(updatetime=func.coalesce(subq, Project.createtime))
         )
-        statement = (
-            select(func.max(per_item_latest))
-            .where(ProjectItem.projectid == project_id)
-            .where(ProjectItem.status == 1)
-            .where(
-                or_(
-                    ProjectItem.itemtype.is_(None),
-                    ProjectItem.itemtype != ArticleStatus.DELETED,
-                )
-            )
-        )
-        result = await self.session.exec(statement)
-        max_ts = _scalar_first(result)
-        if project is None:
-            project = await self.get_by_id(project_id)
-        if not project:
-            return
-        if max_ts is not None:
-            project.updatetime = max_ts
-        else:
-            project.updatetime = project.createtime
-        self.session.add(project)
+        await self.session.execute(stmt)
+        if project is not None:
+            await self.session.refresh(project, attribute_names=["updatetime"])
 
     async def sync_all_projects_updatetime(self) -> int:
-        """对所有博客项目执行 sync_updatetime_from_latest_published_article，并一次 commit。"""
-        result = await self.session.exec(select(Project))
-        projects = list(result.all())
-        for p in projects:
-            await self.sync_updatetime_from_latest_published_article(p.id, p)
+        """一条 UPDATE 重算所有博客的 updatetime，并 commit。"""
+        subq = _published_articles_max_time_expr()
+        stmt = update(Project).values(
+            updatetime=func.coalesce(subq, Project.createtime)
+        )
+        result = await self.session.execute(stmt)
         await self.session.commit()
-        return len(projects)
+        return result.rowcount or 0
     
     async def increment_record_count(self, project_id: int) -> None:
         """增加项目的记录数"""
