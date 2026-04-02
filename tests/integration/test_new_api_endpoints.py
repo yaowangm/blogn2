@@ -6,7 +6,10 @@
 
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from src.main import app
+from src.utils.auth_dependencies import get_current_user
 
 
 class TestNewApiEndpoints:
@@ -164,3 +167,35 @@ class TestNewApiEndpoints:
         ids2 = [x.get("id") for x in r2.json().get("results", [])]
         assert ids1 and ids2
         assert ids1 != ids2
+
+    @pytest.mark.integration
+    def test_admin_recalculate_project_updatetimes_route(self, test_client):
+        """POST /api/admin/projects/recalculate-updatetimes 在管理员身份下应调用批量同步并返回数量"""
+
+        async def admin_user():
+            return {"id": 1, "state": 10, "role": "admin", "name": "admin"}
+
+        app.dependency_overrides[get_current_user] = admin_user
+        try:
+            with patch("src.controllers.project.ProjectRepository") as MockRepo:
+                inst = MagicMock()
+                inst.sync_all_projects_updatetime = AsyncMock(return_value=5)
+                MockRepo.return_value = inst
+                with patch("src.utils.cache.cache_manager") as mock_cm:
+                    mock_cm.clear_pattern = AsyncMock(return_value=True)
+                    response = test_client.post(
+                        "/api/admin/projects/recalculate-updatetimes"
+                    )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data.get("project_count") == 5
+        assert "重新计算" in data.get("message", "")
+
+    @pytest.mark.integration
+    def test_admin_recalculate_project_updatetimes_requires_auth(self, test_client):
+        """未认证调用重新计算应 401"""
+        response = test_client.post("/api/admin/projects/recalculate-updatetimes")
+        assert response.status_code == 401

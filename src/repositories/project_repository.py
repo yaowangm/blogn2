@@ -1,6 +1,7 @@
 from sqlmodel import select, func
+from sqlalchemy import or_
 from sqlmodel.ext.asyncio.session import AsyncSession
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import datetime, timedelta
 
 from src.models.project import Project
@@ -8,6 +9,20 @@ from src.models.user import User
 from src.models.project_item import ProjectItem
 from src.constants import ArticleStatus
 from src.utils.time_utils import TimeUtils
+
+
+def _scalar_first(result) -> Any:
+    """将 session.exec 单列表查询的 first() 转为单个标量（兼容 datetime 与单元素 Row/tuple）。"""
+    raw = result.first()
+    if raw is None:
+        return None
+    if isinstance(raw, datetime):
+        return raw
+    try:
+        return raw[0]
+    except (TypeError, IndexError, KeyError):
+        return raw
+
 
 class ProjectRepository:
     """Project数据访问层"""
@@ -83,19 +98,29 @@ class ProjectRepository:
         self, project_id: int, project: Optional[Project] = None
     ) -> None:
         """
-        将 project.updatetime 同步为当前博客已发布文章中，
-        max(coalesce(updatetime, createtime))（发表或最近一次正文的更新时间），
-        与文章列表可见范围一致；无已发布文章时回退为项目 createtime。
+        将 project.updatetime 同步为当前博客可见文章中，
+        每篇文章取 createtime / updatetime / lastmodifytime 的最晚时刻，再对全博客取 max。
+        非删除条件：itemtype 为 NULL（历史数据）或 itemtype != 已删除。
+        无符合条件文章时回退为 project.createtime。
         """
-        latest = func.coalesce(ProjectItem.updatetime, ProjectItem.createtime)
+        per_item_latest = func.greatest(
+            ProjectItem.createtime,
+            ProjectItem.updatetime,
+            ProjectItem.lastmodifytime,
+        )
         statement = (
-            select(func.max(latest))
+            select(func.max(per_item_latest))
             .where(ProjectItem.projectid == project_id)
             .where(ProjectItem.status == 1)
-            .where(ProjectItem.itemtype != ArticleStatus.DELETED)
+            .where(
+                or_(
+                    ProjectItem.itemtype.is_(None),
+                    ProjectItem.itemtype != ArticleStatus.DELETED,
+                )
+            )
         )
         result = await self.session.exec(statement)
-        max_ts = result.first()
+        max_ts = _scalar_first(result)
         if project is None:
             project = await self.get_by_id(project_id)
         if not project:
@@ -105,6 +130,15 @@ class ProjectRepository:
         else:
             project.updatetime = project.createtime
         self.session.add(project)
+
+    async def sync_all_projects_updatetime(self) -> int:
+        """对所有博客项目执行 sync_updatetime_from_latest_published_article，并一次 commit。"""
+        result = await self.session.exec(select(Project))
+        projects = list(result.all())
+        for p in projects:
+            await self.sync_updatetime_from_latest_published_article(p.id, p)
+        await self.session.commit()
+        return len(projects)
     
     async def increment_record_count(self, project_id: int) -> None:
         """增加项目的记录数"""

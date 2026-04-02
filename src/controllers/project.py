@@ -988,3 +988,30 @@ async def delete_category(
     except Exception as e:
         await session.rollback()
         raise HTTPException(status_code=500, detail=f"删除分类失败: {str(e)}")
+
+
+@router.post("/admin/projects/recalculate-updatetimes", response_model=Dict[str, Any])
+async def admin_recalculate_all_project_updatetimes(
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    重新计算所有博客的 project.updatetime（与已发布文章的发表/编辑时间一致）。
+    仅管理员可调用。
+    """
+    if not permission_manager.can_manage_system(current_user):
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    try:
+        project_repo = ProjectRepository(session)
+        n = await project_repo.sync_all_projects_updatetime()
+        try:
+            from src.utils.cache import cache_manager
+            await cache_manager.clear_pattern("project:detail:*")
+        except Exception:
+            pass
+        return {"message": "已重新计算所有博客的更新时间", "project_count": n}
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=f"重新计算失败: {str(e)}")

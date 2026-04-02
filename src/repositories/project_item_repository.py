@@ -1,4 +1,5 @@
 from sqlmodel import select, func
+from sqlalchemy import or_
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional
 from src.models.project_item import ProjectItem
@@ -149,7 +150,12 @@ class ProjectItemRepository:
         
         # 根据include_deleted参数决定是否包含已删除的文章
         if not include_deleted:
-            query = query.where(ProjectItem.itemtype != ArticleStatus.DELETED)  # 排除已删除的文章
+            query = query.where(
+                or_(
+                    ProjectItem.itemtype.is_(None),
+                    ProjectItem.itemtype != ArticleStatus.DELETED,
+                )
+            )
         
         if folder_id is not None:
             # 如果指定了文件夹，只获取该文件夹下的文章
@@ -187,7 +193,12 @@ class ProjectItemRepository:
         """根据项目ID和文件夹ID统计项目项总数"""
         statement = select(func.count(ProjectItem.id)).where(ProjectItem.projectid == project_id)
         statement = statement.where(ProjectItem.status == 1)  # 只统计正常状态的文章
-        statement = statement.where(ProjectItem.itemtype != ArticleStatus.DELETED)  # 排除已删除的文章
+        statement = statement.where(
+            or_(
+                ProjectItem.itemtype.is_(None),
+                ProjectItem.itemtype != ArticleStatus.DELETED,
+            )
+        )
         
         if folder_id is not None:
             statement = statement.where(ProjectItem.folderid == folder_id)

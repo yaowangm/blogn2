@@ -17,6 +17,7 @@
         'blog-posts-list-card': '文章列表',
         'blog-info-card': '博客信息',
         'user-profile-card': '个人资料',
+        'admin-tools-card': '管理工具',
         'about-card': '关于',
         'subscriptions-list-card': '订阅列表',
         'stats-card': '统计',
