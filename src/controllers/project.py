@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Dict, Any, Optional
 from sqlmodel.ext.asyncio.session import AsyncSession
-from datetime import datetime
 
 from src.database import get_async_session
 from src.repositories.project_repository import ProjectRepository
@@ -738,14 +737,15 @@ async def update_project(
         if not update_data:
             raise HTTPException(status_code=400, detail="没有提供要更新的数据")
         
-        # 设置更新时间
-        update_data["updatetime"] = datetime.now()
-        
-        # 更新项目
+        # 更新项目（project.updatetime 表示博客内容层面的「最后更新」，由已发布文章同步）
         updated_project = await project_repo.update_project(project_id, update_data)
         
         if not updated_project:
             raise HTTPException(status_code=500, detail="更新项目失败")
+
+        await project_repo.sync_updatetime_from_latest_published_article(project_id)
+        await session.commit()
+        updated_project = await project_repo.get_by_id(project_id)
         
         return {
             "id": updated_project.id,

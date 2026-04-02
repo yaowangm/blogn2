@@ -419,13 +419,9 @@ class ProjectItemRepository:
             bool: 更新是否成功
         """
         try:
-            # 使用SQLModel的方式更新，避免原始SQL的同步问题
-            from src.utils.time_utils import TimeUtils
-            
             project_item = await self.get_by_id(project_item_id)
             if project_item:
                 project_item.accesscount = (project_item.accesscount or 0) + 1
-                project_item.updatetime = TimeUtils.now_utc()
                 self.session.add(project_item)
                 await self.session.commit()
                 return True

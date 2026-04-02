@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 
 from src.models.project import Project
 from src.models.user import User
+from src.models.project_item import ProjectItem
+from src.constants import ArticleStatus
 from src.utils.time_utils import TimeUtils
 
 class ProjectRepository:
@@ -76,6 +78,33 @@ class ProjectRepository:
         # 不在这里commit，由外层事务管理器控制
         await self.session.flush()  # 刷新以获取生成的ID
         return project
+
+    async def sync_updatetime_from_latest_published_article(
+        self, project_id: int, project: Optional[Project] = None
+    ) -> None:
+        """
+        将 project.updatetime 同步为当前博客已发布文章中，
+        max(coalesce(updatetime, createtime))（发表或最近一次正文的更新时间），
+        与文章列表可见范围一致；无已发布文章时回退为项目 createtime。
+        """
+        latest = func.coalesce(ProjectItem.updatetime, ProjectItem.createtime)
+        statement = (
+            select(func.max(latest))
+            .where(ProjectItem.projectid == project_id)
+            .where(ProjectItem.status == 1)
+            .where(ProjectItem.itemtype != ArticleStatus.DELETED)
+        )
+        result = await self.session.exec(statement)
+        max_ts = result.first()
+        if project is None:
+            project = await self.get_by_id(project_id)
+        if not project:
+            return
+        if max_ts is not None:
+            project.updatetime = max_ts
+        else:
+            project.updatetime = project.createtime
+        self.session.add(project)
     
     async def increment_record_count(self, project_id: int) -> None:
         """增加项目的记录数"""
@@ -85,8 +114,7 @@ class ProjectRepository:
         
         if project:
             project.recordcount = (project.recordcount or 0) + 1
-            project.updatetime = TimeUtils.now_utc()
-            self.session.add(project)
+            await self.sync_updatetime_from_latest_published_article(project_id, project)
     
     async def decrement_record_count(self, project_id: int) -> None:
         """减少项目的记录数"""
@@ -96,8 +124,7 @@ class ProjectRepository:
         
         if project:
             project.recordcount = max((project.recordcount or 0) - 1, 0)
-            project.updatetime = TimeUtils.now_utc()
-            self.session.add(project)
+            await self.sync_updatetime_from_latest_published_article(project_id, project)
     
     async def increment_comment_count(self, project_id: int) -> bool:
         """
@@ -112,7 +139,6 @@ class ProjectRepository:
         project = await self.get_by_id(project_id)
         if project:
             project.commentcount = (project.commentcount or 0) + 1
-            project.updatetime = TimeUtils.now_utc()
             await self.session.commit()
             await self.session.refresh(project)
             return True
@@ -131,7 +157,6 @@ class ProjectRepository:
         project = await self.get_by_id(project_id)
         if project and project.commentcount > 0:
             project.commentcount -= 1
-            project.updatetime = TimeUtils.now_utc()
             await self.session.commit()
             await self.session.refresh(project)
             return True
@@ -184,7 +209,6 @@ class ProjectRepository:
             project = await self.get_by_id(project_id)
             if project:
                 project.accesscount = (project.accesscount or 0) + 1
-                project.updatetime = TimeUtils.now_utc()
                 self.session.add(project)
                 await self.session.commit()
                 return True

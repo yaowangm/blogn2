@@ -599,6 +599,11 @@ async def update_article(
             logger = logging.getLogger(__name__)
             logger.error(f"向量化更新失败: {e}")
         
+        if updated_article.projectid:
+            project_repo = ProjectRepository(session)
+            await project_repo.sync_updatetime_from_latest_published_article(updated_article.projectid)
+            await session.commit()
+        
         return {"message": "文章更新成功"}
         
     except HTTPException:

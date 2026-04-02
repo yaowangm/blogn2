@@ -12,6 +12,7 @@ from src.models.project import Project
 from src.models.folder import Folder
 from src.models.user import User
 from src.models.glovar import Glovar
+from src.repositories.project_repository import ProjectRepository
 from src.utils.time_utils import TimeUtils
 
 
@@ -118,7 +119,6 @@ class StatsService:
             
             if article:
                 article.commentcount = (article.commentcount or 0) + 1
-                article.updatetime = TimeUtils.now_utc()
                 await self.session.commit()
                 await self.session.refresh(article)
                 return True
@@ -144,7 +144,6 @@ class StatsService:
             
             if article and article.commentcount and article.commentcount > 0:
                 article.commentcount -= 1
-                article.updatetime = TimeUtils.now_utc()
                 await self.session.commit()
                 await self.session.refresh(article)
                 return True
@@ -282,7 +281,8 @@ class StatsService:
             
             if project:
                 project.recordcount = (project.recordcount or 0) + 1
-                project.updatetime = TimeUtils.now_utc()
+                project_repo = ProjectRepository(self.session)
+                await project_repo.sync_updatetime_from_latest_published_article(project_id, project)
                 await self.session.commit()
                 await self.session.refresh(project)
                 return True
@@ -308,7 +308,8 @@ class StatsService:
             
             if project and project.recordcount and project.recordcount > 0:
                 project.recordcount -= 1
-                project.updatetime = TimeUtils.now_utc()
+                project_repo = ProjectRepository(self.session)
+                await project_repo.sync_updatetime_from_latest_published_article(project_id, project)
                 await self.session.commit()
                 await self.session.refresh(project)
                 return True
@@ -334,7 +335,6 @@ class StatsService:
             
             if project:
                 project.commentcount = (project.commentcount or 0) + 1
-                project.updatetime = TimeUtils.now_utc()
                 await self.session.commit()
                 await self.session.refresh(project)
                 return True
@@ -360,7 +360,6 @@ class StatsService:
             
             if project and project.commentcount and project.commentcount > 0:
                 project.commentcount -= 1
-                project.updatetime = TimeUtils.now_utc()
                 await self.session.commit()
                 await self.session.refresh(project)
                 return True
