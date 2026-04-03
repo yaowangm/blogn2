@@ -66,6 +66,109 @@ class AdminToolsCard extends BaseComponent {
                 .msg { margin-top: 12px; font-size: 14px; }
                 .msg.ok { color: #059669; }
                 .msg.err { color: #dc2626; }
+
+                .recalc-modal {
+                    position: fixed;
+                    inset: 0;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: none;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                    padding: 24px;
+                    box-sizing: border-box;
+                }
+                .recalc-modal.show {
+                    display: flex;
+                }
+                .recalc-modal-content {
+                    background: #ffffff;
+                    color: #111827;
+                    width: 100%;
+                    max-width: 560px;
+                    min-width: min(100%, 320px);
+                    border-radius: var(--radius-lg, 12px);
+                    box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0,0,0,.1), 0 10px 10px -5px rgba(0,0,0,.04));
+                    padding: var(--spacing-6, 24px) var(--spacing-8, 28px);
+                    box-sizing: border-box;
+                }
+                .recalc-modal-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding-bottom: var(--spacing-4, 16px);
+                    margin-bottom: var(--spacing-4, 16px);
+                    border-bottom: 1px solid var(--gray-200, #e5e7eb);
+                }
+                .recalc-modal-favicon {
+                    width: 32px;
+                    height: 32px;
+                    flex-shrink: 0;
+                    display: block;
+                }
+                .recalc-modal-title {
+                    margin: 0;
+                    font-size: var(--font-size-lg, 18px);
+                    font-weight: 600;
+                    color: #111827;
+                    line-height: 1.3;
+                }
+                .recalc-modal-body {
+                    font-size: var(--font-size-sm, 14px);
+                    line-height: 1.65;
+                    color: #111827;
+                }
+                .recalc-modal-body p {
+                    margin: 0 0 10px 0;
+                }
+                .recalc-modal-body p:last-child {
+                    margin-bottom: 0;
+                }
+                .recalc-modal-footer {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: var(--spacing-3, 12px);
+                    margin-top: var(--spacing-6, 24px);
+                    padding-top: var(--spacing-4, 16px);
+                    border-top: 1px solid var(--gray-200, #e5e7eb);
+                }
+                .recalc-modal .btn-secondary {
+                    background-color: var(--gray-100, #f3f4f6);
+                    color: var(--gray-700, #374151);
+                    border: 1px solid var(--gray-300, #d1d5db);
+                    padding: var(--spacing-2, 8px) var(--spacing-6, 24px);
+                    min-width: 7.5rem;
+                    border-radius: var(--radius-md, 6px);
+                    font-size: var(--font-size-base, 14px);
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: background-color var(--transition-fast, 0.15s ease), border-color var(--transition-fast, 0.15s ease);
+                }
+                .recalc-modal .btn-secondary:hover {
+                    background-color: var(--gray-200, #e5e7eb);
+                    border-color: var(--gray-400, #9ca3af);
+                }
+                .recalc-modal .btn-primary {
+                    background-color: var(--primary-color, #2563eb);
+                    color: #ffffff;
+                    border: 1px solid var(--primary-color, #2563eb);
+                    padding: var(--spacing-2, 8px) var(--spacing-6, 24px);
+                    min-width: 7.5rem;
+                    border-radius: var(--radius-md, 6px);
+                    font-size: var(--font-size-base, 14px);
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: background-color var(--transition-fast, 0.15s ease), border-color var(--transition-fast, 0.15s ease);
+                }
+                .recalc-modal .btn-primary:hover:not(:disabled) {
+                    background-color: var(--primary-hover, #1d4ed8);
+                    border-color: var(--primary-hover, #1d4ed8);
+                }
+                .recalc-modal .btn-primary:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
             </style>
             <div class="card-wrap">
                 <div class="card-header">
@@ -75,20 +178,58 @@ class AdminToolsCard extends BaseComponent {
                 <button type="button" class="btn-primary" id="recalcBtn">重新计算博客的更新时间</button>
                 <div class="msg" id="recalcMsg" style="display:none;"></div>
             </div>
+            <div class="recalc-modal" id="recalcConfirmModal" aria-hidden="true">
+                <div class="recalc-modal-content" role="dialog" aria-labelledby="recalcModalTitle">
+                    <div class="recalc-modal-header">
+                        <img class="recalc-modal-favicon" src="/static/favicon.svg" width="32" height="32" alt="" />
+                        <h3 class="recalc-modal-title" id="recalcModalTitle">重新计算博客更新时间</h3>
+                    </div>
+                    <div class="recalc-modal-body">
+                        <p>确定要为<strong>全部博客</strong>重新计算「更新时间」吗？</p>
+                        <p>该操作会根据每篇已发布文章的发表/编辑时间，将结果写回数据库中对应博客项目的 <code>updatetime</code> 字段。</p>
+                    </div>
+                    <div class="recalc-modal-footer">
+                        <button type="button" class="btn-secondary" id="recalcModalCancel">取消</button>
+                        <button type="button" class="btn-primary" id="recalcModalConfirm">确定</button>
+                    </div>
+                </div>
+            </div>
         `;
 
         const btn = this.shadowRoot.getElementById('recalcBtn');
         const msgEl = this.shadowRoot.getElementById('recalcMsg');
-        btn.addEventListener('click', () => this._onRecalculate(btn, msgEl));
+        const modal = this.shadowRoot.getElementById('recalcConfirmModal');
+        const modalCancel = this.shadowRoot.getElementById('recalcModalCancel');
+        const modalConfirm = this.shadowRoot.getElementById('recalcModalConfirm');
+
+        btn.addEventListener('click', () => this._showRecalcModal(modal));
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) this._hideRecalcModal(modal);
+        });
+        modalCancel.addEventListener('click', () => this._hideRecalcModal(modal));
+        modalConfirm.addEventListener('click', () => {
+            this._hideRecalcModal(modal);
+            this._executeRecalculate(btn, msgEl, modalConfirm);
+        });
     }
 
-    async _onRecalculate(btn, msgEl) {
+    _showRecalcModal(modal) {
+        if (!modal) return;
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+
+    _hideRecalcModal(modal) {
+        if (!modal) return;
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+
+    async _executeRecalculate(btn, msgEl, modalConfirmBtn) {
         if (this._busy) return;
-        if (!confirm('确定要重新计算所有博客的更新时间吗？\n\n该操作会更新数据库中全部博客项目的 updatetime。')) {
-            return;
-        }
         this._busy = true;
         btn.disabled = true;
+        if (modalConfirmBtn) modalConfirmBtn.disabled = true;
         msgEl.style.display = 'none';
         try {
             const res = await fetch('/api/admin/projects/recalculate-updatetimes', {
@@ -116,6 +257,7 @@ class AdminToolsCard extends BaseComponent {
         } finally {
             this._busy = false;
             btn.disabled = false;
+            if (modalConfirmBtn) modalConfirmBtn.disabled = false;
         }
     }
 }
