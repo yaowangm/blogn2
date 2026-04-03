@@ -82,7 +82,8 @@ class TestArticleCommentsSimple:
         assert data["success"] is True
         assert "comment_id" in data
         assert data["message"] == "评论创建成功"
-        
+        test_data_tracker.add_comment(int(data["comment_id"]))
+
         # 清除 session 缓存后再查，确保读到 API 已提交的数据
         real_sync_session_with_commit.expire_all()
         comment_result = real_sync_session_with_commit.exec(

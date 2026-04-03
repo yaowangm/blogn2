@@ -81,6 +81,7 @@ class TestCommentsAndGuestbookComplete:
         assert data["success"] is True
         assert "comment_id" in data
         comment_id = data["comment_id"]
+        test_data_tracker.add_comment(int(comment_id))
         
         # 5. 验证评论已保存到数据库
         comment_result = real_sync_session_with_commit.exec(
