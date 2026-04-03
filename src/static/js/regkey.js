@@ -290,12 +290,17 @@ class RegistrationCodeManager {
                 return;
             }
 
-            if (!confirm(`确定要使用10积分兑换一个注册码吗？\n当前积分：${currentPoints}`)) {
+            if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
+                title: '兑换注册码',
+                message: `确定要使用10积分兑换一个注册码吗？\n当前积分：${currentPoints}`,
+            })) {
                 return;
             }
         } else {
-            // 管理员确认
-            if (!confirm('确定要生成一个注册码吗？（管理员免费）')) {
+            if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
+                title: '生成注册码',
+                message: '确定要生成一个注册码吗？（管理员免费）',
+            })) {
                 return;
             }
         }

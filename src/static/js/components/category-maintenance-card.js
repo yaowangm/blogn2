@@ -458,7 +458,11 @@ class CategoryMaintenanceCard extends BaseComponent {
     }
 
     async deleteCategory(categoryId) {
-        if (!confirm('确定要删除这个分类吗？')) {
+        if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
+            title: '删除分类',
+            message: '确定要删除这个分类吗？',
+            danger: true,
+        })) {
             return;
         }
 

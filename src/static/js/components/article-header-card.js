@@ -300,7 +300,10 @@ class ArticleHeaderCard extends BaseComponent {
             return;
         }
 
-        if (!confirm('确定要将此文章设为网站介绍吗？')) {
+        if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
+            title: '设为网站介绍',
+            message: '确定要将此文章设为网站介绍吗？',
+        })) {
             return;
         }
 
@@ -347,8 +350,10 @@ class ArticleHeaderCard extends BaseComponent {
             return;
         }
         
-        // 确认操作
-        if (!confirm('确定要将此文章设为个人介绍吗？\n\n此操作将：\n1. 将此文章设为您的个人介绍\n2. 将文章的附件图片复制为您的头像图片\n3. 如果已有头像，将被新图片覆盖')) {
+        if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
+            title: '设为个人介绍',
+            message: '确定要将此文章设为个人介绍吗？\n\n此操作将：\n1. 将此文章设为您的个人介绍\n2. 将文章的附件图片复制为您的头像图片\n3. 如果已有头像，将被新图片覆盖',
+        })) {
             return;
         }
         
@@ -402,8 +407,11 @@ class ArticleHeaderCard extends BaseComponent {
             return;
         }
         
-        // 确认删除
-        if (!confirm('确定要删除这篇文章吗？此操作不可撤销。')) {
+        if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
+            title: '删除文章',
+            message: '确定要删除这篇文章吗？此操作不可撤销。',
+            danger: true,
+        })) {
             return;
         }
         
@@ -439,13 +447,19 @@ class ArticleHeaderCard extends BaseComponent {
             return;
         }
         
-        // 确认彻底删除
-        if (!confirm('确定要彻底删除这篇文章吗？\n\n此操作将：\n1. 永久删除文章的所有图片文件\n2. 从数据库中完全删除文章记录\n3. 更新相关统计信息\n\n此操作不可撤销！')) {
+        if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
+            title: '彻底删除文章',
+            message: '确定要彻底删除这篇文章吗？\n\n此操作将：\n1. 永久删除文章的所有图片文件\n2. 从数据库中完全删除文章记录\n3. 更新相关统计信息\n\n此操作不可撤销！',
+            danger: true,
+        })) {
             return;
         }
-        
-        // 二次确认
-        if (!confirm('最后确认：您真的要彻底删除这篇文章吗？\n\n一旦执行，文章及其所有相关数据将永久消失！')) {
+
+        if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
+            title: '最后确认',
+            message: '最后确认：您真的要彻底删除这篇文章吗？\n\n一旦执行，文章及其所有相关数据将永久消失！',
+            danger: true,
+        })) {
             return;
         }
         

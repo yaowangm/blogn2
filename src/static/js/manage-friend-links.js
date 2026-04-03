@@ -272,7 +272,11 @@ class FriendLinksManager {
     }
     
     async deleteLink(linkId) {
-        if (!confirm('确定要删除这个友情链接吗？')) {
+        if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
+            title: '删除友情链接',
+            message: '确定要删除这个友情链接吗？',
+            danger: true,
+        })) {
             return;
         }
         
