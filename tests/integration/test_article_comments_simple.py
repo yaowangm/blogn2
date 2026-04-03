@@ -98,7 +98,7 @@ class TestArticleCommentsSimple:
         # 数据将在测试结束时自动回滚，无需手动删除
 
     @pytest.mark.integration
-    def test_get_article_comments_basic(self, test_client, real_sync_session_with_commit):
+    def test_get_article_comments_basic(self, test_client, real_sync_session_with_commit, test_data_tracker):
         """测试获取文章评论列表的基本功能"""
         # 创建测试用户
         user = User(
@@ -109,7 +109,8 @@ class TestArticleCommentsSimple:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        
+        test_data_tracker.add_user(user.id)
+
         # 创建测试项目
         project = Project(
             name="Test Project for Get Comments",
@@ -120,7 +121,8 @@ class TestArticleCommentsSimple:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        
+        test_data_tracker.add_project(project.id)
+
         # 创建测试文章
         article = ProjectItem(
             projectid=project.id,
@@ -134,7 +136,8 @@ class TestArticleCommentsSimple:
         )
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        
+        test_data_tracker.add_article(article.id)
+
         # 创建测试评论
         comment = Post(
             folderid=0,
@@ -152,10 +155,11 @@ class TestArticleCommentsSimple:
         )
         real_sync_session_with_commit.add(comment)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        
+        test_data_tracker.add_comment(comment.id)
+
         # 临时提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
-        
+
         # 获取评论列表
         response = test_client.get(f"/api/articles/{article.id}/comments")
         
@@ -173,6 +177,4 @@ class TestArticleCommentsSimple:
         assert comment_data["user_id"] == user.id
         assert "post_time" in comment_data
         assert "reply_count" in comment_data
-        
-        # 数据将在测试结束时自动回滚，无需手动删除
 

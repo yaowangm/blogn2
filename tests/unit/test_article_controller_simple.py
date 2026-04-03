@@ -7,6 +7,8 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import HTTPException
+from starlette.requests import Request
+from starlette.responses import Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 from datetime import datetime
 
@@ -82,7 +84,12 @@ class TestArticleControllerSimple:
         mock_comment.replycount = 0
         mock_post_repo = AsyncMock()
         mock_post_repo_class.return_value = mock_post_repo
-        mock_post_repo.get_by_project_item_id.return_value = [mock_comment]
+        mock_post_repo.get_by_project_item_id_paginated = AsyncMock(
+            return_value={
+                "comments": [mock_comment],
+                "pagination": {"page": 1, "per_page": 10, "total": 1, "total_pages": 1},
+            }
+        )
         
         # 模拟附件数据
         mock_attachment = MagicMock()
@@ -97,9 +104,15 @@ class TestArticleControllerSimple:
         # 导入控制器函数
         from src.controllers.article import get_article_detail
         
+        req_scope = {"type": "http", "headers": [], "cookies": {}}
+        mock_request = Request(req_scope)
+        mock_response = Response()
+
         # 执行测试
         result = await get_article_detail(
             article_id=1,
+            request=mock_request,
+            response=mock_response,
             session=self.mock_session,
             current_user=self.mock_user
         )
@@ -109,7 +122,8 @@ class TestArticleControllerSimple:
         assert result["id"] == 1
         assert result["title"] == "测试文章"
         assert result["content"] == "测试内容"
-        
+        assert result["hits"] == 101  # accesscount 100 + 本次计数
+
         # 验证缓存被调用（如果缓存装饰器正常工作）
         # mock_cache.assert_called_once()  # 注释掉，因为装饰器可能不会在测试中被调用
     
@@ -125,9 +139,15 @@ class TestArticleControllerSimple:
         from src.controllers.article import get_article_detail
         
         # 执行测试并验证异常
+        req_scope = {"type": "http", "headers": [], "cookies": {}}
+        mock_request = Request(req_scope)
+        mock_response = Response()
+
         with pytest.raises(HTTPException) as exc_info:
             await get_article_detail(
                 article_id=999,
+                request=mock_request,
+                response=mock_response,
                 session=self.mock_session,
                 current_user=self.mock_user
             )

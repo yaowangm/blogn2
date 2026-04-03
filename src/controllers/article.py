@@ -11,7 +11,7 @@
 所有接口都支持缓存以提高性能。
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Body
+from fastapi import APIRouter, Depends, HTTPException, Request, Body, Response
 from typing import List, Dict, Any, Optional
 from sqlmodel.ext.asyncio.session import AsyncSession
 from datetime import datetime
@@ -38,6 +38,13 @@ from src.utils.comment_handlers import CommentHandler
 from src.utils.time_utils import TimeUtils
 from src.constants import ArticleStatus, ErrorMessages
 from src.utils.file_utils import get_temp_dir
+from src.utils.article_hit_cookie import (
+    COOKIE_NAME,
+    build_cookie_value,
+    cookie_max_age,
+    cookie_secure,
+    parse_seen_article_ids,
+)
 
 # 创建文章API路由器
 router = APIRouter(tags=["文章管理"])
@@ -47,6 +54,8 @@ router = APIRouter(tags=["文章管理"])
 @cache_article_detail(ttl=1800)  # 缓存30分钟
 async def get_article_detail(
     article_id: int,
+    request: Request,
+    response: Response,
     page: int = 1,
     per_page: int = 10,
     session: AsyncSession = Depends(get_async_session),
@@ -85,15 +94,36 @@ async def get_article_detail(
         if article.itemtype == ArticleStatus.DELETED and not permission_manager.can_manage_system(current_user):
             raise HTTPException(status_code=404, detail=ErrorMessages.ARTICLE_DELETED)
         
-        # 更新文章访问计数（异步执行，不影响响应速度）
-        try:
-            await project_item_repo.increment_access_count(article_id)
-            # 同时更新项目的访问计数
-            if article.projectid:
-                await project_repo.increment_access_count(article.projectid)
-        except Exception as e:
-            # 访问计数更新失败不影响文章查看，静默处理
-            pass
+        # 访问计数：同浏览器、短 TTL 内同一文章只计一次（签名 Cookie，无服务端浏览状态）
+        seen = parse_seen_article_ids(request.cookies.get(COOKIE_NAME))
+        if seen is None:
+            seen = set()
+        should_count = article_id not in seen
+        if should_count:
+            counted_ok = False
+            try:
+                await project_item_repo.increment_access_count(article_id)
+                if article.projectid:
+                    await project_repo.increment_access_count(article.projectid)
+                counted_ok = True
+            except Exception:
+                pass
+            if counted_ok:
+                seen.add(article_id)
+                response.set_cookie(
+                    key=COOKIE_NAME,
+                    value=build_cookie_value(seen),
+                    max_age=cookie_max_age(),
+                    path="/",
+                    httponly=True,
+                    samesite="lax",
+                    secure=cookie_secure(),
+                )
+                hits_display = (article.accesscount or 0) + 1
+            else:
+                hits_display = article.accesscount or 0
+        else:
+            hits_display = article.accesscount or 0
         
         # 获取作者信息
         author = None
@@ -148,7 +178,7 @@ async def get_article_detail(
                 "name": category.name if category else "未分类"
             },
             "allowpost": article.allowpost,  # 评论设置
-            "hits": article.accesscount or 0,
+            "hits": hits_display,
             "itemsize": article.itemsize or 0,  # 文章长度（字节数）
             "created_at": article.createtime,
             "updated_at": article.updatetime,

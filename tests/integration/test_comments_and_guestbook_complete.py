@@ -302,6 +302,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_user(user.id)
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -322,6 +323,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(message)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_message(message.id)
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -354,6 +356,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_user(user.id)
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -367,6 +370,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_project(project.id)
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -383,6 +387,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(article1)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_article(article1.id)
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -396,6 +401,9 @@ class TestCommentsAndGuestbookComplete:
             json=comment_data
         )
         assert response.status_code == 200
+        created = response.json()
+        if created.get("comment_id"):
+            test_data_tracker.add_comment(int(created["comment_id"]))
 
     @pytest.mark.integration
     def test_comment_permissions_login_required(self, test_client, real_sync_session_with_commit, test_data_tracker):
@@ -409,6 +417,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_user(user.id)
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -422,6 +431,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_project(project.id)
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -438,6 +448,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(article2)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_article(article2.id)
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -464,6 +475,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_user(user.id)
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -477,6 +489,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_project(project.id)
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -493,6 +506,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(article3)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_article(article3.id)
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -519,6 +533,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_user(user.id)
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -532,6 +547,7 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
+        test_data_tracker.add_project(project.id)
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -548,7 +564,8 @@ class TestCommentsAndGuestbookComplete:
         )
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        
+        test_data_tracker.add_article(article.id)
+
         # 提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
         
@@ -611,8 +628,6 @@ class TestCommentsAndGuestbookComplete:
         assert response.status_code == 400
         data = response.json()
         assert "标题不能超过200个字符" in data["detail"]
-        
-        # 清理测试数据
 
     @pytest.mark.integration
     def test_nonexistent_article_comment_create(self, test_client):
