@@ -62,8 +62,7 @@ FROM python:3.12-slim
 # 设置环境变量
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PATH="/opt/venv/bin:$PATH" \
-    APP_ENV=production
+    PATH="/opt/venv/bin:$PATH"
 
 # 配置 Debian apt 使用清华大学镜像源（第二阶段也需要配置）
 RUN sed -i 's|http://deb.debian.org|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/debian.sources && \

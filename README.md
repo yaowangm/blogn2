@@ -159,7 +159,6 @@ python test_db.py
 - `MODEL_MODEL_PATH`: 容器内/本地模型路径（可选；Docker 下由 entrypoint 解析到挂载的 snapshot）
 - `MODEL_DEVICE`: 运行设备，`auto`（默认）时仅当当前 GPU 在 PyTorch 编译支持列表内才用 CUDA，否则用 CPU；可显式设为 `cpu` 或 `cuda`。
 - `MODEL_PREFER_LOCAL`: 是否优先使用本地模型
-- `APP_ENV`: 应用环境
 
 详细配置请参考 `.env.example` 文件；模型设备与 BERT 配置见 [doc/MODEL_CONFIGURATION.md](doc/MODEL_CONFIGURATION.md)。
 
