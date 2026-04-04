@@ -33,6 +33,7 @@
 - **原生JavaScript**: ES6+特性
 - **响应式设计**: 移动优先的设计理念
 - **Material 3**: 现代化UI设计风格
+- **前端工具**：`openConfirmDialog`、注册码格式化等说明见 [`src/static/js/utils/README.md`](src/static/js/utils/README.md)
 
 ### 智能搜索系统
 - **pgvector**: PostgreSQL向量扩展

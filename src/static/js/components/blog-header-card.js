@@ -13,43 +13,14 @@ class BlogHeaderCard extends BaseComponent {
     }
 
     connectedCallback() {
-        this._attachLayoutModeObserver();
+        this._attachLayoutSingleColumnObserver();
         this.projectId = this.getProjectIdFromUrl();
         this.render();
         this.loadData();
     }
 
-    /**
-     * 与 sidebar-collapse 同步：body.layout-single-column 表示单列模式。
-     */
-    _attachLayoutModeObserver() {
-        if (this._layoutBodyObserver) {
-            return;
-        }
-        const sync = () => {
-            if (document.body.classList.contains('layout-single-column')) {
-                this.setAttribute('data-layout-single-column', '');
-            } else {
-                this.removeAttribute('data-layout-single-column');
-            }
-        };
-        this._layoutBodyObserver = new MutationObserver(sync);
-        this._layoutBodyObserver.observe(document.body, {
-            attributes: true,
-            attributeFilter: ['class'],
-        });
-        sync();
-    }
-
-    _detachLayoutModeObserver() {
-        if (this._layoutBodyObserver) {
-            this._layoutBodyObserver.disconnect();
-            this._layoutBodyObserver = null;
-        }
-    }
-
     disconnectedCallback() {
-        this._detachLayoutModeObserver();
+        this._detachLayoutSingleColumnObserver();
     }
 
     getProjectIdFromUrl() {

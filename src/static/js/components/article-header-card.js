@@ -13,7 +13,7 @@ class ArticleHeaderCard extends BaseComponent {
     }
 
     async connectedCallback() {
-        this._attachLayoutModeObserver();
+        this._attachLayoutSingleColumnObserver();
 
         // 从URL获取文章ID
         this.articleId = this.getArticleIdFromUrl();
@@ -35,38 +35,8 @@ class ArticleHeaderCard extends BaseComponent {
         this.updatePageTitle();
     }
 
-    /**
-     * 与 sidebar-collapse 同步：body.layout-single-column 表示单列模式。
-     * :host-context() 在 Shadow DOM 中兼容性差，改为在宿主上挂 data-* 再用 :host([...]) 选样式。
-     */
-    _attachLayoutModeObserver() {
-        if (this._layoutBodyObserver) {
-            return;
-        }
-        const sync = () => {
-            if (document.body.classList.contains('layout-single-column')) {
-                this.setAttribute('data-layout-single-column', '');
-            } else {
-                this.removeAttribute('data-layout-single-column');
-            }
-        };
-        this._layoutBodyObserver = new MutationObserver(sync);
-        this._layoutBodyObserver.observe(document.body, {
-            attributes: true,
-            attributeFilter: ['class'],
-        });
-        sync();
-    }
-
-    _detachLayoutModeObserver() {
-        if (this._layoutBodyObserver) {
-            this._layoutBodyObserver.disconnect();
-            this._layoutBodyObserver = null;
-        }
-    }
-
     disconnectedCallback() {
-        this._detachLayoutModeObserver();
+        this._detachLayoutSingleColumnObserver();
     }
 
     /**
@@ -672,7 +642,7 @@ class ArticleHeaderCard extends BaseComponent {
                     font-size: 14px;
                 }
 
-                /* 宿主 data-layout-single-column 由 MutationObserver 与 body.layout-single-column 同步（:host-context 在 Shadow 中不可靠） */
+                /* 宿主 data-layout-single-column 由 BaseComponent._attachLayoutSingleColumnObserver 与 body 同步 */
                 :host([data-layout-single-column]) .article-toolbar {
                     flex-direction: column;
                     align-items: stretch;
