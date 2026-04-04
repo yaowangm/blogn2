@@ -26,46 +26,6 @@ def get_base_url() -> str:
     return os.getenv('BASE_URL', 'http://localhost:8000')
 
 
-def get_app_environment() -> str:
-    """
-    获取应用环境
-    
-    Returns:
-        str: 应用环境，从环境变量APP_ENV读取，默认为development
-    """
-    return os.getenv('APP_ENV', 'development')
-
-
-def is_production() -> bool:
-    """
-    检查是否为生产环境
-    
-    Returns:
-        bool: 如果是生产环境返回True，否则返回False
-    """
-    return get_app_environment().lower() == "production"
-
-
-def is_development() -> bool:
-    """
-    检查是否为开发环境
-    
-    Returns:
-        bool: 如果是开发环境返回True，否则返回False
-    """
-    return get_app_environment().lower() == "development"
-
-
-def is_testing() -> bool:
-    """
-    检查是否为测试环境
-    
-    Returns:
-        bool: 如果是测试环境返回True，否则返回False
-    """
-    return get_app_environment().lower() == "testing"
-
-
 def get_blog_posts_page_size() -> int:
     """
     获取博客文章列表每页显示数量
@@ -171,7 +131,21 @@ def get_smtp_password() -> Optional[str]:
     return v or None
 
 
+_UVICORN_LOG_LEVELS = frozenset(
+    ("critical", "error", "warning", "info", "debug", "trace")
+)
 
+
+def get_uvicorn_log_level() -> str:
+    """
+    Uvicorn 的 log_level 参数（与 ``uvicorn --log-level`` 一致）。
+
+    读取环境变量 ``LOG_LEVEL``（大小写不敏感）。未设置或无法识别时返回 ``info``。
+    """
+    raw = os.getenv("LOG_LEVEL", "info").strip().lower()
+    if raw in _UVICORN_LOG_LEVELS:
+        return raw
+    return "info"
 
 
 def validate_app_config() -> dict:
@@ -183,9 +157,8 @@ def validate_app_config() -> dict:
     """
     config_file = get_config_file_path()
     config_info = {
-        "app_env": get_app_environment(),
         "debug": os.getenv('DEBUG', 'true').lower() == 'true',
-        "log_level": os.getenv('LOG_LEVEL', 'INFO'),
+        "log_level": get_uvicorn_log_level(),
         "base_url": get_base_url(),
         "blog_posts_page_size": get_blog_posts_page_size(),
         "max_attachments_per_article": get_max_attachments_per_article(),

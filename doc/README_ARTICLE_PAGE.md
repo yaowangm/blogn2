@@ -28,6 +28,7 @@
 - 显示文章标题、作者、发布时间、更新时间、博客名称、点击数、评论数
 - 响应式布局，支持不同屏幕尺寸
 - 自动从URL获取文章ID并加载数据
+- **单列模式**：与博客页一致，当 `body` 带有 `layout-single-column` 时，工具栏按钮纵向排列；宿主通过 `BaseComponent._attachLayoutSingleColumnObserver()` 同步 `data-layout-single-column`，在 Shadow 中用 `:host([data-layout-single-column])` 控制样式
 
 #### article-content-card
 - 显示文章的完整内容

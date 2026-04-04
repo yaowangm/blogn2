@@ -10,6 +10,8 @@ import os
 # 添加src目录到Python路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
+from config.app import get_uvicorn_log_level
+
 if __name__ == "__main__":
     print("🚀 启动 BlogN2 FastAPI 应用...")
     print("📍 访问地址:")
@@ -28,6 +30,6 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8000,
         reload=True,
-        log_level="info",
+        log_level=get_uvicorn_log_level(),
         access_log=False  # 关闭HTTP请求日志
     ) 

@@ -611,6 +611,102 @@ async def clear_blog_messages_cache():
             logger.debug("清除所有留言相关缓存: blog:messages:*")
 
 
+async def invalidate_project_post_list_caches(
+    project_id: int, owner_user_id: Optional[int] = None
+) -> None:
+    """
+    某博客下文章列表/数量变化后失效缓存（含分页、分类、详情、统计、RSS、全站最新文章等）。
+    避免 N 分钟内列表仍为旧数据。
+    """
+    if not cache_settings.enable_cache:
+        return
+    try:
+        await cache_manager.initialize()
+    except Exception as e:
+        logger.warning("缓存未初始化，跳过 project 文章相关失效: %s", e)
+        return
+    if not cache_manager.is_available():
+        return
+
+    patterns = [
+        f"project:posts:{project_id}:*",
+        f"project:detail:{project_id}",
+        f"project:stats:{project_id}",
+        f"project:rss:{project_id}",
+        f"project:categories:{project_id}",
+        "blog:recent:list:*",
+        "blog:list:*",
+        "rss:site*",
+        f"rss:blog:{project_id}*",
+    ]
+    if owner_user_id is not None:
+        patterns.append(f"user:projects:{owner_user_id}")
+
+    for pattern in patterns:
+        try:
+            await cache_manager.clear_pattern(pattern)
+        except Exception as e:
+            logger.warning("清除缓存模式失败 %s: %s", pattern, e)
+
+
+async def invalidate_project_recent_comments_cache(project_id: int) -> None:
+    """评论增减后：博客「最近评论」及依赖评论计数的 project 详情/统计缓存。"""
+    if not cache_settings.enable_cache:
+        return
+    try:
+        await cache_manager.initialize()
+    except Exception as e:
+        logger.warning("缓存未初始化，跳过 project 评论相关失效: %s", e)
+        return
+    if not cache_manager.is_available():
+        return
+    for pattern in (
+        f"project:comments:{project_id}:*",
+        f"project:detail:{project_id}",
+        f"project:stats:{project_id}",
+    ):
+        try:
+            await cache_manager.clear_pattern(pattern)
+        except Exception as e:
+            logger.warning("清除缓存模式失败 %s: %s", pattern, e)
+
+
+async def invalidate_project_categories_cache(project_id: int) -> None:
+    """分类增删改后，失效该博客分类列表缓存。"""
+    if not cache_settings.enable_cache:
+        return
+    try:
+        await cache_manager.initialize()
+    except Exception as e:
+        logger.warning("缓存未初始化，跳过 project 分类缓存失效: %s", e)
+        return
+    if not cache_manager.is_available():
+        return
+    try:
+        await cache_manager.clear_pattern(f"project:categories:{project_id}")
+    except Exception as e:
+        logger.warning("清除缓存模式失败 project:categories: %s", e)
+
+
+async def invalidate_blog_directory_caches(user_id: int) -> None:
+    """新建博客等：全站博客列表、元数据与用户博客入口缓存。"""
+    if not cache_settings.enable_cache:
+        return
+    try:
+        await cache_manager.initialize()
+    except Exception as e:
+        logger.warning("缓存未初始化，跳过全站博客目录缓存失效: %s", e)
+        return
+    if not cache_manager.is_available():
+        return
+    patterns = ["blog:list:*", "metadata:*", f"user:projects:{user_id}"]
+    for pattern in patterns:
+        try:
+            await cache_manager.clear_pattern(pattern)
+        except Exception as e:
+            logger.warning("清除缓存模式失败 %s: %s", pattern, e)
+
+
 # ==================== 缓存统计 ====================
 
 class CacheStats:

@@ -13,9 +13,14 @@ class BlogHeaderCard extends BaseComponent {
     }
 
     connectedCallback() {
+        this._attachLayoutSingleColumnObserver();
         this.projectId = this.getProjectIdFromUrl();
         this.render();
         this.loadData();
+    }
+
+    disconnectedCallback() {
+        this._detachLayoutSingleColumnObserver();
     }
 
     getProjectIdFromUrl() {
@@ -133,9 +138,12 @@ class BlogHeaderCard extends BaseComponent {
                 .blog-title { margin: 0 0 var(--spacing-4) 0; font-size: var(--font-size-3xl); font-weight: 700; color: var(--gray-800); }
                 .blog-description { margin: 0; font-size: var(--font-size-lg); color: var(--gray-600); opacity: 0.9; line-height: 1.6; max-width: 650px; margin-left: auto; margin-right: auto; }
                 .blog-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--spacing-4); margin-bottom: var(--spacing-6); }
-                .stat-item { text-align: center; padding: var(--spacing-4); background: var(--gray-50); border-radius: var(--radius-lg); border: 1px solid var(--gray-200); }
-                .stat-number { font-size: var(--font-size-2xl); font-weight: 700; color: var(--primary-color); margin: 0 0 var(--spacing-2) 0; }
-                .stat-label { font-size: var(--font-size-sm); color: var(--gray-600); margin: 0; text-transform: uppercase; letter-spacing: 0.05em; }
+                :host([data-layout-single-column]) .blog-stats {
+                    grid-template-columns: 1fr;
+                }
+                .stat-item { text-align: center; padding: var(--spacing-4); background: var(--gray-50); border-radius: var(--radius-lg); border: 1px solid var(--gray-200); line-height: 1.4; }
+                .stat-label { display: inline; font-size: var(--font-size-sm); font-weight: 500; color: var(--gray-600); margin: 0; }
+                .stat-number { display: inline; font-size: var(--font-size-sm); font-weight: 700; color: var(--primary-color); margin: 0; }
                 .blog-meta { display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-4) var(--spacing-6); background: var(--gray-50); border-radius: var(--radius-lg); }
                 .meta-items-left { 
                     display: flex; 
@@ -147,6 +155,25 @@ class BlogHeaderCard extends BaseComponent {
                 .meta-subscription-right { 
                     display: flex; 
                     align-items: center; 
+                }
+                :host([data-layout-single-column]) .blog-meta {
+                    flex-direction: column;
+                    align-items: stretch;
+                    justify-content: flex-start;
+                    gap: var(--spacing-4);
+                }
+                :host([data-layout-single-column]) .meta-items-left {
+                    justify-content: center;
+                    flex-wrap: nowrap;
+                    gap: var(--spacing-4);
+                }
+                :host([data-layout-single-column]) .meta-subscription-right {
+                    justify-content: center;
+                    flex-wrap: nowrap;
+                    gap: var(--spacing-2);
+                }
+                :host([data-layout-single-column]) .meta-subscription-right .edit-blog-button {
+                    margin-right: 0;
                 }
                 .subscription-section { 
                     margin-top: var(--spacing-4); 
@@ -280,20 +307,16 @@ class BlogHeaderCard extends BaseComponent {
             <div class="card-body">
                 <div class="blog-stats">
                     <div class="stat-item">
-                        <div class="stat-number">${this.blogData.recordcount || 0}</div>
-                        <div class="stat-label">文章</div>
+                        <span class="stat-label">文章</span><span class="stat-number">${this.blogData.recordcount || 0}</span>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-number">${this.blogData.commentcount || 0}</div>
-                        <div class="stat-label">评论</div>
+                        <span class="stat-label">评论</span><span class="stat-number">${this.blogData.commentcount || 0}</span>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-number">${this.blogData.accesscount || 0}</div>
-                        <div class="stat-label">访问</div>
+                        <span class="stat-label">访问</span><span class="stat-number">${this.blogData.accesscount || 0}</span>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-number">${this.getDaysSinceCreation()}</div>
-                        <div class="stat-label">天</div>
+                        <span class="stat-label">历史</span><span class="stat-number">${this.getDaysSinceCreation()}</span><span class="stat-label">天</span>
                     </div>
                 </div>
                 <div class="blog-meta">

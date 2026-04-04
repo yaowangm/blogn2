@@ -59,7 +59,6 @@ CACHE_REDIS_PASSWORD=
 MODEL_CACHE_DIR=/app/.cache/models
 
 # 应用配置
-APP_ENV=production
 BASE_URL=https://yourdomain.com
 SECRET_KEY=your-super-secret-jwt-key-change-in-production
 
@@ -331,7 +330,6 @@ print('模型加载成功！')
 - 确保模型缓存目录有足够的磁盘空间（至少 500MB）
 
 #### 应用配置
-- `APP_ENV`: 应用环境（`development`/`production`/`testing`）
 - `BASE_URL`: 应用基础 URL（用于生成链接）
 - `SECRET_KEY`: JWT 密钥（生产环境必须修改）
 - `LOG_LEVEL`: 日志级别（`debug`/`info`/`warning`/`error`，默认：`warning`）

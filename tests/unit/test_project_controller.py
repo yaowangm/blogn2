@@ -7,7 +7,12 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import HTTPException
-from src.controllers.project import get_project, get_project_posts, get_project_recent_comments
+from src.controllers.project import (
+    get_project,
+    get_project_posts,
+    get_project_recent_comments,
+    admin_recalculate_all_project_updatetimes,
+)
 
 
 class TestProjectController:
@@ -169,3 +174,32 @@ class TestProjectController:
 
             # 验证结果
             assert isinstance(result, list)
+
+    @pytest.mark.asyncio
+    async def test_admin_recalculate_updatetimes_success(self, mock_session):
+        """管理员重新计算所有博客更新时间时调用 sync_all_projects_updatetime"""
+        admin_user = {"id": 1, "state": 10, "role": "admin"}
+        with patch("src.controllers.project.ProjectRepository") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_repo.sync_all_projects_updatetime = AsyncMock(return_value=3)
+            mock_repo_class.return_value = mock_repo
+
+            with patch("src.utils.cache.cache_manager") as mock_cm:
+                mock_cm.clear_pattern = AsyncMock(return_value=True)
+                result = await admin_recalculate_all_project_updatetimes(
+                    session=mock_session, current_user=admin_user
+                )
+
+        assert result["project_count"] == 3
+        assert "重新计算" in result["message"]
+        mock_repo.sync_all_projects_updatetime.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_admin_recalculate_updatetimes_forbidden_for_user(self, mock_session):
+        """非管理员调用重新计算应返回 403"""
+        normal_user = {"id": 2, "state": 1, "role": "user"}
+        with pytest.raises(HTTPException) as exc_info:
+            await admin_recalculate_all_project_updatetimes(
+                session=mock_session, current_user=normal_user
+            )
+        assert exc_info.value.status_code == 403

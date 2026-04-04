@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Dict, Any, Optional
 from sqlmodel.ext.asyncio.session import AsyncSession
-from datetime import datetime
 
 from src.database import get_async_session
 from src.repositories.project_repository import ProjectRepository
@@ -14,7 +13,8 @@ from src.models.folder import Folder
 from src.utils.cache import (
     cache_project_detail, cache_project_posts, cache_project_comments,
     cache_project_categories, cache_project_external_links, cache_project_rss,
-    cache_project_stats, cache_user_projects
+    cache_project_stats, cache_user_projects, invalidate_project_post_list_caches,
+    invalidate_project_categories_cache, invalidate_blog_directory_caches,
 )
 from src.utils.auth_dependencies import get_current_user, get_optional_current_user
 from src.utils.permission_manager import permission_manager
@@ -215,44 +215,6 @@ async def get_project_recent_comments(
     
     return comments_data
 
-@router.get("/projects/{project_id}/categories", response_model=List[Dict[str, Any]])
-@cache_project_categories()  # 使用环境变量配置的缓存时间
-async def get_project_categories(
-    project_id: int,
-    session: AsyncSession = Depends(get_async_session)
-):
-    """
-    获取指定项目的分类列表
-    
-    Args:
-        project_id: 项目ID
-        session: 数据库会话
-        
-    Returns:
-        List[Dict[str, Any]]: 分类列表
-    """
-    folder_repo = FolderRepository(session)
-    
-    try:
-        # 从数据库获取项目的文件夹列表
-        folders = await folder_repo.get_by_project_id(project_id)
-        
-        # 转换为API响应格式
-        categories = []
-        for folder in folders:
-            categories.append({
-                "id": folder.id,
-                "name": folder.name,
-                "count": folder.recordcount or 0,  # 使用folders表中的recordcount字段
-                "color": "#3b82f6"  # 默认颜色
-            })
-        
-        return categories
-        
-    except Exception as e:
-        # 如果获取失败，返回空列表
-        return []
-
 @router.get("/projects/{project_id}/external-links", response_model=List[Dict[str, Any]])
 @cache_project_external_links()  # 使用环境变量配置的缓存时间
 async def get_project_external_links(
@@ -447,17 +409,19 @@ async def create_project(
             from src.services.global_stats_service import GlobalStatsService
             stats_service = GlobalStatsService(session)
             await stats_service.update_project_count(increment=True)
-            
-            return {
+
+            payload = {
                 "id": created_project.id,
                 "name": created_project.name,
                 "comment": created_project.comment,
                 "userid": created_project.userid,
                 "createtime": created_project.createtime,
                 "updatetime": created_project.updatetime,
-                "state": created_project.state
+                "state": created_project.state,
             }
-            
+        await invalidate_blog_directory_caches(userid)
+        return payload
+
     except Exception as e:
         # 事务会自动回滚
         raise HTTPException(status_code=500, detail=f"创建博客失败: {str(e)}")
@@ -521,7 +485,8 @@ async def create_post(
         # 计算文章内容的字节长度
         comment_content = post_data["comment"]
         itemsize = len(comment_content.encode('utf-8'))
-        
+
+        published_at = TimeUtils.now_utc()
         new_post = ProjectItem(
             projectid=project_id,
             name=post_data["name"],
@@ -536,9 +501,9 @@ async def create_post(
             folderid=post_data.get("folderid"),
             status=post_data.get("status", 1),
             allowpost=post_data.get("allowpost", 1),
-            createtime=TimeUtils.now_utc(),
-            updatetime=TimeUtils.now_utc(),
-            lastmodifytime=TimeUtils.now_utc()
+            createtime=published_at,
+            updatetime=published_at,
+            lastmodifytime=None,
         )
         
         # 处理临时文件移动
@@ -662,7 +627,9 @@ async def create_post(
         
         # 提交事务（所有操作在同一个事务中）
         await session.commit()
-        
+
+        await invalidate_project_post_list_caches(project_id, project.userid)
+
         # 广播新文章给所有订阅者
         try:
             from src.services.broadcast_service import BroadcastService
@@ -738,15 +705,18 @@ async def update_project(
         if not update_data:
             raise HTTPException(status_code=400, detail="没有提供要更新的数据")
         
-        # 设置更新时间
-        update_data["updatetime"] = datetime.now()
-        
-        # 更新项目
+        # 更新项目（project.updatetime 表示博客内容层面的「最后更新」，由已发布文章同步）
         updated_project = await project_repo.update_project(project_id, update_data)
         
         if not updated_project:
             raise HTTPException(status_code=500, detail="更新项目失败")
-        
+
+        await project_repo.sync_updatetime_from_latest_published_article(project_id)
+        await session.commit()
+        updated_project = await project_repo.get_by_id(project_id)
+
+        await invalidate_project_post_list_caches(project_id, project.userid)
+
         return {
             "id": updated_project.id,
             "name": updated_project.name,
@@ -761,7 +731,8 @@ async def update_project(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"更新项目失败: {str(e)}")
 
-@router.get("/projects/{project_id}/categories")
+@router.get("/projects/{project_id}/categories", response_model=List[Dict[str, Any]])
+@cache_project_categories()  # 使用环境变量配置的缓存时间
 async def get_project_categories(
     project_id: int,
     session: AsyncSession = Depends(get_async_session)
@@ -854,7 +825,9 @@ async def create_category(
         session.add(folder)
         await session.commit()
         await session.refresh(folder)
-        
+
+        await invalidate_project_categories_cache(project_id)
+
         return {
             "id": folder.id,
             "name": folder.name,
@@ -912,7 +885,9 @@ async def update_category(
         folder.name = category_data["name"].strip()
         await session.commit()
         await session.refresh(folder)
-        
+
+        await invalidate_project_categories_cache(project_id)
+
         return {
             "id": folder.id,
             "name": folder.name,
@@ -972,7 +947,10 @@ async def delete_category(
         # 删除分类
         session.delete(folder)
         await session.commit()
-        
+
+        await invalidate_project_categories_cache(project_id)
+        await invalidate_project_post_list_caches(project_id, project.userid)
+
         # 返回删除结果，包含处理的文章数量
         message = "分类删除成功"
         if updated_articles_count > 0:
@@ -988,3 +966,30 @@ async def delete_category(
     except Exception as e:
         await session.rollback()
         raise HTTPException(status_code=500, detail=f"删除分类失败: {str(e)}")
+
+
+@router.post("/admin/projects/recalculate-updatetimes", response_model=Dict[str, Any])
+async def admin_recalculate_all_project_updatetimes(
+    session: AsyncSession = Depends(get_async_session),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    重新计算所有博客的 project.updatetime（GREATEST(最新发文 createtime, 最新修改 lastmodifytime)，不用文章 updatetime）。
+    仅管理员可调用。
+    """
+    if not permission_manager.can_manage_system(current_user):
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    try:
+        project_repo = ProjectRepository(session)
+        n = await project_repo.sync_all_projects_updatetime()
+        try:
+            from src.utils.cache import cache_manager
+            await cache_manager.clear_pattern("project:detail:*")
+        except Exception:
+            pass
+        return {"message": "已重新计算所有博客的更新时间", "project_count": n}
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=f"重新计算失败: {str(e)}")

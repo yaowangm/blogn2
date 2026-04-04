@@ -171,11 +171,11 @@ class MessagesListCard extends BaseComponent {
     attachDeleteListeners() {
         const deleteButtons = this.shadowRoot.querySelectorAll('.delete-button');
         deleteButtons.forEach(button => {
-            button.addEventListener('click', (e) => {
+            button.addEventListener('click', async (e) => {
                 e.stopPropagation(); // 防止事件冒泡
                 const messageId = button.getAttribute('data-message-id');
                 const isMainPost = button.getAttribute('data-is-main') === 'true';
-                this.showDeleteConfirmation(messageId, isMainPost);
+                await this.showDeleteConfirmation(messageId, isMainPost);
             });
         });
     }
@@ -183,15 +183,19 @@ class MessagesListCard extends BaseComponent {
     /**
      * 显示删除确认对话框
      */
-    showDeleteConfirmation(messageId, isMainPost) {
-        const messageType = isMainPost ? '主贴' : '跟贴';
-        const confirmMessage = isMainPost 
+    async showDeleteConfirmation(messageId, isMainPost) {
+        const confirmMessage = isMainPost
             ? `确定要删除这个主贴吗？\n\n删除主贴将同时删除所有相关的跟贴，此操作不可撤销！`
             : `确定要删除这条跟贴吗？\n\n此操作不可撤销！`;
-        
-        if (confirm(confirmMessage)) {
-            this.deleteMessage(messageId);
+
+        if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
+            title: isMainPost ? '删除主贴' : '删除跟贴',
+            message: confirmMessage,
+            danger: true,
+        })) {
+            return;
         }
+        this.deleteMessage(messageId);
     }
 
     /**

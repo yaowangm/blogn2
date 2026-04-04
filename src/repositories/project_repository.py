@@ -1,11 +1,38 @@
 from sqlmodel import select, func
+from sqlalchemy import or_, update
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional
-from datetime import datetime, timedelta
 
 from src.models.project import Project
 from src.models.user import User
-from src.utils.time_utils import TimeUtils
+from src.models.project_item import ProjectItem
+from src.constants import ArticleStatus
+
+
+def _blog_updatetime_from_articles_expr():
+    """
+    与当前 project 行相关：可见文章上 MAX(createtime) 与 MAX(lastmodifytime) 取 GREATEST；
+    最外层 COALESCE(..., project.createtime) 用于「没有任何一条可见文章」时（空博客、或
+    全部文章都不满足 status/itemtype 条件），而不是说「文章没填 createtime」。
+    正常发表的文章都会带 createtime；若无可见行，两个 MAX 在 SQL 里均为 NULL，GREATEST
+    亦为 NULL，此时用博客自身的创建时间作为 project.updatetime。不使用 projectitem.updatetime。
+    """
+    visible = (
+        ProjectItem.projectid == Project.id,
+        ProjectItem.status == 1,
+        or_(
+            ProjectItem.itemtype.is_(None),
+            ProjectItem.itemtype != ArticleStatus.DELETED,
+        ),
+    )
+    max_createtime = (
+        select(func.max(ProjectItem.createtime)).where(*visible).scalar_subquery()
+    )
+    max_lastmodify = (
+        select(func.max(ProjectItem.lastmodifytime)).where(*visible).scalar_subquery()
+    )
+    return func.coalesce(func.greatest(max_createtime, max_lastmodify), Project.createtime)
+
 
 class ProjectRepository:
     """Project数据访问层"""
@@ -76,6 +103,31 @@ class ProjectRepository:
         # 不在这里commit，由外层事务管理器控制
         await self.session.flush()  # 刷新以获取生成的ID
         return project
+
+    async def sync_updatetime_from_latest_published_article(
+        self, project_id: int, project: Optional[Project] = None
+    ) -> None:
+        """
+        一条 UPDATE：GREATEST(MAX(可见 createtime), MAX(可见 lastmodifytime))，再 COALESCE
+        到 project.createtime（仅当该博客下没有任何「可见」文章时两个 MAX 全为 NULL）。
+        不使用 projectitem.updatetime。
+        """
+        rhs = _blog_updatetime_from_articles_expr()
+        stmt = (
+            update(Project)
+            .where(Project.id == project_id)
+            .values(updatetime=rhs)
+        )
+        await self.session.execute(stmt)
+        if project is not None:
+            await self.session.refresh(project, attribute_names=["updatetime"])
+
+    async def sync_all_projects_updatetime(self) -> int:
+        """一条 UPDATE 重算所有博客的 updatetime，并 commit。"""
+        stmt = update(Project).values(updatetime=_blog_updatetime_from_articles_expr())
+        result = await self.session.execute(stmt)
+        await self.session.commit()
+        return result.rowcount or 0
     
     async def increment_record_count(self, project_id: int) -> None:
         """增加项目的记录数"""
@@ -85,8 +137,7 @@ class ProjectRepository:
         
         if project:
             project.recordcount = (project.recordcount or 0) + 1
-            project.updatetime = TimeUtils.now_utc()
-            self.session.add(project)
+            await self.sync_updatetime_from_latest_published_article(project_id, project)
     
     async def decrement_record_count(self, project_id: int) -> None:
         """减少项目的记录数"""
@@ -96,8 +147,7 @@ class ProjectRepository:
         
         if project:
             project.recordcount = max((project.recordcount or 0) - 1, 0)
-            project.updatetime = TimeUtils.now_utc()
-            self.session.add(project)
+            await self.sync_updatetime_from_latest_published_article(project_id, project)
     
     async def increment_comment_count(self, project_id: int) -> bool:
         """
@@ -112,7 +162,6 @@ class ProjectRepository:
         project = await self.get_by_id(project_id)
         if project:
             project.commentcount = (project.commentcount or 0) + 1
-            project.updatetime = TimeUtils.now_utc()
             await self.session.commit()
             await self.session.refresh(project)
             return True
@@ -131,7 +180,6 @@ class ProjectRepository:
         project = await self.get_by_id(project_id)
         if project and project.commentcount > 0:
             project.commentcount -= 1
-            project.updatetime = TimeUtils.now_utc()
             await self.session.commit()
             await self.session.refresh(project)
             return True
@@ -184,7 +232,6 @@ class ProjectRepository:
             project = await self.get_by_id(project_id)
             if project:
                 project.accesscount = (project.accesscount or 0) + 1
-                project.updatetime = TimeUtils.now_utc()
                 self.session.add(project)
                 await self.session.commit()
                 return True

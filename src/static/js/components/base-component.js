@@ -7,6 +7,7 @@
  * - 安全的内容过滤和验证
  * - 统一的加载和错误状态显示
  * - 项目ID和文章ID的获取逻辑
+ * - 单列布局同步（`_attachLayoutSingleColumnObserver`，与 `body.layout-single-column` 一致）
  * 
  * 所有自定义Web组件都应该继承此类以获得基础功能。
  */
@@ -434,6 +435,37 @@ class BaseComponent extends HTMLElement {
      */
     stripMarkdown(text) {
         return HtmlUtils.stripMarkdown(text);
+    }
+
+    /**
+     * 与 `sidebar-collapse` 同步整页单列模式：`document.body` 含 `layout-single-column` 时
+     * 在宿主上设置 `data-layout-single-column`，供 Shadow 内 `:host([...])` 使用（`:host-context` 在 Shadow 中不可靠）。
+     * 在子类 `connectedCallback` 开头调用；在 `disconnectedCallback` 中调用 {@link BaseComponent#_detachLayoutSingleColumnObserver}。
+     */
+    _attachLayoutSingleColumnObserver() {
+        if (this._layoutBodyObserver) {
+            return;
+        }
+        const sync = () => {
+            if (document.body.classList.contains('layout-single-column')) {
+                this.setAttribute('data-layout-single-column', '');
+            } else {
+                this.removeAttribute('data-layout-single-column');
+            }
+        };
+        this._layoutBodyObserver = new MutationObserver(sync);
+        this._layoutBodyObserver.observe(document.body, {
+            attributes: true,
+            attributeFilter: ['class'],
+        });
+        sync();
+    }
+
+    _detachLayoutSingleColumnObserver() {
+        if (this._layoutBodyObserver) {
+            this._layoutBodyObserver.disconnect();
+            this._layoutBodyObserver = null;
+        }
     }
 }
 

@@ -98,7 +98,10 @@ class SubscriptionsListCard extends BaseComponent {
     }
 
     async unsubscribeFromBlog(relationId, projectId, projectName) {
-        if (!confirm(`确定要取消订阅博客"${projectName}"吗？`)) {
+        if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
+            title: '取消订阅',
+            message: `确定要取消订阅博客「${projectName}」吗？`,
+        })) {
             return;
         }
 

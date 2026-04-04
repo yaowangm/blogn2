@@ -129,7 +129,6 @@ CACHE_REDIS_PORT=6379
 CACHE_REDIS_PASSWORD=
 
 # 应用配置
-APP_ENV=development
 DEBUG=true
 SECRET_KEY=your-super-secret-jwt-key-change-in-production
 

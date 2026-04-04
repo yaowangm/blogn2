@@ -175,10 +175,6 @@ sys.exit(0 if result == 0 else 1)
     echo "✅ Redis连接可用"
 fi
 
-# 显示配置信息（不显示敏感信息）
-echo "📋 配置信息:"
-echo "  - 应用环境: ${APP_ENV:-production}"
-
 # 安全地显示数据库连接信息（隐藏密码）
 if [ -n "$DATABASE_URL" ]; then
     # 使用 Python 安全地隐藏密码（处理密码中包含 @ 的情况）

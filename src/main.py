@@ -44,6 +44,7 @@ from src.config.cache import cache_settings, validate_cache_config
 from src.config.utils import get_config_file_path
 
 # 导入工具类
+from src.config.app import get_uvicorn_log_level
 from src.utils.middleware_handlers import MiddlewareHandler
 from src.utils.api_handlers import APIHandler
 from src.utils.page_handlers import PageHandler
@@ -145,6 +146,6 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8000,
         reload=True,
-        log_level="info",
+        log_level=get_uvicorn_log_level(),
         access_log=False  # 关闭HTTP请求日志
     ) 

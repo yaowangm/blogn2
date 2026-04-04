@@ -1,8 +1,16 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
-from sqlmodel import select, func
-from src.repositories.project_repository import ProjectRepository
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+from sqlalchemy.dialects import postgresql
+from sqlalchemy import update
+
+from src.repositories.project_repository import (
+    ProjectRepository,
+    _blog_updatetime_from_articles_expr,
+)
 from src.models.project import Project
+from src.models.project_item import ProjectItem
+from src.constants import ArticleStatus
 
 
 class TestProjectRepository:
@@ -133,4 +141,76 @@ class TestProjectRepository:
         
         assert len(result) == 1
         assert result[0] == sample_project
-        mock_session.exec.assert_called_once() 
+        mock_session.exec.assert_called_once()
+
+    @pytest.mark.unit
+    def test_sync_updatetime_sql_uses_max_create_max_modify_greatest(self):
+        """blog updatetime = GREATEST(MAX(createtime), MAX(lastmodifytime))，不使用 projectitem.updatetime"""
+        rhs = _blog_updatetime_from_articles_expr()
+        stmt = update(Project).where(Project.id == 7).values(updatetime=rhs)
+        compiled = str(
+            stmt.compile(
+                dialect=postgresql.dialect(),
+                compile_kwargs={"literal_binds": False},
+            )
+        ).lower()
+        assert "greatest" in compiled
+        assert compiled.count("max(") >= 2
+        assert "lastmodifytime" in compiled
+        assert "projectitem.updatetime" not in compiled
+        assert "is null" in compiled
+        assert "update project" in compiled
+
+    @pytest.mark.unit
+    async def test_sync_updatetime_executes_update_and_refreshes_when_project_passed(
+        self, project_repository, mock_session
+    ):
+        mock_session.execute = AsyncMock(return_value=MagicMock(rowcount=1))
+        mock_session.refresh = AsyncMock()
+
+        project = Project(id=1, name="blog", userid=1)
+        project.createtime = datetime(2020, 1, 1)
+
+        await project_repository.sync_updatetime_from_latest_published_article(1, project)
+
+        mock_session.execute.assert_awaited_once()
+        mock_session.refresh.assert_awaited_once_with(
+            project, attribute_names=["updatetime"]
+        )
+
+    @pytest.mark.unit
+    async def test_sync_updatetime_executes_update_only_when_no_project_instance(
+        self, project_repository, mock_session
+    ):
+        mock_session.execute = AsyncMock(return_value=MagicMock(rowcount=1))
+
+        await project_repository.sync_updatetime_from_latest_published_article(1)
+
+        mock_session.execute.assert_awaited_once()
+        mock_session.refresh.assert_not_called()
+
+    @pytest.mark.unit
+    async def test_sync_updatetime_no_refresh_when_project_row_missing(
+        self, project_repository, mock_session
+    ):
+        """仅传 project_id 时只发 UPDATE，不 refresh"""
+        mock_session.execute = AsyncMock(return_value=MagicMock(rowcount=0))
+
+        await project_repository.sync_updatetime_from_latest_published_article(99)
+
+        mock_session.execute.assert_awaited_once()
+        mock_session.refresh.assert_not_called()
+
+    @pytest.mark.unit
+    async def test_sync_all_projects_updatetime_one_update_and_commit(
+        self, project_repository, mock_session
+    ):
+        mock_result = MagicMock()
+        mock_result.rowcount = 42
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        n = await project_repository.sync_all_projects_updatetime()
+
+        assert n == 42
+        mock_session.execute.assert_awaited_once()
+        mock_session.commit.assert_awaited_once()

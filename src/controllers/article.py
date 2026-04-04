@@ -11,7 +11,9 @@
 所有接口都支持缓存以提高性能。
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Body
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Body, Response
 from typing import List, Dict, Any, Optional
 from sqlmodel.ext.asyncio.session import AsyncSession
 from datetime import datetime
@@ -23,7 +25,14 @@ from src.repositories.project_repository import ProjectRepository
 from src.repositories.post_repository import PostRepository
 from src.repositories.attachment_repository import AttachmentRepository
 from src.models.post import Post
-from src.utils.cache import cache_article_detail, cache_article_comments, cache_article_attachments, clear_article_detail_cache, clear_article_comments_cache
+from src.utils.cache import (
+    cache_article_detail,
+    cache_article_comments,
+    cache_article_attachments,
+    clear_article_detail_cache,
+    clear_article_comments_cache,
+    invalidate_project_post_list_caches,
+)
 from src.utils.auth_dependencies import get_current_user, get_optional_current_user
 from src.utils.permission_manager import permission_manager
 from src.utils.permission_decorators import require_auth
@@ -31,6 +40,15 @@ from src.utils.comment_handlers import CommentHandler
 from src.utils.time_utils import TimeUtils
 from src.constants import ArticleStatus, ErrorMessages
 from src.utils.file_utils import get_temp_dir
+from src.utils.article_hit_cookie import (
+    COOKIE_NAME,
+    build_cookie_value,
+    cookie_max_age,
+    cookie_secure,
+    parse_seen_article_ids,
+)
+
+logger = logging.getLogger(__name__)
 
 # 创建文章API路由器
 router = APIRouter(tags=["文章管理"])
@@ -40,6 +58,8 @@ router = APIRouter(tags=["文章管理"])
 @cache_article_detail(ttl=1800)  # 缓存30分钟
 async def get_article_detail(
     article_id: int,
+    request: Request,
+    response: Response,
     page: int = 1,
     per_page: int = 10,
     session: AsyncSession = Depends(get_async_session),
@@ -78,15 +98,41 @@ async def get_article_detail(
         if article.itemtype == ArticleStatus.DELETED and not permission_manager.can_manage_system(current_user):
             raise HTTPException(status_code=404, detail=ErrorMessages.ARTICLE_DELETED)
         
-        # 更新文章访问计数（异步执行，不影响响应速度）
-        try:
-            await project_item_repo.increment_access_count(article_id)
-            # 同时更新项目的访问计数
-            if article.projectid:
-                await project_repo.increment_access_count(article.projectid)
-        except Exception as e:
-            # 访问计数更新失败不影响文章查看，静默处理
-            pass
+        # 访问计数：同浏览器、短 TTL 内同一文章只计一次（签名 Cookie，无服务端浏览状态）
+        seen = parse_seen_article_ids(request.cookies.get(COOKIE_NAME))
+        if seen is None:
+            seen = set()
+        should_count = article_id not in seen
+        if should_count:
+            counted_ok = False
+            try:
+                await project_item_repo.increment_access_count(article_id)
+                if article.projectid:
+                    await project_repo.increment_access_count(article.projectid)
+                counted_ok = True
+            except Exception:
+                logger.warning(
+                    "访问量递增失败 article_id=%s project_id=%s",
+                    article_id,
+                    article.projectid,
+                    exc_info=True,
+                )
+            if counted_ok:
+                seen.add(article_id)
+                response.set_cookie(
+                    key=COOKIE_NAME,
+                    value=build_cookie_value(seen),
+                    max_age=cookie_max_age(),
+                    path="/",
+                    httponly=True,
+                    samesite="lax",
+                    secure=cookie_secure(),
+                )
+                hits_display = (article.accesscount or 0) + 1
+            else:
+                hits_display = article.accesscount or 0
+        else:
+            hits_display = article.accesscount or 0
         
         # 获取作者信息
         author = None
@@ -141,7 +187,7 @@ async def get_article_detail(
                 "name": category.name if category else "未分类"
             },
             "allowpost": article.allowpost,  # 评论设置
-            "hits": article.accesscount or 0,
+            "hits": hits_display,
             "itemsize": article.itemsize or 0,  # 文章长度（字节数）
             "created_at": article.createtime,
             "updated_at": article.updatetime,
@@ -447,10 +493,6 @@ async def update_article(
         import os
         from src.config.app import validate_app_config
         
-        # 计算文章内容长度（字节数）
-        content = article_data.get("comment", "")
-        itemsize = len(content.encode('utf-8')) if content else 0
-        
         # 检查是否需要删除旧图片
         old_attachment = article.attachment
         new_attachment = article_data.get("attachment")
@@ -502,7 +544,29 @@ async def update_article(
         folderid = article_data.get("folderid")
         if folderid is None:
             folderid = 0
-        
+
+        eff_name = article_data["name"] if "name" in article_data else article.name
+        eff_comment = article_data["comment"] if "comment" in article_data else article.comment
+        itemsize = len(eff_comment.encode("utf-8")) if eff_comment else 0
+        if "attachment" in article_data:
+            eff_attachment = article_data["attachment"]
+        else:
+            eff_attachment = article.attachment
+
+        content_changed = (
+            eff_name != article.name
+            or eff_comment != article.comment
+            or (eff_attachment or "") != (article.attachment or "")
+        )
+        if "attachments" in article_data:
+            from src.repositories.attachment_repository import AttachmentRepository
+            att_repo_chk = AttachmentRepository(session)
+            existing_atts = await att_repo_chk.get_by_project_item_id(article_id)
+            old_gallery = sorted((a.linkstr or "") for a in existing_atts)
+            req_list = article_data.get("attachments") or []
+            new_gallery = sorted((item.get("relative_path") or "") for item in req_list)
+            content_changed = content_changed or (old_gallery != new_gallery)
+
         update_data = {
             "name": article_data.get("name"),
             "comment": article_data.get("comment"),
@@ -512,10 +576,12 @@ async def update_article(
             "allowpost": article_data.get("allowpost", 1),
             "attachment": article_data.get("attachment"),
             "itemsize": itemsize,
-            "updatetime": TimeUtils.now_utc(),
-            "lastmodifytime": TimeUtils.now_utc()
         }
-        
+        if content_changed:
+            now_ts = TimeUtils.now_utc()
+            update_data["updatetime"] = now_ts
+            update_data["lastmodifytime"] = now_ts
+
         # 移除None值（但保留folderid=0）
         update_data = {k: v for k, v in update_data.items() if v is not None or k == "folderid"}
         
@@ -599,6 +665,14 @@ async def update_article(
             logger = logging.getLogger(__name__)
             logger.error(f"向量化更新失败: {e}")
         
+        if updated_article.projectid:
+            project_repo = ProjectRepository(session)
+            await project_repo.sync_updatetime_from_latest_published_article(updated_article.projectid)
+            await session.commit()
+            await invalidate_project_post_list_caches(
+                updated_article.projectid, updated_article.userid
+            )
+
         return {"message": "文章更新成功"}
         
     except HTTPException:
@@ -666,11 +740,14 @@ async def delete_article(
         
         # 提交事务
         await session.commit()
-        
+
+        pid, uid = article.projectid, article.userid
         # 失效相关缓存
         await clear_article_detail_cache(article_id)
         await clear_article_comments_cache(article_id)
-        
+        if pid:
+            await invalidate_project_post_list_caches(pid, uid)
+
         return {"message": "文章删除成功"}
         
     except HTTPException:
@@ -713,7 +790,9 @@ async def permanently_delete_article(
         article = await project_item_repo.get_by_id(article_id)
         if not article:
             raise HTTPException(status_code=404, detail="文章不存在")
-        
+
+        post_project_id, post_user_id = article.projectid, article.userid
+
         # 记录文章状态，用于后续统计更新
         was_deleted = article.itemtype == ArticleStatus.DELETED
         
@@ -754,11 +833,13 @@ async def permanently_delete_article(
         
         # 提交事务
         await session.commit()
-        
+
         # 失效相关缓存
         await clear_article_detail_cache(article_id)
         await clear_article_comments_cache(article_id)
-        
+        if post_project_id:
+            await invalidate_project_post_list_caches(post_project_id, post_user_id)
+
         return {"message": "文章已彻底删除"}
         
     except HTTPException:

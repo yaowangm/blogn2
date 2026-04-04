@@ -225,7 +225,11 @@ class ArticleCommentsCard extends BaseComponent {
             (comment.content.length > 10 ? comment.content.substring(0, 10) + '...' : comment.content) : 
             '无内容';
         
-        if (!confirm(`确定要删除这条评论吗？\n\n评论内容预览：${contentPreview}\n\n此操作不可撤销。`)) {
+        if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
+            title: '删除评论',
+            message: `确定要删除这条评论吗？\n\n评论内容预览：${contentPreview}\n\n此操作不可撤销。`,
+            danger: true,
+        })) {
             return;
         }
         

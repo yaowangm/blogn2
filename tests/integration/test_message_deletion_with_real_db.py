@@ -90,6 +90,9 @@ class TestMessageDeletionWithRealDB:
         )
         real_sync_session_with_commit.add(reply2)
         real_sync_session_with_commit.flush()  # 刷新以获取ID，但不提交
+        test_data_tracker.add_message(main_message.id)
+        test_data_tracker.add_message(reply1.id)
+        test_data_tracker.add_message(reply2.id)
         
         # 4. 验证留言已创建
         main_result = real_sync_session_with_commit.exec(
@@ -167,6 +170,8 @@ class TestMessageDeletionWithRealDB:
         )
         real_sync_session_with_commit.add(reply)
         real_sync_session_with_commit.flush()  # 刷新以获取ID，但不提交
+        test_data_tracker.add_message(main_message.id)
+        test_data_tracker.add_message(reply.id)
         
         # 4. 删除跟贴
         response = test_client.delete(f"/api/messages/{reply.id}")

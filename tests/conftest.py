@@ -8,9 +8,9 @@ import asyncio
 import os
 import sys
 import logging
+from contextvars import ContextVar
 from pathlib import Path
-from typing import Generator, Set, Dict, Any
-from typing import AsyncGenerator, Generator
+from typing import Any, AsyncGenerator, Dict, Generator, Optional, Set
 from unittest.mock import AsyncMock, MagicMock
 from dotenv import load_dotenv
 from sqlalchemy.exc import InvalidRequestError, StatementError
@@ -90,6 +90,22 @@ class TestDataTracker:
             self.comment_ids, self.message_ids, self.attachment_ids,
             self.folder_ids, self.urllink_ids, self.subscription_ids
         ])
+
+
+_blogn_test_tracker_ctx: ContextVar[Optional[TestDataTracker]] = ContextVar(
+    "_blogn_test_tracker_ctx", default=None
+)
+
+
+def get_test_data_tracker() -> TestDataTracker:
+    """当前用例的跟踪器，与 autouse `_autouse_test_tracker_cleanup` 绑定同一实例。"""
+    t = _blogn_test_tracker_ctx.get()
+    if t is None:
+        raise RuntimeError(
+            "get_test_data_tracker() 仅在 pytest 用例执行期间可用（尚未注入或非测试线程）。"
+        )
+    return t
+
 
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent
@@ -256,7 +272,16 @@ def cleanup_test_data_by_ids(tracker: TestDataTracker):
                         deleted_count = result.rowcount
                         total_deleted += deleted_count
                         print(f"🗑️ 删除了 {deleted_count} 个测试评论和留言")
-                
+
+                if tracker.attachment_ids:
+                    # 删除附件（parentid 指向 projectitem，先于文章删）
+                    placeholders = ','.join(map(str, tracker.attachment_ids))
+                    query = f"DELETE FROM attachment WHERE id IN ({placeholders})"
+                    result = conn.execute(text(query))
+                    deleted_count = result.rowcount
+                    total_deleted += deleted_count
+                    print(f"🗑️ 删除了 {deleted_count} 个测试附件")
+
                 if tracker.article_ids:
                     # 删除文章
                     placeholders = ','.join(map(str, tracker.article_ids))
@@ -266,24 +291,33 @@ def cleanup_test_data_by_ids(tracker: TestDataTracker):
                     total_deleted += deleted_count
                     print(f"🗑️ 删除了 {deleted_count} 个测试文章")
                 
-                if tracker.attachment_ids:
-                    # 删除附件
-                    placeholders = ','.join(map(str, tracker.attachment_ids))
-                    query = f"DELETE FROM attachment WHERE id IN ({placeholders})"
-                    result = conn.execute(text(query))
-                    deleted_count = result.rowcount
-                    total_deleted += deleted_count
-                    print(f"🗑️ 删除了 {deleted_count} 个测试附件")
-                
                 if tracker.subscription_ids:
-                    # 删除订阅
+                    # 删除订阅（表名为 subsc）
                     placeholders = ','.join(map(str, tracker.subscription_ids))
-                    query = f"DELETE FROM subscription WHERE id IN ({placeholders})"
+                    query = f"DELETE FROM subsc WHERE id IN ({placeholders})"
                     result = conn.execute(text(query))
                     deleted_count = result.rowcount
                     total_deleted += deleted_count
                     print(f"🗑️ 删除了 {deleted_count} 个测试订阅")
                 
+                if tracker.urllink_ids:
+                    # 删除友情链接（project 之前）
+                    placeholders = ','.join(map(str, tracker.urllink_ids))
+                    query = f"DELETE FROM urllink WHERE id IN ({placeholders})"
+                    result = conn.execute(text(query))
+                    deleted_count = result.rowcount
+                    total_deleted += deleted_count
+                    print(f"🗑️ 删除了 {deleted_count} 个测试友情链接")
+
+                if tracker.folder_ids:
+                    # 删除分类（表名为 folders，外键依赖 project，先于 project 删除）
+                    placeholders = ','.join(map(str, tracker.folder_ids))
+                    query = f"DELETE FROM folders WHERE id IN ({placeholders})"
+                    result = conn.execute(text(query))
+                    deleted_count = result.rowcount
+                    total_deleted += deleted_count
+                    print(f"🗑️ 删除了 {deleted_count} 个测试分类")
+
                 if tracker.project_ids:
                     # 删除项目
                     placeholders = ','.join(map(str, tracker.project_ids))
@@ -292,24 +326,6 @@ def cleanup_test_data_by_ids(tracker: TestDataTracker):
                     deleted_count = result.rowcount
                     total_deleted += deleted_count
                     print(f"🗑️ 删除了 {deleted_count} 个测试项目")
-                
-                if tracker.folder_ids:
-                    # 删除分类
-                    placeholders = ','.join(map(str, tracker.folder_ids))
-                    query = f"DELETE FROM folder WHERE id IN ({placeholders})"
-                    result = conn.execute(text(query))
-                    deleted_count = result.rowcount
-                    total_deleted += deleted_count
-                    print(f"🗑️ 删除了 {deleted_count} 个测试分类")
-                
-                if tracker.urllink_ids:
-                    # 删除友情链接
-                    placeholders = ','.join(map(str, tracker.urllink_ids))
-                    query = f"DELETE FROM urllink WHERE id IN ({placeholders})"
-                    result = conn.execute(text(query))
-                    deleted_count = result.rowcount
-                    total_deleted += deleted_count
-                    print(f"🗑️ 删除了 {deleted_count} 个测试友情链接")
                 
                 if tracker.user_ids:
                     # 删除用户（最后删除，因为其他表可能引用用户）
@@ -337,12 +353,29 @@ def cleanup_test_data_by_ids(tracker: TestDataTracker):
         sync_engine.dispose()
 
 def cleanup_test_data(engine):
-    """清理测试数据"""
+    """
+    【遗留】按关键字批量 DELETE，曾用于「猜测」哪些是测试行。
+
+    条件过宽（如 name LIKE '%Article%'）会误删正式博客文章；且不应在每次 pytest 后自动执行。
+    默认已禁用；仅当显式设置 BLOGN_ALLOW_DANGEROUS_TEST_SQL_CLEANUP=1 时才执行。
+    默认每个用例结束会由 _autouse_test_tracker_cleanup 对「本用例登记过的 ID」调用 cleanup_test_data_by_ids。
+    """
+    if os.getenv("BLOGN_ALLOW_DANGEROUS_TEST_SQL_CLEANUP", "").strip().lower() not in (
+        "1",
+        "true",
+        "yes",
+    ):
+        logger.warning(
+            "已跳过 cleanup_test_data（危险 SQL 清理）。"
+            "若确需旧行为，请设置 BLOGN_ALLOW_DANGEROUS_TEST_SQL_CLEANUP=1（勿对生产库使用）。"
+        )
+        return
+
     from sqlmodel import Session
     from sqlalchemy import text
     session = Session(engine)
     try:
-        print("🧹 开始清理测试数据...")
+        print("🧹 开始清理测试数据（BLOGN_ALLOW_DANGEROUS_TEST_SQL_CLEANUP 已开启）...")
         
         # 获取当前最大的ID作为基准
         max_id_result = session.execute(text("SELECT MAX(id) as max_id FROM post"))
@@ -660,22 +693,6 @@ def unified_db_manager(real_sync_engine, real_async_engine):
             manager.close()
         except Exception:
             pass
-        # 手动清理测试数据作为备用方案
-        try:
-            cleanup_test_data(real_sync_engine)
-        except Exception:
-            pass
-
-@pytest.fixture(autouse=True)
-def cleanup_after_test(real_sync_engine):
-    """自动清理测试数据 - 在每个测试后运行（备用方案）"""
-    yield
-    # 注意：由于使用了事务回滚，这个清理逻辑主要是备用方案
-    # 只有在事务回滚失败时才会执行
-    try:
-        cleanup_test_data(real_sync_engine)
-    except Exception:
-        pass
 
 @pytest.fixture
 def real_sync_session_with_commit(unified_db_manager):
@@ -874,6 +891,26 @@ def setup_test_env():
 
 
 @pytest.fixture(autouse=True)
+def _autouse_test_tracker_cleanup():
+    """
+    每个用例注入一个 TestDataTracker；若用例内向跟踪器登记过 ID，则在本用例结束后按 ID 删除对应行。
+    未登记则不访问数据库。危险的关键字批量清理仍仅由 BLOGN_ALLOW_DANGEROUS_TEST_SQL_CLEANUP 控制。
+    """
+    tracker = TestDataTracker()
+    token = _blogn_test_tracker_ctx.set(tracker)
+    try:
+        yield
+    finally:
+        try:
+            if tracker.has_data():
+                cleanup_test_data_by_ids(tracker)
+        except Exception as e:
+            logger.error("基于 ID 的测试数据清理失败: %s", e, exc_info=True)
+        finally:
+            _blogn_test_tracker_ctx.reset(token)
+
+
+@pytest.fixture(autouse=True)
 async def clear_cache_after_each_test():
     """在每个测试后清理所有缓存"""
     yield
@@ -897,9 +934,6 @@ async def clear_cache_after_each_test():
         logger.warning(f"Failed to clear cache during test cleanup: {e}") 
 
 @pytest.fixture
-def test_data_tracker():
-    """测试数据跟踪器"""
-    tracker = TestDataTracker()
-    yield tracker
-    # 测试结束后清理跟踪的数据
-    cleanup_test_data_by_ids(tracker)
+def test_data_tracker() -> TestDataTracker:
+    """与当前用例共享的跟踪器；写入数据库后务必 add_* 登记 ID，以便 autouse 仅删除本次数据。"""
+    return get_test_data_tracker()

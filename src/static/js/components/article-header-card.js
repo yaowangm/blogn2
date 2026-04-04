@@ -13,6 +13,8 @@ class ArticleHeaderCard extends BaseComponent {
     }
 
     async connectedCallback() {
+        this._attachLayoutSingleColumnObserver();
+
         // 从URL获取文章ID
         this.articleId = this.getArticleIdFromUrl();
         if (!this.articleId) {
@@ -31,6 +33,10 @@ class ArticleHeaderCard extends BaseComponent {
         
         // 更新页面标题
         this.updatePageTitle();
+    }
+
+    disconnectedCallback() {
+        this._detachLayoutSingleColumnObserver();
     }
 
     /**
@@ -264,7 +270,10 @@ class ArticleHeaderCard extends BaseComponent {
             return;
         }
 
-        if (!confirm('确定要将此文章设为网站介绍吗？')) {
+        if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
+            title: '设为网站介绍',
+            message: '确定要将此文章设为网站介绍吗？',
+        })) {
             return;
         }
 
@@ -311,8 +320,10 @@ class ArticleHeaderCard extends BaseComponent {
             return;
         }
         
-        // 确认操作
-        if (!confirm('确定要将此文章设为个人介绍吗？\n\n此操作将：\n1. 将此文章设为您的个人介绍\n2. 将文章的附件图片复制为您的头像图片\n3. 如果已有头像，将被新图片覆盖')) {
+        if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
+            title: '设为个人介绍',
+            message: '确定要将此文章设为个人介绍吗？\n\n此操作将：\n1. 将此文章设为您的个人介绍\n2. 将文章的附件图片复制为您的头像图片\n3. 如果已有头像，将被新图片覆盖',
+        })) {
             return;
         }
         
@@ -366,8 +377,11 @@ class ArticleHeaderCard extends BaseComponent {
             return;
         }
         
-        // 确认删除
-        if (!confirm('确定要删除这篇文章吗？此操作不可撤销。')) {
+        if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
+            title: '删除文章',
+            message: '确定要删除这篇文章吗？此操作不可撤销。',
+            danger: true,
+        })) {
             return;
         }
         
@@ -403,13 +417,19 @@ class ArticleHeaderCard extends BaseComponent {
             return;
         }
         
-        // 确认彻底删除
-        if (!confirm('确定要彻底删除这篇文章吗？\n\n此操作将：\n1. 永久删除文章的所有图片文件\n2. 从数据库中完全删除文章记录\n3. 更新相关统计信息\n\n此操作不可撤销！')) {
+        if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
+            title: '彻底删除文章',
+            message: '确定要彻底删除这篇文章吗？\n\n此操作将：\n1. 永久删除文章的所有图片文件\n2. 从数据库中完全删除文章记录\n3. 更新相关统计信息\n\n此操作不可撤销！',
+            danger: true,
+        })) {
             return;
         }
-        
-        // 二次确认
-        if (!confirm('最后确认：您真的要彻底删除这篇文章吗？\n\n一旦执行，文章及其所有相关数据将永久消失！')) {
+
+        if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
+            title: '最后确认',
+            message: '最后确认：您真的要彻底删除这篇文章吗？\n\n一旦执行，文章及其所有相关数据将永久消失！',
+            danger: true,
+        })) {
             return;
         }
         
@@ -621,7 +641,20 @@ class ArticleHeaderCard extends BaseComponent {
                 .article-toolbar .btn i {
                     font-size: 14px;
                 }
-                
+
+                /* 宿主 data-layout-single-column 由 BaseComponent._attachLayoutSingleColumnObserver 与 body 同步 */
+                :host([data-layout-single-column]) .article-toolbar {
+                    flex-direction: column;
+                    align-items: stretch;
+                    justify-content: flex-start;
+                }
+                :host([data-layout-single-column]) .article-toolbar .btn {
+                    margin-left: 0 !important;
+                    width: 100%;
+                    box-sizing: border-box;
+                    justify-content: center;
+                }
+
                 .status-0 {
                     color: var(--gray-500);
                     font-weight: 500;

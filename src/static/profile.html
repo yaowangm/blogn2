@@ -27,7 +27,7 @@
         }
         
         /* 组件样式 */
-        user-profile-card, blog-info-card {
+        user-profile-card, blog-info-card, admin-tools-card {
             display: block;
             background: #ffffff;
             border-radius: 8px;
@@ -114,6 +114,9 @@
                     
                     <!-- 博客信息卡片 -->
                     <blog-info-card></blog-info-card>
+
+                    <!-- 管理员：管理工具 -->
+                    <admin-tools-card></admin-tools-card>
                 </aside>
             </div>
         </div>
@@ -127,6 +130,7 @@
     
     <!-- 用户管理工具 -->
     <script src="/static/js/utils/user-manager.js"></script>
+    <script src="/static/js/utils/confirm-dialog.js"></script>
     
     <!-- Web Components -->
         <script src="/static/js/utils/html-utils.js"></script>
@@ -137,6 +141,7 @@
     <script src="/static/js/components/blog-profile-card.js"></script>
     <script src="/static/js/components/user-profile-card.js"></script>
     <script src="/static/js/components/blog-info-card.js"></script>
+    <script src="/static/js/components/admin-tools-card.js"></script>
     <script src="/static/js/sidebar-collapse.js"></script>
     <!-- 个人资料页面脚本 -->
     <script src="/static/js/profile.js"></script>

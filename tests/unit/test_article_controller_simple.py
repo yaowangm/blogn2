@@ -7,6 +7,8 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import HTTPException
+from starlette.requests import Request
+from starlette.responses import Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 from datetime import datetime
 
@@ -82,7 +84,12 @@ class TestArticleControllerSimple:
         mock_comment.replycount = 0
         mock_post_repo = AsyncMock()
         mock_post_repo_class.return_value = mock_post_repo
-        mock_post_repo.get_by_project_item_id.return_value = [mock_comment]
+        mock_post_repo.get_by_project_item_id_paginated = AsyncMock(
+            return_value={
+                "comments": [mock_comment],
+                "pagination": {"page": 1, "per_page": 10, "total": 1, "total_pages": 1},
+            }
+        )
         
         # 模拟附件数据
         mock_attachment = MagicMock()
@@ -97,9 +104,15 @@ class TestArticleControllerSimple:
         # 导入控制器函数
         from src.controllers.article import get_article_detail
         
+        req_scope = {"type": "http", "headers": [], "cookies": {}}
+        mock_request = Request(req_scope)
+        mock_response = Response()
+
         # 执行测试
         result = await get_article_detail(
             article_id=1,
+            request=mock_request,
+            response=mock_response,
             session=self.mock_session,
             current_user=self.mock_user
         )
@@ -109,7 +122,8 @@ class TestArticleControllerSimple:
         assert result["id"] == 1
         assert result["title"] == "测试文章"
         assert result["content"] == "测试内容"
-        
+        assert result["hits"] == 101  # accesscount 100 + 本次计数
+
         # 验证缓存被调用（如果缓存装饰器正常工作）
         # mock_cache.assert_called_once()  # 注释掉，因为装饰器可能不会在测试中被调用
     
@@ -125,9 +139,15 @@ class TestArticleControllerSimple:
         from src.controllers.article import get_article_detail
         
         # 执行测试并验证异常
+        req_scope = {"type": "http", "headers": [], "cookies": {}}
+        mock_request = Request(req_scope)
+        mock_response = Response()
+
         with pytest.raises(HTTPException) as exc_info:
             await get_article_detail(
                 article_id=999,
+                request=mock_request,
+                response=mock_response,
                 session=self.mock_session,
                 current_user=self.mock_user
             )
@@ -243,34 +263,166 @@ class TestArticleControllerSimple:
         assert exc_info.value.status_code == 404
         assert "文章不存在" in str(exc_info.value.detail)
     
+    @patch('src.services.vectorization_update_service.get_vectorization_update_service')
+    @patch('src.controllers.article.clear_article_comments_cache', new_callable=AsyncMock)
+    @patch('src.controllers.article.clear_article_detail_cache', new_callable=AsyncMock)
     @patch('src.controllers.article.permission_manager')
+    @patch('src.controllers.article.ProjectRepository')
     @patch('src.controllers.article.ProjectItemRepository')
-    async def test_update_article_success(self, mock_repo_class, mock_permission):
+    async def test_update_article_success(
+        self,
+        mock_item_repo_class,
+        mock_project_repo_class,
+        mock_permission,
+        mock_clear_detail,
+        mock_clear_comments,
+        mock_get_vec,
+    ):
         """测试更新文章成功"""
-        # 设置模拟对象
+        # folderid 与 article_data 缺省归一化的 0 一致，避免触发分类变更统计里的 commit
+        self.mock_article.folderid = 0
         mock_repo = AsyncMock()
-        mock_repo_class.return_value = mock_repo
+        mock_item_repo_class.return_value = mock_repo
         mock_repo.get_by_id = AsyncMock(return_value=self.mock_article)
-        mock_repo.update.return_value = self.mock_article
+        mock_repo.update = AsyncMock(return_value=self.mock_article)
         mock_permission.can_manage_system.return_value = True
-        
-        # 导入控制器函数
+
+        mock_project_repo = MagicMock()
+        mock_project_repo.sync_updatetime_from_latest_published_article = AsyncMock()
+        mock_project_repo_class.return_value = mock_project_repo
+
+        mock_vec_svc = MagicMock()
+        mock_vec_svc.update_article_vectors = AsyncMock()
+        mock_get_vec.return_value = mock_vec_svc
+
+        self.mock_session.commit = AsyncMock()
+
         from src.controllers.article import update_article
-        
-        # 执行测试
+
         result = await update_article(
             article_id=1,
-            article_data={"title": "更新后的标题", "content": "更新后的内容"},
+            article_data={"name": "更新后的标题", "comment": "更新后的内容"},
             session=self.mock_session,
             current_user=self.mock_user
         )
-        
-        # 验证结果
+
         assert result is not None
         assert result["message"] == "文章更新成功"
-        
-        # 验证方法被调用
         mock_repo.update.assert_called_once()
+        mock_project_repo.sync_updatetime_from_latest_published_article.assert_called_once_with(1)
+        # 向量化更新等逻辑可能对 session.commit，再加上控制器在同步博客时间后的一次 commit
+        assert self.mock_session.commit.await_count == 2
+
+    @patch('src.services.stats_service.StatsService')
+    @patch('src.services.vectorization_update_service.get_vectorization_update_service')
+    @patch('src.controllers.article.clear_article_comments_cache', new_callable=AsyncMock)
+    @patch('src.controllers.article.clear_article_detail_cache', new_callable=AsyncMock)
+    @patch('src.controllers.article.permission_manager')
+    @patch('src.controllers.article.ProjectRepository')
+    @patch('src.controllers.article.ProjectItemRepository')
+    async def test_update_article_folder_only_skips_content_timestamps(
+        self,
+        mock_item_repo_class,
+        mock_project_repo_class,
+        mock_permission,
+        mock_clear_detail,
+        mock_clear_comments,
+        mock_get_vec,
+        mock_stats_class,
+    ):
+        """仅改分类时不应更新 updatetime / lastmodifytime"""
+        self.mock_article.folderid = 1
+        self.mock_article.name = "标题"
+        self.mock_article.comment = "正文"
+        self.mock_article.attachment = "img.png"
+
+        mock_repo = AsyncMock()
+        mock_item_repo_class.return_value = mock_repo
+        mock_repo.get_by_id = AsyncMock(return_value=self.mock_article)
+        mock_repo.update = AsyncMock(return_value=self.mock_article)
+        mock_permission.can_manage_system.return_value = True
+
+        mock_stats_inst = MagicMock()
+        mock_stats_inst.handle_article_folder_change = AsyncMock()
+        mock_stats_class.return_value = mock_stats_inst
+
+        mock_project_repo = MagicMock()
+        mock_project_repo.sync_updatetime_from_latest_published_article = AsyncMock()
+        mock_project_repo_class.return_value = mock_project_repo
+
+        mock_vec_svc = MagicMock()
+        mock_vec_svc.update_article_vectors = AsyncMock()
+        mock_get_vec.return_value = mock_vec_svc
+
+        self.mock_session.commit = AsyncMock()
+
+        from src.controllers.article import update_article
+
+        await update_article(
+            article_id=1,
+            article_data={"folderid": 0},
+            session=self.mock_session,
+            current_user=self.mock_user,
+        )
+
+        kw = mock_repo.update.call_args.kwargs
+        assert "updatetime" not in kw
+        assert "lastmodifytime" not in kw
+
+    @patch('src.services.vectorization_update_service.get_vectorization_update_service')
+    @patch('src.controllers.article.clear_article_comments_cache', new_callable=AsyncMock)
+    @patch('src.controllers.article.clear_article_detail_cache', new_callable=AsyncMock)
+    @patch('src.controllers.article.permission_manager')
+    @patch('src.controllers.article.ProjectRepository')
+    @patch('src.controllers.article.ProjectItemRepository')
+    async def test_update_article_without_project_skips_blog_updatetime_sync(
+        self,
+        mock_item_repo_class,
+        mock_project_repo_class,
+        mock_permission,
+        mock_clear_detail,
+        mock_clear_comments,
+        mock_get_vec,
+    ):
+        """无 projectid 时不应同步博客 project.updatetime"""
+        article = MagicMock()
+        article.id = 1
+        article.userid = 1
+        article.projectid = None
+        article.name = "测试文章"
+        article.comment = "测试内容"
+        article.folderid = 0
+        article.itemtype = 1
+        article.attachment = None
+
+        mock_repo = AsyncMock()
+        mock_item_repo_class.return_value = mock_repo
+        mock_repo.get_by_id = AsyncMock(return_value=article)
+        mock_repo.update = AsyncMock(return_value=article)
+        mock_permission.can_manage_system.return_value = True
+
+        mock_project_repo = MagicMock()
+        mock_project_repo.sync_updatetime_from_latest_published_article = AsyncMock()
+        mock_project_repo_class.return_value = mock_project_repo
+
+        mock_vec_svc = MagicMock()
+        mock_vec_svc.update_article_vectors = AsyncMock()
+        mock_get_vec.return_value = mock_vec_svc
+
+        self.mock_session.commit = AsyncMock()
+
+        from src.controllers.article import update_article
+
+        await update_article(
+            article_id=1,
+            article_data={"name": "标题", "comment": "内容"},
+            session=self.mock_session,
+            current_user=self.mock_user,
+        )
+
+        mock_project_repo.sync_updatetime_from_latest_published_article.assert_not_called()
+        # 仅有 update() 内部的 commit，控制器不因无 projectid 再 commit
+        assert self.mock_session.commit.await_count == 1
     
     @patch('src.controllers.article.ProjectItemRepository')
     async def test_update_article_not_found(self, mock_repo_class):

@@ -60,7 +60,9 @@ class UserManager {
      */
     static isAdmin() {
         const user = this.getCurrentUser();
-        return user && user.state === 10;
+        if (!user) return false;
+        // 与 JWT/后端一致使用 state==10；localStorage 解析后偶有为字符串
+        return Number(user.state) === 10;
     }
 
     /**
