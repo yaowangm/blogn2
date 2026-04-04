@@ -185,6 +185,25 @@ class BlogHeaderCard extends BaseComponent {
                     display: flex; 
                     align-items: center; 
                 }
+                :host([data-layout-single-column]) .blog-meta {
+                    flex-direction: column;
+                    align-items: stretch;
+                    justify-content: flex-start;
+                    gap: var(--spacing-4);
+                }
+                :host([data-layout-single-column]) .meta-items-left {
+                    justify-content: center;
+                    flex-wrap: nowrap;
+                    gap: var(--spacing-4);
+                }
+                :host([data-layout-single-column]) .meta-subscription-right {
+                    justify-content: center;
+                    flex-wrap: nowrap;
+                    gap: var(--spacing-2);
+                }
+                :host([data-layout-single-column]) .meta-subscription-right .edit-blog-button {
+                    margin-right: 0;
+                }
                 .subscription-section { 
                     margin-top: var(--spacing-4); 
                     padding: var(--spacing-4); 
