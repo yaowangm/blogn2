@@ -11,6 +11,8 @@
 所有接口都支持缓存以提高性能。
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Body, Response
 from typing import List, Dict, Any, Optional
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -45,6 +47,8 @@ from src.utils.article_hit_cookie import (
     cookie_secure,
     parse_seen_article_ids,
 )
+
+logger = logging.getLogger(__name__)
 
 # 创建文章API路由器
 router = APIRouter(tags=["文章管理"])
@@ -107,7 +111,12 @@ async def get_article_detail(
                     await project_repo.increment_access_count(article.projectid)
                 counted_ok = True
             except Exception:
-                pass
+                logger.warning(
+                    "访问量递增失败 article_id=%s project_id=%s",
+                    article_id,
+                    article.projectid,
+                    exc_info=True,
+                )
             if counted_ok:
                 seen.add(article_id)
                 response.set_cookie(
