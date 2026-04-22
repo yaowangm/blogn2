@@ -131,6 +131,34 @@ def get_smtp_password() -> Optional[str]:
     return v or None
 
 
+def _parse_csv_env(raw: str, default_values: list[str]) -> list[str]:
+    """解析逗号分隔环境变量为列表。"""
+    if not raw or not raw.strip():
+        return default_values
+    values = [v.strip() for v in raw.split(",") if v.strip()]
+    return values or default_values
+
+
+def get_cors_allow_origins() -> list[str]:
+    """获取 CORS 允许来源列表（逗号分隔）。"""
+    return _parse_csv_env(os.getenv("CORS_ALLOW_ORIGINS", "*"), ["*"])
+
+
+def get_cors_allow_methods() -> list[str]:
+    """获取 CORS 允许方法列表（逗号分隔）。"""
+    return _parse_csv_env(os.getenv("CORS_ALLOW_METHODS", "*"), ["*"])
+
+
+def get_cors_allow_headers() -> list[str]:
+    """获取 CORS 允许请求头列表（逗号分隔）。"""
+    return _parse_csv_env(os.getenv("CORS_ALLOW_HEADERS", "*"), ["*"])
+
+
+def get_cors_allow_credentials() -> bool:
+    """是否允许携带凭据。"""
+    return os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() == "true"
+
+
 _UVICORN_LOG_LEVELS = frozenset(
     ("critical", "error", "warning", "info", "debug", "trace")
 )

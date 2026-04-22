@@ -4,7 +4,7 @@ from src.utils.time_utils import TimeUtils
 提供新用户注册功能
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Body
+from fastapi import APIRouter, HTTPException, Depends, Body, Request
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import Dict, Any
@@ -17,6 +17,7 @@ from src.database import get_async_session
 from src.models.regkey import RegKey
 from src.models.user import User
 from src.utils.password_validation import validate_password as validate_password_rules
+from src.services.auth_security_service import AuthSecurityService
 
 # 创建用户注册API路由器
 router = APIRouter(prefix="/register", tags=["用户注册"])
@@ -71,7 +72,8 @@ class UserRegisterResponse(BaseModel):
 @router.post("/register", response_model=UserRegisterResponse)
 async def register_user(
     request: UserRegisterRequest,
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    http_request: Request = None,
 ):
     """
     用户注册
@@ -87,17 +89,30 @@ async def register_user(
         HTTPException: 当验证失败或注册码无效时
     """
     try:
+        auth_security_service = AuthSecurityService()
+        if http_request:
+            xff = http_request.headers.get("x-forwarded-for", "")
+            raw_ip = xff.split(",")[0].strip() if xff else (
+                http_request.client.host if http_request.client else "unknown"
+            )
+        else:
+            raw_ip = "unknown"
+        client_ip = auth_security_service.normalize_ip(raw_ip)
+        await auth_security_service.check_register_rate_limit(client_ip)
+
+        generic_register_error = "注册失败，请检查信息或稍后重试"
+
         # 1. 检查用户名是否已存在
         username_stmt = select(User).where(User.name == request.username)
         username_result = await session.exec(username_stmt)
         if username_result.first():
-            raise HTTPException(status_code=400, detail="用户名已存在")
+            raise HTTPException(status_code=400, detail=generic_register_error)
         
         # 2. 检查邮箱是否已存在
         email_stmt = select(User).where(User.email == request.email)
         email_result = await session.exec(email_stmt)
         if email_result.first():
-            raise HTTPException(status_code=400, detail="邮箱已被注册")
+            raise HTTPException(status_code=400, detail=generic_register_error)
         
         # 3. 验证注册码
         # 处理注册码格式，移除连字符并转换为大写
@@ -106,7 +121,7 @@ async def register_user(
         
         # 检查注册码格式
         if len(regkey_without_dashes) != 25:
-            raise HTTPException(status_code=400, detail="注册码格式不正确")
+            raise HTTPException(status_code=400, detail=generic_register_error)
         
         # 查询注册码（尝试两种格式：带连字符和不带连字符）
         regkey_stmt = select(RegKey).where(
@@ -117,7 +132,7 @@ async def register_user(
         regkey_record = regkey_result.first()
         
         if not regkey_record:
-            raise HTTPException(status_code=400, detail="注册码无效或已被使用")
+            raise HTTPException(status_code=400, detail=generic_register_error)
         
         # 4. 创建新用户
         # 对密码进行双重哈希加密：password → MD5 → bcrypt
@@ -172,7 +187,8 @@ async def register_user(
 @router.get("/validate_regkey/{regkey}")
 async def validate_regkey(
     regkey: str,
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    http_request: Request = None,
 ):
     """
     验证注册码是否有效
@@ -185,6 +201,17 @@ async def validate_regkey(
         包含验证结果的字典
     """
     try:
+        auth_security_service = AuthSecurityService()
+        if http_request:
+            xff = http_request.headers.get("x-forwarded-for", "")
+            raw_ip = xff.split(",")[0].strip() if xff else (
+                http_request.client.host if http_request.client else "unknown"
+            )
+        else:
+            raw_ip = "unknown"
+        client_ip = auth_security_service.normalize_ip(raw_ip)
+        await auth_security_service.check_register_rate_limit(client_ip)
+
         if not regkey:
             return {"valid": False, "message": "注册码不能为空"}
         

@@ -17,6 +17,7 @@ from src.models.auth import (
     ResetPasswordRequest,
 )
 from src.services.auth_service import AuthService
+from src.services.auth_security_service import AuthSecurityService
 from src.services.user_service import UserService
 from src.models.user import User
 
@@ -98,6 +99,28 @@ class TestAuthController:
         mock_auth_service.create_refresh_token.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_login_success_calls_security_hooks(self, mock_user, mock_auth_service, login_request):
+        """测试登录成功时调用安全检查与成功清理"""
+        mock_auth_service.authenticate_user.return_value = mock_user
+        mock_auth_service.create_access_token.return_value = "access_token"
+        mock_auth_service.create_refresh_token.return_value = "refresh_token"
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers.get.return_value = ""
+
+        security_service = AuthSecurityService()
+        security_service.pre_login_check = AsyncMock()
+        security_service.on_login_failed = AsyncMock()
+        security_service.on_login_success = AsyncMock()
+
+        from src.controllers.auth import login
+        await login(login_request, mock_auth_service, mock_request, security_service)
+
+        security_service.pre_login_check.assert_called_once_with("127.0.0.1", "testuser")
+        security_service.on_login_success.assert_called_once_with("127.0.0.1", "testuser")
+        security_service.on_login_failed.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_login_invalid_credentials(self, mock_auth_service, login_request):
         """测试登录失败 - 无效凭据"""
         # 设置模拟返回值
@@ -115,6 +138,49 @@ class TestAuthController:
         
         assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
         assert "用户名或密码错误" in str(exc_info.value.detail)
+
+    @pytest.mark.asyncio
+    async def test_login_invalid_credentials_calls_failed_hook(self, mock_auth_service, login_request):
+        """测试登录失败时调用失败计数"""
+        mock_auth_service.authenticate_user.return_value = None
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers.get.return_value = ""
+
+        security_service = AuthSecurityService()
+        security_service.pre_login_check = AsyncMock()
+        security_service.on_login_failed = AsyncMock()
+        security_service.on_login_success = AsyncMock()
+
+        from src.controllers.auth import login
+        with pytest.raises(HTTPException):
+            await login(login_request, mock_auth_service, mock_request, security_service)
+
+        security_service.pre_login_check.assert_called_once()
+        security_service.on_login_failed.assert_called_once_with("127.0.0.1", "testuser")
+        security_service.on_login_success.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_login_blocked_by_security_precheck(self, mock_auth_service, login_request):
+        """测试登录在前置安全检查被拦截"""
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers.get.return_value = ""
+
+        security_service = AuthSecurityService()
+        security_service.pre_login_check = AsyncMock(
+            side_effect=HTTPException(status_code=429, detail="登录失败次数过多，请24小时后再试")
+        )
+        security_service.on_login_failed = AsyncMock()
+        security_service.on_login_success = AsyncMock()
+
+        from src.controllers.auth import login
+        with pytest.raises(HTTPException) as exc_info:
+            await login(login_request, mock_auth_service, mock_request, security_service)
+
+        assert exc_info.value.status_code == 429
+        mock_auth_service.authenticate_user.assert_not_called()
+        security_service.on_login_failed.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_refresh_token_success(self, mock_auth_service, refresh_request):
@@ -361,66 +427,141 @@ class TestPasswordResetController:
     def mock_password_reset_service(self):
         return AsyncMock()
 
+    @pytest.fixture
+    def mock_auth_security_service(self):
+        service = AuthSecurityService()
+        service.check_forgot_password_rate_limit = AsyncMock()
+        service.check_reset_token_validate_rate_limit = AsyncMock()
+        return service
+
     @pytest.mark.asyncio
-    async def test_forgot_password_success(self, mock_password_reset_service):
+    async def test_forgot_password_success(self, mock_password_reset_service, mock_auth_security_service):
         """POST /forgot-password：成功时返回统一提示"""
         from src.controllers.auth import forgot_password
 
         request = ForgotPasswordRequest(email="user@example.com")
         mock_password_reset_service.request_reset.return_value = None
 
-        result = await forgot_password(request, mock_password_reset_service)
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers.get.return_value = ""
+        result = await forgot_password(request, mock_password_reset_service, mock_auth_security_service, mock_request)
 
         assert result.message == "若该邮箱已注册，将收到重置邮件"
         mock_password_reset_service.request_reset.assert_called_once_with("user@example.com")
+        mock_auth_security_service.check_forgot_password_rate_limit.assert_called_once_with("127.0.0.1", "user@example.com")
 
     @pytest.mark.asyncio
-    async def test_reset_password_success(self, mock_password_reset_service):
+    async def test_reset_password_success(self, mock_password_reset_service, mock_auth_security_service):
         """POST /reset-password：合法 token 时返回成功"""
         from src.controllers.auth import reset_password
 
         request = ResetPasswordRequest(token="valid_token_xyz", new_password="Newpass123")
         mock_password_reset_service.reset_password.return_value = None
 
-        result = await reset_password(request, mock_password_reset_service)
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers.get.return_value = ""
+        result = await reset_password(request, mock_password_reset_service, mock_auth_security_service, mock_request)
 
         assert result.message == "密码重置成功"
         mock_password_reset_service.reset_password.assert_called_once_with("valid_token_xyz", "Newpass123")
+        mock_auth_security_service.check_reset_token_validate_rate_limit.assert_called_once_with("127.0.0.1")
 
     @pytest.mark.asyncio
-    async def test_reset_password_invalid_token_returns_400(self, mock_password_reset_service):
+    async def test_reset_password_invalid_token_returns_400(self, mock_password_reset_service, mock_auth_security_service):
         """POST /reset-password：无效 token 时返回 400"""
         from src.controllers.auth import reset_password
 
         request = ResetPasswordRequest(token="invalid", new_password="Newpass123")
         mock_password_reset_service.reset_password.side_effect = ValueError("链接无效或已过期，请重新申请重置密码")
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers.get.return_value = ""
 
         with pytest.raises(HTTPException) as exc_info:
-            await reset_password(request, mock_password_reset_service)
+            await reset_password(request, mock_password_reset_service, mock_auth_security_service, mock_request)
 
         assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
         assert "链接无效或已过期" in str(exc_info.value.detail)
 
     @pytest.mark.asyncio
-    async def test_validate_reset_token_valid(self, mock_password_reset_service):
+    async def test_validate_reset_token_valid(self, mock_password_reset_service, mock_auth_security_service):
         """GET /validate-reset-token：有效 token 返回 valid=true"""
         from src.controllers.auth import validate_reset_token
 
         mock_password_reset_service.is_token_valid.return_value = True
 
-        result = await validate_reset_token("valid_token", mock_password_reset_service)
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers.get.return_value = ""
+        result = await validate_reset_token("valid_token", mock_password_reset_service, mock_auth_security_service, mock_request)
 
         assert result.valid is True
         mock_password_reset_service.is_token_valid.assert_called_once_with("valid_token")
+        mock_auth_security_service.check_reset_token_validate_rate_limit.assert_called_once_with("127.0.0.1")
 
     @pytest.mark.asyncio
-    async def test_validate_reset_token_invalid(self, mock_password_reset_service):
+    async def test_validate_reset_token_invalid(self, mock_password_reset_service, mock_auth_security_service):
         """GET /validate-reset-token：无效 token 返回 valid=false"""
         from src.controllers.auth import validate_reset_token
 
         mock_password_reset_service.is_token_valid.return_value = False
 
-        result = await validate_reset_token("bad_token", mock_password_reset_service)
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers.get.return_value = ""
+        result = await validate_reset_token("bad_token", mock_password_reset_service, mock_auth_security_service, mock_request)
 
         assert result.valid is False
         mock_password_reset_service.is_token_valid.assert_called_once_with("bad_token")
+
+    @pytest.mark.asyncio
+    async def test_forgot_password_rate_limit_blocked(self, mock_password_reset_service, mock_auth_security_service):
+        """POST /forgot-password：限流触发返回 429"""
+        from src.controllers.auth import forgot_password
+        request = ForgotPasswordRequest(email="user@example.com")
+        mock_auth_security_service.check_forgot_password_rate_limit.side_effect = HTTPException(
+            status_code=429, detail="请求过于频繁，请稍后再试"
+        )
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers.get.return_value = ""
+
+        with pytest.raises(HTTPException) as exc_info:
+            await forgot_password(request, mock_password_reset_service, mock_auth_security_service, mock_request)
+        assert exc_info.value.status_code == 429
+        mock_password_reset_service.request_reset.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_reset_password_rate_limit_blocked(self, mock_password_reset_service, mock_auth_security_service):
+        """POST /reset-password：限流触发返回 429"""
+        from src.controllers.auth import reset_password
+        request = ResetPasswordRequest(token="token_x", new_password="Newpass123")
+        mock_auth_security_service.check_reset_token_validate_rate_limit.side_effect = HTTPException(
+            status_code=429, detail="请求过于频繁，请稍后再试"
+        )
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers.get.return_value = ""
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reset_password(request, mock_password_reset_service, mock_auth_security_service, mock_request)
+        assert exc_info.value.status_code == 429
+        mock_password_reset_service.reset_password.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_validate_reset_token_rate_limit_blocked(self, mock_password_reset_service, mock_auth_security_service):
+        """GET /validate-reset-token：限流触发返回 429"""
+        from src.controllers.auth import validate_reset_token
+        mock_auth_security_service.check_reset_token_validate_rate_limit.side_effect = HTTPException(
+            status_code=429, detail="请求过于频繁，请稍后再试"
+        )
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers.get.return_value = ""
+
+        with pytest.raises(HTTPException) as exc_info:
+            await validate_reset_token("any-token", mock_password_reset_service, mock_auth_security_service, mock_request)
+        assert exc_info.value.status_code == 429
+        mock_password_reset_service.is_token_valid.assert_not_called()

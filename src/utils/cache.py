@@ -144,6 +144,12 @@ class CacheManager:
     def is_available(self) -> bool:
         """检查缓存是否可用"""
         return self._initialized and cache_settings.enable_cache
+
+    def get_redis_client(self):
+        """获取底层 Redis client（不可用时返回 None）"""
+        if not self.is_available() or not self._backend:
+            return None
+        return self._backend.redis
     
     async def get(self, key: str) -> Optional[Any]:
         """获取缓存值"""

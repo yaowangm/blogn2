@@ -19,6 +19,7 @@ from src.models.auth import (
 from src.services.auth_service import AuthService
 from src.services.user_service import UserService
 from src.services.password_reset_service import PasswordResetService
+from src.services.auth_security_service import AuthSecurityService
 from src.repositories.password_reset_token_repository import PasswordResetTokenRepository
 from src.utils.dependencies import get_user_service, get_password_reset_token_repository
 from src.utils.error_handlers import handle_api_errors
@@ -39,6 +40,11 @@ def get_auth_service(user_service: UserService = Depends(get_user_service)) -> A
     return AuthService(user_service.user_repo, JWT_SECRET_KEY)
 
 
+def get_auth_security_service() -> AuthSecurityService:
+    """获取认证安全服务实例"""
+    return AuthSecurityService()
+
+
 def get_password_reset_service(
     user_service: UserService = Depends(get_user_service),
     auth_service: AuthService = Depends(get_auth_service),
@@ -47,12 +53,33 @@ def get_password_reset_service(
     """获取密码重置服务实例（复用同请求的 token 仓库）"""
     return PasswordResetService(user_service.user_repo, token_repo, auth_service)
 
+
+def get_client_ip(http_request: Optional[Request]) -> str:
+    """
+    获取客户端 IP：
+    - 优先 X-Forwarded-For 首个 IP（反向代理场景）
+    - 其次 request.client.host
+    """
+    if not http_request:
+        return "unknown"
+
+    xff = ""
+    headers = getattr(http_request, "headers", None)
+    if headers and hasattr(headers, "get"):
+        xff = headers.get("x-forwarded-for", "")
+    if isinstance(xff, str) and xff.strip():
+        return xff.split(",")[0].strip() or "unknown"
+    if http_request.client and http_request.client.host:
+        return http_request.client.host
+    return "unknown"
+
 @router.post("/login", response_model=LoginResponse)
 @handle_api_errors("登录失败")
 async def login(
     request: LoginRequest,
     auth_service: AuthService = Depends(get_auth_service),
-    http_request: Request = None
+    http_request: Request = None,
+    auth_security_service: AuthSecurityService = Depends(get_auth_security_service),
 ):
     """
     用户登录
@@ -68,8 +95,15 @@ async def login(
     Raises:
         HTTPException: 当用户名/密码错误或账户被冻结时
     """
+    # 兼容单元测试直接调用：未注入时手动创建
+    if not isinstance(auth_security_service, AuthSecurityService):
+        auth_security_service = get_auth_security_service()
+
     # 获取客户端IP地址
-    client_ip = http_request.client.host if http_request else "unknown"
+    client_ip = get_client_ip(http_request)
+
+    # 登录前安全检查（锁定与最小间隔）
+    await auth_security_service.pre_login_check(client_ip, request.username_or_email)
     
     # 验证用户凭据
     user = await auth_service.authenticate_user(
@@ -79,10 +113,14 @@ async def login(
     )
     
     if not user:
+        await auth_security_service.on_login_failed(client_ip, request.username_or_email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误"
         )
+
+    # 登录成功后清理失败计数
+    await auth_security_service.on_login_success(client_ip, request.username_or_email)
     
     # 准备用户数据
     user_data = {
@@ -313,10 +351,17 @@ async def validate_token(
 async def forgot_password(
     request: ForgotPasswordRequest,
     password_reset_service: PasswordResetService = Depends(get_password_reset_service),
+    auth_security_service: AuthSecurityService = Depends(get_auth_security_service),
+    http_request: Request = None,
 ):
     """
     申请重置密码：提交邮箱后，若该邮箱已注册则发送重置邮件；无论是否存在均返回相同提示（防枚举）。
     """
+    if not isinstance(auth_security_service, AuthSecurityService):
+        auth_security_service = get_auth_security_service()
+
+    client_ip = get_client_ip(http_request)
+    await auth_security_service.check_forgot_password_rate_limit(client_ip, request.email)
     await password_reset_service.request_reset(request.email)
     return ForgotPasswordResponse(message="若该邮箱已注册，将收到重置邮件")
 
@@ -326,10 +371,18 @@ async def forgot_password(
 async def reset_password(
     request: ResetPasswordRequest,
     password_reset_service: PasswordResetService = Depends(get_password_reset_service),
+    auth_security_service: AuthSecurityService = Depends(get_auth_security_service),
+    http_request: Request = None,
 ):
     """
     执行重置密码：使用邮件中的 token 设置新密码。token 无效或过期返回 400。
     """
+    if not isinstance(auth_security_service, AuthSecurityService):
+        auth_security_service = get_auth_security_service()
+
+    client_ip = get_client_ip(http_request)
+    await auth_security_service.check_reset_token_validate_rate_limit(client_ip)
+
     try:
         await password_reset_service.reset_password(request.token, request.new_password)
     except ValueError as e:
@@ -342,10 +395,17 @@ async def reset_password(
 async def validate_reset_token(
     token: str,
     password_reset_service: PasswordResetService = Depends(get_password_reset_service),
+    auth_security_service: AuthSecurityService = Depends(get_auth_security_service),
+    http_request: Request = None,
 ):
     """
     校验重置 token 是否有效，供前端在展示重置表单前使用。
     """
+    if not isinstance(auth_security_service, AuthSecurityService):
+        auth_security_service = get_auth_security_service()
+
+    client_ip = get_client_ip(http_request)
+    await auth_security_service.check_reset_token_validate_rate_limit(client_ip)
     valid = await password_reset_service.is_token_valid(token)
     return ValidateResetTokenResponse(valid=valid)
 

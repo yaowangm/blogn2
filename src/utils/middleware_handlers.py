@@ -10,6 +10,12 @@ from fastapi.staticfiles import StaticFiles
 
 from src.utils.cache import cache_manager, cache_stats
 from src.config.cache import cache_settings
+from src.config.app import (
+    get_cors_allow_origins,
+    get_cors_allow_methods,
+    get_cors_allow_headers,
+    get_cors_allow_credentials,
+)
 
 
 class MiddlewareHandler:
@@ -25,10 +31,10 @@ class MiddlewareHandler:
         """
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=["*"],  # 在生产环境中应该限制具体域名以提高安全性
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
+            allow_origins=get_cors_allow_origins(),
+            allow_credentials=get_cors_allow_credentials(),
+            allow_methods=get_cors_allow_methods(),
+            allow_headers=get_cors_allow_headers(),
         )
     
     @staticmethod
@@ -51,6 +57,10 @@ class MiddlewareHandler:
                 response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
                 response.headers["Pragma"] = "no-cache"
                 response.headers["Expires"] = "0"
+
+            # 重置密码页包含敏感 token，避免 Referer 传播
+            if request.url.path.startswith("/reset-password"):
+                response.headers["Referrer-Policy"] = "no-referrer"
             
             return response
     
