@@ -129,6 +129,37 @@ return {c, ttl, blocked}
         self.settings = auth_security_settings
         self.prefix = cache_settings.cache_prefix
 
+    def _login_lock_message(self) -> str:
+        return (
+            "登录失败次数过多，请24小时后再试。"
+            "安全规则：同一IP或账号5次失败将锁定24小时。"
+        )
+
+    def _login_cooldown_message(self) -> str:
+        return (
+            f"两次登录尝试间隔不能少于{self.settings.login_min_interval_seconds}秒。"
+            f"安全规则：两次登录尝试至少间隔{self.settings.login_min_interval_seconds}秒。"
+        )
+
+    def _forgot_password_limit_message(self) -> str:
+        return (
+            "请求过于频繁，请稍后再试。"
+            f"安全规则：忘记密码接口每IP每小时最多{self.settings.pwdreset_req_max_per_ip}次，"
+            f"同邮箱每小时最多{self.settings.pwdreset_req_max_per_email}次。"
+        )
+
+    def _reset_token_validate_limit_message(self) -> str:
+        return (
+            "请求过于频繁，请稍后再试。"
+            f"安全规则：重置令牌校验接口每IP每小时最多{self.settings.pwdreset_validate_max_per_ip}次。"
+        )
+
+    def _register_limit_message(self) -> str:
+        return (
+            "注册请求过于频繁，请稍后再试。"
+            f"安全规则：注册相关接口每IP每小时最多{self.settings.register_max_per_ip}次。"
+        )
+
     @staticmethod
     def normalize_account(username_or_email: str) -> str:
         return (username_or_email or "").strip().lower()
@@ -198,13 +229,13 @@ return {c, ttl, blocked}
         if reason in ("LOCK_IP", "LOCK_ACCOUNT"):
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="登录失败次数过多，请24小时后再试",
+                detail=self._login_lock_message(),
                 headers={"Retry-After": str(ttl)},
             )
         if reason in ("COOLDOWN_IP", "COOLDOWN_ACCOUNT"):
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"两次登录尝试间隔不能少于{self.settings.login_min_interval_seconds}秒",
+                detail=self._login_cooldown_message(),
                 headers={"Retry-After": str(ttl)},
             )
 
@@ -238,7 +269,7 @@ return {c, ttl, blocked}
         if locked == 1:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="登录失败次数过多，请24小时后再试",
+                detail=self._login_lock_message(),
                 headers={"Retry-After": str(max(retry_after, 1))},
             )
 
@@ -278,7 +309,7 @@ return {c, ttl, blocked}
         if blocked == 1:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="请求过于频繁，请稍后再试",
+                detail=self._forgot_password_limit_message(),
                 headers={"Retry-After": str(max(retry_after, 1))},
             )
 
@@ -301,7 +332,7 @@ return {c, ttl, blocked}
         if blocked == 1:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="请求过于频繁，请稍后再试",
+                detail=self._reset_token_validate_limit_message(),
                 headers={"Retry-After": str(max(retry_after, 1))},
             )
 
@@ -324,6 +355,6 @@ return {c, ttl, blocked}
         if blocked == 1:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="注册请求过于频繁，请稍后再试",
+                detail=self._register_limit_message(),
                 headers={"Retry-After": str(max(retry_after, 1))},
             )

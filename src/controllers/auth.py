@@ -116,7 +116,11 @@ async def login(
         await auth_security_service.on_login_failed(client_ip, request.username_or_email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户名或密码错误"
+            detail=(
+                "用户名或密码错误。"
+                "安全规则：同一IP或账号5次失败将锁定24小时，"
+                "且两次登录尝试至少间隔5秒。"
+            )
         )
 
     # 登录成功后清理失败计数

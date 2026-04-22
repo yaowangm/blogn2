@@ -455,11 +455,13 @@ class LoginModal extends BaseComponent {
     }
 
     handleLoginError(message) {
+        const safeMessage = this.buildSecurityHintedMessage(message);
+
         // 显示全局错误提示
-        this.showGlobalError(message);
+        this.showGlobalError(safeMessage);
         
         // 同时显示在用户名字段上（保持向后兼容）
-        this.showError('username', message);
+        this.showError('username', safeMessage);
         
         // 密码字段也显示错误状态
         const passwordInput = this.shadowRoot.querySelector('#password');
@@ -469,6 +471,19 @@ class LoginModal extends BaseComponent {
         
         // 密码输入框获得焦点
         passwordInput.focus();
+    }
+
+    buildSecurityHintedMessage(message) {
+        const text = String(message || '').trim();
+        if (!text) return '登录失败，请稍后重试';
+        if (text.includes('安全规则')) return text;
+        if (text.includes('用户名或密码错误')) {
+            return `${text}（安全规则：同一IP或账号5次失败将锁定24小时，且两次登录尝试至少间隔5秒）`;
+        }
+        if (text.includes('登录失败次数过多') || text.includes('两次登录尝试间隔')) {
+            return `${text}（安全规则：同一IP或账号5次失败将锁定24小时，且两次登录尝试至少间隔5秒）`;
+        }
+        return text;
     }
 
     handleRedirect() {

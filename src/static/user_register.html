@@ -614,7 +614,17 @@
                 }
                 
                 // 显示通用错误
-                this.showGeneralError(errorMessage);
+                this.showGeneralError(this.withSecurityHint(errorMessage));
+            }
+
+            withSecurityHint(message) {
+                const text = String(message || '').trim();
+                if (!text) return '注册失败，请重试';
+                if (text.includes('安全规则')) return text;
+                if (text.includes('注册请求过于频繁')) {
+                    return `${text}（安全规则：注册相关接口每IP每小时最多10次）`;
+                }
+                return text;
             }
             
             showFieldError(fieldName, message) {
