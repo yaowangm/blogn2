@@ -147,3 +147,23 @@ class TestAuthSecurityService:
             with pytest.raises(HTTPException) as exc:
                 await service.pre_login_check(1)
         assert exc.value.status_code == 503
+
+
+class TestAuthSecuritySettingsLegacyEnv:
+    """AUTH_FAIL_CLOSED 旧变量名兼容（仅未设置新变量时）"""
+
+    def test_legacy_redis_down_env_when_db_error_unset(self, monkeypatch):
+        monkeypatch.delenv("AUTH_FAIL_CLOSED_WHEN_DB_ERROR", raising=False)
+        monkeypatch.setenv("AUTH_FAIL_CLOSED_WHEN_REDIS_DOWN", "false")
+        from src.config.auth_security import AuthSecuritySettings
+
+        s = AuthSecuritySettings()
+        assert s.fail_closed_when_db_error is False
+
+    def test_db_error_env_takes_precedence_over_legacy(self, monkeypatch):
+        monkeypatch.setenv("AUTH_FAIL_CLOSED_WHEN_DB_ERROR", "true")
+        monkeypatch.setenv("AUTH_FAIL_CLOSED_WHEN_REDIS_DOWN", "false")
+        from src.config.auth_security import AuthSecuritySettings
+
+        s = AuthSecuritySettings()
+        assert s.fail_closed_when_db_error is True

@@ -1,9 +1,13 @@
 """
 认证安全配置模块
 
-统一管理登录防爆破、密码重置限流、注册限流等配置项。
+统一管理登录防爆破、密码重置限流、注册限流等配置项（状态存储为 PostgreSQL，非 Redis）。
 """
 
+import os
+from typing import Any
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .utils import load_config_file
@@ -15,30 +19,25 @@ load_config_file()
 class AuthSecuritySettings(BaseSettings):
     """认证安全配置"""
 
-    # 登录防爆破
-    login_max_fail_per_ip: int = 5
+    # 登录防爆破（仅按用户维度持久化）
     login_max_fail_per_account: int = 5
     login_lock_seconds: int = 86400
     login_min_interval_seconds: int = 5
 
-    # 密码重置申请限流
-    pwdreset_req_max_per_ip: int = 5
+    # 密码重置申请限流（按已解析用户）
     pwdreset_req_max_per_email: int = 3
     pwdreset_req_window_seconds: int = 3600
 
-    # 重置 token 校验限流
-    pwdreset_validate_max_per_ip: int = 30
+    # 重置 token 校验 / 执行重置（按用户维度）
+    pwdreset_validate_max_per_user: int = 30
     pwdreset_validate_window_seconds: int = 3600
 
-    # 注册限流
-    register_max_per_ip: int = 10
+    # 注册成功后的用户维度窗口计数
+    register_max_per_user: int = 10
     register_window_seconds: int = 3600
 
-    # 认证安全状态库不可用策略：True=拒绝（更安全），False=放行（仍沿用 AUTH_FAIL_CLOSED_WHEN_REDIS_DOWN）
-    fail_closed_when_redis_down: bool = True
-
-    # 历史字段：Redis 方案遗留，数据库方案下忽略
-    key_namespace: str = "authsec"
+    # 认证安全状态写库失败时是否拒绝请求（true=更安全）
+    fail_closed_when_db_error: bool = True
 
     model_config = SettingsConfigDict(
         env_prefix="AUTH_",
@@ -46,6 +45,20 @@ class AuthSecuritySettings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_legacy_fail_closed_env(cls, data: Any) -> Any:
+        """若未设置 AUTH_FAIL_CLOSED_WHEN_DB_ERROR，则读取已废弃的 AUTH_FAIL_CLOSED_WHEN_REDIS_DOWN。"""
+        if not isinstance(data, dict):
+            return data
+        if "fail_closed_when_db_error" in data and data["fail_closed_when_db_error"] is not None:
+            return data
+        legacy = os.environ.get("AUTH_FAIL_CLOSED_WHEN_REDIS_DOWN")
+        if legacy is not None:
+            out = {**data, "fail_closed_when_db_error": legacy.lower() in ("1", "true", "yes", "on")}
+            return out
+        return data
 
 
 auth_security_settings = AuthSecuritySettings()

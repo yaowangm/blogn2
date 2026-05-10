@@ -78,15 +78,20 @@
 
 ## 五、配置项（环境变量）
 
-沿用或收敛 `src/config/auth_security.py` 中的 `AUTH_*` 前缀，建议至少包含（名称可与现有一致以减少迁移成本）：
+前缀 `AUTH_*`，见 `src/config/auth_security.py` 与 `.env.example`。当前实现用到的键：
 
-| 配置键 | 含义 | 建议用途 |
-|--------|------|----------|
-| `AUTH_LOGIN_MAX_FAIL_PER_*` | 登录失败阈值（本方案仅 user 维，可合并为一项如 `AUTH_LOGIN_MAX_FAIL_PER_USER`） | 与 `fail_count` 比较触发长锁 |
-| `AUTH_LOGIN_LOCK_SECONDS` | 达到阈值后锁定秒数 | 写入/推迟 `next_allowed_at` |
-| `AUTH_LOGIN_MIN_INTERVAL_SECONDS` | 两次尝试最小间隔 | 与 `next_allowed_at` 比较或更新 |
-| `AUTH_LOGIN_FAIL_WINDOW_SECONDS` | 失败计数窗口长度 | 与 `window_start` 比较是否清零 `fail_count` |
-| `AUTH_PWDRESET_*` / `AUTH_REGISTER_*` | 各 `opt_type` 的窗口与阈值 | 可按操作类型映射到不同配置块 |
+| 环境变量 | 含义 |
+|----------|------|
+| `AUTH_FAIL_CLOSED_WHEN_DB_ERROR` | 认证安全状态写库失败时是否返回 503（未设置时可回退读取已废弃的 `AUTH_FAIL_CLOSED_WHEN_REDIS_DOWN`） |
+| `AUTH_LOGIN_MAX_FAIL_PER_ACCOUNT` | 登录失败阈值（与 `fail_count` 比较触发长锁） |
+| `AUTH_LOGIN_LOCK_SECONDS` | 失败计数窗口长度与长锁秒数（实现中与现网一致用同一值） |
+| `AUTH_LOGIN_MIN_INTERVAL_SECONDS` | 两次登录尝试最小间隔 |
+| `AUTH_PWDRESET_REQ_MAX_PER_EMAIL` | 忘记密码每用户每窗口最大次数 |
+| `AUTH_PWDRESET_REQ_WINDOW_SECONDS` | 忘记密码窗口秒数 |
+| `AUTH_PWDRESET_VALIDATE_MAX_PER_USER` | 校验/重置 token 每用户每窗口最大次数 |
+| `AUTH_PWDRESET_VALIDATE_WINDOW_SECONDS` | 上述窗口秒数 |
+| `AUTH_REGISTER_MAX_PER_USER` | 注册成功记录每用户每窗口最大次数 |
+| `AUTH_REGISTER_WINDOW_SECONDS` | 注册窗口秒数 |
 
 **原则**：表中**不存**阈值与窗口秒数；读取配置在应用层完成，写入表时只写状态列。
 
@@ -189,7 +194,7 @@ next_allowed_at := now  # 或 now + 0，表示立即允许后续合法操作；�
    - `SELECT … FROM user_auth_security_state WHERE user_id=? AND opt_type=? FOR UPDATE`；或
    - `INSERT … ON CONFLICT (user_id, opt_type) DO UPDATE … RETURNING *`（PostgreSQL 推荐，减少竞态）。
 2. **死锁**：多 `opt_type` 同一请求若需锁多行，按 `opt_type` 字典序固定加锁顺序。
-3. **数据库不可用**：与现 Fail-Closed 策略一致时可返回 503；具体 env 名由实现替换原 `AUTH_FAIL_CLOSED_WHEN_REDIS_DOWN` 语义。
+3. **数据库不可用**：与现 Fail-Closed 策略一致时可返回 503；由 `AUTH_FAIL_CLOSED_WHEN_DB_ERROR` 控制。
 
 ---
 

@@ -162,14 +162,7 @@
 
 ## 八、配置项设计
 
-建议新增环境变量（示例值）：
-
-- `AUTH_LOGIN_MAX_FAIL_PER_IP=5`
-- `AUTH_LOGIN_MAX_FAIL_PER_ACCOUNT=5`
-- `AUTH_LOGIN_LOCK_SECONDS=86400`
-- `AUTH_LOGIN_MIN_INTERVAL_SECONDS=5`
-- `AUTH_LOGIN_FAIL_CLOSED_WHEN_REDIS_DOWN=true`
-- `AUTH_LOGIN_KEY_NAMESPACE=auth:login`
+**说明**：登录防爆破的**实现已迁移**为 PostgreSQL `user_auth_security_state`（见 `doc/AUTH_SECURITY_USER_STATE_DB_DESIGN.md`），不再使用 Redis/Lua。环境变量以 `AUTH_*` 为准，见 `src/config/auth_security.py` 与 `.env.example`（例如 `AUTH_FAIL_CLOSED_WHEN_DB_ERROR`、`AUTH_LOGIN_MAX_FAIL_PER_ACCOUNT` 等）。以下曾为 Redis 方案草案，**已废弃**：`AUTH_LOGIN_MAX_FAIL_PER_IP`、`AUTH_KEY_NAMESPACE`、`AUTH_FAIL_CLOSED_WHEN_REDIS_DOWN`（后者仅在未配置 `AUTH_FAIL_CLOSED_WHEN_DB_ERROR` 时由代码兼容读取）。
 
 ---
 
@@ -205,13 +198,13 @@
 - 连续失败至第 5 次触发 24h 锁定；
 - 锁定期间持续返回 429；
 - 登录成功后失败计数被清理；
-- Redis 不可用时（Fail Closed）返回 503。
+- 认证安全状态写库不可用时（Fail Closed）返回 503。
 
 ### 11.2 集成测试（接口）
 
 - `/api/auth/login` 在错误密码场景下正确累积计数；
 - `Retry-After` 头存在且值正确；
-- IP 与账号任一维度命中都可触发拒绝。
+- 当前生产实现为**仅用户维度**（能解析出 `user_id` 时）持久化限流；原「IP + 账号」双维 Redis 方案已替换。
 
 ---
 
@@ -317,20 +310,16 @@ Redis 键建议：
 
 ## 十五、配置补充（新增建议）
 
-除登录防爆破配置外，建议补充以下环境变量：
+除登录外，密码重置与注册相关阈值见 `AUTH_PWDRESET_*`、`AUTH_REGISTER_*`（用户维度语义见 `AUTH_SECURITY_USER_STATE_DB_DESIGN.md`），例如：
 
-- `AUTH_PWDRESET_REQ_MAX_PER_IP=5`
 - `AUTH_PWDRESET_REQ_MAX_PER_EMAIL=3`
 - `AUTH_PWDRESET_REQ_WINDOW_SECONDS=3600`
-- `AUTH_PWDRESET_VALIDATE_MAX_PER_IP=30`
+- `AUTH_PWDRESET_VALIDATE_MAX_PER_USER=30`
 - `AUTH_PWDRESET_VALIDATE_WINDOW_SECONDS=3600`
-- `AUTH_REGISTER_MAX_PER_IP=10`
+- `AUTH_REGISTER_MAX_PER_USER=10`
 - `AUTH_REGISTER_WINDOW_SECONDS=3600`
 
-说明：
-
-- 上述值为推荐默认值，需按实际用户规模和邮件服务能力调优；
-- 统一复用 Redis + Lua 原子控制框架，避免重复实现。
+说明：上述值为推荐默认值；状态由 PostgreSQL 行锁 / upsert 保证一致性，不再依赖 Redis + Lua。
 
 ---
 

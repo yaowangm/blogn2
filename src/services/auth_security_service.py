@@ -48,25 +48,25 @@ class AuthSecurityService:
         return (
             "请求过于频繁，请稍后再试。"
             f"安全规则：重置令牌校验同一账号每{self.settings.pwdreset_validate_window_seconds // 60}分钟最多"
-            f"{self.settings.pwdreset_validate_max_per_ip}次。"
+            f"{self.settings.pwdreset_validate_max_per_user}次。"
         )
 
     def _reset_password_limit_message(self) -> str:
         return (
             "请求过于频繁，请稍后再试。"
             f"安全规则：重置密码同一账号每{self.settings.pwdreset_validate_window_seconds // 60}分钟最多"
-            f"{self.settings.pwdreset_validate_max_per_ip}次。"
+            f"{self.settings.pwdreset_validate_max_per_user}次。"
         )
 
     def _register_limit_message(self) -> str:
         return (
             "注册过于频繁，请稍后再试。"
             f"安全规则：同一账号每{self.settings.register_window_seconds // 60}分钟最多"
-            f"{self.settings.register_max_per_ip}次注册记录。"
+            f"{self.settings.register_max_per_user}次注册记录。"
         )
 
     def _db_fail_closed(self) -> bool:
-        return self.settings.fail_closed_when_redis_down
+        return self.settings.fail_closed_when_db_error
 
     async def _commit_or_raise(self) -> None:
         try:
@@ -204,7 +204,7 @@ class AuthSecurityService:
             blocked, retry_after = await self._repo.bump_windowed_usage(
                 user_id,
                 AuthSecurityOptType.VALIDATE_RESET_TOKEN,
-                self.settings.pwdreset_validate_max_per_ip,
+                self.settings.pwdreset_validate_max_per_user,
                 self.settings.pwdreset_validate_window_seconds,
             )
             if blocked:
@@ -234,7 +234,7 @@ class AuthSecurityService:
             blocked, retry_after = await self._repo.bump_windowed_usage(
                 user_id,
                 AuthSecurityOptType.RESET_PASSWORD,
-                self.settings.pwdreset_validate_max_per_ip,
+                self.settings.pwdreset_validate_max_per_user,
                 self.settings.pwdreset_validate_window_seconds,
             )
             if blocked:
@@ -263,7 +263,7 @@ class AuthSecurityService:
             blocked, retry_after = await self._repo.bump_windowed_usage(
                 user_id,
                 AuthSecurityOptType.REGISTER,
-                self.settings.register_max_per_ip,
+                self.settings.register_max_per_user,
                 self.settings.register_window_seconds,
             )
             if blocked:
