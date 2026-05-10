@@ -310,17 +310,20 @@ class ArticleCommentsCard extends BaseComponent {
         }, 100);
     }
 
+    /** 锚点定位评论的蓝色边框闪烁总时长（毫秒），与原先整行高亮一致 */
+    static COMMENT_HASH_FLASH_MS = 3000;
+
     /**
-     * 突出显示评论
+     * 突出显示目标评论：仅边缘蓝色闪烁，不覆盖文字/背景。
      */
     highlightComment(commentElement) {
-        // 添加高亮样式
-        commentElement.classList.add('comment-highlight');
-        
-        // 3秒后移除高亮效果
+        commentElement.classList.remove('comment-hash-flash');
+        // 强制重绘，便于从 hash 再次点击同一条时重触发动画
+        void commentElement.offsetWidth;
+        commentElement.classList.add('comment-hash-flash');
         setTimeout(() => {
-            commentElement.classList.remove('comment-highlight');
-        }, 3000);
+            commentElement.classList.remove('comment-hash-flash');
+        }, ArticleCommentsCard.COMMENT_HASH_FLASH_MS);
     }
 
     /**
@@ -347,16 +350,7 @@ class ArticleCommentsCard extends BaseComponent {
                     behavior: 'smooth', 
                     block: 'center' 
                 });
-                
-                // 添加高亮效果
-                commentElement.style.backgroundColor = 'var(--primary-color)';
-                commentElement.style.color = 'var(--white)';
-                
-                // 3秒后恢复原样式
-                setTimeout(() => {
-                    commentElement.style.backgroundColor = '';
-                    commentElement.style.color = '';
-                }, 3000);
+                this.highlightComment(commentElement);
             }
         }, 500); // 增加延迟，确保评论完全渲染
     }
@@ -669,25 +663,20 @@ class ArticleCommentsCard extends BaseComponent {
                     background-color: var(--gray-50);
                 }
 
-                .comment-highlight {
-                    background-color: #fef3c7 !important;
-                    border: 2px solid #f59e0b !important;
-                    border-radius: var(--border-radius-md);
-                    animation: highlightPulse 0.6s ease-in-out;
+                /* 从 #post{id} 进入：仅边缘蓝色闪烁，不改变正文背景色，总时长 3s（6×0.5s） */
+                .comment-hash-flash {
+                    border-radius: var(--radius-md, 8px);
+                    position: relative;
+                    z-index: 1;
+                    animation: commentHashBorderBlink 0.5s ease-in-out 6;
                 }
 
-                @keyframes highlightPulse {
-                    0% {
-                        transform: scale(1);
-                        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+                @keyframes commentHashBorderBlink {
+                    0%, 100% {
+                        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.95);
                     }
                     50% {
-                        transform: scale(1.02);
-                        box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.3);
-                    }
-                    100% {
-                        transform: scale(1);
-                        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+                        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
                     }
                 }
 
