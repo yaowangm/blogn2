@@ -24,3 +24,21 @@ COMMENT ON COLUMN user_auth_security_state.opt_type IS '操作类型：login / f
 COMMENT ON COLUMN user_auth_security_state.fail_count IS '当前窗口内累计失败（或广义计数）';
 COMMENT ON COLUMN user_auth_security_state.window_start IS '当前失败计数窗口起点';
 COMMENT ON COLUMN user_auth_security_state.next_allowed_at IS '该操作类型下最早允许再发起请求的 UTC 时间';
+
+-- ---------------------------------------------------------------------------
+-- 补充索引说明（与 src/repositories/user_auth_security_state_repository.py 一致）
+--
+-- 热路径仅为等值条件：WHERE user_id = ? AND opt_type = ?（FOR UPDATE、
+-- INSERT … ON CONFLICT … uq_user_auth_security_state_user_opt）。
+-- 表上的 UNIQUE (user_id, opt_type) 已由 PostgreSQL 建立唯一 btree，勿再建
+-- 等效复合索引以免重复占用空间。
+--
+-- 以下为 doc/AUTH_SECURITY_USER_STATE_DB_DESIGN.md 所述运维清理预留，例如：
+--   DELETE FROM user_auth_security_state
+--   WHERE fail_count = 0 AND next_allowed_at < now() - interval '90 days';
+-- 部分索引缩小体积，并贴合 WHERE fail_count = 0 的过滤条件。
+-- ---------------------------------------------------------------------------
+
+CREATE INDEX IF NOT EXISTS ix_user_auth_security_state_idle_next_allowed
+    ON user_auth_security_state (next_allowed_at)
+    WHERE fail_count = 0;
