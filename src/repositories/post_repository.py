@@ -97,7 +97,7 @@ class PostRepository:
         for post, user_name, project_item_name in result.all():
             comments.append({
                 "id": post.id,
-                "user_name": user_name or "用户",
+                "user_name": user_name or "匿名用户",
                 "content": post.content,
                 "post_time": post.posttime,
                 "project_item_name": project_item_name or "文章",
@@ -132,7 +132,7 @@ class PostRepository:
         comments = []
         
         for comment, user_name in result.all():
-            author_name = user_name if user_name else "用户"
+            author_name = user_name if user_name else "匿名用户"
             
             comments.append({
                 "id": comment.id,
