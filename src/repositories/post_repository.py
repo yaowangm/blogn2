@@ -86,7 +86,7 @@ class PostRepository:
             .where(Post.status == 1)
             .where(ProjectItem.status == 1)
             .where(or_(ProjectItem.itemtype.is_(None), ProjectItem.itemtype != ArticleStatus.DELETED))
-            .where(Project.state == 1)
+            .where(Project.state == 0)  # 与 project_repository 列表一致：库内 state=0 为正常博客
             .order_by(Post.posttime.desc())
             .limit(limit)
         )
@@ -123,7 +123,7 @@ class PostRepository:
             .where(Post.status == 1)
             .where(ProjectItem.status == 1)
             .where(or_(ProjectItem.itemtype.is_(None), ProjectItem.itemtype != ArticleStatus.DELETED))
-            .where(Project.state == 1)
+            .where(Project.state == 0)  # 与 project_repository 列表一致：库内 state=0 为正常博客
             .order_by(Post.posttime.desc())
             .limit(limit)
         )
@@ -382,7 +382,7 @@ class PostRepository:
             .where(Post.status == 1)
             .where(ProjectItem.status == 1)
             .where(or_(ProjectItem.itemtype.is_(None), ProjectItem.itemtype != ArticleStatus.DELETED))
-            .where(Project.state == 1)
+            .where(Project.state == 0)  # 与 project_repository 列表一致：库内 state=0 为正常博客
         )
         result = await self.session.exec(statement)
         return result.first() or 0

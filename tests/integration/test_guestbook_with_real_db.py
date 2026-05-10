@@ -426,12 +426,12 @@ class TestGuestbookWithRealDB:
         real_sync_session_with_commit.flush()  # 获取生成的用户ID
         test_data_tracker.add_user(user.id)  # 跟踪用户ID
         
-        # 创建测试项目（state=1 正常博客，与生产可见性一致；state=0 为禁用，不应出现在全站最近评论）
+        # 创建测试项目（state=0 正常博客，与 project_repository 及生产库约定一致）
         project = Project(
             name="Test Project for Comments",
             userid=user.id,
             createtime=datetime(2024, 1, 1, 10, 0, 0),
-            state=1,
+            state=0,
             accesscount=0
         )
         real_sync_session_with_commit.add(project)
