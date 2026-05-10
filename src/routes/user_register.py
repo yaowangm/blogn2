@@ -14,11 +14,11 @@ from datetime import datetime
 import hashlib
 
 from src.database import get_async_session
+from src.services.auth_security_service import AuthSecurityService
+from src.utils.dependencies import get_auth_security_service
 from src.models.regkey import RegKey
 from src.models.user import User
 from src.utils.password_validation import validate_password as validate_password_rules
-from src.services.auth_security_service import AuthSecurityService
-
 # 创建用户注册API路由器
 router = APIRouter(prefix="/register", tags=["用户注册"])
 
@@ -73,6 +73,7 @@ class UserRegisterResponse(BaseModel):
 async def register_user(
     request: UserRegisterRequest,
     session: AsyncSession = Depends(get_async_session),
+    auth_security_service: AuthSecurityService = Depends(get_auth_security_service),
     http_request: Request = None,
 ):
     """
@@ -89,17 +90,6 @@ async def register_user(
         HTTPException: 当验证失败或注册码无效时
     """
     try:
-        auth_security_service = AuthSecurityService()
-        if http_request:
-            xff = http_request.headers.get("x-forwarded-for", "")
-            raw_ip = xff.split(",")[0].strip() if xff else (
-                http_request.client.host if http_request.client else "unknown"
-            )
-        else:
-            raw_ip = "unknown"
-        client_ip = auth_security_service.normalize_ip(raw_ip)
-        await auth_security_service.check_register_rate_limit(client_ip)
-
         generic_register_error = "注册失败，请检查信息或稍后重试"
 
         # 1. 检查用户名是否已存在
@@ -157,7 +147,9 @@ async def register_user(
         
         # 刷新session以获取生成的用户ID
         await session.flush()
-        
+
+        await auth_security_service.record_register_success(new_user.id, defer_commit=True)
+
         # 更新注册码状态
         regkey_record.status = 2  # 已使用
         regkey_record.userid = new_user.id
@@ -179,6 +171,7 @@ async def register_user(
         )
         
     except HTTPException:
+        await session.rollback()
         raise
     except Exception as e:
         await session.rollback()
@@ -201,17 +194,6 @@ async def validate_regkey(
         包含验证结果的字典
     """
     try:
-        auth_security_service = AuthSecurityService()
-        if http_request:
-            xff = http_request.headers.get("x-forwarded-for", "")
-            raw_ip = xff.split(",")[0].strip() if xff else (
-                http_request.client.host if http_request.client else "unknown"
-            )
-        else:
-            raw_ip = "unknown"
-        client_ip = auth_security_service.normalize_ip(raw_ip)
-        await auth_security_service.check_register_rate_limit(client_ip)
-
         if not regkey:
             return {"valid": False, "message": "注册码不能为空"}
         

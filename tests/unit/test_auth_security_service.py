@@ -1,123 +1,149 @@
 """
-认证安全服务单元测试
-
-覆盖登录防爆破、密码重置限流、注册限流等新增安全分支。
+认证安全服务单元测试（数据库实现，mock session / repository）
 """
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import HTTPException
 
 from src.services.auth_security_service import AuthSecurityService
 
 
+@pytest.fixture
+def mock_session():
+    return AsyncMock()
+
+
+@pytest.fixture
+def service(mock_session):
+    return AuthSecurityService(mock_session)
+
+
 class TestAuthSecurityService:
-    @pytest.fixture
-    def service(self):
-        return AuthSecurityService()
-
-    @pytest.fixture
-    def mock_redis(self):
-        client = AsyncMock()
-        client.eval = AsyncMock()
-        client.delete = AsyncMock()
-        return client
+    @pytest.mark.asyncio
+    async def test_pre_login_check_skips_without_user_id(self, service):
+        await service.pre_login_check(None)
+        service.session.commit.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_pre_login_check_ok(self, service, mock_redis):
-        mock_redis.eval.return_value = ["OK", 0]
-        with patch("src.services.auth_security_service.cache_manager.initialize", new=AsyncMock()), \
-             patch("src.services.auth_security_service.cache_manager.get_redis_client", return_value=mock_redis):
-            await service.pre_login_check("127.0.0.1", "user@example.com")
-        assert mock_redis.eval.called
+    async def test_pre_login_check_ok(self, service, mock_session):
+        with patch.object(
+            service._repo,
+            "apply_login_pre_check",
+            new=AsyncMock(return_value=None),
+        ):
+            await service.pre_login_check(1)
+        mock_session.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_pre_login_check_lock_ip(self, service, mock_redis):
-        mock_redis.eval.return_value = ["LOCK_IP", 120]
-        with patch("src.services.auth_security_service.cache_manager.initialize", new=AsyncMock()), \
-             patch("src.services.auth_security_service.cache_manager.get_redis_client", return_value=mock_redis):
+    async def test_pre_login_check_lock(self, service, mock_session):
+        with patch.object(
+            service._repo,
+            "apply_login_pre_check",
+            new=AsyncMock(return_value=("LOCK", 120)),
+        ):
             with pytest.raises(HTTPException) as exc:
-                await service.pre_login_check("127.0.0.1", "user@example.com")
+                await service.pre_login_check(1)
         assert exc.value.status_code == 429
         assert "登录失败次数过多" in str(exc.value.detail)
         assert exc.value.headers["Retry-After"] == "120"
+        mock_session.rollback.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_pre_login_check_cooldown_account(self, service, mock_redis):
-        mock_redis.eval.return_value = ["COOLDOWN_ACCOUNT", 3]
-        with patch("src.services.auth_security_service.cache_manager.initialize", new=AsyncMock()), \
-             patch("src.services.auth_security_service.cache_manager.get_redis_client", return_value=mock_redis):
+    async def test_pre_login_check_cooldown(self, service, mock_session):
+        with patch.object(
+            service._repo,
+            "apply_login_pre_check",
+            new=AsyncMock(return_value=("COOLDOWN", 3)),
+        ):
             with pytest.raises(HTTPException) as exc:
-                await service.pre_login_check("127.0.0.1", "user@example.com")
+                await service.pre_login_check(1)
         assert exc.value.status_code == 429
         assert "两次登录尝试间隔不能少于" in str(exc.value.detail)
 
     @pytest.mark.asyncio
-    async def test_on_login_failed_not_locked(self, service, mock_redis):
-        mock_redis.eval.return_value = [2, 2, 0, 0]
-        with patch("src.services.auth_security_service.cache_manager.initialize", new=AsyncMock()), \
-             patch("src.services.auth_security_service.cache_manager.get_redis_client", return_value=mock_redis):
-            await service.on_login_failed("127.0.0.1", "user@example.com")
-        assert mock_redis.eval.called
+    async def test_on_login_failed_not_locked(self, service, mock_session):
+        with patch.object(
+            service._repo,
+            "apply_login_failed",
+            new=AsyncMock(return_value=(False, 5)),
+        ):
+            await service.on_login_failed(1)
+        mock_session.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_on_login_failed_locked(self, service, mock_redis):
-        mock_redis.eval.return_value = [5, 3, 1, 86400]
-        with patch("src.services.auth_security_service.cache_manager.initialize", new=AsyncMock()), \
-             patch("src.services.auth_security_service.cache_manager.get_redis_client", return_value=mock_redis):
+    async def test_on_login_failed_locked(self, service, mock_session):
+        with patch.object(
+            service._repo,
+            "apply_login_failed",
+            new=AsyncMock(return_value=(True, 86400)),
+        ):
             with pytest.raises(HTTPException) as exc:
-                await service.on_login_failed("127.0.0.1", "user@example.com")
+                await service.on_login_failed(1)
         assert exc.value.status_code == 429
         assert exc.value.headers["Retry-After"] == "86400"
 
     @pytest.mark.asyncio
-    async def test_on_login_success_clears_counters(self, service, mock_redis):
-        with patch("src.services.auth_security_service.cache_manager.initialize", new=AsyncMock()), \
-             patch("src.services.auth_security_service.cache_manager.get_redis_client", return_value=mock_redis):
-            await service.on_login_success("127.0.0.1", "user@example.com")
-        mock_redis.delete.assert_called_once()
+    async def test_on_login_success(self, service, mock_session):
+        with patch.object(service._repo, "apply_login_success", new=AsyncMock()):
+            await service.on_login_success(1)
+        mock_session.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_check_forgot_password_rate_limit_blocked(self, service, mock_redis):
-        mock_redis.eval.return_value = [6, 120, 1, 40, 1, "LIMIT_K1", 120]
-        with patch("src.services.auth_security_service.cache_manager.initialize", new=AsyncMock()), \
-             patch("src.services.auth_security_service.cache_manager.get_redis_client", return_value=mock_redis):
+    async def test_check_forgot_password_blocked(self, service, mock_session):
+        with patch.object(
+            service._repo,
+            "bump_windowed_usage",
+            new=AsyncMock(return_value=(True, 200)),
+        ):
             with pytest.raises(HTTPException) as exc:
-                await service.check_forgot_password_rate_limit("127.0.0.1", "user@example.com")
+                await service.check_forgot_password_rate_limit(1)
         assert exc.value.status_code == 429
-        assert "请求过于频繁" in str(exc.value.detail)
+        mock_session.rollback.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_check_validate_token_rate_limit_blocked(self, service, mock_redis):
-        mock_redis.eval.return_value = [31, 50, 1]
-        with patch("src.services.auth_security_service.cache_manager.initialize", new=AsyncMock()), \
-             patch("src.services.auth_security_service.cache_manager.get_redis_client", return_value=mock_redis):
+    async def test_check_validate_token_blocked(self, service, mock_session):
+        with patch.object(
+            service._repo,
+            "bump_windowed_usage",
+            new=AsyncMock(return_value=(True, 50)),
+        ):
             with pytest.raises(HTTPException) as exc:
-                await service.check_reset_token_validate_rate_limit("127.0.0.1")
+                await service.check_reset_token_validate_rate_limit(1)
         assert exc.value.status_code == 429
 
     @pytest.mark.asyncio
-    async def test_check_register_rate_limit_blocked(self, service, mock_redis):
-        mock_redis.eval.return_value = [11, 200, 1]
-        with patch("src.services.auth_security_service.cache_manager.initialize", new=AsyncMock()), \
-             patch("src.services.auth_security_service.cache_manager.get_redis_client", return_value=mock_redis):
+    async def test_check_reset_password_blocked(self, service, mock_session):
+        with patch.object(
+            service._repo,
+            "bump_windowed_usage",
+            new=AsyncMock(return_value=(True, 50)),
+        ):
             with pytest.raises(HTTPException) as exc:
-                await service.check_register_rate_limit("127.0.0.1")
+                await service.check_reset_password_rate_limit(1)
         assert exc.value.status_code == 429
-        assert "注册请求过于频繁" in str(exc.value.detail)
 
     @pytest.mark.asyncio
-    async def test_get_redis_fail_closed(self, service):
-        with patch("src.services.auth_security_service.cache_manager.initialize", new=AsyncMock()), \
-             patch("src.services.auth_security_service.cache_manager.get_redis_client", return_value=None), \
-             patch("src.services.auth_security_service.os.getenv", return_value=None):
+    async def test_record_register_blocked(self, service, mock_session):
+        with patch.object(
+            service._repo,
+            "bump_windowed_usage",
+            new=AsyncMock(return_value=(True, 200)),
+        ):
             with pytest.raises(HTTPException) as exc:
-                await service.pre_login_check("127.0.0.1", "u")
+                await service.record_register_success(1, defer_commit=False)
+        assert exc.value.status_code == 429
+
+    @pytest.mark.asyncio
+    async def test_commit_failure_fail_closed(self, service, mock_session):
+        from sqlalchemy.exc import OperationalError
+
+        mock_session.commit.side_effect = OperationalError("stmt", {}, Exception("db"))
+        with patch.object(
+            service._repo,
+            "apply_login_pre_check",
+            new=AsyncMock(return_value=None),
+        ):
+            with pytest.raises(HTTPException) as exc:
+                await service.pre_login_check(1)
         assert exc.value.status_code == 503
-
-    @pytest.mark.asyncio
-    async def test_get_redis_testing_env_bypass(self, service):
-        with patch("src.services.auth_security_service.cache_manager.initialize", new=AsyncMock()), \
-             patch("src.services.auth_security_service.cache_manager.get_redis_client", return_value=None), \
-             patch.dict("os.environ", {"TESTING": "true"}, clear=False):
-            await service.pre_login_check("127.0.0.1", "u")

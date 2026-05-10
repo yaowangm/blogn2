@@ -30,7 +30,17 @@ class UserRepository:
         statement = select(User).where(User.email == email)
         result = await self.session.exec(statement)
         return result.first()
-    
+
+    async def get_by_login_identifier(self, username_or_email: str) -> Optional[User]:
+        """登录框输入：先按用户名再按邮箱解析（与 AuthService.authenticate_user 一致）。"""
+        raw = (username_or_email or "").strip()
+        if not raw:
+            return None
+        user = await self.get_by_name(raw)
+        if user:
+            return user
+        return await self.get_by_email(raw)
+
     async def get_by_name(self, name: str) -> Optional[User]:
         """根据用户名获取用户"""
         statement = select(User).where(User.name == name)

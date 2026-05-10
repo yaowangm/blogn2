@@ -16,6 +16,7 @@ from src.models.subscription import Subscription
 from src.models.urllink import UrlLink
 from src.models.relation import Relation
 from src.models.password_reset_token import PasswordResetToken
+from src.models.user_auth_security_state import UserAuthSecurityState
 
 # 加载环境变量
 load_dotenv()

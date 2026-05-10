@@ -34,10 +34,10 @@ class AuthSecuritySettings(BaseSettings):
     register_max_per_ip: int = 10
     register_window_seconds: int = 3600
 
-    # Redis 不可用策略：True=拒绝（更安全），False=放行
+    # 认证安全状态库不可用策略：True=拒绝（更安全），False=放行（仍沿用 AUTH_FAIL_CLOSED_WHEN_REDIS_DOWN）
     fail_closed_when_redis_down: bool = True
 
-    # redis key 命名空间
+    # 历史字段：Redis 方案遗留，数据库方案下忽略
     key_namespace: str = "authsec"
 
     model_config = SettingsConfigDict(
