@@ -223,7 +223,8 @@ cache_manager = CacheManager()
 def cache_decorator(
     ttl: int = None,
     key_builder: Callable = None,
-    enable_cache: bool = True
+    enable_cache: bool = True,
+    store_empty_list: bool = True,
 ):
     """
     通用缓存装饰器
@@ -232,6 +233,7 @@ def cache_decorator(
         ttl: 缓存时间（秒），默认使用配置中的default_ttl
         key_builder: 自定义键生成器函数
         enable_cache: 是否启用缓存
+        store_empty_list: 为 False 时不写入空列表 []（避免异常兜底或瞬态空结果被长期缓存）
         
     Returns:
         装饰后的函数
@@ -265,16 +267,28 @@ def cache_decorator(
                 # 尝试从缓存获取
                 cached_value = await cache_manager.get(cache_key)
                 if cached_value is not None:
-                    if cache_settings.cache_debug:
-                        logger.debug(f"缓存命中: {cache_key}")
-                    return cached_value
+                    # 历史上可能把 [] 写入缓存；对「不缓存空列表」的端点视为未命中并删键，避免首页长期空白
+                    if (
+                        not store_empty_list
+                        and isinstance(cached_value, list)
+                        and len(cached_value) == 0
+                    ):
+                        await cache_manager.delete(cache_key)
+                    else:
+                        if cache_settings.cache_debug:
+                            logger.debug(f"缓存命中: {cache_key}")
+                        return cached_value
                 
                 # 执行函数并缓存结果
                 result = await func(*args, **kwargs)
                 
                 # 设置缓存
                 cache_ttl = ttl or cache_settings.default_ttl
-                await cache_manager.set(cache_key, result, cache_ttl)
+                if not store_empty_list and isinstance(result, list) and len(result) == 0:
+                    if cache_settings.cache_debug:
+                        logger.debug(f"跳过缓存空列表: {cache_key}")
+                else:
+                    await cache_manager.set(cache_key, result, cache_ttl)
                 
                 if cache_settings.cache_debug:
                     logger.debug(f"缓存设置: {cache_key}, TTL: {cache_ttl}")
@@ -381,10 +395,26 @@ def cache_blog_comments(ttl: int = None):
                           CacheKeyGenerator.blog_comments(kwargs.get('blog_id', 0)))
 
 
+def _blog_messages_recent_cache_key(*args, **kwargs) -> str:
+    """与 FastAPI 注入参数兼容：limit 可能在 kwargs 或靠前位置参数中。"""
+    limit = kwargs.get("limit")
+    if limit is None:
+        for a in args:
+            if isinstance(a, int) and not isinstance(a, bool):
+                limit = a
+                break
+    if limit is None:
+        limit = 5
+    return CacheKeyGenerator.blog_messages_recent(limit)
+
+
 def cache_blog_messages_recent(ttl: int = None):
-    """最近留言缓存装饰器"""
-    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: 
-                          CacheKeyGenerator.blog_messages_recent(kwargs.get('limit', 5)))
+    """最近留言缓存装饰器（不缓存空列表，避免与留言列表 API 出现「卡片空、列表有」的长期不一致）"""
+    return cache_decorator(
+        ttl=ttl,
+        key_builder=_blog_messages_recent_cache_key,
+        store_empty_list=False,
+    )
 
 
 def cache_blog_messages_list(ttl: int = None):
