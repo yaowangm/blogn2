@@ -1,6 +1,6 @@
 # 认证安全状态（数据库）设计方案
 
-> **说明（临时文档）**：本文档为草案，用于评审「以 PostgreSQL 单表替代 Redis 认证限流」的表结构与行为约定；与 `LOGIN_BRUTE_FORCE_PROTECTION_DESIGN.md`（Redis 实现）并存，待落地后可视情况合并或替换。**不要求随仓库提交**，可自行删除或改名。
+**说明**：本文描述生产使用的 PostgreSQL 表 `user_auth_security_state` 及 `opt_type` 语义，与 `LOGIN_BRUTE_FORCE_PROTECTION_DESIGN.md`（认证威胁模型与接口约定）配套阅读。历史上曾使用 Redis/Lua 做认证限流，**已移除**。
 
 ---
 
@@ -14,10 +14,10 @@
 
 ---
 
-## 二、与现有 Redis 方案的差异（必读）
+## 二、与历史 Redis 方案的差异（必读）
 
-| 项目 | 现有 Redis 方案 | 本方案 |
-|------|-----------------|--------|
+| 项目 | 历史 Redis + Lua 方案 | 本方案（当前） |
+|------|----------------------|----------------|
 | 维度 | IP + 账号（账号侧为哈希，非 user_id） | 仅 `user_id` |
 | 用户名不存在、邮箱无用户、非法 token | 仍可能通过 IP 或其它键限流 | **本表不参与**；需接受弱于双维度的防刷，或另行引入其它手段（本文不展开） |
 | 注册前 | 可按 IP 限流 | **无 `user_id` 前本表不可用**；注册前限流需其它设计或放弃 |
@@ -163,7 +163,7 @@ next_allowed_at := now  # 或 now + 0，表示立即允许后续合法操作；�
 - **仅计数 + 窗口**：用同一表的 `fail_count` 表示「周期内已使用次数」或单独语义 `usage_count`（若坚持用 `fail_count` 命名，建议在文档与代码注释中标明「广义计数」）；  
 - 或使用 `window_start` + 配置窗口，在窗口内 `fail_count`（或计数列）超限则 `next_allowed_at = window_start + WINDOW_SECONDS`。
 
-具体映射应在实现前为每个 `opt_type` 写清一行规则表（与现 `AUTH_PWDRESET_*`、`AUTH_REGISTER_*` 对齐）。
+各 `opt_type` 与接口、配置的对应关系见上文 **§四** 及 `src/services/auth_security_service.py`。
 
 ---
 
@@ -198,13 +198,13 @@ next_allowed_at := now  # 或 now + 0，表示立即允许后续合法操作；�
 
 ---
 
-## 十、与代码仓库的衔接（实现清单，非本文执行）
+## 十、与代码仓库的衔接（已实现）
 
-1. **模型**：新增 SQLModel 表定义；在 `src/database.py` 中 `import` 模型以便 `create_all` 注册。
-2. **迁移**：项目若无 Alembic，生产环境需提供等价 `CREATE TABLE` + `UNIQUE (user_id, opt_type)` 的 SQL 脚本。
-3. **服务层**：以 `AuthSecurityService`（或新名）替换 Redis/Lua，注入 `AsyncSession`；控制器在能拿到 `user_id` 的分支调用。
-4. **测试**：单测用事务回滚或测试库；覆盖窗口滚动、锁定、`Retry-After`、并发双请求只计一次等。
-5. **文档**：落地后更新 `LOGIN_BRUTE_FORCE_PROTECTION_DESIGN.md` 或声明废弃 Redis 路径。
+1. **模型**：`src/models/user_auth_security_state.py`；`src/database.py` 已 `import` 以便 `create_all` 注册。
+2. **迁移**：`scripts/create_user_auth_security_state.sql`（生产可手工执行）。
+3. **服务层**：`src/services/auth_security_service.py` + `src/repositories/user_auth_security_state_repository.py`，经 `get_auth_security_service` 注入 `AsyncSession`。
+4. **测试**：`tests/unit/test_auth_security_service.py`、`test_auth_controller.py`、`test_user_register_security.py` 等。
+5. **文档**：`LOGIN_BRUTE_FORCE_PROTECTION_DESIGN.md` 已更新为以本方案为准。
 
 ---
 
@@ -216,5 +216,3 @@ next_allowed_at := now  # 或 now + 0，表示立即允许后续合法操作；�
 - **语义**：`window_start` 管计数窗口；`next_allowed_at` 管最早可再试；配置管所有阈值与秒数；无 `user_id` 则不写不查本表。
 
 ---
-
-*文档状态：临时草案；未与具体 PR/提交绑定。*

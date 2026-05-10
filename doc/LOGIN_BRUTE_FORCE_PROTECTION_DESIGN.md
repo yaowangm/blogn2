@@ -1,19 +1,14 @@
-# 登录防暴力破解设计文档
+# 登录防暴力破解与安全加固设计文档
 
-本文档用于落地 BlogN2 登录接口的防爆破能力，解决当前“密码错误无时间限制”导致的穷举攻击风险；同时补充认证相关链路（重置密码、注册、会话存储等）的修复设计，作为统一安全加固参考。
+**文档定位（2026）**：本文描述 BlogN2 认证链路的威胁模型、目标与**当前生产实现**（PostgreSQL 表 `user_auth_security_state` + `AuthSecurityService`）。历史上曾草案化「Redis + Lua 双维度（IP + 账号）」方案，**已不再使用**；业务缓存仍可单独使用 Redis，与认证安全状态存储无关。
+
+表结构、字段语义与 `opt_type` 约定详见：`doc/AUTH_SECURITY_USER_STATE_DB_DESIGN.md`。环境变量见 `src/config/auth_security.py` 与 `.env.example`（前缀 `AUTH_*`）。
 
 ---
 
 ## 一、问题背景
 
-当前 `POST /api/auth/login` 在用户名或密码错误时会直接返回 401，但未对失败行为进行节流、计数和锁定，攻击者可高频尝试密码组合。
-
-为满足安全要求，需要新增以下规则：
-
-- IP + 账号双维度限流；
-- 失败阈值：`5 次/IP`、`5 次/账号`，任一命中即拒绝登录；
-- 命中阈值后锁定 `24 小时`；
-- 两次登录尝试间隔不能少于 `5 秒`。
+`POST /api/auth/login` 在凭据错误时若无限流，攻击者可高频穷举密码。关联接口（忘记密码、校验 token、注册）也存在滥用与枚举风险。
 
 ---
 
@@ -21,342 +16,184 @@
 
 ### 2.1 目标
 
-在不改变现有登录业务语义（成功返回 token，失败返回认证错误）的前提下，引入可配置、可审计、可扩展的防爆破机制。
+在保持登录成功返回 JWT、失败返回认证错误等**业务语义不变**的前提下，对敏感操作做可配置、可审计的节流与锁定。
 
 ### 2.2 范围
 
-- 仅针对登录接口 `POST /api/auth/login`；
-- 不改变 JWT 颁发逻辑；
-- 不包含验证码、人机校验、设备指纹等增强策略（可作为后续扩展）。
+- 登录、忘记密码、重置密码、校验重置 token、注册成功后的用户维度状态；
+- 不包含验证码、人机校验、设备指纹（可作为后续扩展）；
+- **不包含**应用层业务缓存（仍可使用 Redis，见 `doc/README_CACHE.md`）。
 
 ---
 
-## 三、核心策略
+## 三、当前核心策略（生产实现）
 
-### 3.1 双维度失败计数
+### 3.1 维度与前提
 
-- 维度 A：客户端 IP；
-- 维度 B：登录账号（用户名或邮箱，建议归一化后哈希）。
+- **仅用户维度**：只有在能解析出 `user_id`（已存在用户）时，才读写 `user_auth_security_state`。
+- **未知用户名/邮箱、无效 token**：不在该表上记录限流（与「防枚举」策略一致；若需 IP 维防护，应在网关/WAF 层单独考虑）。
 
-任一维度失败次数达到阈值（5 次），立即进入 24 小时锁定状态。
+### 3.2 登录（`opt_type=login`）
 
-### 3.2 最小尝试间隔（冷却）
+- **冷却**：通过 `next_allowed_at` 实现两次尝试最小间隔（配置 `AUTH_LOGIN_MIN_INTERVAL_SECONDS`）。
+- **失败计数与窗口**：`fail_count` + `window_start`，窗口长度与长锁使用 `AUTH_LOGIN_LOCK_SECONDS`（与现实现一致）。
+- **阈值**：`AUTH_LOGIN_MAX_FAIL_PER_ACCOUNT`；达到阈值后延长 `next_allowed_at` 并返回 `429`（或失败路径上同时返回业务错误码，见代码）。
+- **成功**：清零该用户登录相关计数并允许立即继续合法操作。
 
-对同一 IP 和同一账号分别设置 5 秒冷却键：
+### 3.3 密码重置与注册
 
-- 若任一冷却键存在，则拒绝本次尝试；
-- 未命中时原子地写入新的 5 秒冷却键，防止并发绕过。
-
-### 3.3 成功后清理
-
-登录成功后清理该 IP 和该账号对应的失败计数键，避免历史失败影响正常用户。
-
----
-
-## 四、技术选型
-
-## 4.1 Redis 作为状态存储（推荐且本方案默认）
-
-本方案基于 Redis 的原子能力实现：
-
-- `INCR`：失败次数递增；
-- `EXPIRE`：失败窗口与锁定 TTL；
-- `EVAL(Lua)`：将“检查 + 设置”合并为原子操作，避免竞态条件。
-
-项目已具备 Redis 依赖与缓存基础设施，可复用现有连接能力。
-
-### 4.2 失败策略（Redis 不可用）
-
-建议默认 **Fail Closed**：
-
-- Redis 不可用时，登录接口返回 503（登录保护服务不可用）；
-- 目标是保证“必须受保护”优先于“始终可登录”。
-
-如业务要求可配置为 Fail Open，但会降低安全强度。
+- **忘记密码**：邮箱能解析到用户时，按 `AUTH_PWDRESET_REQ_*` 对该 `user_id` / `forgot_password` 行做窗口计数。
+- **校验 token / 执行重置**：在能解析 token 对应 `user_id` 时，分别使用 `validate_reset_token`、`reset_password` 的 `opt_type` 与 `AUTH_PWDRESET_VALIDATE_*`。
+- **注册**：成功创建用户后，对 `register` 的 `opt_type` 记录一次（`AUTH_REGISTER_*`）；`validate_regkey` **不做**该表限流（无 `user_id`）。
 
 ---
 
-## 五、数据与键设计
+## 四、技术选型（状态存储）
 
-统一前缀示例：`blogn2:auth:login`
-
-### 5.1 失败计数键
-
-- `blogn2:auth:login:fail:ip:{ip}`
-- `blogn2:auth:login:fail:acc:{account_hash}`
-
-说明：
-
-- `INCR` 累加失败次数；
-- 首次创建时设置 `EXPIRE 86400`。
-
-### 5.2 锁定键
-
-- `blogn2:auth:login:lock:ip:{ip}`
-- `blogn2:auth:login:lock:acc:{account_hash}`
-
-说明：
-
-- 任一维度命中阈值后设置锁；
-- TTL 统一 `86400` 秒（24 小时）。
-
-### 5.3 冷却键（5 秒）
-
-- `blogn2:auth:login:cd:ip:{ip}`
-- `blogn2:auth:login:cd:acc:{account_hash}`
-
-说明：
-
-- 进入登录流程前检查是否存在；
-- 不存在则立即写入 `EX 5`。
+- **存储**：PostgreSQL 表 `user_auth_security_state`（每 `(user_id, opt_type)` 至多一行）。
+- **一致性**：`SELECT … FOR UPDATE` 与/或 `INSERT … ON CONFLICT DO NOTHING` 后再锁定读取，避免并发竞态。
+- **不可用策略**：`AUTH_FAIL_CLOSED_WHEN_DB_ERROR`（未设置时可读已废弃的 `AUTH_FAIL_CLOSED_WHEN_REDIS_DOWN`，迁移期兼容）。为 `true` 时写库失败返回 `503`。
 
 ---
 
-## 六、接口行为约定
+## 五、数据模型（概要）
 
-### 6.1 登录前置检查
+不在本文重复列字段；请参阅 `AUTH_SECURITY_USER_STATE_DB_DESIGN.md` 与 `doc/DATABASE_SCHEMA.md` 中「用户认证安全状态表」一节。
 
-在执行密码校验前，按顺序进行：
+---
 
-1. 检查 IP 锁；
-2. 检查账号锁；
-3. 检查 IP 冷却；
-4. 检查账号冷却；
-5. 通过后写入新的冷却键。
+## 六、接口行为约定（与实现对齐）
 
-### 6.2 失败处理
+### 6.1 登录
 
-密码错误后：
+1. 用 `UserRepository.get_by_login_identifier` 解析用户；若存在则 `pre_login_check(user_id)`。
+2. 校验密码；失败则 `on_login_failed(user_id)`（若步骤 1 未解析到用户则跳过写表）。
+3. 成功则 `on_login_success(user_id)`。
 
-- 对 IP/账号失败计数各执行一次递增；
-- 若任一计数达到 5，则设置对应锁定键 24 小时，并返回拒绝。
+### 6.2 HTTP 建议
 
-### 6.3 成功处理
-
-登录成功后：
-
-- 删除 `fail:ip` 与 `fail:acc`；
-- 不主动删除 `lock:*`（正常情况下锁存在时无法成功登录）。
-
-### 6.4 HTTP 返回建议
-
-- 认证失败（未锁定）：`401`，`detail=用户名或密码错误`；
-- 冷却/锁定命中：`429`，附 `Retry-After`；
-- 保护服务不可用（Fail Closed）：`503`。
+- 凭据错误且未触发锁定：`401`；
+- 冷却/锁定：`429` + `Retry-After`；
+- 安全状态写库失败且 Fail-Closed：`503`。
 
 ---
 
 ## 七、实现落点（代码结构）
 
-建议新增模块：
-
-- `src/config/auth_security.py`：认证安全相关配置；
-- `src/services/login_guard_service.py`：防爆破核心逻辑；
-- `src/controllers/auth.py`：在 `/login` 中接入 guard 服务。
-
-可选改造：
-
-- 在 `src/utils/cache.py` 暴露 Redis client 的只读 getter，避免业务层直接访问私有属性。
-
----
-
-## 八、配置项设计
-
-**说明**：登录防爆破的**实现已迁移**为 PostgreSQL `user_auth_security_state`（见 `doc/AUTH_SECURITY_USER_STATE_DB_DESIGN.md`），不再使用 Redis/Lua。环境变量以 `AUTH_*` 为准，见 `src/config/auth_security.py` 与 `.env.example`（例如 `AUTH_FAIL_CLOSED_WHEN_DB_ERROR`、`AUTH_LOGIN_MAX_FAIL_PER_ACCOUNT` 等）。以下曾为 Redis 方案草案，**已废弃**：`AUTH_LOGIN_MAX_FAIL_PER_IP`、`AUTH_KEY_NAMESPACE`、`AUTH_FAIL_CLOSED_WHEN_REDIS_DOWN`（后者仅在未配置 `AUTH_FAIL_CLOSED_WHEN_DB_ERROR` 时由代码兼容读取）。
+| 职责 | 路径 |
+|------|------|
+| 配置 | `src/config/auth_security.py` |
+| 安全服务 | `src/services/auth_security_service.py` |
+| 状态仓储 | `src/repositories/user_auth_security_state_repository.py` |
+| 模型 | `src/models/user_auth_security_state.py` |
+| 依赖注入 | `src/utils/dependencies.py` → `get_auth_security_service` |
+| 登录/重置等路由 | `src/controllers/auth.py`、`src/routes/user_register.py` |
 
 ---
 
-## 九、并发与一致性要求
+## 八、配置项
 
-为防止并发请求绕过限制，以下逻辑必须原子执行（Lua）：
+以 `.env.example` 为准；常用项包括 `AUTH_FAIL_CLOSED_WHEN_DB_ERROR`、`AUTH_LOGIN_MAX_FAIL_PER_ACCOUNT`、`AUTH_LOGIN_LOCK_SECONDS`、`AUTH_LOGIN_MIN_INTERVAL_SECONDS`、`AUTH_PWDRESET_*`、`AUTH_REGISTER_*`（具体含义见 `AUTH_SECURITY_USER_STATE_DB_DESIGN.md` §五）。
 
-- 前置“检查锁/冷却 + 写入冷却键”；
-- 失败“计数递增 + 阈值判定 + 设置锁”。
+---
 
-仅依赖客户端串行控制（前端延时）不满足安全要求。
+## 九、并发与一致性
+
+以下逻辑必须在**同一数据库事务/行锁**语义下完成，禁止仅靠前端延时：
+
+- 登录前置检查与冷却写入；
+- 失败计数递增与锁定判定；
+- 窗口型 `opt_type` 的递增与超限判定。
 
 ---
 
 ## 十、日志与审计
 
-建议记录安全日志字段：
-
-- 时间戳、账号标识（脱敏）、IP、User-Agent；
-- 事件类型（冷却拒绝/锁定拒绝/失败计数/成功清理）；
-- 当前计数与剩余锁定时间。
-
-日志中避免明文密码、完整邮箱等敏感信息。
+建议记录：时间、脱敏账号标识、IP、User-Agent、事件类型（冷却/锁定/失败/成功）、相关 `opt_type` 与 `Retry-After` 依据。避免明文密码与完整邮箱进入日志。
 
 ---
 
 ## 十一、测试方案
 
-### 11.1 单元测试（核心）
+### 11.1 单元测试
 
-- 首次尝试通过；
-- 5 秒内重复尝试被拒绝（429）；
-- 连续失败至第 5 次触发 24h 锁定；
-- 锁定期间持续返回 429；
-- 登录成功后失败计数被清理；
-- 认证安全状态写库不可用时（Fail Closed）返回 503。
+- 冷却与锁定分支、`Retry-After`、成功清零、Fail-Closed 503；
+- 配置迁移：`AUTH_FAIL_CLOSED_WHEN_DB_ERROR` 与旧变量兼容（见 `tests/unit/test_auth_security_service.py`）。
 
-### 11.2 集成测试（接口）
+### 11.2 接口/集成
 
-- `/api/auth/login` 在错误密码场景下正确累积计数；
-- `Retry-After` 头存在且值正确；
-- 当前生产实现为**仅用户维度**（能解析出 `user_id` 时）持久化限流；原「IP + 账号」双维 Redis 方案已替换。
+- `/api/auth/login` 错误密码场景下计数与 429 行为；
+- 重置与注册相关路由在可解析 `user_id` 时的限流。
 
 ---
 
 ## 十二、上线与运维建议
 
-1. 先在测试环境验证 Redis 连接与 Lua 脚本；
-2. 灰度启用并观察 429/503 比例；
-3. 配置告警：短时登录失败激增、锁定键激增；
-4. 确保反向代理正确透传真实客户端 IP（如 `X-Forwarded-For`）；
-5. 与客服/运营同步“24 小时锁定”策略与解锁流程（如管理员手工清键）。
+1. 执行建表 SQL：`scripts/create_user_auth_security_state.sql`（或依赖 `SQLModel.metadata.create_all` 的新环境）。
+2. 配置 `AUTH_*` 与数据库连接；观察 429/503 比例。
+3. 告警：短时登录失败激增、单用户 `fail_count` 异常、数据库错误率。
+4. 反向代理继续正确透传 `X-Forwarded-For`（用于业务日志等；**认证安全表不存 IP**）。
+5. 与运营同步锁定策略；必要时通过 SQL 或后续管理工具清理/调整 `user_auth_security_state` 行。
 
 ---
 
 ## 十三、后续可扩展项
 
-- 锁定后引入验证码挑战而非完全拒绝；
-- 白名单（内网、可信办公 IP）；
-- 管理后台查看/解锁登录限制状态；
-- 风险分级（异常地区、代理 IP、攻击画像）；
-- 与 WAF/Nginx 限流联动。
+- 验证码、风控评分、WAF 联动；
+- 管理端查看/解锁某用户的 `user_auth_security_state`；
+- 在网关对匿名接口补充 IP 维全局限流（与本表互补）。
 
 ---
 
-## 十四、关联安全修复（本次补充）
+## 十四、关联安全修复（历史草案与实现状态）
 
-本节为安全巡检后的补充设计，建议与登录防爆破同批实施或按优先级分阶段上线。
+以下条目来自安全巡检时的分条设计；**实现状态**已标注，便于与代码对照。
 
-### 14.1 重置密码请求限流（高优先级）
+### 14.1 重置密码请求限流
 
-问题：
+- **实现**：已用 `user_auth_security_state`（`forgot_password` / `validate_reset_token` / `reset_password`）按**用户**窗口计数；阈值见 `AUTH_PWDRESET_*`。不再使用 Redis 键。
+- **说明**：未解析到用户时（未知邮箱、无效 token）不在该表限流。
 
-- `POST /api/auth/forgot-password` 当前无频率限制，可被用于邮件轰炸；
-- `GET /api/auth/validate-reset-token` 可被高频探测。
+### 14.2 重置 token 原子消费
 
-修复策略：
+- **实现**：`PasswordResetTokenRepository` 中使用 `DELETE … RETURNING` 等与密码更新同事务消费 token，避免并发重放。
 
-- 对 `forgot-password` 增加 IP + 邮箱（归一化后哈希）双维度限流；
-- 建议默认阈值：`5 次/小时/IP`、`3 次/小时/邮箱`，任一命中返回 `429`；
-- 对 `validate-reset-token` 增加严格限流（如 `30 次/小时/IP`）；
-- 可选：失败后引入验证码挑战（而非直接放开）。
+### 14.3 重置 token 传输与泄露面
 
-Redis 键建议：
+- **部分实现**：重置页等路径的 `Referrer-Policy` 等中间件策略见 `src/utils/middleware_handlers.py`；邮件内 URL 形态见 `EMAIL_PASSWORD_RESET_DESIGN.md`。
 
-- `blogn2:auth:pwdreset:req:ip:{ip}`
-- `blogn2:auth:pwdreset:req:email:{email_hash}`
-- `blogn2:auth:pwdreset:validate:ip:{ip}`
+### 14.4 注册防枚举与限流
 
-### 14.2 重置 token 原子消费（高优先级）
+- **实现**：注册失败对外统一文案；注册成功后在 DB 记录 `register` 用量；`validate_regkey` 不做用户表限流（设计取舍）。
 
-问题：
+### 14.5 CORS 与会话存储
 
-- 现有逻辑为“先查 token 有效，再更新密码并删除 token”，存在并发重放窗口（TOCTOU）。
-
-修复策略：
-
-- 将“校验 + 消费 token”改为单事务原子操作；
-- 推荐 SQL（伪代码）：
-  - `DELETE FROM password_reset_tokens WHERE token=:token AND expires_at > now() RETURNING user_id;`
-  - 若无返回行，则判定 token 无效/过期；
-  - 有返回行才允许更新密码；
-- 保证同一 token 在并发场景只能成功一次。
-
-### 14.3 重置 token 传输与泄露面收敛（中优先级）
-
-问题：
-
-- token 当前在 URL query 中传递，可能泄露到日志、历史记录、Referer。
-
-修复策略：
-
-- 优先方案：邮件链接携带短 code，前端到后端换取一次性重置会话，不暴露真实 token；
-- 兼容方案（过渡期）：
-  - 重置页加 `Referrer-Policy: no-referrer`；
-  - 禁止外链携带 query；
-  - 减少在 GET 接口中回传 token 相关状态细节。
-
-### 14.4 注册接口防枚举与限流（中优先级）
-
-问题：
-
-- 注册接口当前对“用户名已存在/邮箱已注册/注册码无效”返回差异化错误，可被自动化枚举。
-
-修复策略：
-
-- 对外统一失败文案（细节仅写安全日志）；
-- 增加 IP 限流（例如 `10 次/小时/IP`）；
-- 可选引入验证码，拦截批量注册探测。
-
-### 14.5 CORS 与会话存储加固（中优先级）
-
-问题：
-
-- CORS 配置过宽；
-- token 存在 `localStorage`，XSS 成功后易被窃取。
-
-修复策略：
-
-- 生产环境收敛 CORS 白名单（明确域名、方法、请求头）；
-- 中长期迁移到 `HttpOnly + Secure + SameSite` Cookie 会话；
-- 同步增强 CSP，降低 XSS 风险。
+- **部分实现**：CORS 从环境变量读取；长期 Cookie 会话仍为规划项。
 
 ---
 
-## 十五、配置补充（新增建议）
+## 十五、配置补充
 
-除登录外，密码重置与注册相关阈值见 `AUTH_PWDRESET_*`、`AUTH_REGISTER_*`（用户维度语义见 `AUTH_SECURITY_USER_STATE_DB_DESIGN.md`），例如：
-
-- `AUTH_PWDRESET_REQ_MAX_PER_EMAIL=3`
-- `AUTH_PWDRESET_REQ_WINDOW_SECONDS=3600`
-- `AUTH_PWDRESET_VALIDATE_MAX_PER_USER=30`
-- `AUTH_PWDRESET_VALIDATE_WINDOW_SECONDS=3600`
-- `AUTH_REGISTER_MAX_PER_USER=10`
-- `AUTH_REGISTER_WINDOW_SECONDS=3600`
-
-说明：上述值为推荐默认值；状态由 PostgreSQL 行锁 / upsert 保证一致性，不再依赖 Redis + Lua。
+与 `AUTH_SECURITY_USER_STATE_DB_DESIGN.md` §五一致；默认值见 `.env.example`。
 
 ---
 
-## 十六、分阶段实施计划（建议）
+## 十六、分阶段计划（回顾）
 
-### 阶段 P0（立即）
-
-1. 登录防爆破（本文主体）；
-2. `forgot-password` 与 `validate-reset-token` 限流；
-3. 重置 token 原子消费改造；
-4. 审计日志落地与告警阈值配置。
-
-### 阶段 P1（短期）
-
-1. 注册接口统一错误文案 + 限流；
-2. CORS 白名单收敛；
-3. 重置链接泄露面收敛（Referrer 策略 + 链路规范）。
-
-### 阶段 P2（中期）
-
-1. 会话存储迁移至 HttpOnly Cookie；
-2. 验证码与风控策略接入；
-3. 管理后台安全事件看板与解锁工具。
+P0/P1/P2 的优先级仍可参考，其中 **P0 中与认证限流相关项已在 DB 方案中落地**；其余（审计看板、验证码、Cookie 会话等）可按资源排期。
 
 ---
 
-## 十七、验收标准（补充）
+## 十七、验收标准（与实现对齐）
 
-- 登录：满足 `5 次/IP`、`5 次/账号`、`24h 锁定`、`5s 最小间隔`；
-- 重置申请：超阈值请求返回 `429`，且不泄露邮箱是否存在；
-- 重置提交：同一 token 并发请求仅一个成功；
-- 注册：接口对外不暴露“用户名/邮箱/注册码”细粒度存在性；
-- 观测：日志可追踪拒绝原因、计数、TTL，告警可触发；
-- 兼容：不破坏现有正常登录、重置、注册主流程。
+- **登录（已知用户）**：可配置次数阈值、约 24h 量级的锁定、`AUTH_LOGIN_MIN_INTERVAL_SECONDS` 冷却、成功后清理状态行中的登录计数语义。
+- **重置链路**：超阈值 `429`；不枚举邮箱；token 原子消费。
+- **注册**：对外统一失败提示；成功后有用户维度注册计数（若需 IP 维注册前限流须另案）。
+- **观测**：日志可区分 401/429/503 与原因类别。
+- **兼容**：正常登录/重置/注册主流程保持可用。
 
 ---
 
 ## 总结
 
-本方案通过 Redis 原子计数与过期机制，覆盖了登录防爆破核心要求（双维度阈值、24 小时锁定、5 秒最小间隔），并扩展到密码重置、注册、会话与 CORS 等关联安全面，形成可分阶段推进的统一认证安全加固方案。
+认证相关限流与锁定已由 **PostgreSQL `user_auth_security_state` + `AuthSecurityService`** 实现，配置统一为 `AUTH_*`；Redis 仅保留给**非认证**的缓存等能力。详细表结构与算法见 `doc/AUTH_SECURITY_USER_STATE_DB_DESIGN.md`。

@@ -114,11 +114,11 @@
   - 使用 `AuthService.hash_password(new_password)` 得到哈希，再调用 `UserRepository.update_password(user_id, hashed_password)`。  
   - 调用 `delete_by_token(token)` 使 token 一次性生效。
 
-### 7.2 安全与限流（建议）
+### 7.2 安全与限流
 
 - token 长度与随机性：使用 `secrets.token_urlsafe(32)` 或等价方式。
-- 有效期：30–60 分钟（可配置）。
-- 同一邮箱请求频率限制：如 5 分钟内仅允许 1 次申请（可在 service 或 API 层用缓存/DB 实现）。
+- 有效期：30–60 分钟（可配置，如 `RESET_LINK_EXPIRE_MINUTES`）。
+- **申请重置**与 **校验/重置 token** 的频率与窗口由 PostgreSQL 表 `user_auth_security_state`（`opt_type` 对应忘记密码分支）与 `AuthSecurityService` 实现，环境变量为 `AUTH_PWDRESET_REQ_*`、`AUTH_PWDRESET_VALIDATE_*`；行为与威胁模型见 `doc/LOGIN_BRUTE_FORCE_PROTECTION_DESIGN.md` 与 `doc/AUTH_SECURITY_USER_STATE_DB_DESIGN.md`。
 
 ---
 
@@ -151,6 +151,10 @@
 | MAIL_FROM | 发件人地址 | noreply@bloggern.com |
 | RESET_LINK_EXPIRE_MINUTES | 重置链接有效期（分钟） | 60 |
 | BASE_URL | 站点根 URL，用于生成重置链接 | https://bloggern.com |
+| AUTH_PWDRESET_REQ_MAX_PER_EMAIL | 每用户每窗口「申请重置」最大次数（`user_auth_security_state`） | 见 `.env.example` |
+| AUTH_PWDRESET_REQ_WINDOW_SECONDS | 上述窗口长度（秒） | 见 `.env.example` |
+| AUTH_PWDRESET_VALIDATE_MAX_PER_USER | 每用户每窗口校验/使用 token 最大次数 | 见 `.env.example` |
+| AUTH_PWDRESET_VALIDATE_WINDOW_SECONDS | 上述窗口长度（秒） | 见 `.env.example` |
 
 ---
 

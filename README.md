@@ -4,6 +4,8 @@
 
 > **安装与配置**：环境要求、依赖安装、数据库初始化、BERT 模型等完整步骤请参阅 **[INSTALL.md](INSTALL.md)**。
 
+> **认证与安全（限流与锁定）**：登录、注册、忘记密码等接口的限流与状态存储见 **[doc/LOGIN_BRUTE_FORCE_PROTECTION_DESIGN.md](doc/LOGIN_BRUTE_FORCE_PROTECTION_DESIGN.md)**；数据库表与 `AUTH_*` 配置见 **[doc/AUTH_SECURITY_USER_STATE_DB_DESIGN.md](doc/AUTH_SECURITY_USER_STATE_DB_DESIGN.md)**。
+
 ## 🚀 主要特性
 
 - **高性能后端**: 基于FastAPI框架，支持异步操作
