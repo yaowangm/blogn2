@@ -811,6 +811,10 @@ async def permanently_delete_article(
         if article.attachment:
             await delete_article_images(article.attachment, article_id, session)
         
+        # 删除该文章下所有评论，避免仅删除 projectitem 后在 post 表残留孤儿数据
+        post_repo = PostRepository(session)
+        await post_repo.delete_all_posts_for_project_item(article_id)
+        
         # 从projectitem表中删除记录
         await project_item_repo.delete(article_id)
         

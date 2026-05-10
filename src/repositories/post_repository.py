@@ -1,8 +1,10 @@
-from sqlmodel import select, func
+from sqlmodel import select, func, or_
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+from src.constants import ArticleStatus
 from src.models.post import Post
+from src.models.project import Project
 from src.models.project_item import ProjectItem
 from src.models.user import User
 from src.utils.time_utils import TimeUtils
@@ -74,13 +76,17 @@ class PostRepository:
     
     async def get_recent_comments_by_project(self, project_id: int, limit: int = 5) -> List[dict]:
         """获取指定项目的最近评论，包含用户名和文章名"""
-        # 使用JOIN查询获取评论、用户名和文章名
+        # 使用JOIN查询获取评论、用户名和文章名；排除孤儿评论与已删除/下架文章上的评论
         statement = (
             select(Post, User.name.label("user_name"), ProjectItem.name.label("project_item_name"))
             .join(User, Post.userid == User.id)
             .join(ProjectItem, Post.projectitemid == ProjectItem.id)
+            .join(Project, ProjectItem.projectid == Project.id)
             .where(ProjectItem.projectid == project_id)
-            .where(Post.status == 1)  # 只获取正常状态的评论
+            .where(Post.status == 1)
+            .where(ProjectItem.status == 1)
+            .where(or_(ProjectItem.itemtype.is_(None), ProjectItem.itemtype != ArticleStatus.DELETED))
+            .where(Project.state == 1)
             .order_by(Post.posttime.desc())
             .limit(limit)
         )
@@ -88,7 +94,7 @@ class PostRepository:
         result = await self.session.exec(statement)
         comments = []
         
-        for post, user_name, project_item_name in result:
+        for post, user_name, project_item_name in result.all():
             comments.append({
                 "id": post.id,
                 "user_name": user_name or "用户",
@@ -102,10 +108,22 @@ class PostRepository:
         return comments
     
     async def get_recent_comments(self, limit: int = 5) -> List[dict]:
-        """获取最近的评论（排除留言本）"""
+        """获取最近的评论（排除留言本）。
+
+        必须存在对应 projectitem 且文章、博客均为有效状态，避免：
+        - 文章硬删除后遗留的孤儿 post 仍出现在「最近评论」；
+        - 软删除/下架文章上的评论仍被展示。
+        """
         statement = (
-            select(Post)
-            .where(Post.projectitemid > 0)  # 排除留言本
+            select(Post, User.name.label("user_name"))
+            .join(ProjectItem, Post.projectitemid == ProjectItem.id)
+            .join(Project, ProjectItem.projectid == Project.id)
+            .outerjoin(User, Post.userid == User.id)
+            .where(Post.projectitemid > 0)
+            .where(Post.status == 1)
+            .where(ProjectItem.status == 1)
+            .where(or_(ProjectItem.itemtype.is_(None), ProjectItem.itemtype != ArticleStatus.DELETED))
+            .where(Project.state == 1)
             .order_by(Post.posttime.desc())
             .limit(limit)
         )
@@ -113,20 +131,8 @@ class PostRepository:
         result = await self.session.exec(statement)
         comments = []
         
-        for comment in result.all():
-            # 获取用户名
-            author_name = "用户"  # 默认值
-            if comment.userid:
-                try:
-                    # 查询用户表获取用户名
-                    user_result = await self.session.exec(select(User.name).where(User.id == comment.userid))
-                    user_name = user_result.first()
-                    if user_name:
-                        author_name = user_name
-                    else:
-                        author_name = "用户"
-                except Exception as e:
-                    author_name = "用户"
+        for comment, user_name in result.all():
+            author_name = user_name if user_name else "用户"
             
             comments.append({
                 "id": comment.id,
@@ -367,8 +373,17 @@ class PostRepository:
             pass
     
     async def count_comments(self) -> int:
-        """统计评论数量（排除留言本）"""
-        statement = select(func.count(Post.id)).where(Post.projectitemid > 0)
+        """统计评论数量（排除留言本；与 get_recent_comments 可见性规则一致）"""
+        statement = (
+            select(func.count(Post.id))
+            .join(ProjectItem, Post.projectitemid == ProjectItem.id)
+            .join(Project, ProjectItem.projectid == Project.id)
+            .where(Post.projectitemid > 0)
+            .where(Post.status == 1)
+            .where(ProjectItem.status == 1)
+            .where(or_(ProjectItem.itemtype.is_(None), ProjectItem.itemtype != ArticleStatus.DELETED))
+            .where(Project.state == 1)
+        )
         result = await self.session.exec(statement)
         return result.first() or 0
     
@@ -414,6 +429,17 @@ class PostRepository:
             logger.error(f"Post {post.id} 向量化失败: {e}")
         
         return post
+    
+    async def delete_all_posts_for_project_item(self, project_item_id: int) -> int:
+        """删除指定文章（projectitem）下的所有评论 post。用于彻底删除文章，避免残留孤儿行。"""
+        statement = select(Post).where(Post.projectitemid == project_item_id)
+        result = await self.session.exec(statement)
+        posts = list(result.all())
+        for post in posts:
+            await self.session.delete(post)
+        if posts:
+            await self.session.flush()
+        return len(posts)
     
     async def delete(self, post_id: int) -> bool:
         """删除评论（简单删除，不处理统计信息）"""

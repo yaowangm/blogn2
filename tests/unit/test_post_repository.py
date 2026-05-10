@@ -56,17 +56,10 @@ class TestPostRepository:
     
     @pytest.mark.unit
     async def test_get_recent_comments_success(self, post_repository, mock_session, sample_post):
-        """测试获取最新评论成功"""
-        # 模拟用户查询结果
-        mock_user_result = MagicMock()
-        mock_user_result.first.return_value = "测试用户"
-        
-        # 模拟评论查询结果
+        """测试获取最新评论成功（单条 JOIN 查询，含用户名）"""
         mock_result = MagicMock()
-        mock_result.all.return_value = [sample_post]
-        
-        # 设置exec的返回值，第一次调用返回评论，第二次调用返回用户名
-        mock_session.exec.side_effect = [mock_result, mock_user_result]
+        mock_result.all.return_value = [(sample_post, "测试用户")]
+        mock_session.exec.return_value = mock_result
         
         result = await post_repository.get_recent_comments(5)
         
@@ -76,7 +69,7 @@ class TestPostRepository:
         assert result[0]["author_name"] == "测试用户"
         assert result[0]["projectitemid"] == 456
         assert result[0]["userid"] == 123
-        assert mock_session.exec.call_count == 2  # 一次查询评论，一次查询用户名
+        mock_session.exec.assert_called_once()
     
     @pytest.mark.unit
     async def test_get_recent_comments_empty(self, post_repository, mock_session):
@@ -96,7 +89,7 @@ class TestPostRepository:
         post2 = Post(id=2, content="评论2", userid=2, projectitemid=1, posttime="2023-01-01 09:00:00", status=1)
         
         mock_result = MagicMock()
-        mock_result.all.return_value = [post1, post2]
+        mock_result.all.return_value = [(post1, "用户1"), (post2, "用户2")]
         mock_session.exec.return_value = mock_result
         
         result = await post_repository.get_recent_comments(5)
