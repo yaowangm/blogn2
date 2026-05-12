@@ -318,7 +318,7 @@ class ArticleContentCard extends BaseComponent {
             captionEl.innerHTML = '<span class="attachment-comment-placeholder">暂无注释</span>';
         }
 
-        modal.style.display = 'block';
+        modal.style.display = 'flex';
         document.body.style.overflow = 'hidden'; // 防止背景滚动
     }
     
@@ -619,68 +619,69 @@ class ArticleContentCard extends BaseComponent {
                     font-style: italic;
                 }
 
+                /* 水平 padding 留出边距；flex 居中唯一子项（卡片），宽度用 max-content+max-width:100% 避免 inline-table 与 img 百分比的循环导致忽窄忽宽 */
                 .image-modal {
                     position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
+                    inset: 0;
                     z-index: 10000;
                     display: none;
+                    box-sizing: border-box;
+                    flex-direction: row;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 0 var(--spacing-6);
                 }
                 
                 .modal-overlay {
                     position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
+                    inset: 0;
                     background-color: rgba(0, 0, 0, 0.8);
                     cursor: pointer;
+                    z-index: 0;
                 }
                 
-                /* 列宽取 max(图、底栏)；inline-table 避免 flex+fit-content 宽度循环 */
                 .modal-lightbox-card {
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    display: inline-table;
-                    width: auto;
-                    max-width: min(52rem, 92vw);
+                    position: relative;
+                    z-index: 1;
+                    flex: 0 1 auto;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: stretch;
+                    min-width: 0;
+                    max-width: 100%;
+                    width: max-content;
                     border: none;
                     border-radius: var(--radius-lg);
                     background: var(--white);
                     overflow: hidden;
                     box-shadow: var(--shadow-xl);
                     box-sizing: border-box;
-                    border-spacing: 0;
-                    border-collapse: collapse;
                 }
                 
                 .modal-lightbox-media {
-                    display: table-cell;
-                    padding: 0;
-                    vertical-align: top;
+                    display: block;
+                    width: 100%;
+                    height: min(70vh, 85vh);
+                    overflow: hidden;
                     line-height: 0;
-                    text-align: center;
                     background-color: var(--white);
                 }
                 
                 .modal-lightbox-card .modal-image {
                     display: block;
-                    margin: 0 auto;
-                    width: auto;
-                    max-width: 100%;
-                    height: auto;
-                    max-height: min(70vh, 85vh);
-                    object-fit: contain;
+                    width: 100%;
+                    height: 100%;
+                    margin: 0;
+                    padding: 0;
+                    border: 0;
+                    object-fit: cover;
+                    object-position: center;
                     border-radius: 0;
                     box-shadow: none;
                 }
                 
                 .modal-lightbox-footer {
-                    display: table-footer-group;
+                    flex-shrink: 0;
                     box-sizing: border-box;
                     width: 100%;
                     background-color: var(--gray-50);
