@@ -1,6 +1,10 @@
 """
-用户认证控制器测试
-测试登录、登出、令牌刷新、用户信息获取等认证功能
+用户认证控制器单元测试
+
+直接调用 login() 等路由函数，依赖均为 AsyncMock：验证调用顺序与 HTTP 分支，
+不验证真实密码哈希、数据库或 AuthSecurityService 持久化。
+
+真实登录（PostgreSQL + JWT + 安全状态表）见 tests/integration/test_auth_login_integration.py。
 """
 
 import pytest
