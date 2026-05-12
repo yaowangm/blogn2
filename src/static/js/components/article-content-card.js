@@ -248,16 +248,18 @@ class ArticleContentCard extends BaseComponent {
                 </div>
             </div>
             
-            <!-- 图片模态框 -->
+            <!-- 大图预览：卡片随图片宽度收缩（注释更长时再变宽），下图上注释+关闭 -->
             <div class="image-modal" style="display: none;">
                 <div class="modal-overlay"></div>
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <span class="modal-title"></span>
-                        <button class="modal-close">&times;</button>
-                    </div>
-                    <div class="modal-body">
+                <div class="modal-lightbox-card" role="dialog" aria-modal="true" aria-label="图片预览">
+                    <div class="modal-lightbox-media">
                         <img class="modal-image" src="" alt="">
+                    </div>
+                    <div class="modal-lightbox-footer">
+                        <div class="modal-lightbox-footer-inner">
+                            <div class="modal-lightbox-caption"></div>
+                            <button type="button" class="modal-close" aria-label="关闭"></button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -292,7 +294,8 @@ class ArticleContentCard extends BaseComponent {
         // 为关闭按钮添加点击事件
         const closeButton = this.shadowRoot.querySelector('.modal-close');
         if (closeButton) {
-            closeButton.addEventListener('click', () => {
+            closeButton.addEventListener('click', (e) => {
+                e.stopPropagation();
                 this.hideImage();
             });
         }
@@ -304,12 +307,17 @@ class ArticleContentCard extends BaseComponent {
     showImage(imageSrc, title) {
         const modal = this.shadowRoot.querySelector('.image-modal');
         const modalImage = modal.querySelector('.modal-image');
-        const modalTitle = modal.querySelector('.modal-title');
-        
+        const captionEl = modal.querySelector('.modal-lightbox-caption');
+        const label = (title || '').trim();
+
         modalImage.src = imageSrc;
-        modalImage.alt = title || '图片';
-        modalTitle.textContent = title || '图片';
-        
+        modalImage.alt = label || '图片';
+        if (label) {
+            captionEl.textContent = label;
+        } else {
+            captionEl.innerHTML = '<span class="attachment-comment-placeholder">暂无注释</span>';
+        }
+
         modal.style.display = 'block';
         document.body.style.overflow = 'hidden'; // 防止背景滚动
     }
@@ -639,59 +647,124 @@ class ArticleContentCard extends BaseComponent {
                     cursor: pointer;
                 }
                 
-                .modal-content {
+                /* inline-table：列宽 = max(图片、底栏)，避免 column flex 下 width:100% 与 fit-content 的循环依赖 */
+                .modal-lightbox-card {
                     position: absolute;
                     top: 50%;
                     left: 50%;
                     transform: translate(-50%, -50%);
-                    background-color: var(--white);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-xl);
-                    max-width: 90%;
-                    max-height: 90%;
-                    overflow: hidden;
-                }
-                
-                .modal-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: var(--spacing-4);
-                    border-bottom: 1px solid var(--gray-200);
-                    background-color: var(--gray-50);
-                }
-                
-                .modal-title {
-                    font-weight: 600;
-                    color: var(--gray-800);
-                    font-size: var(--font-size-lg);
-                }
-                
-                .modal-close {
-                    background: none;
+                    display: inline-table;
+                    width: auto;
+                    max-width: min(52rem, 92vw);
                     border: none;
-                    font-size: var(--font-size-xl);
-                    color: var(--gray-500);
-                    cursor: pointer;
-                    padding: var(--spacing-1);
-                    border-radius: var(--radius-sm);
-                    transition: color var(--transition-fast);
+                    border-radius: var(--radius-lg);
+                    background: var(--white);
+                    overflow: hidden;
+                    box-shadow: var(--shadow-xl);
+                    box-sizing: border-box;
+                    border-spacing: 0;
+                    border-collapse: collapse;
                 }
                 
-                .modal-close:hover {
-                    color: var(--gray-700);
-                }
-                
-                .modal-body {
-                    padding: var(--spacing-4);
+                /* 显式 table-cell + line-height:0，消除匿名单元格里 replaced 元素常见的 1px 缝隙；与缩略图一样顶区无内边距 */
+                .modal-lightbox-media {
+                    display: table-cell;
+                    padding: 0;
+                    margin: 0;
+                    vertical-align: top;
+                    line-height: 0;
                     text-align: center;
+                    background-color: var(--white);
                 }
                 
-                .modal-image {
+                .modal-lightbox-card .modal-image {
+                    display: block;
+                    margin: 0 auto;
+                    padding: 0;
+                    width: auto;
                     max-width: 100%;
-                    max-height: 70vh;
                     height: auto;
-                    border-radius: var(--radius-md);
+                    max-height: min(70vh, 85vh);
+                    object-fit: contain;
+                    border-radius: 0;
+                    box-shadow: none;
+                }
+                
+                /* table-footer-group 上 padding 多数浏览器不生效，与缩略图 .attachment-comment 一致的内边距放在内层 flex 上 */
+                .modal-lightbox-footer {
+                    display: table-footer-group;
+                    box-sizing: border-box;
+                    width: 100%;
+                    background-color: var(--gray-50);
+                    border-top: 1px solid var(--gray-200);
+                    min-height: 2.75rem;
+                }
+                
+                .modal-lightbox-footer-inner {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-3);
+                    min-width: 0;
+                    box-sizing: border-box;
+                    padding: var(--spacing-2) var(--spacing-3);
+                    font-size: var(--font-size-sm);
+                    color: var(--gray-700);
+                    text-align: left;
+                    line-height: 1.45;
+                }
+                
+                .modal-lightbox-caption {
+                    flex: 1;
+                    min-width: 0;
+                    margin: 0;
+                    overflow-wrap: anywhere;
+                    word-break: break-word;
+                }
+                
+                .modal-lightbox-footer .modal-close {
+                    flex-shrink: 0;
+                    position: relative;
+                    width: 2rem;
+                    height: 2rem;
+                    margin: 0;
+                    padding: 0;
+                    font-size: 0;
+                    line-height: 0;
+                    color: transparent;
+                    cursor: pointer;
+                    background-color: var(--error-color, #ef4444);
+                    border: none;
+                    border-radius: 50%;
+                    opacity: 1;
+                    visibility: visible;
+                    pointer-events: auto;
+                    -webkit-appearance: none;
+                    appearance: none;
+                    transition: background-color var(--transition-fast);
+                }
+                
+                .modal-lightbox-footer .modal-close::before,
+                .modal-lightbox-footer .modal-close::after {
+                    content: '';
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    width: 0.7rem;
+                    height: 2px;
+                    background-color: var(--white, #fff);
+                    border-radius: 1px;
+                }
+                
+                .modal-lightbox-footer .modal-close::before {
+                    transform: translate(-50%, -50%) rotate(45deg);
+                }
+                
+                .modal-lightbox-footer .modal-close::after {
+                    transform: translate(-50%, -50%) rotate(-45deg);
+                }
+                
+                .modal-lightbox-footer .modal-close:hover {
+                    background-color: #dc2626;
                 }
                 
                 .loading {
