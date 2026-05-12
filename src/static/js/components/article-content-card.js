@@ -10,6 +10,15 @@
  * 
  * 继承自BaseComponent，使用统一的工具方法。
  */
+
+const ARTICLE_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
+
+/** 附件文件名是否为支持的图片类型 */
+function isArticleImagePath(path) {
+    const lower = String(path || '').toLowerCase();
+    return ARTICLE_IMAGE_EXTENSIONS.some(ext => lower.endsWith(ext));
+}
+
 class ArticleContentCard extends BaseComponent {
     constructor() {
         super();
@@ -179,13 +188,7 @@ class ArticleContentCard extends BaseComponent {
     renderSingleAttachment(attachment) {
         if (!attachment) return '';
 
-        // 检查是否是图片文件
-        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
-        const isImage = imageExtensions.some(ext => 
-            attachment.toLowerCase().endsWith(ext)
-        );
-
-        if (isImage) {
+        if (isArticleImagePath(attachment)) {
             return `
                 <div class="article-attachment">
                     <h3>附件图片</h3>
@@ -214,11 +217,7 @@ class ArticleContentCard extends BaseComponent {
     renderMultipleAttachments(attachments) {
         if (!attachments || attachments.length === 0) return '';
         
-        // 过滤出图片文件
-        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
-        const imageAttachments = attachments.filter(att => 
-            imageExtensions.some(ext => att.linkstr.toLowerCase().endsWith(ext))
-        );
+        const imageAttachments = attachments.filter(att => isArticleImagePath(att.linkstr));
         
         if (imageAttachments.length === 0) return '';
         
@@ -270,7 +269,6 @@ class ArticleContentCard extends BaseComponent {
      * 设置图片模态框事件监听器
      */
     setupImageModalEvents() {
-        // 使用事件委托，为整个容器添加点击事件
         const attachmentsGrid = this.shadowRoot.querySelector('.attachments-grid');
         if (attachmentsGrid) {
             attachmentsGrid.addEventListener('click', (event) => {
@@ -282,30 +280,28 @@ class ArticleContentCard extends BaseComponent {
                 this.showImage(imageSrc, imageTitle);
             });
         }
-        
-        // 为模态框背景添加点击事件
-        const modalOverlay = this.shadowRoot.querySelector('.modal-overlay');
-        if (modalOverlay) {
-            modalOverlay.addEventListener('click', () => {
-                this.hideImage();
-            });
-        }
-        
-        // 为关闭按钮添加点击事件
-        const closeButton = this.shadowRoot.querySelector('.modal-close');
-        if (closeButton) {
-            closeButton.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.hideImage();
-            });
-        }
+
+        const modal = this.getImageModal();
+        if (!modal) return;
+
+        modal.querySelector('.modal-overlay')?.addEventListener('click', () => this.hideImage());
+        modal.querySelector('.modal-close')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.hideImage();
+        });
+    }
+
+    /** @returns {HTMLElement | null} */
+    getImageModal() {
+        return this.shadowRoot.querySelector('.image-modal');
     }
 
     /**
      * 显示图片模态框
      */
     showImage(imageSrc, title) {
-        const modal = this.shadowRoot.querySelector('.image-modal');
+        const modal = this.getImageModal();
+        if (!modal) return;
         const modalImage = modal.querySelector('.modal-image');
         const captionEl = modal.querySelector('.modal-lightbox-caption');
         const label = (title || '').trim();
@@ -326,9 +322,9 @@ class ArticleContentCard extends BaseComponent {
      * 隐藏图片模态框
      */
     hideImage() {
-        const modal = this.shadowRoot.querySelector('.image-modal');
-        modal.style.display = 'none';
-        document.body.style.overflow = ''; // 恢复背景滚动
+        const modal = this.getImageModal();
+        if (modal) modal.style.display = 'none';
+        document.body.style.overflow = ''; /* 恢复背景滚动 */
     }
 
 
@@ -605,13 +601,17 @@ class ArticleContentCard extends BaseComponent {
                     text-align: left;
                 }
                 
+                .attachment-comment,
+                .modal-lightbox-footer {
+                    background-color: var(--gray-50);
+                    border-top: 1px solid var(--gray-200);
+                    min-height: 2.75rem;
+                }
+                
                 .attachment-comment {
                     font-size: var(--font-size-sm);
                     color: var(--gray-700);
                     line-height: 1.45;
-                    background-color: var(--gray-50);
-                    border-top: 1px solid var(--gray-200);
-                    min-height: 2.75rem;
                 }
                 
                 .attachment-comment-placeholder {
@@ -619,14 +619,13 @@ class ArticleContentCard extends BaseComponent {
                     font-style: italic;
                 }
 
-                /* 水平 padding 留出边距；flex 居中唯一子项（卡片），宽度用 max-content+max-width:100% 避免 inline-table 与 img 百分比的循环导致忽窄忽宽 */
+                /* lightbox：flex 居中卡片；图区固定高度 + object-fit:cover 铺满，避免 contain 与百分比宽度循环留白 */
                 .image-modal {
                     position: fixed;
                     inset: 0;
                     z-index: 10000;
                     display: none;
                     box-sizing: border-box;
-                    flex-direction: row;
                     align-items: center;
                     justify-content: center;
                     padding: 0 var(--spacing-6);
@@ -672,8 +671,6 @@ class ArticleContentCard extends BaseComponent {
                     width: 100%;
                     height: 100%;
                     margin: 0;
-                    padding: 0;
-                    border: 0;
                     object-fit: cover;
                     object-position: center;
                     border-radius: 0;
@@ -684,9 +681,6 @@ class ArticleContentCard extends BaseComponent {
                     flex-shrink: 0;
                     box-sizing: border-box;
                     width: 100%;
-                    background-color: var(--gray-50);
-                    border-top: 1px solid var(--gray-200);
-                    min-height: 2.75rem;
                 }
                 
                 .modal-lightbox-footer-inner {
