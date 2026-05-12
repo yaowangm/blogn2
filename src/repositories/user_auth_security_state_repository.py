@@ -15,6 +15,7 @@ from src.models.user_auth_security_state import AuthSecurityOptType, UserAuthSec
 
 
 def utcnow() -> datetime:
+    """UTC 当前时刻（timezone-aware），须与模型 DateTime(timezone=True) / PG TIMESTAMPTZ 一致。"""
     return datetime.now(timezone.utc)
 
 
@@ -41,6 +42,7 @@ class UserAuthSecurityStateRepository:
                 return row
             now = utcnow()
             tbl = UserAuthSecurityState.__table__
+            # 按列 ON CONFLICT，避免依赖唯一约束在库中的具体名称
             ins = (
                 insert(tbl)
                 .values(
@@ -50,7 +52,7 @@ class UserAuthSecurityStateRepository:
                     window_start=now,
                     next_allowed_at=now,
                 )
-                .on_conflict_do_nothing(constraint="uq_user_auth_security_state_user_opt")
+                .on_conflict_do_nothing(index_elements=["user_id", "opt_type"])
             )
             await self.session.execute(ins)
             await self.session.flush()

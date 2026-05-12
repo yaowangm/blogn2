@@ -7,7 +7,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import BigInteger, Column, ForeignKey, UniqueConstraint
+from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -37,5 +37,12 @@ class UserAuthSecurityState(SQLModel, table=True):
     )
     opt_type: str = Field(max_length=32, description="操作类型")
     fail_count: int = Field(default=0, ge=0, description="窗口内失败或广义计数")
-    window_start: datetime = Field(description="当前计数窗口起点（UTC）")
-    next_allowed_at: datetime = Field(description="最早允许再试（UTC）")
+    # PG TIMESTAMPTZ；须与 aware UTC（如仓储 utcnow()）一致，避免 asyncpg 与 naive 列混用
+    window_start: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+        description="当前计数窗口起点（UTC）",
+    )
+    next_allowed_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+        description="最早允许再试（UTC）",
+    )

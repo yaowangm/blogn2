@@ -1,9 +1,10 @@
 """
-认证安全服务（PostgreSQL user_auth_security_state）
+认证安全服务：在能解析出 user_id 时读写 PostgreSQL 表 user_auth_security_state。
 
-仅 user 维度：在能解析出 user_id 时读写状态行。
+写库失败时记录日志；AUTH_FAIL_CLOSED_WHEN_DB_ERROR 为真时返回 503。
 """
 
+import logging
 import os
 from typing import Optional
 
@@ -14,6 +15,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from src.config.auth_security import auth_security_settings
 from src.models.user_auth_security_state import AuthSecurityOptType
 from src.repositories.user_auth_security_state_repository import UserAuthSecurityStateRepository
+
+logger = logging.getLogger(__name__)
 
 
 class AuthSecurityService:
@@ -68,16 +71,22 @@ class AuthSecurityService:
     def _db_fail_closed(self) -> bool:
         return self.settings.fail_closed_when_db_error
 
+    async def _rollback_log_and_fail_closed(self, where: str, exc: SQLAlchemyError) -> None:
+        await self.session.rollback()
+        logger.error("AuthSecurityService[%s]: %s", where, exc, exc_info=True)
+        if self._db_fail_closed():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="认证安全服务不可用，请稍后重试",
+            ) from None
+        if not self._testing_bypass():
+            raise exc
+
     async def _commit_or_raise(self) -> None:
         try:
             await self.session.commit()
-        except SQLAlchemyError:
-            await self.session.rollback()
-            if self._db_fail_closed():
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="认证安全服务不可用，请稍后重试",
-                ) from None
+        except SQLAlchemyError as e:
+            await self._rollback_log_and_fail_closed("commit", e)
 
     def _testing_bypass(self) -> bool:
         return os.getenv("PYTEST_CURRENT_TEST") is not None or os.getenv("TESTING") == "true"
@@ -113,15 +122,8 @@ class AuthSecurityService:
             await self._commit_or_raise()
         except HTTPException:
             raise
-        except SQLAlchemyError:
-            await self.session.rollback()
-            if self._db_fail_closed():
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="认证安全服务不可用，请稍后重试",
-                ) from None
-            if not self._testing_bypass():
-                raise
+        except SQLAlchemyError as e:
+            await self._rollback_log_and_fail_closed("pre_login_check", e)
 
     async def on_login_failed(self, user_id: Optional[int]) -> None:
         if user_id is None:
@@ -143,29 +145,15 @@ class AuthSecurityService:
                 )
         except HTTPException:
             raise
-        except SQLAlchemyError:
-            await self.session.rollback()
-            if self._db_fail_closed():
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="认证安全服务不可用，请稍后重试",
-                ) from None
-            if not self._testing_bypass():
-                raise
+        except SQLAlchemyError as e:
+            await self._rollback_log_and_fail_closed("on_login_failed", e)
 
     async def on_login_success(self, user_id: int) -> None:
         try:
             await self._repo.apply_login_success(user_id)
             await self._commit_or_raise()
-        except SQLAlchemyError:
-            await self.session.rollback()
-            if self._db_fail_closed():
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="认证安全服务不可用，请稍后重试",
-                ) from None
-            if not self._testing_bypass():
-                raise
+        except SQLAlchemyError as e:
+            await self._rollback_log_and_fail_closed("on_login_success", e)
 
     async def check_forgot_password_rate_limit(self, user_id: Optional[int]) -> None:
         if user_id is None:
@@ -187,15 +175,8 @@ class AuthSecurityService:
             await self._commit_or_raise()
         except HTTPException:
             raise
-        except SQLAlchemyError:
-            await self.session.rollback()
-            if self._db_fail_closed():
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="认证安全服务不可用，请稍后重试",
-                ) from None
-            if not self._testing_bypass():
-                raise
+        except SQLAlchemyError as e:
+            await self._rollback_log_and_fail_closed("check_forgot_password_rate_limit", e)
 
     async def check_reset_token_validate_rate_limit(self, user_id: Optional[int]) -> None:
         if user_id is None:
@@ -217,15 +198,8 @@ class AuthSecurityService:
             await self._commit_or_raise()
         except HTTPException:
             raise
-        except SQLAlchemyError:
-            await self.session.rollback()
-            if self._db_fail_closed():
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="认证安全服务不可用，请稍后重试",
-                ) from None
-            if not self._testing_bypass():
-                raise
+        except SQLAlchemyError as e:
+            await self._rollback_log_and_fail_closed("check_reset_token_validate_rate_limit", e)
 
     async def check_reset_password_rate_limit(self, user_id: Optional[int]) -> None:
         if user_id is None:
@@ -247,15 +221,8 @@ class AuthSecurityService:
             await self._commit_or_raise()
         except HTTPException:
             raise
-        except SQLAlchemyError:
-            await self.session.rollback()
-            if self._db_fail_closed():
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="认证安全服务不可用，请稍后重试",
-                ) from None
-            if not self._testing_bypass():
-                raise
+        except SQLAlchemyError as e:
+            await self._rollback_log_and_fail_closed("check_reset_password_rate_limit", e)
 
     async def record_register_success(self, user_id: int, *, defer_commit: bool = False) -> None:
         """注册成功后在同一 user 维度记录一次（窗口计数）；defer_commit=True 时仅 flush，由调用方 commit。"""
@@ -279,12 +246,5 @@ class AuthSecurityService:
                 await self._commit_or_raise()
         except HTTPException:
             raise
-        except SQLAlchemyError:
-            await self.session.rollback()
-            if self._db_fail_closed():
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="认证安全服务不可用，请稍后重试",
-                ) from None
-            if not self._testing_bypass():
-                raise
+        except SQLAlchemyError as e:
+            await self._rollback_log_and_fail_closed("record_register_success", e)
