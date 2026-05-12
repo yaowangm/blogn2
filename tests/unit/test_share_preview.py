@@ -46,8 +46,8 @@ def test_inject_article_share_preview():
     meta = ArticleShareMeta(
         page_title='标题 "引号" <>&',
         description="摘要一行",
-        og_image_absolute="https://example.com/static/a.png",
-        canonical_url="https://example.com/article/42",
+        og_image_path="/static/a.png",
+        canonical_path="/article/42",
     )
     template = """<html><head>
     <title>博客文章 - BlogN</title>
@@ -57,8 +57,11 @@ def test_inject_article_share_preview():
     assert "<title>标题 \"引号\" &lt;&gt;&amp;</title>" in out
     assert 'property="og:type" content="article"' in out
     assert 'property="og:title"' in out
-    assert "https://example.com/article/42" in out
-    assert "https://example.com/static/a.png" in out
+    assert 'property="og:url" content="/article/42"' in out
+    assert 'property="og:image" content="/static/a.png"' in out
+    assert 'rel="shortcut icon" type="image/svg+xml" href="/static/favicon.svg"' in out
+    assert 'rel="icon" type="image/svg+xml" href="/static/favicon.svg"' in out
+    assert 'itemprop="image" content="/static/images/logo-light.svg"' in out
     assert 'name="description" content="摘要一行"' in out
 
 
@@ -66,8 +69,8 @@ def test_inject_article_share_preview_website_og_type():
     meta = ArticleShareMeta(
         page_title="某博客",
         description="简介",
-        og_image_absolute="https://example.com/favicon.ico",
-        canonical_url="https://example.com/blog/1",
+        og_image_path="/static/favicon.svg",
+        canonical_path="/blog/1",
     )
     template = """<head><title>x</title><meta name="description" content="y"></head>"""
     out = inject_article_share_preview(template, meta, og_type="website")
@@ -79,7 +82,7 @@ async def test_load_article_share_meta_not_found():
     session = MagicMock()
     with patch("src.utils.share_preview.ProjectItemRepository") as PIR:
         PIR.return_value.get_by_id = AsyncMock(return_value=None)
-        assert await load_article_share_meta(session, 999, "https://ex.com") is None
+        assert await load_article_share_meta(session, 999) is None
 
 
 @pytest.mark.asyncio
@@ -90,7 +93,7 @@ async def test_load_article_share_meta_deleted_invisible():
     article.name = "gone"
     with patch("src.utils.share_preview.ProjectItemRepository") as PIR:
         PIR.return_value.get_by_id = AsyncMock(return_value=article)
-        assert await load_article_share_meta(session, 1, "https://ex.com") is None
+        assert await load_article_share_meta(session, 1) is None
 
 
 @pytest.mark.asyncio
@@ -116,12 +119,12 @@ async def test_load_article_share_meta_ok_title_image_and_canonical():
         PR.return_value.get_by_id = AsyncMock(return_value=project)
         AR.return_value.get_by_project_item_id = AsyncMock(return_value=[att])
 
-        meta = await load_article_share_meta(session, 42, "https://ex.com")
+        meta = await load_article_share_meta(session, 42)
     assert meta is not None
     assert meta.page_title == "标题A - 博客甲 · BlogN"
     assert "正文" in meta.description
-    assert meta.og_image_absolute == "https://ex.com/upload/sub/pic.png"
-    assert meta.canonical_url == "https://ex.com/article/42"
+    assert meta.og_image_path == "/upload/sub/pic.png"
+    assert meta.canonical_path == "/article/42"
 
 
 @pytest.mark.asyncio
@@ -129,7 +132,7 @@ async def test_load_blog_share_meta_not_found():
     session = MagicMock()
     with patch("src.utils.share_preview.ProjectRepository") as PR:
         PR.return_value.get_by_id = AsyncMock(return_value=None)
-        assert await load_blog_share_meta(session, 888, "https://ex.com") is None
+        assert await load_blog_share_meta(session, 888) is None
 
 
 @pytest.mark.asyncio
@@ -145,13 +148,13 @@ async def test_load_blog_share_meta_uses_avatar_when_helper_returns_path():
         return_value="/avatar/2/s_100.jpg",
     ):
         PR.return_value.get_by_id = AsyncMock(return_value=project)
-        meta = await load_blog_share_meta(session, 7, "https://ex.com")
+        meta = await load_blog_share_meta(session, 7)
 
     assert meta is not None
     assert meta.page_title == "N - BlogN"
     assert meta.description == "简介一行"
-    assert meta.og_image_absolute == "https://ex.com/avatar/2/s_100.jpg"
-    assert meta.canonical_url == "https://ex.com/blog/7"
+    assert meta.og_image_path == "/avatar/2/s_100.jpg"
+    assert meta.canonical_path == "/blog/7"
 
 
 @pytest.mark.asyncio
@@ -159,7 +162,7 @@ async def test_load_thread_share_meta_not_found():
     session = MagicMock()
     with patch("src.utils.share_preview.PostRepository") as PR:
         PR.return_value.get_thread_messages = AsyncMock(side_effect=ValueError("主题 1 不存在"))
-        assert await load_thread_share_meta(session, 1, "https://ex.com") is None
+        assert await load_thread_share_meta(session, 1) is None
 
 
 @pytest.mark.asyncio
@@ -178,9 +181,9 @@ async def test_load_thread_share_meta_ok_from_main_post():
         return_value=None,
     ):
         PR.return_value.get_thread_messages = AsyncMock(return_value=[main, {"is_main_post": False}])
-        meta = await load_thread_share_meta(session, 5, "https://ex.com")
+        meta = await load_thread_share_meta(session, 5)
     assert meta is not None
     assert meta.page_title == "主贴标题 - 留言本 · BlogN"
     assert "正文内容" in meta.description
-    assert meta.canonical_url == "https://ex.com/thread/5"
-    assert meta.og_image_absolute == "https://ex.com/static/favicon.ico"
+    assert meta.canonical_path == "/thread/5"
+    assert meta.og_image_path == "/static/favicon.svg"

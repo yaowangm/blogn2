@@ -26,19 +26,6 @@ def get_base_url() -> str:
     return os.getenv('BASE_URL', 'http://localhost:8000')
 
 
-def get_share_preview_html_always() -> bool:
-    """
-    是否对文章/博客/留言主题 HTML 始终注入分享 meta（不依赖 User-Agent）。
-
-    微信等抓取端可能使用不含 MicroMessenger 的 UA；设为 true 可避免误判，
-    代价是每次打开上述页面都会查库并拼装 HTML（通常可接受）。
-
-    环境变量 ``SHARE_PREVIEW_HTML_ALWAYS``：``1`` / ``true`` / ``yes``（大小写不敏感）为开启。
-    """
-    raw = os.getenv("SHARE_PREVIEW_HTML_ALWAYS", "").strip().lower()
-    return raw in ("1", "true", "yes", "on")
-
-
 def get_blog_posts_page_size() -> int:
     """
     获取博客文章列表每页显示数量
@@ -201,7 +188,6 @@ def validate_app_config() -> dict:
         "debug": os.getenv('DEBUG', 'true').lower() == 'true',
         "log_level": get_uvicorn_log_level(),
         "base_url": get_base_url(),
-        "share_preview_html_always": get_share_preview_html_always(),
         "blog_posts_page_size": get_blog_posts_page_size(),
         "max_attachments_per_article": get_max_attachments_per_article(),
         "max_file_size": int(os.getenv('MAX_FILE_SIZE', '10485760')),

@@ -5,19 +5,16 @@
 """
 
 from pathlib import Path
-from typing import Awaitable, Callable, Optional, Union
+from typing import Awaitable, Callable, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.config.app import get_base_url, get_share_preview_html_always
 from src.database import get_async_session
 from src.utils.share_preview import (
     ArticleShareMeta,
-    get_request_public_base_url,
     inject_article_share_preview,
-    is_share_preview_crawler,
     load_article_share_meta,
     load_blog_share_meta,
     load_thread_share_meta,
@@ -46,48 +43,31 @@ class PageHandler:
 
     @staticmethod
     async def _maybe_share_preview_html(
-        request: Request,
+        _request: Request,
         session: AsyncSession,
         *,
         static_filename: str,
         load_share_meta: Callable[
-            [AsyncSession, int, str], Awaitable[Optional[ArticleShareMeta]]
+            [AsyncSession, int], Awaitable[Optional[ArticleShareMeta]]
         ],
         resource_id: int,
         not_found_detail: str,
         og_type: str = "article",
-    ) -> Union[FileResponse, HTMLResponse]:
+    ) -> HTMLResponse:
         """
-        分享爬虫：返回注入 OG 后的 HTML；否则返回原始静态页。
+        对文章 / 博客首页 / 留言主题页：始终返回注入分享 meta 与站点 icon 后的 HTML，
+        不依赖 User-Agent（微信等抓取端 UA 多变，与浏览器共用同一路径）。
 
-        若 ``SHARE_PREVIEW_HTML_ALWAYS`` 为真，则始终走注入分支（应对抓取端 UA 不含
-        MicroMessenger 等情况）；否则仅匹配 ``is_share_preview_crawler``。
-        非「始终注入」时对 HTML 响应加 ``Vary: User-Agent``，减轻中间缓存把无 meta
-        版本错发给爬虫的问题。
+        资源不存在时 ``load_share_meta`` 返回 None，则 ``404``。
         """
         static_path = PageHandler._get_static_file_path(static_filename)
-        ua = request.headers.get("user-agent")
-        always = get_share_preview_html_always()
-        if not always and not is_share_preview_crawler(ua):
-            return FileResponse(static_path)
-        base = get_request_public_base_url(
-            url_scheme=request.url.scheme,
-            url_netloc=request.url.netloc,
-            headers=request.headers,
-        )
-        if not base:
-            base = get_base_url().rstrip("/")
-        meta = await load_share_meta(session, resource_id, base)
+        meta = await load_share_meta(session, resource_id)
         if meta is None:
             raise HTTPException(status_code=404, detail=not_found_detail)
         with open(static_path, encoding="utf-8") as f:
             template = f.read()
-        headers: dict[str, str] = {}
-        if not always:
-            headers["Vary"] = "User-Agent"
         return HTMLResponse(
             content=inject_article_share_preview(template, meta, og_type=og_type),
-            headers=headers,
         )
     
     @staticmethod

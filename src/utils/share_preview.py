@@ -1,7 +1,16 @@
 """
-社交分享 / 爬虫预览：在首包 HTML 中注入 Open Graph 与标题。
+社交分享 / 爬虫预览：在首包 HTML 中注入 Open Graph、微数据与标题。
 
 微信等客户端不执行 JavaScript，仅解析静态 HTML；普通浏览器仍走原有 SPA + Ajax。
+
+链接策略：``canonical_path``、``og:image``、``twitter:image`` 等使用以 ``/`` 开头的站内
+相对路径，由客户端按当前页面协议（https）解析为绝对 URL，避免错误写成 ``http://``
+导致缩略图被丢弃。
+
+微信链接预览对 ``og:image`` 的依赖不稳定；部分场景会回退到站点图标。
+除 ``og:image`` 等 meta 外，在 ``</head>`` 前注入 ``shortcut icon`` / ``icon``（指向仓库内
+实际存在的 ``/static/favicon.svg``），便于预览抓取。
+``itemprop="image"`` 仍为站点 SVG logo；``og:image`` 为文章首图 / 头像 / 无图时用同一 SVG。
 """
 
 from __future__ import annotations
@@ -49,6 +58,11 @@ _IMAGE_SUFFIXES: tuple[str, ...] = (
     ".svg",
 )
 
+# 分享预览里给微信等读取的 itemprop 缩略图（站内相对路径）
+_SITE_LOGO_SHARE_PATH = "/static/images/logo-light.svg"
+# 仓库内仅有 favicon.svg，无 favicon.ico；分享与回退图统一用 SVG
+_SITE_FAVICON_SHARE_PATH = "/static/favicon.svg"
+
 
 def is_share_preview_crawler(user_agent: Optional[str]) -> bool:
     if not user_agent:
@@ -64,7 +78,7 @@ def get_request_public_base_url(
     headers: Mapping[str, str],
 ) -> str:
     """
-    生成对外绝对 URL 前缀（og:image、og:url）。
+    生成对外绝对 URL 前缀（其它需要完整 URL 的场景可用）。
     优先使用反向代理常见的 X-Forwarded-*，否则回退到请求 URL。
     """
     h = {k.lower(): v for k, v in headers.items()}
@@ -107,12 +121,15 @@ def _markdown_to_plain_preview(
 
 @dataclass
 class ArticleShareMeta:
-    """分享注入用元数据（文章 / 博客首页 / 留言主题共用结构）。"""
+    """分享注入用元数据（文章 / 博客首页 / 留言主题）。
+
+    ``og_image_path``、``canonical_path`` 均为以 ``/`` 开头的站内路径，注入 meta 时不拼主机名。
+    """
 
     page_title: str
     description: str
-    og_image_absolute: Optional[str]
-    canonical_url: str
+    og_image_path: str
+    canonical_path: str
 
 
 def _avatar_relative_url_if_exists(userid: Optional[int]) -> Optional[str]:
@@ -129,18 +146,17 @@ def _avatar_relative_url_if_exists(userid: Optional[int]) -> Optional[str]:
     return None
 
 
-def _absolute_og_image_user_or_favicon(public_base_url: str, userid: Optional[int]) -> str:
-    """有头像文件则用其绝对 URL，否则站点 favicon（博客首页与留言主贴共用）。"""
+def _share_og_image_path_for_user(userid: Optional[int]) -> str:
+    """有头像文件则用其站内路径，否则站点 favicon.svg（博客首页与留言主贴共用）。"""
     rel = _avatar_relative_url_if_exists(userid)
     if rel:
-        return f"{public_base_url}/{rel.lstrip('/')}"
-    return f"{public_base_url}/static/favicon.ico"
+        return rel if rel.startswith("/") else f"/{rel.lstrip('/')}"
+    return _SITE_FAVICON_SHARE_PATH
 
 
 async def load_article_share_meta(
     session: AsyncSession,
     article_id: int,
-    public_base_url: str,
 ) -> Optional[ArticleShareMeta]:
     """
     读取用于分享预览的元数据（与公开文章 API 一致的可见性：已删除对爬虫不可见）。
@@ -169,33 +185,32 @@ async def load_article_share_meta(
 
     description = _markdown_to_plain_preview(article.comment)
 
-    og_image: Optional[str] = None
+    og_image_path: Optional[str] = None
     attachments = await attachment_repo.get_by_project_item_id(article_id)
     for att in attachments or []:
         if _is_image_path(getattr(att, "linkstr", None)):
             link = (att.linkstr or "").lstrip("/")
-            og_image = f"{public_base_url}/upload/{link}"
+            og_image_path = f"/upload/{link}"
             break
-    if not og_image and _is_image_path(article.attachment):
+    if not og_image_path and _is_image_path(article.attachment):
         link = (article.attachment or "").lstrip("/")
-        og_image = f"{public_base_url}/upload/{link}"
-    if not og_image:
-        og_image = f"{public_base_url}/static/favicon.ico"
+        og_image_path = f"/upload/{link}"
+    if not og_image_path:
+        og_image_path = _SITE_FAVICON_SHARE_PATH
 
-    canonical_url = f"{public_base_url}/article/{article_id}"
+    canonical_path = f"/article/{article_id}"
 
     return ArticleShareMeta(
         page_title=page_title,
         description=description,
-        og_image_absolute=og_image,
-        canonical_url=canonical_url,
+        og_image_path=og_image_path,
+        canonical_path=canonical_path,
     )
 
 
 async def load_thread_share_meta(
     session: AsyncSession,
     thread_id: int,
-    public_base_url: str,
 ) -> Optional[ArticleShareMeta]:
     """
     留言本主题页 /thread/{id} 的分享元数据（主贴不存在则 None，与 /api/thread/{id} 一致）。
@@ -219,22 +234,21 @@ async def load_thread_share_meta(
         empty_fallback=empty_desc,
     )
 
-    og_image = _absolute_og_image_user_or_favicon(public_base_url, main.get("userid"))
+    og_image_path = _share_og_image_path_for_user(main.get("userid"))
 
-    canonical_url = f"{public_base_url}/thread/{thread_id}"
+    canonical_path = f"/thread/{thread_id}"
 
     return ArticleShareMeta(
         page_title=page_title,
         description=description,
-        og_image_absolute=og_image,
-        canonical_url=canonical_url,
+        og_image_path=og_image_path,
+        canonical_path=canonical_path,
     )
 
 
 async def load_blog_share_meta(
     session: AsyncSession,
     project_id: int,
-    public_base_url: str,
 ) -> Optional[ArticleShareMeta]:
     """博客首页 /blog/{id} 的分享元数据（项目不存在则 None）。"""
     project_repo = ProjectRepository(session)
@@ -250,15 +264,15 @@ async def load_blog_share_meta(
         empty_fallback=empty_desc,
     )
 
-    og_image = _absolute_og_image_user_or_favicon(public_base_url, project.userid)
+    og_image_path = _share_og_image_path_for_user(project.userid)
 
-    canonical_url = f"{public_base_url}/blog/{project_id}"
+    canonical_path = f"/blog/{project_id}"
 
     return ArticleShareMeta(
         page_title=page_title,
         description=description,
-        og_image_absolute=og_image,
-        canonical_url=canonical_url,
+        og_image_path=og_image_path,
+        canonical_path=canonical_path,
     )
 
 
@@ -268,7 +282,8 @@ def inject_article_share_preview(
     og_type: str = "article",
 ) -> str:
     """
-    在 HTML 模板中替换 <title>、description，并在 </head> 前插入 Open Graph。
+    在 HTML 模板中替换 <title>、description，并在 </head> 前插入 Open Graph、
+    微数据以及 ``shortcut icon`` / ``icon`` 链接（站内相对路径）。
 
     与 ``article.html`` / ``blog.html`` / ``thread.html`` 等首段 head 结构兼容。
     ``og_type``：文章/留言主题常用 ``article``，博客首页用 ``website``。
@@ -276,8 +291,10 @@ def inject_article_share_preview(
     title_el = html.escape(meta.page_title, quote=False)
     esc_title = html.escape(meta.page_title, quote=True)
     esc_desc = html.escape(meta.description, quote=True)
-    esc_url = html.escape(meta.canonical_url, quote=True)
-    esc_image = html.escape(meta.og_image_absolute or "", quote=True)
+    esc_path = html.escape(meta.canonical_path, quote=True)
+    esc_image = html.escape(meta.og_image_path or _SITE_FAVICON_SHARE_PATH, quote=True)
+    esc_itemprop_image = html.escape(_SITE_LOGO_SHARE_PATH, quote=True)
+    esc_favicon = html.escape(_SITE_FAVICON_SHARE_PATH, quote=True)
 
     html_out = re.sub(
         r"<title>.*?</title>",
@@ -297,10 +314,15 @@ def inject_article_share_preview(
     esc_og_type = html.escape(og_type, quote=True)
 
     og_block = f"""
+    <link rel="shortcut icon" type="image/svg+xml" href="{esc_favicon}">
+    <link rel="icon" type="image/svg+xml" href="{esc_favicon}">
+    <meta itemprop="name" content="{esc_title}">
+    <meta itemprop="description" content="{esc_desc}">
+    <meta itemprop="image" content="{esc_itemprop_image}">
     <meta property="og:type" content="{esc_og_type}">
     <meta property="og:title" content="{esc_title}">
     <meta property="og:description" content="{esc_desc}">
-    <meta property="og:url" content="{esc_url}">
+    <meta property="og:url" content="{esc_path}">
     <meta property="og:image" content="{esc_image}">
     <meta property="og:site_name" content="BlogN">
     <meta name="twitter:card" content="summary_large_image">

@@ -10,11 +10,6 @@ from fastapi.testclient import TestClient
 class TestBasicEndpoints:
     """基础API端点测试类 - 快速验证基本功能"""
 
-    @pytest.fixture(autouse=True)
-    def _integration_ignore_share_preview_html_always(self, monkeypatch):
-        """本地若开启 SHARE_PREVIEW_HTML_ALWAYS，Chrome UA 仍会查库；无 id=1 等数据时静态页用例会 404。"""
-        monkeypatch.delenv("SHARE_PREVIEW_HTML_ALWAYS", raising=False)
-
     @pytest.mark.integration
     def test_health_check(self, test_client):
         """测试健康检查端点"""
@@ -104,14 +99,16 @@ class TestBasicEndpoints:
 
     @pytest.mark.integration
     def test_article_page_normal_browser(self, test_client):
-        """文章页：普通浏览器仍返回静态 article.html"""
+        """文章页：始终返回注入分享 meta 的 HTML；库中无该文时为 404。"""
         response = test_client.get(
             "/article/1",
             headers={"User-Agent": "Mozilla/5.0 Chrome/120.0.0.0"},
         )
-        assert response.status_code == 200
-        assert "text/html" in response.headers.get("content-type", "")
-        assert "博客文章 - BlogN" in response.text
+        assert response.status_code in (200, 404)
+        if response.status_code == 200:
+            assert "text/html" in response.headers.get("content-type", "")
+            assert 'property="og:type"' in response.text
+            assert 'rel="shortcut icon"' in response.text
 
     @pytest.mark.integration
     def test_article_page_share_crawler_nonexistent_404(self, test_client):
@@ -124,14 +121,15 @@ class TestBasicEndpoints:
 
     @pytest.mark.integration
     def test_blog_page_normal_browser(self, test_client):
-        """博客首页：普通浏览器仍返回静态 blog.html"""
+        """博客首页：始终注入分享 meta；无该项目时为 404。"""
         response = test_client.get(
             "/blog/1",
             headers={"User-Agent": "Mozilla/5.0 Chrome/120.0.0.0"},
         )
-        assert response.status_code == 200
-        assert "text/html" in response.headers.get("content-type", "")
-        assert "博客页面 - BlogN" in response.text
+        assert response.status_code in (200, 404)
+        if response.status_code == 200:
+            assert "text/html" in response.headers.get("content-type", "")
+            assert 'property="og:type"' in response.text
 
     @pytest.mark.integration
     def test_blog_page_share_crawler_nonexistent_404(self, test_client):
@@ -144,14 +142,15 @@ class TestBasicEndpoints:
 
     @pytest.mark.integration
     def test_thread_page_normal_browser(self, test_client):
-        """留言主题页：普通浏览器仍返回静态 thread.html"""
+        """留言主题页：始终注入分享 meta；无该主题时为 404。"""
         response = test_client.get(
             "/thread/1",
             headers={"User-Agent": "Mozilla/5.0 Chrome/120.0.0.0"},
         )
-        assert response.status_code == 200
-        assert "text/html" in response.headers.get("content-type", "")
-        assert "留言本主题 - BlogN" in response.text
+        assert response.status_code in (200, 404)
+        if response.status_code == 200:
+            assert "text/html" in response.headers.get("content-type", "")
+            assert 'property="og:type"' in response.text
 
     @pytest.mark.integration
     def test_thread_page_share_crawler_nonexistent_404(self, test_client):
