@@ -11,6 +11,7 @@ from src.utils.share_preview import (
     is_share_preview_crawler,
     load_article_share_meta,
     load_blog_share_meta,
+    load_thread_share_meta,
 )
 
 
@@ -150,3 +151,35 @@ async def test_load_blog_share_meta_uses_avatar_when_helper_returns_path():
     assert meta.description == "简介一行"
     assert meta.og_image_absolute == "https://ex.com/avatar/2/s_100.jpg"
     assert meta.canonical_url == "https://ex.com/blog/7"
+
+
+@pytest.mark.asyncio
+async def test_load_thread_share_meta_not_found():
+    session = MagicMock()
+    with patch("src.utils.share_preview.PostRepository") as PR:
+        PR.return_value.get_thread_messages = AsyncMock(side_effect=ValueError("主题 1 不存在"))
+        assert await load_thread_share_meta(session, 1, "https://ex.com") is None
+
+
+@pytest.mark.asyncio
+async def test_load_thread_share_meta_ok_from_main_post():
+    session = MagicMock()
+    main = {
+        "id": 5,
+        "subject": "主贴标题",
+        "content": "正文内容",
+        "userid": 2,
+        "author_name": "张三",
+        "is_main_post": True,
+    }
+    with patch("src.utils.share_preview.PostRepository") as PR, patch(
+        "src.utils.share_preview._avatar_relative_url_if_exists",
+        return_value=None,
+    ):
+        PR.return_value.get_thread_messages = AsyncMock(return_value=[main, {"is_main_post": False}])
+        meta = await load_thread_share_meta(session, 5, "https://ex.com")
+    assert meta is not None
+    assert meta.page_title == "主贴标题 - 留言本 · BlogN"
+    assert "正文内容" in meta.description
+    assert meta.canonical_url == "https://ex.com/thread/5"
+    assert meta.og_image_absolute == "https://ex.com/static/favicon.ico"

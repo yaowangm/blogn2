@@ -18,6 +18,7 @@ from src.utils.share_preview import (
     is_share_preview_crawler,
     load_article_share_meta,
     load_blog_share_meta,
+    load_thread_share_meta,
 )
 
 
@@ -93,9 +94,31 @@ class PageHandler:
         
         # 留言本主题页面
         @router.get("/thread/{thread_id}")
-        async def thread_page(thread_id: int):
-            """留言本主题页面路由"""
-            return FileResponse(PageHandler._get_static_file_path("thread.html"))
+        async def thread_page(
+            thread_id: int,
+            request: Request,
+            session: AsyncSession = Depends(get_async_session),
+        ):
+            """留言本主题页面（社交爬虫请求返回带 Open Graph 的 HTML）"""
+            thread_path = PageHandler._get_static_file_path("thread.html")
+            ua = request.headers.get("user-agent")
+            if is_share_preview_crawler(ua):
+                base = get_request_public_base_url(
+                    url_scheme=request.url.scheme,
+                    url_netloc=request.url.netloc,
+                    headers=request.headers,
+                )
+                if not base:
+                    base = get_base_url().rstrip("/")
+                meta = await load_thread_share_meta(session, thread_id, base)
+                if meta is None:
+                    raise HTTPException(status_code=404, detail="主题不存在")
+                with open(thread_path, encoding="utf-8") as f:
+                    template = f.read()
+                return HTMLResponse(
+                    content=inject_article_share_preview(template, meta, og_type="article")
+                )
+            return FileResponse(thread_path)
         
         # 发表博客文章页面
         @router.get("/blog/{project_id}/create-post")

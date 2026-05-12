@@ -136,3 +136,23 @@ class TestBasicEndpoints:
             headers={"User-Agent": "Mozilla/5.0 MicroMessenger/8.0"},
         )
         assert response.status_code == 404
+
+    @pytest.mark.integration
+    def test_thread_page_normal_browser(self, test_client):
+        """留言主题页：普通浏览器仍返回静态 thread.html"""
+        response = test_client.get(
+            "/thread/1",
+            headers={"User-Agent": "Mozilla/5.0 Chrome/120.0.0.0"},
+        )
+        assert response.status_code == 200
+        assert "text/html" in response.headers.get("content-type", "")
+        assert "留言本主题 - BlogN" in response.text
+
+    @pytest.mark.integration
+    def test_thread_page_share_crawler_nonexistent_404(self, test_client):
+        """留言主题页：分享爬虫请求不存在的主题返回 404"""
+        response = test_client.get(
+            "/thread/999999999",
+            headers={"User-Agent": "Mozilla/5.0 MicroMessenger/8.0"},
+        )
+        assert response.status_code == 404

@@ -17,6 +17,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from src.config.app import validate_app_config
 from src.constants import ArticleStatus
 from src.repositories.attachment_repository import AttachmentRepository
+from src.repositories.post_repository import PostRepository
 from src.repositories.project_item_repository import ProjectItemRepository
 from src.repositories.project_repository import ProjectRepository
 from src.utils.permission_manager import permission_manager
@@ -157,6 +158,50 @@ async def load_article_share_meta(
         og_image = f"{public_base_url}/static/favicon.ico"
 
     canonical_url = f"{public_base_url}/article/{article_id}"
+
+    return ArticleShareMeta(
+        page_title=page_title,
+        description=description,
+        og_image_absolute=og_image,
+        canonical_url=canonical_url,
+    )
+
+
+async def load_thread_share_meta(
+    session: AsyncSession,
+    thread_id: int,
+    public_base_url: str,
+) -> Optional[ArticleShareMeta]:
+    """
+    留言本主题页 /thread/{id} 的分享元数据（主贴不存在则 None，与 /api/thread/{id} 一致）。
+    """
+    post_repo = PostRepository(session)
+    try:
+        messages = await post_repo.get_thread_messages(thread_id)
+    except ValueError:
+        return None
+
+    main = messages[0] if messages else None
+    if not main or not main.get("is_main_post"):
+        return None
+
+    subject = (main.get("subject") or "").strip() or "无标题"
+    page_title = f"{subject} - 留言本 · BlogN"
+    author = (main.get("author_name") or "").strip() or "用户"
+    empty_desc = f"留言本主题「{subject}」，{author} · BlogN"
+    description = _markdown_to_plain_preview(
+        main.get("content"),
+        empty_fallback=empty_desc,
+    )
+
+    rel_avatar = _avatar_relative_url_if_exists(main.get("userid"))
+    if rel_avatar:
+        link = rel_avatar.lstrip("/")
+        og_image = f"{public_base_url}/{link}"
+    else:
+        og_image = f"{public_base_url}/static/favicon.ico"
+
+    canonical_url = f"{public_base_url}/thread/{thread_id}"
 
     return ArticleShareMeta(
         page_title=page_title,
