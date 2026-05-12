@@ -24,7 +24,8 @@ from src.utils.permission_manager import permission_manager
 
 # User-Agent 子串（大小写不敏感），覆盖微信与常见社交/预览爬虫
 _SHARE_PREVIEW_UA_MARKERS: tuple[str, ...] = (
-    "micromessenger",  # 微信内置浏览器与分享抓取
+    "micromessenger",  # 微信内置浏览器
+    "mpcrawler",  # 微信链接预览/收录等场景常见（UA 未必含 MicroMessenger）
     "facebookexternalhit",
     "facebot",
     "twitterbot",

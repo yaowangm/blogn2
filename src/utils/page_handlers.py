@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.config.app import get_base_url
+from src.config.app import get_base_url, get_share_preview_html_always
 from src.database import get_async_session
 from src.utils.share_preview import (
     ArticleShareMeta,
@@ -58,11 +58,17 @@ class PageHandler:
         og_type: str = "article",
     ) -> Union[FileResponse, HTMLResponse]:
         """
-        分享爬虫：返回注入 OG 后的 HTML；否则返回原始静态页（行为与原先分支一致）。
+        分享爬虫：返回注入 OG 后的 HTML；否则返回原始静态页。
+
+        若 ``SHARE_PREVIEW_HTML_ALWAYS`` 为真，则始终走注入分支（应对抓取端 UA 不含
+        MicroMessenger 等情况）；否则仅匹配 ``is_share_preview_crawler``。
+        非「始终注入」时对 HTML 响应加 ``Vary: User-Agent``，减轻中间缓存把无 meta
+        版本错发给爬虫的问题。
         """
         static_path = PageHandler._get_static_file_path(static_filename)
         ua = request.headers.get("user-agent")
-        if not is_share_preview_crawler(ua):
+        always = get_share_preview_html_always()
+        if not always and not is_share_preview_crawler(ua):
             return FileResponse(static_path)
         base = get_request_public_base_url(
             url_scheme=request.url.scheme,
@@ -76,8 +82,12 @@ class PageHandler:
             raise HTTPException(status_code=404, detail=not_found_detail)
         with open(static_path, encoding="utf-8") as f:
             template = f.read()
+        headers: dict[str, str] = {}
+        if not always:
+            headers["Vary"] = "User-Agent"
         return HTMLResponse(
-            content=inject_article_share_preview(template, meta, og_type=og_type)
+            content=inject_article_share_preview(template, meta, og_type=og_type),
+            headers=headers,
         )
     
     @staticmethod

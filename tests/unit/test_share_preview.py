@@ -17,6 +17,7 @@ from src.utils.share_preview import (
 
 def test_is_share_preview_crawler_wechat():
     assert is_share_preview_crawler("Mozilla/5.0 MicroMessenger/8.0")
+    assert is_share_preview_crawler("Mozilla/5.0 ... mpcrawler")
     assert is_share_preview_crawler("facebookexternalhit/1.1")
     assert not is_share_preview_crawler("Mozilla/5.0 Chrome/120.0.0.0")
     assert not is_share_preview_crawler(None)

@@ -11,6 +11,15 @@ from src.utils.page_handlers import PageHandler
 from src.utils.share_preview import ArticleShareMeta
 
 
+@pytest.fixture(autouse=True)
+def _share_preview_tests_ignore_local_env_always(monkeypatch):
+    """本地 .env 若开启 SHARE_PREVIEW_HTML_ALWAYS，会干扰按 UA 分支的断言。"""
+    monkeypatch.setattr(
+        "src.utils.page_handlers.get_share_preview_html_always",
+        lambda: False,
+    )
+
+
 def _http_scope(*, user_agent: str) -> dict:
     return {
         "type": "http",
@@ -77,6 +86,7 @@ async def test_maybe_share_preview_crawler_returns_html_with_og():
     body = resp.body.decode("utf-8")
     assert "og:title" in body
     assert "UT标题" in body
+    assert resp.headers.get("vary") == "User-Agent"
     load.assert_called_once()
 
 
@@ -99,3 +109,60 @@ async def test_maybe_share_preview_crawler_not_found_raises_404():
         )
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "文章不存在"
+
+
+@pytest.mark.asyncio
+async def test_maybe_share_preview_mpcrawler_treated_as_crawler():
+    """微信 mpcrawler UA 应走注入分支（与 MicroMessenger 分列）。"""
+    request = Request(_http_scope(user_agent="Mozilla/5.0 Mobile mpcrawler"))
+    session = MagicMock()
+    meta = ArticleShareMeta(
+        page_title="T2",
+        description="D2",
+        og_image_absolute="https://example.com/i.png",
+        canonical_url="https://example.com/article/1",
+    )
+    load = AsyncMock(return_value=meta)
+
+    resp = await PageHandler._maybe_share_preview_html(
+        request,
+        session,
+        static_filename="article.html",
+        load_share_meta=load,
+        resource_id=1,
+        not_found_detail="x",
+        og_type="article",
+    )
+    assert isinstance(resp, HTMLResponse)
+    assert "T2" in resp.body.decode("utf-8")
+    assert resp.headers.get("vary") == "User-Agent"
+
+
+@pytest.mark.asyncio
+async def test_maybe_share_preview_always_injects_without_crawler_ua():
+    """SHARE_PREVIEW_HTML_ALWAYS 时普通 Chrome UA 也注入。"""
+    from unittest.mock import patch
+
+    request = Request(_http_scope(user_agent="Mozilla/5.0 Chrome/120.0"))
+    session = MagicMock()
+    meta = ArticleShareMeta(
+        page_title="Always",
+        description="Desc",
+        og_image_absolute="https://example.com/favicon.ico",
+        canonical_url="https://example.com/article/2",
+    )
+    load = AsyncMock(return_value=meta)
+
+    with patch("src.utils.page_handlers.get_share_preview_html_always", return_value=True):
+        resp = await PageHandler._maybe_share_preview_html(
+            request,
+            session,
+            static_filename="article.html",
+            load_share_meta=load,
+            resource_id=2,
+            not_found_detail="n",
+            og_type="article",
+        )
+    assert isinstance(resp, HTMLResponse)
+    assert "Always" in resp.body.decode("utf-8")
+    assert resp.headers.get("vary") is None
