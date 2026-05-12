@@ -168,18 +168,55 @@ class ArticleContentCard extends BaseComponent {
      */
     renderAllAttachments(attachment, attachments) {
         let html = '';
-        
-        // 渲染单张图片附件（如果存在）
+
         if (attachment) {
             html += this.renderSingleAttachment(attachment);
         }
-        
-        // 渲染多张图片附件（如果存在）
+
         if (attachments && attachments.length > 0) {
             html += this.renderMultipleAttachments(attachments);
         }
-        
+
+        if (this.shouldIncludeImageModal(attachment, attachments)) {
+            html += this.renderImageModal();
+        }
+
         return html;
+    }
+
+    /**
+     * 是否存在任一可在 lightbox 中预览的图片附件（单文件或多图列表）
+     */
+    shouldIncludeImageModal(attachment, attachments) {
+        if (attachment && isArticleImagePath(attachment)) {
+            return true;
+        }
+        if (!attachments || attachments.length === 0) {
+            return false;
+        }
+        return attachments.some(att => isArticleImagePath(att.linkstr));
+    }
+
+    /**
+     * 大图预览（单图/多图共用 DOM，仅输出一份）
+     */
+    renderImageModal() {
+        return `
+            <div class="image-modal" style="display: none;">
+                <div class="modal-overlay"></div>
+                <div class="modal-lightbox-card" role="dialog" aria-modal="true" aria-label="图片预览">
+                    <div class="modal-lightbox-media">
+                        <img class="modal-image" src="" alt="">
+                    </div>
+                    <div class="modal-lightbox-footer">
+                        <div class="modal-lightbox-footer-inner">
+                            <div class="modal-lightbox-caption"></div>
+                            <button type="button" class="modal-close" aria-label="关闭"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
     }
     
     /**
@@ -192,7 +229,9 @@ class ArticleContentCard extends BaseComponent {
             return `
                 <div class="article-attachment">
                     <h3>附件图片</h3>
-                    <div class="attachment-image">
+                    <div class="attachment-image"
+                         data-image-src="/upload/${attachment}"
+                         data-image-title="">
                         <img src="/upload/${attachment}" alt="文章附件" loading="lazy">
                     </div>
                 </div>
@@ -246,22 +285,6 @@ class ArticleContentCard extends BaseComponent {
                     }).join('')}
                 </div>
             </div>
-            
-            <!-- 大图预览 lightbox -->
-            <div class="image-modal" style="display: none;">
-                <div class="modal-overlay"></div>
-                <div class="modal-lightbox-card" role="dialog" aria-modal="true" aria-label="图片预览">
-                    <div class="modal-lightbox-media">
-                        <img class="modal-image" src="" alt="">
-                    </div>
-                    <div class="modal-lightbox-footer">
-                        <div class="modal-lightbox-footer-inner">
-                            <div class="modal-lightbox-caption"></div>
-                            <button type="button" class="modal-close" aria-label="关闭"></button>
-                        </div>
-                    </div>
-                </div>
-            </div>
         `;
     }
 
@@ -269,20 +292,29 @@ class ArticleContentCard extends BaseComponent {
      * 设置图片模态框事件监听器
      */
     setupImageModalEvents() {
-        const attachmentsGrid = this.shadowRoot.querySelector('.attachments-grid');
-        if (attachmentsGrid) {
-            attachmentsGrid.addEventListener('click', (event) => {
-                const item = event.target.closest('.attachment-item');
-                if (!item) return;
-                const imageSrc = item.getAttribute('data-image-src');
-                if (!imageSrc) return;
-                const imageTitle = item.getAttribute('data-image-title');
-                this.showImage(imageSrc, imageTitle);
-            });
-        }
-
+        const cardBody = this.shadowRoot.querySelector('.card-body');
         const modal = this.getImageModal();
         if (!modal) return;
+
+        if (cardBody) {
+            cardBody.addEventListener('click', (event) => {
+                const gridItem = event.target.closest('.attachment-item');
+                if (gridItem) {
+                    const imageSrc = gridItem.getAttribute('data-image-src');
+                    if (imageSrc) {
+                        this.showImage(imageSrc, gridItem.getAttribute('data-image-title'));
+                        return;
+                    }
+                }
+                const singleHost = event.target.closest('.article-attachment .attachment-image[data-image-src]');
+                if (singleHost) {
+                    const imageSrc = singleHost.getAttribute('data-image-src');
+                    if (imageSrc) {
+                        this.showImage(imageSrc, singleHost.getAttribute('data-image-title') || '');
+                    }
+                }
+            });
+        }
 
         modal.querySelector('.modal-overlay')?.addEventListener('click', () => this.hideImage());
         modal.querySelector('.modal-close')?.addEventListener('click', (e) => {
@@ -514,6 +546,10 @@ class ArticleContentCard extends BaseComponent {
                     height: auto;
                     border-radius: var(--radius-lg);
                     box-shadow: var(--shadow-md);
+                }
+                
+                .article-attachment .attachment-image[data-image-src] {
+                    cursor: pointer;
                 }
                 
                 .attachment-file {
