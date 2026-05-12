@@ -5,14 +5,16 @@
 """
 
 from pathlib import Path
+from typing import Awaitable, Callable, Optional, Union
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
-from typing import Optional
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.config.app import get_base_url
 from src.database import get_async_session
 from src.utils.share_preview import (
+    ArticleShareMeta,
     get_request_public_base_url,
     inject_article_share_preview,
     is_share_preview_crawler,
@@ -41,6 +43,42 @@ class PageHandler:
         project_root = current_file.parent.parent.parent
         static_file = project_root / "src" / "static" / filename
         return str(static_file.resolve())
+
+    @staticmethod
+    async def _maybe_share_preview_html(
+        request: Request,
+        session: AsyncSession,
+        *,
+        static_filename: str,
+        load_share_meta: Callable[
+            [AsyncSession, int, str], Awaitable[Optional[ArticleShareMeta]]
+        ],
+        resource_id: int,
+        not_found_detail: str,
+        og_type: str = "article",
+    ) -> Union[FileResponse, HTMLResponse]:
+        """
+        分享爬虫：返回注入 OG 后的 HTML；否则返回原始静态页（行为与原先分支一致）。
+        """
+        static_path = PageHandler._get_static_file_path(static_filename)
+        ua = request.headers.get("user-agent")
+        if not is_share_preview_crawler(ua):
+            return FileResponse(static_path)
+        base = get_request_public_base_url(
+            url_scheme=request.url.scheme,
+            url_netloc=request.url.netloc,
+            headers=request.headers,
+        )
+        if not base:
+            base = get_base_url().rstrip("/")
+        meta = await load_share_meta(session, resource_id, base)
+        if meta is None:
+            raise HTTPException(status_code=404, detail=not_found_detail)
+        with open(static_path, encoding="utf-8") as f:
+            template = f.read()
+        return HTMLResponse(
+            content=inject_article_share_preview(template, meta, og_type=og_type)
+        )
     
     @staticmethod
     def create_page_router() -> APIRouter:
@@ -66,25 +104,15 @@ class PageHandler:
             session: AsyncSession = Depends(get_async_session),
         ):
             """博客页面路由（社交爬虫请求返回带 Open Graph 的 HTML）"""
-            blog_path = PageHandler._get_static_file_path("blog.html")
-            ua = request.headers.get("user-agent")
-            if is_share_preview_crawler(ua):
-                base = get_request_public_base_url(
-                    url_scheme=request.url.scheme,
-                    url_netloc=request.url.netloc,
-                    headers=request.headers,
-                )
-                if not base:
-                    base = get_base_url().rstrip("/")
-                meta = await load_blog_share_meta(session, project_id, base)
-                if meta is None:
-                    raise HTTPException(status_code=404, detail="项目不存在")
-                with open(blog_path, encoding="utf-8") as f:
-                    template = f.read()
-                return HTMLResponse(
-                    content=inject_article_share_preview(template, meta, og_type="website")
-                )
-            return FileResponse(blog_path)
+            return await PageHandler._maybe_share_preview_html(
+                request,
+                session,
+                static_filename="blog.html",
+                load_share_meta=load_blog_share_meta,
+                resource_id=project_id,
+                not_found_detail="项目不存在",
+                og_type="website",
+            )
         
         # 留言本页面
         @router.get("/messages")
@@ -100,25 +128,15 @@ class PageHandler:
             session: AsyncSession = Depends(get_async_session),
         ):
             """留言本主题页面（社交爬虫请求返回带 Open Graph 的 HTML）"""
-            thread_path = PageHandler._get_static_file_path("thread.html")
-            ua = request.headers.get("user-agent")
-            if is_share_preview_crawler(ua):
-                base = get_request_public_base_url(
-                    url_scheme=request.url.scheme,
-                    url_netloc=request.url.netloc,
-                    headers=request.headers,
-                )
-                if not base:
-                    base = get_base_url().rstrip("/")
-                meta = await load_thread_share_meta(session, thread_id, base)
-                if meta is None:
-                    raise HTTPException(status_code=404, detail="主题不存在")
-                with open(thread_path, encoding="utf-8") as f:
-                    template = f.read()
-                return HTMLResponse(
-                    content=inject_article_share_preview(template, meta, og_type="article")
-                )
-            return FileResponse(thread_path)
+            return await PageHandler._maybe_share_preview_html(
+                request,
+                session,
+                static_filename="thread.html",
+                load_share_meta=load_thread_share_meta,
+                resource_id=thread_id,
+                not_found_detail="主题不存在",
+                og_type="article",
+            )
         
         # 发表博客文章页面
         @router.get("/blog/{project_id}/create-post")
@@ -177,23 +195,15 @@ class PageHandler:
             session: AsyncSession = Depends(get_async_session),
         ):
             """博客文章页面路由（社交爬虫请求返回带 Open Graph 的 HTML）"""
-            article_path = PageHandler._get_static_file_path("article.html")
-            ua = request.headers.get("user-agent")
-            if is_share_preview_crawler(ua):
-                base = get_request_public_base_url(
-                    url_scheme=request.url.scheme,
-                    url_netloc=request.url.netloc,
-                    headers=request.headers,
-                )
-                if not base:
-                    base = get_base_url().rstrip("/")
-                meta = await load_article_share_meta(session, article_id, base)
-                if meta is None:
-                    raise HTTPException(status_code=404, detail="文章不存在")
-                with open(article_path, encoding="utf-8") as f:
-                    template = f.read()
-                return HTMLResponse(content=inject_article_share_preview(template, meta))
-            return FileResponse(article_path)
+            return await PageHandler._maybe_share_preview_html(
+                request,
+                session,
+                static_filename="article.html",
+                load_share_meta=load_article_share_meta,
+                resource_id=article_id,
+                not_found_detail="文章不存在",
+                og_type="article",
+            )
         
         # 订阅的博客页面
         @router.get("/blog/{project_id}/subscriptions")

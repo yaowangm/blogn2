@@ -106,10 +106,34 @@ def _markdown_to_plain_preview(
 
 @dataclass
 class ArticleShareMeta:
+    """分享注入用元数据（文章 / 博客首页 / 留言主题共用结构）。"""
+
     page_title: str
     description: str
     og_image_absolute: Optional[str]
     canonical_url: str
+
+
+def _avatar_relative_url_if_exists(userid: Optional[int]) -> Optional[str]:
+    """与 BlogService._check_avatar_exists 一致：磁盘存在则返回站内头像路径。"""
+    if not userid:
+        return None
+    config = validate_app_config()
+    avatar_dir = config["avatar_dir"]
+    prefix = (userid // 10000) + 1
+    rel_web = f"/avatar/{prefix}/s_{userid}.jpg"
+    real_path = os.path.join(avatar_dir, str(prefix), f"s_{userid}.jpg")
+    if os.path.exists(real_path):
+        return rel_web
+    return None
+
+
+def _absolute_og_image_user_or_favicon(public_base_url: str, userid: Optional[int]) -> str:
+    """有头像文件则用其绝对 URL，否则站点 favicon（博客首页与留言主贴共用）。"""
+    rel = _avatar_relative_url_if_exists(userid)
+    if rel:
+        return f"{public_base_url}/{rel.lstrip('/')}"
+    return f"{public_base_url}/static/favicon.ico"
 
 
 async def load_article_share_meta(
@@ -194,12 +218,7 @@ async def load_thread_share_meta(
         empty_fallback=empty_desc,
     )
 
-    rel_avatar = _avatar_relative_url_if_exists(main.get("userid"))
-    if rel_avatar:
-        link = rel_avatar.lstrip("/")
-        og_image = f"{public_base_url}/{link}"
-    else:
-        og_image = f"{public_base_url}/static/favicon.ico"
+    og_image = _absolute_og_image_user_or_favicon(public_base_url, main.get("userid"))
 
     canonical_url = f"{public_base_url}/thread/{thread_id}"
 
@@ -209,20 +228,6 @@ async def load_thread_share_meta(
         og_image_absolute=og_image,
         canonical_url=canonical_url,
     )
-
-
-def _avatar_relative_url_if_exists(userid: Optional[int]) -> Optional[str]:
-    """与 BlogService._check_avatar_exists 一致：磁盘存在则返回站内头像路径。"""
-    if not userid:
-        return None
-    config = validate_app_config()
-    avatar_dir = config["avatar_dir"]
-    prefix = (userid // 10000) + 1
-    rel_web = f"/avatar/{prefix}/s_{userid}.jpg"
-    real_path = os.path.join(avatar_dir, str(prefix), f"s_{userid}.jpg")
-    if os.path.exists(real_path):
-        return rel_web
-    return None
 
 
 async def load_blog_share_meta(
@@ -244,12 +249,7 @@ async def load_blog_share_meta(
         empty_fallback=empty_desc,
     )
 
-    rel_avatar = _avatar_relative_url_if_exists(project.userid)
-    if rel_avatar:
-        link = rel_avatar.lstrip("/")
-        og_image = f"{public_base_url}/{link}"
-    else:
-        og_image = f"{public_base_url}/static/favicon.ico"
+    og_image = _absolute_og_image_user_or_favicon(public_base_url, project.userid)
 
     canonical_url = f"{public_base_url}/blog/{project_id}"
 
@@ -269,7 +269,8 @@ def inject_article_share_preview(
     """
     在 HTML 模板中替换 <title>、description，并在 </head> 前插入 Open Graph。
 
-    ``og_type``：文章页用 ``article``，博客首页用 ``website``。
+    与 ``article.html`` / ``blog.html`` / ``thread.html`` 等首段 head 结构兼容。
+    ``og_type``：文章/留言主题常用 ``article``，博客首页用 ``website``。
     """
     title_el = html.escape(meta.page_title, quote=False)
     esc_title = html.escape(meta.page_title, quote=True)
