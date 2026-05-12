@@ -3,6 +3,7 @@
 运行测试时，先调用source ~/blogn2-env/bin/activate;进入虚拟环境
 修改代码后必须验证结果是否符合预期：跑相关单元测试（例如搜索相关改 tests/unit/test_bert_vectorization_services.py 中 TestHierarchicalSearchService）；若改动影响 API/页面，用 curl 或浏览器实测一次
 使用scripts/blogn2-service start/stop/restart来启动/关闭/重启本地应用
+使用scripts/blogn2-service status检查本地应用状态；如果已经运行，不要再次启动
 构建 Docker 时不要使用 --no-cache
 使用~/tool/build_blogn_docker_img.sh重新构建和部署docker镜像
 使用docker logs -f blogn2-app查看docker日志
