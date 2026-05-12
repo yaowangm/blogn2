@@ -230,14 +230,14 @@ class ArticleContentCard extends BaseComponent {
                         const caption = att.comment ? this.escapeHtml(att.comment) : '';
                         const captionForAttr = this.escapeHtml(att.comment || '');
                         return `
-                        <div class="attachment-item">
-                            <div class="attachment-image" style="cursor: pointer;">
+                        <div class="attachment-item"
+                             data-image-src="/upload/${att.linkstr}"
+                             data-image-title="${captionForAttr}">
+                            <div class="attachment-image">
                                 <img src="/upload/${att.linkstr}" 
                                      alt="${this.escapeHtml(att.comment || '图片附件')}" 
                                      loading="lazy"
-                                     title="${captionForAttr}"
-                                     data-image-src="/upload/${att.linkstr}" 
-                                     data-image-title="${captionForAttr}">
+                                     title="${captionForAttr}">
                             </div>
                             <div class="attachment-comment">
                                 ${caption || '<span class="attachment-comment-placeholder">暂无注释</span>'}
@@ -274,12 +274,12 @@ class ArticleContentCard extends BaseComponent {
         const attachmentsGrid = this.shadowRoot.querySelector('.attachments-grid');
         if (attachmentsGrid) {
             attachmentsGrid.addEventListener('click', (event) => {
-                const clickedImage = event.target.closest('.attachment-image img');
-                if (clickedImage) {
-                    const imageSrc = clickedImage.getAttribute('data-image-src');
-                    const imageTitle = clickedImage.getAttribute('data-image-title');
-                    this.showImage(imageSrc, imageTitle);
-                }
+                const item = event.target.closest('.attachment-item');
+                if (!item) return;
+                const imageSrc = item.getAttribute('data-image-src');
+                if (!imageSrc) return;
+                const imageTitle = item.getAttribute('data-image-title');
+                this.showImage(imageSrc, imageTitle);
             });
         }
         
@@ -563,6 +563,7 @@ class ArticleContentCard extends BaseComponent {
                     display: flex;
                     flex-direction: column;
                     min-width: 0;
+                    cursor: pointer;
                     border: 1px solid var(--gray-200);
                     border-radius: var(--radius-lg);
                     background: var(--white);
@@ -601,13 +602,13 @@ class ArticleContentCard extends BaseComponent {
                 .modal-lightbox-footer-inner {
                     box-sizing: border-box;
                     padding: var(--spacing-2) var(--spacing-3);
-                    font-size: var(--font-size-sm);
-                    color: var(--gray-700);
                     text-align: left;
-                    line-height: 1.45;
                 }
                 
                 .attachment-comment {
+                    font-size: var(--font-size-sm);
+                    color: var(--gray-700);
+                    line-height: 1.45;
                     background-color: var(--gray-50);
                     border-top: 1px solid var(--gray-200);
                     min-height: 2.75rem;
@@ -692,6 +693,10 @@ class ArticleContentCard extends BaseComponent {
                     align-items: center;
                     gap: var(--spacing-3);
                     min-width: 0;
+                    font-family: inherit;
+                    font-size: var(--font-size-base);
+                    line-height: 1.8;
+                    color: var(--gray-800);
                 }
                 
                 .modal-lightbox-caption {
