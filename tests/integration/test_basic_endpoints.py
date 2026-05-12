@@ -10,6 +10,11 @@ from fastapi.testclient import TestClient
 class TestBasicEndpoints:
     """基础API端点测试类 - 快速验证基本功能"""
 
+    @pytest.fixture(autouse=True)
+    def _integration_ignore_share_preview_html_always(self, monkeypatch):
+        """本地若开启 SHARE_PREVIEW_HTML_ALWAYS，Chrome UA 仍会查库；无 id=1 等数据时静态页用例会 404。"""
+        monkeypatch.delenv("SHARE_PREVIEW_HTML_ALWAYS", raising=False)
+
     @pytest.mark.integration
     def test_health_check(self, test_client):
         """测试健康检查端点"""

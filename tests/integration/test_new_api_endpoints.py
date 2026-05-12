@@ -15,6 +15,11 @@ from src.utils.auth_dependencies import get_current_user
 class TestNewApiEndpoints:
     """新增API端点测试类"""
 
+    @pytest.fixture(autouse=True)
+    def _integration_ignore_share_preview_html_always(self, monkeypatch):
+        """与 TestBasicEndpoints 一致：避免 /blog/1 等静态页用例在 ALWAYS 模式下 404。"""
+        monkeypatch.delenv("SHARE_PREVIEW_HTML_ALWAYS", raising=False)
+
     @pytest.mark.integration
     def test_get_project_info(self, test_client):
         """测试获取项目信息端点"""
