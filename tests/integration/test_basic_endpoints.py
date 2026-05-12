@@ -95,4 +95,44 @@ class TestBasicEndpoints:
     def test_invalid_endpoint(self, test_client):
         """测试无效端点"""
         response = test_client.get("/api/invalid/endpoint")
-        assert response.status_code == 404 
+        assert response.status_code == 404
+
+    @pytest.mark.integration
+    def test_article_page_normal_browser(self, test_client):
+        """文章页：普通浏览器仍返回静态 article.html"""
+        response = test_client.get(
+            "/article/1",
+            headers={"User-Agent": "Mozilla/5.0 Chrome/120.0.0.0"},
+        )
+        assert response.status_code == 200
+        assert "text/html" in response.headers.get("content-type", "")
+        assert "博客文章 - BlogN" in response.text
+
+    @pytest.mark.integration
+    def test_article_page_share_crawler_nonexistent_404(self, test_client):
+        """文章页：分享爬虫请求不存在的文章返回 404"""
+        response = test_client.get(
+            "/article/999999999",
+            headers={"User-Agent": "Mozilla/5.0 MicroMessenger/8.0"},
+        )
+        assert response.status_code == 404
+
+    @pytest.mark.integration
+    def test_blog_page_normal_browser(self, test_client):
+        """博客首页：普通浏览器仍返回静态 blog.html"""
+        response = test_client.get(
+            "/blog/1",
+            headers={"User-Agent": "Mozilla/5.0 Chrome/120.0.0.0"},
+        )
+        assert response.status_code == 200
+        assert "text/html" in response.headers.get("content-type", "")
+        assert "博客页面 - BlogN" in response.text
+
+    @pytest.mark.integration
+    def test_blog_page_share_crawler_nonexistent_404(self, test_client):
+        """博客首页：分享爬虫请求不存在的项目返回 404"""
+        response = test_client.get(
+            "/blog/999999999",
+            headers={"User-Agent": "Mozilla/5.0 MicroMessenger/8.0"},
+        )
+        assert response.status_code == 404
