@@ -248,7 +248,7 @@ class ArticleContentCard extends BaseComponent {
                 </div>
             </div>
             
-            <!-- 大图预览：卡片随图片宽度收缩（注释更长时再变宽），下图上注释+关闭 -->
+            <!-- 大图预览 lightbox -->
             <div class="image-modal" style="display: none;">
                 <div class="modal-overlay"></div>
                 <div class="modal-lightbox-card" role="dialog" aria-modal="true" aria-label="图片预览">
@@ -498,13 +498,15 @@ class ArticleContentCard extends BaseComponent {
                     display: table-cell;
                 }
                 
-                .article-attachment {
+                .article-attachment,
+                .article-attachments {
                     margin-top: var(--spacing-8);
                     padding-top: var(--spacing-6);
                     border-top: 1px solid var(--gray-200);
                 }
                 
-                .article-attachment h3 {
+                .article-attachment h3,
+                .article-attachments h3 {
                     font-size: var(--font-size-lg);
                     font-weight: 600;
                     color: var(--gray-700);
@@ -540,25 +542,13 @@ class ArticleContentCard extends BaseComponent {
                     text-decoration: underline;
                 }
 
-                .article-attachments {
-                    margin-top: var(--spacing-8);
-                    padding-top: var(--spacing-6);
-                    border-top: 1px solid var(--gray-200);
-                }
-                
                 .article-attachments h3 {
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--gray-700);
-                    margin-bottom: var(--spacing-4);
                     text-align: left;
                 }
                 
                 .attachments-grid {
                     display: grid;
-                    /* 左对齐；多列时用 1fr 让每行尽量铺满文章卡片宽度 */
                     justify-content: start;
-                    /* 略增大单列最小宽度使卡片更大，缩小 gap 使卡片间距更紧凑（不改变 article-attachments 对外边距） */
                     grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
                     gap: var(--spacing-2);
                     margin-bottom: var(--spacing-4);
@@ -592,7 +582,6 @@ class ArticleContentCard extends BaseComponent {
                     width: 100%;
                     aspect-ratio: 1;
                     overflow: hidden;
-                    /* 仅缩略图上方圆角，与下方注释区衔接处为直角 */
                     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
                     box-shadow: none;
                 }
@@ -604,21 +593,24 @@ class ArticleContentCard extends BaseComponent {
                     height: 100%;
                     object-fit: cover;
                     display: block;
-                    /* 覆盖上方 .attachment-image img 的四角圆角，仅由外层 .attachment-image 做上圆角裁剪 */
                     border-radius: 0;
                     box-shadow: none;
                 }
                 
-                .attachment-comment {
+                .attachment-comment,
+                .modal-lightbox-footer-inner {
+                    box-sizing: border-box;
+                    padding: var(--spacing-2) var(--spacing-3);
                     font-size: var(--font-size-sm);
                     color: var(--gray-700);
                     text-align: left;
                     line-height: 1.45;
-                    padding: var(--spacing-2) var(--spacing-3);
+                }
+                
+                .attachment-comment {
                     background-color: var(--gray-50);
                     border-top: 1px solid var(--gray-200);
                     min-height: 2.75rem;
-                    box-sizing: border-box;
                 }
                 
                 .attachment-comment-placeholder {
@@ -626,7 +618,6 @@ class ArticleContentCard extends BaseComponent {
                     font-style: italic;
                 }
 
-                /* 图片模态框样式 */
                 .image-modal {
                     position: fixed;
                     top: 0;
@@ -647,7 +638,7 @@ class ArticleContentCard extends BaseComponent {
                     cursor: pointer;
                 }
                 
-                /* inline-table：列宽 = max(图片、底栏)，避免 column flex 下 width:100% 与 fit-content 的循环依赖 */
+                /* 列宽取 max(图、底栏)；inline-table 避免 flex+fit-content 宽度循环 */
                 .modal-lightbox-card {
                     position: absolute;
                     top: 50%;
@@ -666,11 +657,9 @@ class ArticleContentCard extends BaseComponent {
                     border-collapse: collapse;
                 }
                 
-                /* 显式 table-cell + line-height:0，消除匿名单元格里 replaced 元素常见的 1px 缝隙；与缩略图一样顶区无内边距 */
                 .modal-lightbox-media {
                     display: table-cell;
                     padding: 0;
-                    margin: 0;
                     vertical-align: top;
                     line-height: 0;
                     text-align: center;
@@ -680,7 +669,6 @@ class ArticleContentCard extends BaseComponent {
                 .modal-lightbox-card .modal-image {
                     display: block;
                     margin: 0 auto;
-                    padding: 0;
                     width: auto;
                     max-width: 100%;
                     height: auto;
@@ -690,7 +678,6 @@ class ArticleContentCard extends BaseComponent {
                     box-shadow: none;
                 }
                 
-                /* table-footer-group 上 padding 多数浏览器不生效，与缩略图 .attachment-comment 一致的内边距放在内层 flex 上 */
                 .modal-lightbox-footer {
                     display: table-footer-group;
                     box-sizing: border-box;
@@ -705,12 +692,6 @@ class ArticleContentCard extends BaseComponent {
                     align-items: center;
                     gap: var(--spacing-3);
                     min-width: 0;
-                    box-sizing: border-box;
-                    padding: var(--spacing-2) var(--spacing-3);
-                    font-size: var(--font-size-sm);
-                    color: var(--gray-700);
-                    text-align: left;
-                    line-height: 1.45;
                 }
                 
                 .modal-lightbox-caption {
@@ -724,20 +705,18 @@ class ArticleContentCard extends BaseComponent {
                 .modal-lightbox-footer .modal-close {
                     flex-shrink: 0;
                     position: relative;
+                    box-sizing: border-box;
                     width: 2rem;
                     height: 2rem;
                     margin: 0;
                     padding: 0;
+                    border: none;
+                    border-radius: 50%;
                     font-size: 0;
                     line-height: 0;
                     color: transparent;
                     cursor: pointer;
                     background-color: var(--error-color, #ef4444);
-                    border: none;
-                    border-radius: 50%;
-                    opacity: 1;
-                    visibility: visible;
-                    pointer-events: auto;
                     -webkit-appearance: none;
                     appearance: none;
                     transition: background-color var(--transition-fast);
