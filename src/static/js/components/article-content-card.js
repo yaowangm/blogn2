@@ -225,24 +225,26 @@ class ArticleContentCard extends BaseComponent {
         return `
             <div class="article-attachments">
                 <h3>更多图片 (${imageAttachments.length})</h3>
-                <div class="attachments-grid" data-count="${imageAttachments.length}">
-                    ${imageAttachments.map(att => `
+                <div class="attachments-grid">
+                    ${imageAttachments.map(att => {
+                        const caption = att.comment ? this.escapeHtml(att.comment) : '';
+                        const captionForAttr = this.escapeHtml(att.comment || '');
+                        return `
                         <div class="attachment-item">
                             <div class="attachment-image" style="cursor: pointer;">
                                 <img src="/upload/${att.linkstr}" 
                                      alt="${this.escapeHtml(att.comment || '图片附件')}" 
                                      loading="lazy"
-                                     title="${this.escapeHtml(att.comment || '')}"
+                                     title="${captionForAttr}"
                                      data-image-src="/upload/${att.linkstr}" 
-                                     data-image-title="${this.escapeHtml(att.comment || '')}">
+                                     data-image-title="${captionForAttr}">
                             </div>
-                            ${att.comment ? `
-                                <div class="attachment-comment">
-                                    ${this.escapeHtml(att.comment)}
-                                </div>
-                            ` : ''}
+                            <div class="attachment-comment">
+                                ${caption || '<span class="attachment-comment-placeholder">暂无注释</span>'}
+                            </div>
                         </div>
-                    `).join('')}
+                    `;
+                    }).join('')}
                 </div>
             </div>
             
@@ -501,7 +503,7 @@ class ArticleContentCard extends BaseComponent {
                     margin-bottom: var(--spacing-4);
                 }
                 
-                .attachment-image img {
+                .article-attachment .attachment-image img {
                     max-width: 100%;
                     height: auto;
                     border-radius: var(--radius-lg);
@@ -541,167 +543,79 @@ class ArticleContentCard extends BaseComponent {
                     font-weight: 600;
                     color: var(--gray-700);
                     margin-bottom: var(--spacing-4);
+                    text-align: left;
                 }
                 
                 .attachments-grid {
                     display: grid;
-                    gap: var(--spacing-4);
+                    /* 左对齐；多列时用 1fr 让每行尽量铺满文章卡片宽度 */
+                    justify-content: start;
+                    /* 略增大单列最小宽度使卡片更大，缩小 gap 使卡片间距更紧凑（不改变 article-attachments 对外边距） */
+                    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+                    gap: var(--spacing-2);
                     margin-bottom: var(--spacing-4);
+                    width: 100%;
                 }
                 
-                /* 根据图片数量设置不同的网格布局 */
-                .attachments-grid[data-count="1"] {
-                    grid-template-columns: 200px;
-                    justify-content: start;
-                }
-                
-                .attachments-grid[data-count="2"] {
-                    grid-template-columns: 200px 200px;
-                    justify-content: start;
-                }
-                
-                .attachments-grid[data-count="3"] {
-                    grid-template-columns: 200px 200px 200px;
-                    justify-content: center;
-                }
-                
-                .attachments-grid[data-count="4"] {
-                    grid-template-columns: 200px 200px;
-                    justify-content: center;
-                }
-                
-                .attachments-grid[data-count="5"] {
-                    grid-template-columns: 200px 200px 200px;
-                    justify-content: center;
-                }
-                
-                .attachments-grid[data-count="6"] {
-                    grid-template-columns: 200px 200px 200px;
-                    justify-content: center;
-                }
-                
-                .attachments-grid[data-count="7"] {
-                    grid-template-columns: 200px 200px 200px 200px;
-                    justify-content: center;
-                }
-                
-                .attachments-grid[data-count="8"] {
-                    grid-template-columns: 200px 200px 200px 200px;
-                    justify-content: center;
-                }
-                
-                .attachments-grid[data-count="9"] {
-                    grid-template-columns: 200px 200px 200px;
-                    justify-content: center;
-                }
-                
-                .attachments-grid[data-count="10"] {
-                    grid-template-columns: 200px 200px 200px 200px 200px;
-                    justify-content: center;
-                }
-                
-                /* 超过10张图片时使用自适应布局 */
-                .attachments-grid[data-count]:not([data-count="1"]):not([data-count="2"]):not([data-count="3"]):not([data-count="4"]):not([data-count="5"]):not([data-count="6"]):not([data-count="7"]):not([data-count="8"]):not([data-count="9"]):not([data-count="10"]) {
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                }
-                
-                /* 响应式设计 */
-                @media (max-width: 768px) {
-                    .attachments-grid[data-count="1"] {
-                        grid-template-columns: 200px;
-                    }
-                    
-                    .attachments-grid[data-count="2"] {
-                        grid-template-columns: 200px 200px;
-                    }
-                    
-                    .attachments-grid[data-count="3"] {
-                        grid-template-columns: 200px 200px;
-                    }
-                    
-                    .attachments-grid[data-count="4"] {
-                        grid-template-columns: 200px 200px;
-                    }
-                    
-                    .attachments-grid[data-count="5"] {
-                        grid-template-columns: 200px 200px;
-                    }
-                    
-                    .attachments-grid[data-count="6"] {
-                        grid-template-columns: 200px 200px;
-                    }
-                    
-                    .attachments-grid[data-count="7"] {
-                        grid-template-columns: 200px 200px;
-                    }
-                    
-                    .attachments-grid[data-count="8"] {
-                        grid-template-columns: 200px 200px;
-                    }
-                    
-                    .attachments-grid[data-count="9"] {
-                        grid-template-columns: 200px 200px;
-                    }
-                    
-                    .attachments-grid[data-count="10"] {
-                        grid-template-columns: 200px 200px;
-                    }
-                }
-                
-                @media (max-width: 480px) {
-                    .attachments-grid[data-count="1"] {
-                        grid-template-columns: 200px;
-                    }
-                    
-                    .attachments-grid[data-count="2"] {
-                        grid-template-columns: 200px;
-                    }
-                    
-                    .attachments-grid[data-count="3"],
-                    .attachments-grid[data-count="4"],
-                    .attachments-grid[data-count="5"],
-                    .attachments-grid[data-count="6"],
-                    .attachments-grid[data-count="7"],
-                    .attachments-grid[data-count="8"],
-                    .attachments-grid[data-count="9"],
-                    .attachments-grid[data-count="10"] {
-                        grid-template-columns: 200px;
-                    }
+                .attachments-grid:has(> .attachment-item:only-child) {
+                    grid-template-columns: min(22rem, 100%);
                 }
                 
                 .attachment-item {
                     display: flex;
                     flex-direction: column;
-                    gap: var(--spacing-2);
+                    min-width: 0;
+                    border: 1px solid var(--gray-200);
+                    border-radius: var(--radius-lg);
+                    background: var(--white);
+                    overflow: hidden;
+                    box-shadow: var(--shadow-sm);
+                    transition: box-shadow var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+                }
+                
+                .attachment-item:hover {
+                    box-shadow: var(--shadow-md);
+                    border-color: var(--gray-300);
+                    transform: translateY(-2px);
                 }
                 
                 .attachment-item .attachment-image {
                     position: relative;
+                    width: 100%;
+                    aspect-ratio: 1;
                     overflow: hidden;
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-md);
-                    transition: transform var(--transition-fast);
-                }
-                
-                .attachment-item .attachment-image:hover {
-                    transform: scale(1.02);
+                    /* 仅缩略图上方圆角，与下方注释区衔接处为直角 */
+                    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+                    box-shadow: none;
                 }
                 
                 .attachment-item .attachment-image img {
-                    width: 200px;
-                    height: 200px;
+                    position: absolute;
+                    inset: 0;
+                    width: 100%;
+                    height: 100%;
                     object-fit: cover;
                     display: block;
+                    /* 覆盖上方 .attachment-image img 的四角圆角，仅由外层 .attachment-image 做上圆角裁剪 */
+                    border-radius: 0;
+                    box-shadow: none;
                 }
                 
                 .attachment-comment {
                     font-size: var(--font-size-sm);
-                    color: var(--gray-600);
-                    text-align: center;
-                    padding: var(--spacing-2);
+                    color: var(--gray-700);
+                    text-align: left;
+                    line-height: 1.45;
+                    padding: var(--spacing-2) var(--spacing-3);
                     background-color: var(--gray-50);
-                    border-radius: var(--radius-md);
-                    border: 1px solid var(--gray-200);
+                    border-top: 1px solid var(--gray-200);
+                    min-height: 2.75rem;
+                    box-sizing: border-box;
+                }
+                
+                .attachment-comment-placeholder {
+                    color: var(--gray-400);
+                    font-style: italic;
                 }
 
                 /* 图片模态框样式 */
