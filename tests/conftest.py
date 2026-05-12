@@ -22,7 +22,12 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 class TestDataTracker:
-    """测试数据跟踪器 - 记录测试过程中创建的数据ID"""
+    """测试数据跟踪器：本用例写入数据库并需 teardown 删除的实体 ID。
+
+    凡 ``commit`` 后仍应留在库中的行（供 TestClient 后续请求读取），必须在同一用例内
+    调用 ``add_user`` / ``add_project`` 等登记；否则 autouse 清理不会删除，会污染数据库。
+    认证相关表 ``user_auth_security_state`` 在按 user_id 清理时先于 ``users`` 显式删除（双保险）。
+    """
     
     def __init__(self):
         self.user_ids: Set[int] = set()
@@ -328,8 +333,21 @@ def cleanup_test_data_by_ids(tracker: TestDataTracker):
                     print(f"🗑️ 删除了 {deleted_count} 个测试项目")
                 
                 if tracker.user_ids:
-                    # 删除用户（最后删除，因为其他表可能引用用户）
                     placeholders = ','.join(map(str, tracker.user_ids))
+                    # 认证安全状态：外键多为 ON DELETE CASCADE，仍先删以免历史库或漏登记 user 时残留
+                    try:
+                        q_uas = text(
+                            f"DELETE FROM user_auth_security_state WHERE user_id IN ({placeholders})"
+                        )
+                        r_uas = conn.execute(q_uas)
+                        n_uas = r_uas.rowcount or 0
+                        if n_uas:
+                            total_deleted += n_uas
+                            print(f"🗑️ 删除了 {n_uas} 条 user_auth_security_state")
+                    except Exception as e:
+                        logger.warning("清理 user_auth_security_state 跳过: %s", e)
+
+                    # 删除用户（最后删除，因为其他表可能引用用户）
                     query = f"DELETE FROM users WHERE id IN ({placeholders})"
                     result = conn.execute(text(query))
                     deleted_count = result.rowcount
