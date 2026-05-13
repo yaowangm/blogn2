@@ -2,8 +2,8 @@
 社交分享 / 爬虫预览：在首包 HTML 中替换标题、摘要，并注入 Open Graph。
 
 微信等不执行 JavaScript，只读首包 HTML；普通浏览器仍走 SPA。
-``canonical_path`` 与 ``property="og:image"``（恒为 ``SITE_OG_IMAGE_PATH`` 站点 logo）使用站内
-相对路径。不注入 ``itemprop`` 微数据。
+``property="og:image"`` 使用 PNG 位图（微信等对 SVG 预览常不可用）；站内 ``<link rel="icon">``
+另提供 ``/static/favicon.png`` 与 SVG 双份。``canonical_path`` 等为站内相对路径。不注入 ``itemprop``。
 """
 
 from __future__ import annotations
@@ -39,8 +39,8 @@ _SHARE_PREVIEW_UA_MARKERS: tuple[str, ...] = (
     "quora link preview",
 )
 
-# 分享预览 og:image 固定使用浅色主题站点 logo（与顶栏等一致）
-SITE_OG_IMAGE_PATH = "/static/images/logo-light.svg"
+# 分享预览 og:image：PNG（由 logo-light.svg 栅格化，便于微信等；路径见静态文件）
+SITE_OG_IMAGE_PATH = "/static/images/site-share-icon.png"
 
 
 def is_share_preview_crawler(user_agent: Optional[str]) -> bool:
@@ -95,8 +95,7 @@ def _markdown_to_plain_preview(
 class ArticleShareMeta:
     """分享注入用元数据（文章 / 博客首页 / 留言主题）。
 
-    ``canonical_path`` 为以 ``/`` 开头的站内路径。预览图 URL 由注入函数固定为站点 logo，
-    不在此结构体中重复存储。
+    ``canonical_path`` 为以 ``/`` 开头的站内路径。预览图 URL 由注入函数固定为 ``SITE_OG_IMAGE_PATH``（PNG）。
     """
 
     page_title: str
@@ -212,7 +211,7 @@ def inject_article_share_preview(
     """
     在 HTML 模板中替换 <title>、description，并在 </head> 前插入 Open Graph。
 
-    ``property="og:image"`` 为 ``SITE_OG_IMAGE_PATH``（站点 logo）。不写入 ``itemprop``。
+    ``property="og:image"`` 为 ``SITE_OG_IMAGE_PATH``（PNG 分享图）。不写入 ``itemprop``。
     ``og_type``：文章/留言主题常用 ``article``，博客首页用 ``website``。
     """
     title_el = html.escape(meta.page_title, quote=False)
