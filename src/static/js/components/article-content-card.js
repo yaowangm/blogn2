@@ -6,12 +6,18 @@
  * - 单张图片附件的显示
  * - 多张图片附件的网格布局和模态框预览
  * - 安全的HTML内容过滤
- * - 响应式图片布局
+ * - 附件大图 lightbox：保持原图比例；卡片宽度随图（窄图用下限宽度），长注释不换行撑宽
  * 
  * 继承自BaseComponent，使用统一的工具方法。
  */
 
 const ARTICLE_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
+
+/** 大图卡片目标最小宽度（px）；窄视口下实际下限为 min(本值, 弹层可用宽度) */
+const LIGHTBOX_MIN_CARD_WIDTH_PX = 280;
+
+/** 估算底部说明栏高度（px），用于首次计算 maxH，避免未设卡片宽度时依赖 offsetHeight 的循环 */
+const LIGHTBOX_FOOTER_RESERVE_PX = 88;
 
 /** 附件文件名是否为支持的图片类型 */
 function isArticleImagePath(path) {
@@ -24,6 +30,10 @@ class ArticleContentCard extends BaseComponent {
         super();
         this.articleId = null;
         this.articleData = null;
+        /** @type {ReturnType<typeof setTimeout> | null} */
+        this._lightboxLayoutTimer = null;
+        /** @type {(() => void) | null} */
+        this._lightboxResizeBound = null;
     }
 
     async connectedCallback() {
@@ -160,8 +170,6 @@ class ArticleContentCard extends BaseComponent {
 
         return paragraphs.map(p => `<p>${this.processTextWithLinks(p)}</p>`).join('');
     }
-
-
 
     /**
      * 渲染所有附件（单张图片 + 多张图片）
@@ -334,9 +342,20 @@ class ArticleContentCard extends BaseComponent {
     showImage(imageSrc, title) {
         const modal = this.getImageModal();
         if (!modal) return;
+        const card = modal.querySelector('.modal-lightbox-card');
         const modalImage = modal.querySelector('.modal-image');
         const captionEl = modal.querySelector('.modal-lightbox-caption');
         const label = (title || '').trim();
+
+        if (card) card.style.width = '';
+
+        const onImgReady = () => this._scheduleLightboxLayout();
+        modalImage.onload = onImgReady;
+        modalImage.onerror = () => {
+            if (!card) return;
+            const mw = Math.max(32, modal.getBoundingClientRect().width - 4);
+            card.style.width = `${Math.ceil(Math.min(LIGHTBOX_MIN_CARD_WIDTH_PX, mw))}px`;
+        };
 
         modalImage.src = imageSrc;
         modalImage.alt = label || '图片';
@@ -348,22 +367,94 @@ class ArticleContentCard extends BaseComponent {
 
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden'; // 防止背景滚动
+
+        if (modalImage.complete && modalImage.naturalWidth > 0) {
+            onImgReady();
+        }
+
+        if (!this._lightboxResizeBound) {
+            this._lightboxResizeBound = () => this._debounceLightboxCardLayout();
+        }
+        window.removeEventListener('resize', this._lightboxResizeBound);
+        window.addEventListener('resize', this._lightboxResizeBound);
     }
-    
+
+    /**
+     * 按图片在视口内的等比显示宽度设置 lightbox 卡片宽度（下限为 min(280px, 可用宽度)），
+     * 避免长注释把卡片撑得比图还宽。
+     */
+    syncLightboxCardWidth() {
+        const modal = this.getImageModal();
+        if (!modal || modal.style.display === 'none') return;
+        const card = modal.querySelector('.modal-lightbox-card');
+        const img = modal.querySelector('.modal-image');
+        if (!card || !img) return;
+
+        const nw = img.naturalWidth;
+        const nh = img.naturalHeight;
+        if (!nw || !nh) {
+            card.style.width = '';
+            return;
+        }
+
+        const MIN_W = LIGHTBOX_MIN_CARD_WIDTH_PX;
+        const modalRect = modal.getBoundingClientRect();
+        const maxW = Math.max(0, modalRect.width - 4);
+        if (maxW < 8) return;
+        const effMin = Math.min(MIN_W, maxW);
+
+        const footer = modal.querySelector('.modal-lightbox-footer');
+        const footerH = footer
+            ? Math.max(footer.offsetHeight, LIGHTBOX_FOOTER_RESERVE_PX)
+            : LIGHTBOX_FOOTER_RESERVE_PX;
+        const maxH = Math.max(120, window.innerHeight * 0.92 - footerH);
+
+        const scale = Math.min(1, maxW / nw, maxH / nh);
+        const dispW = nw * scale;
+        const cardW = Math.min(maxW, Math.max(effMin, dispW));
+        card.style.width = `${Math.ceil(cardW)}px`;
+    }
+
+    _debounceLightboxCardLayout() {
+        if (this._lightboxLayoutTimer) clearTimeout(this._lightboxLayoutTimer);
+        this._lightboxLayoutTimer = setTimeout(() => {
+            this._lightboxLayoutTimer = null;
+            this.syncLightboxCardWidth();
+        }, 100);
+    }
+
     /**
      * 隐藏图片模态框
      */
     hideImage() {
+        if (this._lightboxLayoutTimer) {
+            clearTimeout(this._lightboxLayoutTimer);
+            this._lightboxLayoutTimer = null;
+        }
+        if (this._lightboxResizeBound) {
+            window.removeEventListener('resize', this._lightboxResizeBound);
+        }
         const modal = this.getImageModal();
-        if (modal) modal.style.display = 'none';
+        if (modal) {
+            const card = modal.querySelector('.modal-lightbox-card');
+            if (card) card.style.width = '';
+            modal.style.display = 'none';
+        }
         document.body.style.overflow = ''; /* 恢复背景滚动 */
+    }
+
+    /** 连续两帧同步宽度，便于注释换行后 footer 高度参与计算 */
+    _scheduleLightboxLayout() {
+        requestAnimationFrame(() => {
+            this.syncLightboxCardWidth();
+            requestAnimationFrame(() => this.syncLightboxCardWidth());
+        });
     }
 
 
     /**
      * 处理文本中的链接，安全地转换为可点击的链接
      */
-
     processTextWithLinks(htmlOrText) {
         if (!htmlOrText || typeof htmlOrText !== 'string') {
             return '';
@@ -655,7 +746,7 @@ class ArticleContentCard extends BaseComponent {
                     font-style: italic;
                 }
 
-                /* lightbox：图区 flex 居中；仅用 max 宽高 + contain，窗口变化时保持原图宽高比 */
+                /* lightbox：卡片宽度由 JS 按图片等比显示宽度设定（不小于 min-width）；图区 contain 保持比例 */
                 .image-modal {
                     position: fixed;
                     inset: 0;
@@ -684,7 +775,7 @@ class ArticleContentCard extends BaseComponent {
                     align-items: stretch;
                     min-width: 0;
                     max-width: min(96vw, 100%);
-                    width: max-content;
+                    width: auto;
                     max-height: 92vh;
                     border: none;
                     border-radius: var(--radius-lg);
@@ -723,6 +814,7 @@ class ArticleContentCard extends BaseComponent {
                     flex-shrink: 0;
                     box-sizing: border-box;
                     width: 100%;
+                    min-width: 0;
                 }
                 
                 .modal-lightbox-footer-inner {
