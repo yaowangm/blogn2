@@ -655,7 +655,7 @@ class ArticleContentCard extends BaseComponent {
                     font-style: italic;
                 }
 
-                /* lightbox：flex 居中卡片；图区固定高度 + object-fit:cover 铺满，避免 contain 与百分比宽度循环留白 */
+                /* lightbox：图区 flex 居中；仅用 max 宽高 + contain，窗口变化时保持原图宽高比 */
                 .image-modal {
                     position: fixed;
                     inset: 0;
@@ -683,8 +683,9 @@ class ArticleContentCard extends BaseComponent {
                     flex-direction: column;
                     align-items: stretch;
                     min-width: 0;
-                    max-width: 100%;
+                    max-width: min(96vw, 100%);
                     width: max-content;
+                    max-height: 92vh;
                     border: none;
                     border-radius: var(--radius-lg);
                     background: var(--white);
@@ -694,20 +695,25 @@ class ArticleContentCard extends BaseComponent {
                 }
                 
                 .modal-lightbox-media {
-                    display: block;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
                     width: 100%;
-                    height: min(70vh, 85vh);
-                    overflow: hidden;
+                    max-width: min(96vw, 100%);
+                    max-height: calc(92vh - 4rem);
+                    box-sizing: border-box;
                     line-height: 0;
                     background-color: var(--white);
                 }
                 
                 .modal-lightbox-card .modal-image {
                     display: block;
-                    width: 100%;
-                    height: 100%;
+                    width: auto;
+                    height: auto;
+                    max-width: min(96vw, 100%);
+                    max-height: calc(92vh - 4rem);
                     margin: 0;
-                    object-fit: cover;
+                    object-fit: contain;
                     object-position: center;
                     border-radius: 0;
                     box-shadow: none;
