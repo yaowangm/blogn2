@@ -108,7 +108,7 @@ class TestBasicEndpoints:
         if response.status_code == 200:
             assert "text/html" in response.headers.get("content-type", "")
             assert 'property="og:type"' in response.text
-            assert 'rel="shortcut icon"' in response.text
+            assert 'property="og:url"' in response.text
 
     @pytest.mark.integration
     def test_article_page_share_crawler_nonexistent_404(self, test_client):

@@ -1,16 +1,14 @@
 """
-社交分享 / 爬虫预览：在首包 HTML 中注入 Open Graph、微数据与标题。
+社交分享 / 爬虫预览：在首包 HTML 中替换标题、摘要，并注入 Open Graph（以 ``og:image`` 为预览图）。
 
-微信等客户端不执行 JavaScript，仅解析静态 HTML；普通浏览器仍走原有 SPA + Ajax。
+微信等不执行 JavaScript，只读首包 HTML；普通浏览器仍走 SPA。
 
-链接策略：``canonical_path``、``og:image``、``twitter:image`` 等使用以 ``/`` 开头的站内
-相对路径，由客户端按当前页面协议（https）解析为绝对 URL，避免错误写成 ``http://``
-导致缩略图被丢弃。
+``canonical_path``、``og:image``（若有）使用以 ``/`` 开头的站内路径，由抓取方按当前站点
+协议解析为绝对 URL。
 
-微信链接预览对 ``og:image`` 的依赖不稳定；部分场景会回退到站点图标。
-除 ``og:image`` 等 meta 外，在 ``</head>`` 前注入 ``shortcut icon`` / ``icon``（指向仓库内
-实际存在的 ``/static/favicon.svg``），便于预览抓取。
-``itemprop="image"`` 仍为站点 SVG logo；``og:image`` 为文章首图 / 头像 / 无图时用同一 SVG。
+文章页：仅有附件/主字段中的位图路径时才设置 ``og_image_path``；无图则不输出
+``og:image``（微信等对 SVG 预览支持差，站点 favicon 由静态模板里的 ``<link rel="icon">``
+提供，不在此重复注入）。博客 / 留言主题仍用头像 JPG，无头像时回退 ``/static/favicon.svg``。
 """
 
 from __future__ import annotations
@@ -58,9 +56,7 @@ _IMAGE_SUFFIXES: tuple[str, ...] = (
     ".svg",
 )
 
-# 分享预览里给微信等读取的 itemprop 缩略图（站内相对路径）
-_SITE_LOGO_SHARE_PATH = "/static/images/logo-light.svg"
-# 仓库内仅有 favicon.svg，无 favicon.ico；分享与回退图统一用 SVG
+# 仓库内仅有 favicon.svg；博客/留言无头像时作为 og:image 回退
 _SITE_FAVICON_SHARE_PATH = "/static/favicon.svg"
 
 
@@ -123,12 +119,13 @@ def _markdown_to_plain_preview(
 class ArticleShareMeta:
     """分享注入用元数据（文章 / 博客首页 / 留言主题）。
 
-    ``og_image_path``、``canonical_path`` 均为以 ``/`` 开头的站内路径，注入 meta 时不拼主机名。
+    ``canonical_path`` 为以 ``/`` 开头的站内路径。``og_image_path`` 为 ``None`` 时不注入
+    ``og:image``（文章无图场景）；否则为站内路径字符串。
     """
 
     page_title: str
     description: str
-    og_image_path: str
+    og_image_path: Optional[str]
     canonical_path: str
 
 
@@ -195,8 +192,6 @@ async def load_article_share_meta(
     if not og_image_path and _is_image_path(article.attachment):
         link = (article.attachment or "").lstrip("/")
         og_image_path = f"/upload/{link}"
-    if not og_image_path:
-        og_image_path = _SITE_FAVICON_SHARE_PATH
 
     canonical_path = f"/article/{article_id}"
 
@@ -282,19 +277,15 @@ def inject_article_share_preview(
     og_type: str = "article",
 ) -> str:
     """
-    在 HTML 模板中替换 <title>、description，并在 </head> 前插入 Open Graph、
-    微数据以及 ``shortcut icon`` / ``icon`` 链接（站内相对路径）。
+    在 HTML 模板中替换 <title>、description，并在 </head> 前插入 Open Graph。
 
-    与 ``article.html`` / ``blog.html`` / ``thread.html`` 等首段 head 结构兼容。
+    仅当 ``meta.og_image_path`` 非空时写入 ``property="og:image"``。
     ``og_type``：文章/留言主题常用 ``article``，博客首页用 ``website``。
     """
     title_el = html.escape(meta.page_title, quote=False)
     esc_title = html.escape(meta.page_title, quote=True)
     esc_desc = html.escape(meta.description, quote=True)
     esc_path = html.escape(meta.canonical_path, quote=True)
-    esc_image = html.escape(meta.og_image_path or _SITE_FAVICON_SHARE_PATH, quote=True)
-    esc_itemprop_image = html.escape(_SITE_LOGO_SHARE_PATH, quote=True)
-    esc_favicon = html.escape(_SITE_FAVICON_SHARE_PATH, quote=True)
 
     html_out = re.sub(
         r"<title>.*?</title>",
@@ -313,23 +304,17 @@ def inject_article_share_preview(
 
     esc_og_type = html.escape(og_type, quote=True)
 
-    og_block = f"""
-    <link rel="shortcut icon" type="image/svg+xml" href="{esc_favicon}">
-    <link rel="icon" type="image/svg+xml" href="{esc_favicon}">
-    <meta itemprop="name" content="{esc_title}">
-    <meta itemprop="description" content="{esc_desc}">
-    <meta itemprop="image" content="{esc_itemprop_image}">
-    <meta property="og:type" content="{esc_og_type}">
-    <meta property="og:title" content="{esc_title}">
-    <meta property="og:description" content="{esc_desc}">
-    <meta property="og:url" content="{esc_path}">
-    <meta property="og:image" content="{esc_image}">
-    <meta property="og:site_name" content="BlogN">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{esc_title}">
-    <meta name="twitter:description" content="{esc_desc}">
-    <meta name="twitter:image" content="{esc_image}">
-"""
+    og_lines = [
+        f'    <meta property="og:type" content="{esc_og_type}">',
+        f'    <meta property="og:title" content="{esc_title}">',
+        f'    <meta property="og:description" content="{esc_desc}">',
+        f'    <meta property="og:url" content="{esc_path}">',
+    ]
+    if meta.og_image_path:
+        esc_image = html.escape(meta.og_image_path, quote=True)
+        og_lines.append(f'    <meta property="og:image" content="{esc_image}">')
+    og_lines.append(f'    <meta property="og:site_name" content="BlogN">')
+    og_block = "\n".join(og_lines) + "\n"
 
     html_out = html_out.replace("</head>", og_block + "\n</head>", 1)
     return html_out

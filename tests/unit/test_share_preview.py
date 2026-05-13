@@ -59,10 +59,25 @@ def test_inject_article_share_preview():
     assert 'property="og:title"' in out
     assert 'property="og:url" content="/article/42"' in out
     assert 'property="og:image" content="/static/a.png"' in out
-    assert 'rel="shortcut icon" type="image/svg+xml" href="/static/favicon.svg"' in out
-    assert 'rel="icon" type="image/svg+xml" href="/static/favicon.svg"' in out
-    assert 'itemprop="image" content="/static/images/logo-light.svg"' in out
     assert 'name="description" content="摘要一行"' in out
+    assert "twitter:" not in out
+    assert "itemprop=" not in out
+
+
+def test_inject_article_share_preview_omits_og_image_when_none():
+    meta = ArticleShareMeta(
+        page_title="无图",
+        description="摘要",
+        og_image_path=None,
+        canonical_path="/article/1",
+    )
+    template = """<html><head>
+    <title>x</title>
+    <meta name="description" content="old">
+    </head><body></body></html>"""
+    out = inject_article_share_preview(template, meta)
+    assert 'property="og:image"' not in out
+    assert 'property="og:url" content="/article/1"' in out
 
 
 def test_inject_article_share_preview_website_og_type():
@@ -75,6 +90,7 @@ def test_inject_article_share_preview_website_og_type():
     template = """<head><title>x</title><meta name="description" content="y"></head>"""
     out = inject_article_share_preview(template, meta, og_type="website")
     assert 'property="og:type" content="website"' in out
+    assert 'property="og:image" content="/static/favicon.svg"' in out
 
 
 @pytest.mark.asyncio
@@ -125,6 +141,28 @@ async def test_load_article_share_meta_ok_title_image_and_canonical():
     assert "正文" in meta.description
     assert meta.og_image_path == "/upload/sub/pic.png"
     assert meta.canonical_path == "/article/42"
+
+
+@pytest.mark.asyncio
+async def test_load_article_share_meta_no_image_og_path_none():
+    session = MagicMock()
+    article = MagicMock()
+    article.itemtype = ArticleStatus.NORMAL
+    article.name = "纯文"
+    article.projectid = None
+    article.comment = "正文"
+    article.attachment = None
+
+    with patch("src.utils.share_preview.ProjectItemRepository") as PIR, patch(
+        "src.utils.share_preview.ProjectRepository"
+    ) as PR, patch("src.utils.share_preview.AttachmentRepository") as AR:
+        PIR.return_value.get_by_id = AsyncMock(return_value=article)
+        PR.return_value.get_by_id = AsyncMock(return_value=None)
+        AR.return_value.get_by_project_item_id = AsyncMock(return_value=[])
+
+        meta = await load_article_share_meta(session, 1)
+    assert meta is not None
+    assert meta.og_image_path is None
 
 
 @pytest.mark.asyncio
