@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from src.constants import ArticleStatus
 from src.utils.share_preview import (
     ArticleShareMeta,
+    SITE_OG_IMAGE_PATH,
     get_request_public_base_url,
     inject_article_share_preview,
     is_share_preview_crawler,
@@ -42,11 +43,10 @@ def test_get_request_public_base_url_fallback_netloc():
     assert base == "https://localhost:8000"
 
 
-def test_inject_article_share_preview():
+def test_inject_article_share_preview_og_image_is_site_logo():
     meta = ArticleShareMeta(
         page_title='标题 "引号" <>&',
         description="摘要一行",
-        og_image_path="/static/a.png",
         canonical_path="/article/42",
     )
     template = """<html><head>
@@ -58,39 +58,23 @@ def test_inject_article_share_preview():
     assert 'property="og:type" content="article"' in out
     assert 'property="og:title"' in out
     assert 'property="og:url" content="/article/42"' in out
-    assert 'property="og:image" content="/static/a.png"' in out
+    assert f'property="og:image" content="{SITE_OG_IMAGE_PATH}"' in out
     assert 'name="description" content="摘要一行"' in out
     assert "twitter:" not in out
     assert "itemprop=" not in out
-
-
-def test_inject_article_share_preview_omits_og_image_when_none():
-    meta = ArticleShareMeta(
-        page_title="无图",
-        description="摘要",
-        og_image_path=None,
-        canonical_path="/article/1",
-    )
-    template = """<html><head>
-    <title>x</title>
-    <meta name="description" content="old">
-    </head><body></body></html>"""
-    out = inject_article_share_preview(template, meta)
-    assert 'property="og:image"' not in out
-    assert 'property="og:url" content="/article/1"' in out
 
 
 def test_inject_article_share_preview_website_og_type():
     meta = ArticleShareMeta(
         page_title="某博客",
         description="简介",
-        og_image_path="/static/favicon.svg",
         canonical_path="/blog/1",
     )
     template = """<head><title>x</title><meta name="description" content="y"></head>"""
     out = inject_article_share_preview(template, meta, og_type="website")
     assert 'property="og:type" content="website"' in out
-    assert 'property="og:image" content="/static/favicon.svg"' in out
+    assert f'property="og:image" content="{SITE_OG_IMAGE_PATH}"' in out
+    assert "itemprop=" not in out
 
 
 @pytest.mark.asyncio
@@ -113,7 +97,7 @@ async def test_load_article_share_meta_deleted_invisible():
 
 
 @pytest.mark.asyncio
-async def test_load_article_share_meta_ok_title_image_and_canonical():
+async def test_load_article_share_meta_ok_title_and_canonical():
     session = MagicMock()
     article = MagicMock()
     article.itemtype = ArticleStatus.NORMAL
@@ -125,44 +109,17 @@ async def test_load_article_share_meta_ok_title_image_and_canonical():
     project = MagicMock()
     project.name = "博客甲"
 
-    att = MagicMock()
-    att.linkstr = "sub/pic.png"
-
     with patch("src.utils.share_preview.ProjectItemRepository") as PIR, patch(
         "src.utils.share_preview.ProjectRepository"
-    ) as PR, patch("src.utils.share_preview.AttachmentRepository") as AR:
+    ) as PR:
         PIR.return_value.get_by_id = AsyncMock(return_value=article)
         PR.return_value.get_by_id = AsyncMock(return_value=project)
-        AR.return_value.get_by_project_item_id = AsyncMock(return_value=[att])
 
         meta = await load_article_share_meta(session, 42)
     assert meta is not None
     assert meta.page_title == "标题A - 博客甲 · BlogN"
     assert "正文" in meta.description
-    assert meta.og_image_path == "/upload/sub/pic.png"
     assert meta.canonical_path == "/article/42"
-
-
-@pytest.mark.asyncio
-async def test_load_article_share_meta_no_image_og_path_none():
-    session = MagicMock()
-    article = MagicMock()
-    article.itemtype = ArticleStatus.NORMAL
-    article.name = "纯文"
-    article.projectid = None
-    article.comment = "正文"
-    article.attachment = None
-
-    with patch("src.utils.share_preview.ProjectItemRepository") as PIR, patch(
-        "src.utils.share_preview.ProjectRepository"
-    ) as PR, patch("src.utils.share_preview.AttachmentRepository") as AR:
-        PIR.return_value.get_by_id = AsyncMock(return_value=article)
-        PR.return_value.get_by_id = AsyncMock(return_value=None)
-        AR.return_value.get_by_project_item_id = AsyncMock(return_value=[])
-
-        meta = await load_article_share_meta(session, 1)
-    assert meta is not None
-    assert meta.og_image_path is None
 
 
 @pytest.mark.asyncio
@@ -174,24 +131,20 @@ async def test_load_blog_share_meta_not_found():
 
 
 @pytest.mark.asyncio
-async def test_load_blog_share_meta_uses_avatar_when_helper_returns_path():
+async def test_load_blog_share_meta_ok():
     session = MagicMock()
     project = MagicMock()
     project.name = "N"
     project.comment = "简介一行"
     project.userid = 1
 
-    with patch("src.utils.share_preview.ProjectRepository") as PR, patch(
-        "src.utils.share_preview._avatar_relative_url_if_exists",
-        return_value="/avatar/2/s_100.jpg",
-    ):
+    with patch("src.utils.share_preview.ProjectRepository") as PR:
         PR.return_value.get_by_id = AsyncMock(return_value=project)
         meta = await load_blog_share_meta(session, 7)
 
     assert meta is not None
     assert meta.page_title == "N - BlogN"
     assert meta.description == "简介一行"
-    assert meta.og_image_path == "/avatar/2/s_100.jpg"
     assert meta.canonical_path == "/blog/7"
 
 
@@ -214,14 +167,10 @@ async def test_load_thread_share_meta_ok_from_main_post():
         "author_name": "张三",
         "is_main_post": True,
     }
-    with patch("src.utils.share_preview.PostRepository") as PR, patch(
-        "src.utils.share_preview._avatar_relative_url_if_exists",
-        return_value=None,
-    ):
+    with patch("src.utils.share_preview.PostRepository") as PR:
         PR.return_value.get_thread_messages = AsyncMock(return_value=[main, {"is_main_post": False}])
         meta = await load_thread_share_meta(session, 5)
     assert meta is not None
     assert meta.page_title == "主贴标题 - 留言本 · BlogN"
     assert "正文内容" in meta.description
     assert meta.canonical_path == "/thread/5"
-    assert meta.og_image_path == "/static/favicon.svg"

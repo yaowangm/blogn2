@@ -39,7 +39,6 @@ async def test_share_preview_always_injects_for_chrome_ua():
     meta = ArticleShareMeta(
         page_title="UT标题",
         description="UT摘要",
-        og_image_path="/static/favicon.svg",
         canonical_path="/article/99",
     )
     load = AsyncMock(return_value=meta)
@@ -90,7 +89,6 @@ async def test_share_preview_wechat_ua_same_injection_path():
     meta = ArticleShareMeta(
         page_title="T2",
         description="D2",
-        og_image_path="/i.png",
         canonical_path="/article/1",
     )
     load = AsyncMock(return_value=meta)

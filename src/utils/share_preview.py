@@ -1,29 +1,21 @@
 """
-社交分享 / 爬虫预览：在首包 HTML 中替换标题、摘要，并注入 Open Graph（以 ``og:image`` 为预览图）。
+社交分享 / 爬虫预览：在首包 HTML 中替换标题、摘要，并注入 Open Graph。
 
 微信等不执行 JavaScript，只读首包 HTML；普通浏览器仍走 SPA。
-
-``canonical_path``、``og:image``（若有）使用以 ``/`` 开头的站内路径，由抓取方按当前站点
-协议解析为绝对 URL。
-
-文章页：仅有附件/主字段中的位图路径时才设置 ``og_image_path``；无图则不输出
-``og:image``（微信等对 SVG 预览支持差，站点 favicon 由静态模板里的 ``<link rel="icon">``
-提供，不在此重复注入）。博客 / 留言主题仍用头像 JPG，无头像时回退 ``/static/favicon.svg``。
+``canonical_path`` 与 ``property="og:image"``（恒为 ``SITE_OG_IMAGE_PATH`` 站点 logo）使用站内
+相对路径。不注入 ``itemprop`` 微数据。
 """
 
 from __future__ import annotations
 
 import html
-import os
 import re
 from dataclasses import dataclass
 from typing import Mapping, Optional
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.config.app import validate_app_config
 from src.constants import ArticleStatus
-from src.repositories.attachment_repository import AttachmentRepository
 from src.repositories.post_repository import PostRepository
 from src.repositories.project_item_repository import ProjectItemRepository
 from src.repositories.project_repository import ProjectRepository
@@ -47,17 +39,8 @@ _SHARE_PREVIEW_UA_MARKERS: tuple[str, ...] = (
     "quora link preview",
 )
 
-_IMAGE_SUFFIXES: tuple[str, ...] = (
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".gif",
-    ".webp",
-    ".svg",
-)
-
-# 仓库内仅有 favicon.svg；博客/留言无头像时作为 og:image 回退
-_SITE_FAVICON_SHARE_PATH = "/static/favicon.svg"
+# 分享预览 og:image 固定使用浅色主题站点 logo（与顶栏等一致）
+SITE_OG_IMAGE_PATH = "/static/images/logo-light.svg"
 
 
 def is_share_preview_crawler(user_agent: Optional[str]) -> bool:
@@ -87,13 +70,6 @@ def get_request_public_base_url(
     return ""
 
 
-def _is_image_path(path: Optional[str]) -> bool:
-    if not path:
-        return False
-    lower = path.split("?", 1)[0].lower()
-    return any(lower.endswith(ext) for ext in _IMAGE_SUFFIXES)
-
-
 def _markdown_to_plain_preview(
     text: Optional[str],
     max_len: int = 200,
@@ -119,36 +95,13 @@ def _markdown_to_plain_preview(
 class ArticleShareMeta:
     """分享注入用元数据（文章 / 博客首页 / 留言主题）。
 
-    ``canonical_path`` 为以 ``/`` 开头的站内路径。``og_image_path`` 为 ``None`` 时不注入
-    ``og:image``（文章无图场景）；否则为站内路径字符串。
+    ``canonical_path`` 为以 ``/`` 开头的站内路径。预览图 URL 由注入函数固定为站点 logo，
+    不在此结构体中重复存储。
     """
 
     page_title: str
     description: str
-    og_image_path: Optional[str]
     canonical_path: str
-
-
-def _avatar_relative_url_if_exists(userid: Optional[int]) -> Optional[str]:
-    """与 BlogService._check_avatar_exists 一致：磁盘存在则返回站内头像路径。"""
-    if not userid:
-        return None
-    config = validate_app_config()
-    avatar_dir = config["avatar_dir"]
-    prefix = (userid // 10000) + 1
-    rel_web = f"/avatar/{prefix}/s_{userid}.jpg"
-    real_path = os.path.join(avatar_dir, str(prefix), f"s_{userid}.jpg")
-    if os.path.exists(real_path):
-        return rel_web
-    return None
-
-
-def _share_og_image_path_for_user(userid: Optional[int]) -> str:
-    """有头像文件则用其站内路径，否则站点 favicon.svg（博客首页与留言主贴共用）。"""
-    rel = _avatar_relative_url_if_exists(userid)
-    if rel:
-        return rel if rel.startswith("/") else f"/{rel.lstrip('/')}"
-    return _SITE_FAVICON_SHARE_PATH
 
 
 async def load_article_share_meta(
@@ -160,7 +113,6 @@ async def load_article_share_meta(
     """
     item_repo = ProjectItemRepository(session)
     project_repo = ProjectRepository(session)
-    attachment_repo = AttachmentRepository(session)
 
     article = await item_repo.get_by_id(article_id)
     if not article:
@@ -181,24 +133,11 @@ async def load_article_share_meta(
         page_title = f"{title} - BlogN"
 
     description = _markdown_to_plain_preview(article.comment)
-
-    og_image_path: Optional[str] = None
-    attachments = await attachment_repo.get_by_project_item_id(article_id)
-    for att in attachments or []:
-        if _is_image_path(getattr(att, "linkstr", None)):
-            link = (att.linkstr or "").lstrip("/")
-            og_image_path = f"/upload/{link}"
-            break
-    if not og_image_path and _is_image_path(article.attachment):
-        link = (article.attachment or "").lstrip("/")
-        og_image_path = f"/upload/{link}"
-
     canonical_path = f"/article/{article_id}"
 
     return ArticleShareMeta(
         page_title=page_title,
         description=description,
-        og_image_path=og_image_path,
         canonical_path=canonical_path,
     )
 
@@ -229,14 +168,11 @@ async def load_thread_share_meta(
         empty_fallback=empty_desc,
     )
 
-    og_image_path = _share_og_image_path_for_user(main.get("userid"))
-
     canonical_path = f"/thread/{thread_id}"
 
     return ArticleShareMeta(
         page_title=page_title,
         description=description,
-        og_image_path=og_image_path,
         canonical_path=canonical_path,
     )
 
@@ -259,14 +195,11 @@ async def load_blog_share_meta(
         empty_fallback=empty_desc,
     )
 
-    og_image_path = _share_og_image_path_for_user(project.userid)
-
     canonical_path = f"/blog/{project_id}"
 
     return ArticleShareMeta(
         page_title=page_title,
         description=description,
-        og_image_path=og_image_path,
         canonical_path=canonical_path,
     )
 
@@ -279,13 +212,14 @@ def inject_article_share_preview(
     """
     在 HTML 模板中替换 <title>、description，并在 </head> 前插入 Open Graph。
 
-    仅当 ``meta.og_image_path`` 非空时写入 ``property="og:image"``。
+    ``property="og:image"`` 为 ``SITE_OG_IMAGE_PATH``（站点 logo）。不写入 ``itemprop``。
     ``og_type``：文章/留言主题常用 ``article``，博客首页用 ``website``。
     """
     title_el = html.escape(meta.page_title, quote=False)
     esc_title = html.escape(meta.page_title, quote=True)
     esc_desc = html.escape(meta.description, quote=True)
     esc_path = html.escape(meta.canonical_path, quote=True)
+    esc_image = html.escape(SITE_OG_IMAGE_PATH, quote=True)
 
     html_out = re.sub(
         r"<title>.*?</title>",
@@ -309,11 +243,9 @@ def inject_article_share_preview(
         f'    <meta property="og:title" content="{esc_title}">',
         f'    <meta property="og:description" content="{esc_desc}">',
         f'    <meta property="og:url" content="{esc_path}">',
+        f'    <meta property="og:image" content="{esc_image}">',
+        f'    <meta property="og:site_name" content="BlogN">',
     ]
-    if meta.og_image_path:
-        esc_image = html.escape(meta.og_image_path, quote=True)
-        og_lines.append(f'    <meta property="og:image" content="{esc_image}">')
-    og_lines.append(f'    <meta property="og:site_name" content="BlogN">')
     og_block = "\n".join(og_lines) + "\n"
 
     html_out = html_out.replace("</head>", og_block + "\n</head>", 1)
