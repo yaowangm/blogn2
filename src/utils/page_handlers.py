@@ -12,10 +12,12 @@ from fastapi.responses import FileResponse, HTMLResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database import get_async_session
+from src.config.app import get_base_url
 from src.utils.share_preview import (
     ArticleShareMeta,
     get_request_public_base_url,
     inject_article_share_preview,
+    merge_public_base_with_config,
     load_article_share_meta,
     load_blog_share_meta,
     load_thread_share_meta,
@@ -67,10 +69,13 @@ class PageHandler:
             raise HTTPException(status_code=404, detail=not_found_detail)
         with open(static_path, encoding="utf-8") as f:
             template = f.read()
-        public_base = get_request_public_base_url(
-            url_scheme=request.url.scheme,
-            url_netloc=request.url.netloc,
-            headers=dict(request.headers),
+        public_base = merge_public_base_with_config(
+            get_request_public_base_url(
+                url_scheme=request.url.scheme,
+                url_netloc=request.url.netloc,
+                headers=dict(request.headers),
+            ),
+            get_base_url(),
         )
         return HTMLResponse(
             content=inject_article_share_preview(

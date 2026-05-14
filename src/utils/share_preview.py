@@ -12,6 +12,7 @@ import html
 import re
 from dataclasses import dataclass
 from typing import Mapping, Optional
+from urllib.parse import urlparse
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -68,6 +69,33 @@ def get_request_public_base_url(
     if url_netloc and url_scheme:
         return f"{url_scheme}://{url_netloc}".rstrip("/")
     return ""
+
+
+def merge_public_base_with_config(inferred: str, config_base: str) -> str:
+    """
+    将 ``get_request_public_base_url`` 的结果与 ``BASE_URL``（``get_base_url()``）合并。
+
+    反向代理若未传 ``X-Forwarded-Proto``，推断结果常为 ``http://``，而对外站点实为 HTTPS；
+    微信等抓取 ``og:image`` 时可能失败。当配置中的主机名与推断一致时，采用配置里的
+    scheme（通常为 ``https``）与主机，生成 ``https://host`` 形式的站点源。
+    """
+    inferred = (inferred or "").strip().rstrip("/")
+    config_base = (config_base or "").strip().rstrip("/")
+    if not config_base.startswith(("http://", "https://")):
+        return inferred
+    pc = urlparse(config_base)
+    if not pc.scheme or not pc.netloc:
+        return inferred
+    conf_origin = f"{pc.scheme}://{pc.netloc}".rstrip("/")
+    if not inferred:
+        return conf_origin
+    pi = urlparse(inferred)
+    if not pi.scheme or not pi.netloc:
+        return inferred
+    inf_origin = f"{pi.scheme}://{pi.netloc}".rstrip("/")
+    if pi.netloc.lower() == pc.netloc.lower():
+        return conf_origin
+    return inf_origin
 
 
 def absolute_url_from_site_base(public_base_url: str, path: str) -> str:

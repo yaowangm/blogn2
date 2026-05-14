@@ -14,6 +14,7 @@ from src.utils.share_preview import (
     load_article_share_meta,
     load_blog_share_meta,
     load_thread_share_meta,
+    merge_public_base_with_config,
 )
 
 
@@ -42,6 +43,29 @@ def test_get_request_public_base_url_fallback_netloc():
         headers={},
     )
     assert base == "https://localhost:8000"
+
+
+def test_merge_public_base_https_from_config_same_host():
+    assert merge_public_base_with_config(
+        "http://bloggern.com",
+        "https://bloggern.com",
+    ) == "https://bloggern.com"
+
+
+def test_merge_public_base_keeps_inferred_when_config_other_host():
+    assert merge_public_base_with_config(
+        "http://bloggern.com",
+        "http://localhost:8000",
+    ) == "http://bloggern.com"
+
+
+def test_merge_public_base_empty_inferred_uses_config_origin():
+    assert merge_public_base_with_config("", "https://bloggern.com/") == "https://bloggern.com"
+
+
+def test_merge_public_base_invalid_config_ignored():
+    assert merge_public_base_with_config("https://x.com", "") == "https://x.com"
+    assert merge_public_base_with_config("https://x.com", "not-a-url") == "https://x.com"
 
 
 def test_absolute_url_from_site_base():

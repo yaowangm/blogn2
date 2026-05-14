@@ -20,6 +20,10 @@ def get_base_url() -> str:
     """
     获取应用基础URL
     
+    生产环境建议设为对外 HTTPS 地址（例如 ``https://bloggern.com``）。分享预览注入
+    ``og:url`` / ``og:image`` 时，若与请求推断的主机名一致，会优先采用此处 scheme，
+    避免反向代理未传 ``X-Forwarded-Proto`` 时误生成 ``http://`` 导致微信等无法拉图。
+    
     Returns:
         str: 应用基础URL，从环境变量BASE_URL读取，默认为http://localhost:8000
     """
