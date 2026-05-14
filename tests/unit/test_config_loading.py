@@ -184,22 +184,23 @@ class TestLoadConfigFileDocker:
             assert result == config_file.resolve()
             assert os.getenv("CACHE_REDIS_HOST") == "docker_host"
     
-    def test_load_config_file_in_docker_without_config(self, monkeypatch, caplog):
-        """测试 Docker 容器中未配置 BLOGN_CONFIG_FILE"""
+    def test_load_config_file_in_docker_without_config(self, tmp_path, monkeypatch, caplog):
+        """测试 Docker 容器中未配置 BLOGN_CONFIG_FILE，且工作目录下无 .env"""
         monkeypatch.delenv("BLOGN_CONFIG_FILE", raising=False)
         
         # 重置全局变量
         from src.config import utils
         utils._config_file_path = None
         
-        # 模拟在 Docker 容器中
+        # 模拟在 Docker 容器中；cwd 指向无 .env 的目录，避免误加载仓库根 .env
         with patch('src.config.utils.is_docker_container', return_value=True):
-            with caplog.at_level(logging.WARNING):
-                result = load_config_file()
-                
-                assert result is None
-                assert "在 Docker 容器中运行" in caplog.text
-                assert "BLOGN_CONFIG_FILE" in caplog.text
+            with patch('pathlib.Path.cwd', return_value=tmp_path):
+                with caplog.at_level(logging.WARNING):
+                    result = load_config_file()
+                    
+                    assert result is None
+                    assert "在 Docker 容器中运行" in caplog.text
+                    assert "BLOGN_CONFIG_FILE" in caplog.text
 
 
 class TestConfigFileErrors:
@@ -214,12 +215,14 @@ class TestConfigFileErrors:
         from src.config import utils
         utils._config_file_path = None
         
+        # cwd 指向无 .env 的目录，否则 load_config_file 会回退加载仓库根 .env
         with patch('src.config.utils.is_docker_container', return_value=False):
-            with caplog.at_level(logging.WARNING):
-                result = load_config_file()
-                
-                assert result is None
-                assert "配置文件不存在" in caplog.text
+            with patch('pathlib.Path.cwd', return_value=tmp_path):
+                with caplog.at_level(logging.WARNING):
+                    result = load_config_file()
+                    
+                    assert result is None
+                    assert "配置文件不存在" in caplog.text
     
     def test_load_config_file_load_error(self, tmp_path, monkeypatch, caplog):
         """测试配置文件加载失败"""
