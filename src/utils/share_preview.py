@@ -2,8 +2,8 @@
 社交分享 / 爬虫预览：在首包 HTML 中替换标题、摘要，并注入 Open Graph。
 
 微信等不执行 JavaScript，只读首包 HTML；普通浏览器仍走 SPA。
-``property="og:image"`` 使用 PNG 位图（微信等对 SVG 预览常不可用）；站内 ``<link rel="icon">``
-另提供 ``/static/favicon.png`` 与 SVG 双份。``canonical_path`` 等为站内相对路径。不注入 ``itemprop``。
+``property="og:image"`` 使用 PNG；注入时若可解析站点前缀则写 **绝对 URL**（微信等抓取常不认相对路径）。
+站内 ``<link rel="icon">`` 仍为 ``/static/...`` 相对路径。不注入 ``itemprop``。
 """
 
 from __future__ import annotations
@@ -68,6 +68,19 @@ def get_request_public_base_url(
     if url_netloc and url_scheme:
         return f"{url_scheme}://{url_netloc}".rstrip("/")
     return ""
+
+
+def absolute_url_from_site_base(public_base_url: str, path: str) -> str:
+    """在 ``public_base_url`` 非空时，把站内路径 ``path`` 拼成绝对 URL；否则原样返回 ``path``。"""
+    base = (public_base_url or "").strip().rstrip("/")
+    p = (path or "").strip()
+    if not base or not p:
+        return p
+    if p.startswith(("http://", "https://", "//")):
+        return p
+    if p.startswith("/"):
+        return f"{base}{p}"
+    return f"{base}/{p.lstrip('/')}"
 
 
 def _markdown_to_plain_preview(
@@ -207,18 +220,24 @@ def inject_article_share_preview(
     html_template: str,
     meta: ArticleShareMeta,
     og_type: str = "article",
+    *,
+    public_base_url: str = "",
 ) -> str:
     """
     在 HTML 模板中替换 <title>、description，并在 </head> 前插入 Open Graph。
 
-    ``property="og:image"`` 为 ``SITE_OG_IMAGE_PATH``（PNG 分享图）。不写入 ``itemprop``。
+    ``public_base_url`` 非空时（由请求的 Host / X-Forwarded-* 解析），``og:url`` 与 ``og:image``
+    使用绝对 URL，便于微信等抓取；否则保持站内相对路径。
+
     ``og_type``：文章/留言主题常用 ``article``，博客首页用 ``website``。
     """
     title_el = html.escape(meta.page_title, quote=False)
     esc_title = html.escape(meta.page_title, quote=True)
     esc_desc = html.escape(meta.description, quote=True)
-    esc_path = html.escape(meta.canonical_path, quote=True)
-    esc_image = html.escape(SITE_OG_IMAGE_PATH, quote=True)
+    og_url = absolute_url_from_site_base(public_base_url, meta.canonical_path)
+    og_image = absolute_url_from_site_base(public_base_url, SITE_OG_IMAGE_PATH)
+    esc_path = html.escape(og_url, quote=True)
+    esc_image = html.escape(og_image, quote=True)
 
     html_out = re.sub(
         r"<title>.*?</title>",

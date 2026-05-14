@@ -7,6 +7,7 @@ from src.constants import ArticleStatus
 from src.utils.share_preview import (
     ArticleShareMeta,
     SITE_OG_IMAGE_PATH,
+    absolute_url_from_site_base,
     get_request_public_base_url,
     inject_article_share_preview,
     is_share_preview_crawler,
@@ -41,6 +42,32 @@ def test_get_request_public_base_url_fallback_netloc():
         headers={},
     )
     assert base == "https://localhost:8000"
+
+
+def test_absolute_url_from_site_base():
+    assert absolute_url_from_site_base("", "/a") == "/a"
+    assert absolute_url_from_site_base("https://x.com", "/a") == "https://x.com/a"
+    assert absolute_url_from_site_base("https://x.com/", "/a") == "https://x.com/a"
+    assert absolute_url_from_site_base("https://x.com", "https://y/z") == "https://y/z"
+
+
+def test_inject_article_share_preview_absolute_og_when_public_base():
+    meta = ArticleShareMeta(
+        page_title="T",
+        description="D",
+        canonical_path="/article/42",
+    )
+    template = """<html><head>
+    <title>x</title>
+    <meta name="description" content="old">
+    </head></html>"""
+    out = inject_article_share_preview(
+        template, meta, public_base_url="https://bloggern.com"
+    )
+    assert 'property="og:url" content="https://bloggern.com/article/42"' in out
+    assert (
+        f'property="og:image" content="https://bloggern.com{SITE_OG_IMAGE_PATH}"' in out
+    )
 
 
 def test_inject_article_share_preview_og_image_is_site_logo():

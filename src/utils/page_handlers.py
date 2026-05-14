@@ -14,6 +14,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database import get_async_session
 from src.utils.share_preview import (
     ArticleShareMeta,
+    get_request_public_base_url,
     inject_article_share_preview,
     load_article_share_meta,
     load_blog_share_meta,
@@ -43,7 +44,7 @@ class PageHandler:
 
     @staticmethod
     async def _maybe_share_preview_html(
-        _request: Request,
+        request: Request,
         session: AsyncSession,
         *,
         static_filename: str,
@@ -66,8 +67,18 @@ class PageHandler:
             raise HTTPException(status_code=404, detail=not_found_detail)
         with open(static_path, encoding="utf-8") as f:
             template = f.read()
+        public_base = get_request_public_base_url(
+            url_scheme=request.url.scheme,
+            url_netloc=request.url.netloc,
+            headers=dict(request.headers),
+        )
         return HTMLResponse(
-            content=inject_article_share_preview(template, meta, og_type=og_type),
+            content=inject_article_share_preview(
+                template,
+                meta,
+                og_type=og_type,
+                public_base_url=public_base,
+            ),
         )
     
     @staticmethod
