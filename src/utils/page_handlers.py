@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database import get_async_session
-from src.config.app import get_base_url
+from src.config.app import get_share_public_base_url
 from src.utils.share_preview import (
     ArticleShareMeta,
     get_request_public_base_url,
@@ -75,7 +75,7 @@ class PageHandler:
                 url_netloc=request.url.netloc,
                 headers=dict(request.headers),
             ),
-            get_base_url(),
+            get_share_public_base_url(),
         )
         return HTMLResponse(
             content=inject_article_share_preview(
