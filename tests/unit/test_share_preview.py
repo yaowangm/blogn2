@@ -68,6 +68,13 @@ def test_merge_public_base_invalid_config_ignored():
     assert merge_public_base_with_config("https://x.com", "not-a-url") == "https://x.com"
 
 
+def test_merge_public_base_matches_by_hostname_port_insensitive():
+    assert merge_public_base_with_config(
+        "http://bloggern.com:443",
+        "https://bloggern.com",
+    ) == "https://bloggern.com"
+
+
 def test_absolute_url_from_site_base():
     assert absolute_url_from_site_base("", "/a") == "/a"
     assert absolute_url_from_site_base("https://x.com", "/a") == "https://x.com/a"

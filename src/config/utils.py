@@ -57,13 +57,9 @@ def load_config_file() -> Optional[Path]:
     加载配置文件
     
     配置规则：
-    1. 在本地开发环境中：
-       - 优先使用 BLOGN_CONFIG_FILE 环境变量指定的配置文件
-       - 如果 BLOGN_CONFIG_FILE 不存在，使用当前目录下的 .env 文件
-       - 如果 .env 文件也不存在，返回 None（使用代码中的默认配置）
-    2. 在 Docker 容器中：
-       - 必须通过 BLOGN_CONFIG_FILE 环境变量指定配置文件
-       - 如果未指定，返回 None（使用代码中的默认配置）
+    1. 优先使用 ``BLOGN_CONFIG_FILE`` 指向的文件（须存在）。
+    2. 否则若当前工作目录下存在 ``.env``，则加载（Docker 中同样适用，便于挂载项目 ``.env``）。
+    3. 若均不可用，返回 None；此时仅依赖进程环境变量与代码默认值。Docker 且无上述文件时会打日志提示。
     
     Returns:
         Optional[Path]: 使用的配置文件路径（绝对路径），如果未使用配置文件则返回 None
@@ -93,20 +89,20 @@ def load_config_file() -> Optional[Path]:
         except Exception as e:
             logger.warning(f"解析配置文件路径失败: {e}")
             config_file = None
-    elif not in_docker:
-        # 本地开发环境：检查当前目录下的 .env 文件
+    if config_file is None:
         try:
-            current_dir = Path.cwd()
-            env_file = current_dir / ".env"
+            env_file = Path.cwd() / ".env"
             if env_file.exists():
                 config_file = env_file.resolve()
         except Exception as e:
-            # 如果获取当前目录失败（例如在某些测试环境中），忽略错误
-            logger.debug(f"无法获取当前目录: {e}")
+            logger.debug(f"无法获取当前目录或检查 .env: {e}")
             config_file = None
-    else:
-        # Docker 容器中：必须配置 BLOGN_CONFIG_FILE
-        logger.warning("在 Docker 容器中运行，但未配置 BLOGN_CONFIG_FILE 环境变量，将使用默认配置")
+
+    if config_file is None and in_docker:
+        logger.warning(
+            "在 Docker 容器中运行：未设置 BLOGN_CONFIG_FILE，且工作目录下无 .env；"
+            "将仅使用进程环境变量与代码默认值（若需 BASE_URL 等，请挂载 .env 或设置 BLOGN_CONFIG_FILE）"
+        )
     
     # 如果找到配置文件，加载它
     if config_file:

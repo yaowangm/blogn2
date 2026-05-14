@@ -93,7 +93,10 @@ def merge_public_base_with_config(inferred: str, config_base: str) -> str:
     if not pi.scheme or not pi.netloc:
         return inferred
     inf_origin = f"{pi.scheme}://{pi.netloc}".rstrip("/")
-    if pi.netloc.lower() == pc.netloc.lower():
+    # 用 hostname 比较，避免 Host 带默认端口（如 bloggern.com:443）与 BASE_URL 无端口时不匹配
+    hi = pi.hostname.lower() if pi.hostname else ""
+    hc = pc.hostname.lower() if pc.hostname else ""
+    if hi and hc and hi == hc:
         return conf_origin
     return inf_origin
 
