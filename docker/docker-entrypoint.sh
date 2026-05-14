@@ -24,8 +24,8 @@ if config_file and Path(config_file).exists():
     for key, value in os.environ.items():
         # 检查是否匹配前缀或完全匹配特定变量
         if any(key.startswith(prefix) for prefix in [
-            "DATABASE_", "CACHE_", "MODEL_", "APP_", "SECRET_", 
-            "DEBUG", "BASE_URL", "UPLOAD_", "AVATAR_", "SMTP_", "MAIL_", "RESET_LINK"
+            "DATABASE_", "CACHE_", "MODEL_", "APP_", "SECRET_",
+            "DEBUG", "BASE_URL", "SHARE_BASE_URL", "PUBLIC_BASE_URL", "UPLOAD_", "AVATAR_", "SMTP_", "MAIL_", "RESET_LINK"
         ]) or key in ["LOG_LEVEL"]:
             # 转义单引号
             value_escaped = value.replace("'", "'\"'\"'")

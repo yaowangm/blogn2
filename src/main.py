@@ -58,12 +58,16 @@ async def lifespan(app: FastAPI):
     
     处理应用启动和关闭事件，包括缓存系统初始化。
     """
-    # 启动事件：打印配置文件信息
+    # 启动事件：打印配置文件信息（用 warning：容器入口默认 uvicorn --log-level warning，info 不会出现在 docker logs）
     config_file = get_config_file_path()
     if config_file:
-        logger.info(f"📄 使用配置文件: {config_file}")
+        logger.warning(f"📄 配置文件（容器内路径）: {config_file}")
     else:
-        logger.info("📄 使用默认配置（未使用配置文件）")
+        logger.warning(
+            "📄 未记录 dotenv 文件路径（get_config_file_path 为空）；"
+            "变量可能已由入口脚本从 BLOGN_CONFIG_FILE 注入。"
+            "宿主机文件：docker inspect 查看 Mounts 里 Destination 为 /app/config.env 的 Source。"
+        )
     
     # 打印当前使用的数据库连接信息（不含密码，便于排查认证问题）
     db_url = os.getenv("DATABASE_URL")
