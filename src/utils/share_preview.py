@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import html
+import os
 import re
 from dataclasses import dataclass
 from typing import Mapping, Optional
@@ -73,11 +74,14 @@ def get_request_public_base_url(
 
 def merge_public_base_with_config(inferred: str, config_base: str) -> str:
     """
-    将 ``get_request_public_base_url`` 的结果与 ``BASE_URL``（``get_base_url()``）合并。
+    将 ``get_request_public_base_url`` 的结果与 ``get_share_public_base_url()`` 等配置合并。
 
-    反向代理若未传 ``X-Forwarded-Proto``，推断结果常为 ``http://``，而对外站点实为 HTTPS；
-    微信等抓取 ``og:image`` 时可能失败。当配置中的主机名与推断一致时，采用配置里的
-    scheme（通常为 ``https``）与主机，生成 ``https://host`` 形式的站点源。
+    反向代理若未传 ``X-Forwarded-Proto``，推断结果常为 ``http://``。当配置中的主机名与推断一致时，
+    采用配置中的 scheme；任一侧为 ``https`` 时结果固定为 ``https``。
+
+    若两侧仍为 ``http`` 且主机非 loopback（典型生产域名），默认升级为 ``https://…``，避免
+    ``og:image`` 使用 HTTP 导致微信等无法拉图。纯 HTTP 内网需设置环境变量
+    ``OG_ALLOW_HTTP_PUBLIC_BASE=1`` 关闭该行为。
     """
     inferred = (inferred or "").strip().rstrip("/")
     config_base = (config_base or "").strip().rstrip("/")
@@ -93,12 +97,24 @@ def merge_public_base_with_config(inferred: str, config_base: str) -> str:
     if not pi.scheme or not pi.netloc:
         return inferred
     inf_origin = f"{pi.scheme}://{pi.netloc}".rstrip("/")
-    # 用 hostname 比较，避免 Host 带默认端口（如 bloggern.com:443）与 BASE_URL 无端口时不匹配
     hi = pi.hostname.lower() if pi.hostname else ""
     hc = pc.hostname.lower() if pc.hostname else ""
-    if hi and hc and hi == hc:
+    if not hi or not hc or hi != hc:
+        return inf_origin
+
+    allow_http = os.getenv("OG_ALLOW_HTTP_PUBLIC_BASE", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    loopback = hi in ("localhost", "127.0.0.1", "[::1]")
+    if loopback or allow_http:
         return conf_origin
-    return inf_origin
+    if pi.scheme == "https" or pc.scheme == "https":
+        return f"https://{pc.netloc}".rstrip("/")
+    if pi.scheme == "http" and pc.scheme == "http":
+        return f"https://{pc.netloc}".rstrip("/")
+    return conf_origin
 
 
 def absolute_url_from_site_base(public_base_url: str, path: str) -> str:

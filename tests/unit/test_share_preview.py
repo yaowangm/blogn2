@@ -68,6 +68,31 @@ def test_merge_public_base_invalid_config_ignored():
     assert merge_public_base_with_config("https://x.com", "not-a-url") == "https://x.com"
 
 
+def test_merge_same_host_both_http_non_loopback_becomes_https():
+    assert (
+        merge_public_base_with_config("http://bloggern.com", "http://bloggern.com")
+        == "https://bloggern.com"
+    )
+
+
+def test_merge_same_host_both_http_respects_og_allow(monkeypatch):
+    monkeypatch.setenv("OG_ALLOW_HTTP_PUBLIC_BASE", "1")
+    assert (
+        merge_public_base_with_config("http://bloggern.com", "http://bloggern.com")
+        == "http://bloggern.com"
+    )
+
+
+def test_merge_localhost_both_http_stays_http():
+    assert (
+        merge_public_base_with_config(
+            "http://localhost:8000",
+            "http://localhost:8000",
+        )
+        == "http://localhost:8000"
+    )
+
+
 def test_merge_public_base_matches_by_hostname_port_insensitive():
     assert merge_public_base_with_config(
         "http://bloggern.com:443",

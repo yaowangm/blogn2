@@ -37,6 +37,23 @@ PYTHON_EOF
     else
         echo "⚠️  配置文件已读取，但未包含 DATABASE_URL，请检查文件格式与键名"
     fi
+    # 从配置文件原文导出分享用 URL（不依赖 os.environ 是否已被旧 BASE_URL 污染；dotenv_values 不合并环境）
+    eval "$(python3 << 'PY_EXPORT_SHARE'
+import os
+from pathlib import Path
+from dotenv import dotenv_values
+
+path = os.getenv("BLOGN_CONFIG_FILE")
+if path and Path(path).exists():
+    vals = dotenv_values(path)
+    for key in ("SHARE_BASE_URL", "PUBLIC_BASE_URL"):
+        v = (vals.get(key) or "").strip()
+        if not v:
+            continue
+        v = v.replace("'", "'\"'\"'")
+        print(f"export {key}='{v}'")
+PY_EXPORT_SHARE
+)"
 else
     if [ -n "$BLOGN_CONFIG_FILE" ]; then
         echo "⚠️  警告: 配置文件不存在: $BLOGN_CONFIG_FILE"
