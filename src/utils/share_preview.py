@@ -74,7 +74,7 @@ def get_request_public_base_url(
 
 def merge_public_base_with_config(inferred: str, config_base: str) -> str:
     """
-    将 ``get_request_public_base_url`` 的结果与 ``get_share_public_base_url()`` 等配置合并。
+    将 ``get_request_public_base_url`` 的结果与 ``get_base_url()`` 合并。
 
     反向代理若未传 ``X-Forwarded-Proto``，推断结果常为 ``http://``。当配置中的主机名与推断一致时，
     采用配置中的 scheme；任一侧为 ``https`` 时结果固定为 ``https``。

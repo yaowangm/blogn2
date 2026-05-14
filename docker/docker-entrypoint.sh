@@ -25,7 +25,7 @@ if config_file and Path(config_file).exists():
         # 检查是否匹配前缀或完全匹配特定变量
         if any(key.startswith(prefix) for prefix in [
             "DATABASE_", "CACHE_", "MODEL_", "APP_", "SECRET_",
-            "DEBUG", "BASE_URL", "SHARE_BASE_URL", "PUBLIC_BASE_URL", "UPLOAD_", "AVATAR_", "SMTP_", "MAIL_", "RESET_LINK"
+            "DEBUG", "BASE_URL", "UPLOAD_", "AVATAR_", "SMTP_", "MAIL_", "RESET_LINK"
         ]) or key in ["LOG_LEVEL"]:
             # 转义单引号
             value_escaped = value.replace("'", "'\"'\"'")
@@ -39,7 +39,7 @@ PYTHON_EOF
     fi
     # 从配置文件原文导出站点根 URL（不依赖 load_dotenv 的 override=False：编排里旧的
     # BASE_URL=http 会阻止文件里的 https 进入 os.environ，导致第一段 eval 仍导出 http 或不导出）
-    eval "$(python3 << 'PY_EXPORT_SHARE'
+    eval "$(python3 << 'PY_EXPORT_BASE_URL'
 import os
 from pathlib import Path
 from dotenv import dotenv_values
@@ -47,13 +47,11 @@ from dotenv import dotenv_values
 path = os.getenv("BLOGN_CONFIG_FILE")
 if path and Path(path).exists():
     vals = dotenv_values(path)
-    for key in ("SHARE_BASE_URL", "PUBLIC_BASE_URL", "BASE_URL"):
-        v = (vals.get(key) or "").strip()
-        if not v:
-            continue
+    v = (vals.get("BASE_URL") or "").strip()
+    if v:
         v = v.replace("'", "'\"'\"'")
-        print(f"export {key}='{v}'")
-PY_EXPORT_SHARE
+        print(f"export BASE_URL='{v}'")
+PY_EXPORT_BASE_URL
 )"
 else
     if [ -n "$BLOGN_CONFIG_FILE" ]; then

@@ -20,32 +20,17 @@ def get_base_url() -> str:
     """
     获取应用基础URL
     
-    生产环境建议设为对外 HTTPS 地址（例如 ``https://bloggern.com``）。分享预览合并逻辑见
-    ``get_share_public_base_url()``（可单独设置 ``SHARE_BASE_URL``）。
+    生产环境建议设为对外 HTTPS 地址（例如 ``https://bloggern.com``）。分享预览中的
+    ``og:url`` / ``og:image`` 与 ``merge_public_base_with_config`` 均依赖此值。
 
     ``load_dotenv(..., override=False)`` 下：**进程里已存在的环境变量不会被配置文件覆盖**。
-    若编排层已 export ``BASE_URL=http://...``，则配置文件中的 ``BASE_URL=https://...`` 不会生效，
-    此时请改编排、删掉冲突变量，或使用 ``SHARE_BASE_URL`` 专用于分享绝对 URL。
+    Docker 入口脚本会从挂载的配置文件用 ``dotenv_values`` 再导出 ``BASE_URL``，使文件中的
+    HTTPS 在容器内生效；若仍异常，请检查编排层是否强行注入了错误的 ``BASE_URL``。
 
     Returns:
         str: 应用基础URL，从环境变量BASE_URL读取，默认为http://localhost:8000
     """
     return os.getenv('BASE_URL', 'http://localhost:8000')
-
-
-def get_share_public_base_url() -> str:
-    """
-    生成分享预览（``og:url`` / ``og:image``）合并时使用的站点根 URL。
-
-    顺序：``SHARE_BASE_URL`` → ``PUBLIC_BASE_URL`` → ``get_base_url()``。
-    当 ``BASE_URL`` 因 ``override=False`` 被进程里的 ``http://`` 占住、或与推断主机不一致时，
-    可在与 ``DATABASE_URL`` 相同的配置文件中单独设置 ``SHARE_BASE_URL=https://...``。
-    """
-    for key in ("SHARE_BASE_URL", "PUBLIC_BASE_URL"):
-        raw = (os.getenv(key) or "").strip().rstrip("/")
-        if raw.startswith(("http://", "https://")):
-            return raw
-    return get_base_url()
 
 
 def get_blog_posts_page_size() -> int:
