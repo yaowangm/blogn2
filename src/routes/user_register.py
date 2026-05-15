@@ -28,7 +28,7 @@ class UserRegisterRequest(BaseModel):
     email: str
     password: str
     regkey: str
-    
+
     @validator('username')
     def validate_username(cls, v):
         if not v or len(v.strip()) < 3:
@@ -38,30 +38,30 @@ class UserRegisterRequest(BaseModel):
         if not re.match(r'^[a-zA-Z0-9_\u4e00-\u9fa5]+$', v.strip()):
             raise ValueError('用户名只能包含字母、数字、下划线和中文')
         return v.strip()
-    
+
     @validator('email')
     def validate_email(cls, v):
         if not v or not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', v.strip()):
             raise ValueError('邮箱格式不正确')
         return v.strip().lower()
-    
+
     @validator('password')
     def validate_password(cls, v):
         validate_password_rules(v or "")
         return v
-    
+
     @validator('regkey')
     def validate_regkey(cls, v):
         if not v:
             raise ValueError('注册码不能为空')
-        
+
         # 移除连字符后检查长度
         v_clean = v.strip().upper()
         v_without_dashes = v_clean.replace('-', '')
-        
+
         if len(v_without_dashes) != 25:
             raise ValueError('注册码格式不正确')
-        
+
         return v_clean
 
 class UserRegisterResponse(BaseModel):
@@ -78,14 +78,14 @@ async def register_user(
 ):
     """
     用户注册
-    
+
     Args:
         request: 用户注册请求数据
         session: 数据库会话
-        
+
     Returns:
         UserRegisterResponse: 注册成功响应
-        
+
     Raises:
         HTTPException: 当验证失败或注册码无效时
     """
@@ -97,22 +97,22 @@ async def register_user(
         username_result = await session.exec(username_stmt)
         if username_result.first():
             raise HTTPException(status_code=400, detail=generic_register_error)
-        
+
         # 2. 检查邮箱是否已存在
         email_stmt = select(User).where(User.email == request.email)
         email_result = await session.exec(email_stmt)
         if email_result.first():
             raise HTTPException(status_code=400, detail=generic_register_error)
-        
+
         # 3. 验证注册码
         # 处理注册码格式，移除连字符并转换为大写
         regkey_clean = request.regkey.strip().upper()
         regkey_without_dashes = regkey_clean.replace('-', '')
-        
+
         # 检查注册码格式
         if len(regkey_without_dashes) != 25:
             raise HTTPException(status_code=400, detail=generic_register_error)
-        
+
         # 查询注册码（尝试两种格式：带连字符和不带连字符）
         regkey_stmt = select(RegKey).where(
             (RegKey.name == regkey_clean) | (RegKey.name == regkey_without_dashes),
@@ -120,18 +120,18 @@ async def register_user(
         )
         regkey_result = await session.exec(regkey_stmt)
         regkey_record = regkey_result.first()
-        
+
         if not regkey_record:
             raise HTTPException(status_code=400, detail=generic_register_error)
-        
+
         # 4. 创建新用户
         # 对密码进行双重哈希加密：password → MD5 → bcrypt
         from passlib.context import CryptContext
         pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-        
+
         md5_hash = hashlib.md5(request.password.encode()).hexdigest()
         password_hash = pwd_context.hash(md5_hash)
-        
+
         new_user = User(
             name=request.username,
             email=request.email,
@@ -141,10 +141,10 @@ async def register_user(
             point=0,  # 初始积分
             lastupdate=TimeUtils.now_utc()
         )
-        
+
         # 5. 在事务中完成用户创建和注册码更新
         session.add(new_user)
-        
+
         # 刷新session以获取生成的用户ID
         await session.flush()
 
@@ -153,23 +153,23 @@ async def register_user(
         # 更新注册码状态
         regkey_record.status = 2  # 已使用
         regkey_record.userid = new_user.id
-        
+
         session.add(regkey_record)
-        
+
         # 更新全局用户数量统计
         from src.services.global_stats_service import GlobalStatsService
         stats_service = GlobalStatsService(session)
         await stats_service.update_user_count(increment=True)
-        
+
         # 提交事务
         await session.commit()
-        
+
         return UserRegisterResponse(
             message="用户注册成功",
             user_id=new_user.id,
             username=new_user.name
         )
-        
+
     except HTTPException:
         await session.rollback()
         raise
@@ -185,25 +185,25 @@ async def validate_regkey(
 ):
     """
     验证注册码是否有效
-    
+
     Args:
         regkey: 注册码
         session: 数据库会话
-        
+
     Returns:
         包含验证结果的字典
     """
     try:
         if not regkey:
             return {"valid": False, "message": "注册码不能为空"}
-        
+
         # 移除连字符后检查长度
         regkey_clean = regkey.strip().upper()
         regkey_without_dashes = regkey_clean.replace('-', '')
-        
+
         if len(regkey_without_dashes) != 25:
             return {"valid": False, "message": "注册码格式不正确"}
-        
+
         # 查询注册码
         stmt = select(RegKey).where(
             RegKey.name == regkey_clean,
@@ -211,11 +211,11 @@ async def validate_regkey(
         )
         result = await session.exec(stmt)
         regkey_record = result.first()
-        
+
         if regkey_record:
             return {"valid": True, "message": "注册码有效"}
         else:
             return {"valid": False, "message": "注册码无效或已被使用"}
-            
+
     except Exception as e:
         return {"valid": False, "message": f"验证失败: {str(e)}"}

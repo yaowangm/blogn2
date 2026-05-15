@@ -81,15 +81,15 @@ async def login(
 ):
     """
     用户登录
-    
+
     Args:
         request: 登录请求数据
         auth_service: 认证服务实例
         http_request: HTTP请求对象（用于获取客户端IP）
-        
+
     Returns:
         LoginResponse: 登录成功响应，包含访问令牌和刷新令牌
-        
+
     Raises:
         HTTPException: 当用户名/密码错误或账户被冻结时
     """
@@ -98,14 +98,14 @@ async def login(
 
     lookup_user = await user_service.user_repo.get_by_login_identifier(request.username_or_email)
     await auth_security_service.pre_login_check(lookup_user.id if lookup_user else None)
-    
+
     # 验证用户凭据
     user = await auth_service.authenticate_user(
-        request.username_or_email, 
-        request.password, 
+        request.username_or_email,
+        request.password,
         client_ip
     )
-    
+
     if not user:
         await auth_security_service.on_login_failed(lookup_user.id if lookup_user else None)
         raise HTTPException(
@@ -118,18 +118,18 @@ async def login(
         )
 
     await auth_security_service.on_login_success(user.id)
-    
+
     # 准备用户数据
     user_data = {
         "user_id": user.id,
         "username": user.name,
         "role": "admin" if user.state == 10 else "user"
     }
-    
+
     # 生成令牌
     access_token = auth_service.create_access_token(user_data)
     refresh_token = auth_service.create_refresh_token(user_data)
-    
+
     # 准备用户信息
     user_info = {
         "id": user.id,
@@ -141,7 +141,7 @@ async def login(
         "iplog": user.iplog,
         "avatar_url": None  # 不设置默认头像，让前端处理
     }
-    
+
     return LoginResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -158,17 +158,17 @@ async def logout(
 ):
     """
     用户登出
-    
+
     Args:
         credentials: HTTP认证凭据
         auth_service: 认证服务实例
-        
+
     Returns:
         LogoutResponse: 登出成功响应
     """
     # 这里可以添加令牌黑名单逻辑
     # 目前只是简单的响应，实际应用中可能需要将令牌加入黑名单
-    
+
     return LogoutResponse(message="登出成功")
 
 @router.get("/me", response_model=UserInfo)
@@ -180,15 +180,15 @@ async def get_current_user(
 ):
     """
     获取当前登录用户信息
-    
+
     Args:
         credentials: HTTP认证凭据
         auth_service: 认证服务实例
         user_service: 用户服务实例
-        
+
     Returns:
         UserInfo: 当前用户信息
-        
+
     Raises:
         HTTPException: 当令牌无效或用户不存在时
     """
@@ -199,7 +199,7 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="无效的访问令牌"
         )
-    
+
     # 获取用户详细信息
     user = await user_service.get_user_by_id(user_data["user_id"])
     if not user:
@@ -207,22 +207,22 @@ async def get_current_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="用户不存在"
         )
-    
+
     # 生成头像URL
     avatar_url = None
     if user.id:
         from src.config.app import validate_app_config
         config = validate_app_config()
         avatar_dir = config["avatar_dir"]
-        
+
         prefix = (user.id // 10000) + 1
         avatar_path = f"/avatar/{prefix}/s_{user.id}.jpg"
         real_path = os.path.join(avatar_dir, str(prefix), f"s_{user.id}.jpg")
-        
+
         # 检查文件是否存在
         if os.path.exists(real_path):
             avatar_url = avatar_path
-    
+
     return UserInfo(
         id=user.id,
         name=user.name,
@@ -242,14 +242,14 @@ async def verify_token(
 ):
     """
     验证访问令牌
-    
+
     Args:
         credentials: HTTP认证凭据
         auth_service: 认证服务实例
-        
+
     Returns:
         Dict: 令牌验证结果
-        
+
     Raises:
         HTTPException: 当令牌无效时
     """
@@ -259,7 +259,7 @@ async def verify_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="无效的访问令牌"
         )
-    
+
     return {
         "valid": True,
         "user_id": user_data["user_id"],
@@ -276,26 +276,26 @@ async def refresh_token(
 ):
     """
     使用刷新令牌获取新的访问令牌
-    
+
     Args:
         request: 令牌刷新请求数据
         auth_service: 认证服务实例
-        
+
     Returns:
         TokenRefreshResponse: 新的访问令牌和刷新令牌
-        
+
     Raises:
         HTTPException: 当刷新令牌无效时
     """
     # 使用刷新令牌获取新的访问令牌
     new_access_token = auth_service.refresh_access_token(request.refresh_token)
-    
+
     if not new_access_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="无效的刷新令牌"
         )
-    
+
     # 获取用户信息以创建新的刷新令牌
     user_data = auth_service.get_user_from_token(new_access_token)
     if not user_data:
@@ -303,10 +303,10 @@ async def refresh_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="无法获取用户信息"
         )
-    
+
     # 创建新的刷新令牌
     new_refresh_token = auth_service.create_refresh_token(user_data)
-    
+
     return TokenRefreshResponse(
         access_token=new_access_token,
         refresh_token=new_refresh_token,
@@ -322,14 +322,14 @@ async def validate_token(
 ):
     """
     验证访问令牌（简化版，用于前端检查）
-    
+
     Args:
         credentials: HTTP认证凭据
         auth_service: 认证服务实例
-        
+
     Returns:
         Dict: 令牌验证结果
-        
+
     Raises:
         HTTPException: 当令牌无效时
     """
@@ -339,7 +339,7 @@ async def validate_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="无效的访问令牌"
         )
-    
+
     return {"valid": True}
 
 

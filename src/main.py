@@ -55,7 +55,7 @@ from src.services.model_cache import initialize_model_cache
 async def lifespan(app: FastAPI):
     """
     应用生命周期管理器
-    
+
     处理应用启动和关闭事件，包括缓存系统初始化。
     """
     # 启动事件：打印配置文件信息（用 warning：容器入口默认 uvicorn --log-level warning，info 不会出现在 docker logs）
@@ -68,7 +68,7 @@ async def lifespan(app: FastAPI):
             "变量可能已由入口脚本从 BLOGN_CONFIG_FILE 注入。"
             "宿主机文件：docker inspect 查看 Mounts 里 Destination 为 /app/config.env 的 Source。"
         )
-    
+
     # 打印当前使用的数据库连接信息（不含密码，便于排查认证问题）
     db_url = os.getenv("DATABASE_URL")
     if db_url:
@@ -79,18 +79,18 @@ async def lifespan(app: FastAPI):
             logger.warning("数据库连接: DATABASE_URL 已设置但解析失败，请检查格式")
     else:
         logger.warning("数据库连接: DATABASE_URL 未设置")
-    
+
     # 验证缓存配置并初始化缓存系统
     config_info = validate_cache_config()
     logger.info(f"缓存配置已加载: Redis={config_info['redis_host']}:{config_info['redis_port']}, 缓存前缀={config_info['cache_prefix']}")
-    
+
     await cache_manager.initialize()
-    
+
     if cache_manager.is_available():
         logger.info("缓存系统初始化成功")
     else:
         logger.warning("缓存系统初始化失败，将使用无缓存模式")
-    
+
     # BERT 模型路径（启动时输出，便于排查挂载与解析）
     from src.config.model import get_model_path
     model_path = get_model_path()
@@ -112,7 +112,7 @@ async def lifespan(app: FastAPI):
     logger.warning("✅ 应用启动成功，服务已就绪")
 
     yield
-    
+
     # 关闭事件：清理资源
     logger.info("清理模型缓存...")
     from src.services.shared_model_cache import get_shared_model_cache
@@ -152,4 +152,4 @@ if __name__ == "__main__":
         reload=True,
         log_level=get_uvicorn_log_level(),
         access_log=False  # 关闭HTTP请求日志
-    ) 
+    )

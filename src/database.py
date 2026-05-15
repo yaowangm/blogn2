@@ -58,4 +58,4 @@ def create_db_and_tables():
 # 初始化数据库
 if __name__ == "__main__":
     create_db_and_tables()
-    logger.info("数据库表创建完成！") 
+    logger.info("数据库表创建完成！")

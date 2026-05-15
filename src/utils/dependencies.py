@@ -21,38 +21,38 @@ from src.services.blog_service import BlogService
 def create_service_dependency(service_class: Type, *repository_classes: Type):
     """
     创建服务依赖注入函数
-    
+
     Args:
         service_class: 服务类
         *repository_classes: 仓储类列表
-        
+
     Returns:
         Callable: 依赖注入函数
     """
     async def get_service(session: AsyncSession = Depends(get_async_session)):
         """
         依赖注入：创建服务实例
-        
+
         Args:
             session: 数据库会话
-            
+
         Returns:
             服务实例
         """
         repositories = [repo_cls(session) for repo_cls in repository_classes]
         return service_class(*repositories)
-    
+
     return get_service
 
 # 预定义的服务依赖
 get_metadata_service = create_service_dependency(
-    MetadataService, 
-    UserRepository, 
+    MetadataService,
+    UserRepository,
     ProjectItemRepository
 )
 
 get_user_service = create_service_dependency(
-    UserService, 
+    UserService,
     UserRepository,
     ProjectRepository
 )

@@ -202,7 +202,7 @@ url = sys.stdin.read().strip()
 try:
     # 解析 URL
     parsed = urlparse(url)
-    
+
     # 如果有用户名
     if parsed.username:
         # 如果有密码，隐藏密码；如果没有密码，只显示用户名
@@ -218,7 +218,7 @@ try:
                 new_netloc = f'{parsed.username}@{parsed.hostname}:{parsed.port}'
             else:
                 new_netloc = f'{parsed.username}@{parsed.hostname}'
-        
+
         # 重新构建 URL
         new_parsed = parsed._replace(netloc=new_netloc)
         print(urlunparse(new_parsed))
@@ -272,7 +272,7 @@ if [ "$1" = "uvicorn" ]; then
     LOG_LEVEL=${LOG_LEVEL:-warning}
     # 将日志级别转换为小写
     LOG_LEVEL=$(echo "$LOG_LEVEL" | tr '[:upper:]' '[:lower:]')
-    
+
     # 检查是否已经指定了 --log-level 参数
     HAS_LOG_LEVEL=false
     for arg in "${@:2}"; do
@@ -281,7 +281,7 @@ if [ "$1" = "uvicorn" ]; then
             break
         fi
     done
-    
+
     # 以 appuser 身份运行 uvicorn，避免容器内进程以 root 运行
     if [ "$HAS_LOG_LEVEL" = false ]; then
         exec gosu appuser env MODEL_MODEL_PATH="$MODEL_MODEL_PATH" MODEL_PREFER_LOCAL="${MODEL_PREFER_LOCAL:-true}" uvicorn "${@:2}" --log-level "$LOG_LEVEL"

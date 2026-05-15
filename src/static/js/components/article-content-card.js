@@ -1,13 +1,13 @@
 /**
  * 文章内容卡片组件 (ArticleContentCard)
- * 
+ *
  * 负责显示文章的完整内容，包括：
  * - Markdown内容的解析和渲染
  * - 单张图片附件的显示
  * - 多张图片附件的网格布局和模态框预览
  * - 安全的HTML内容过滤
  * - 附件大图 lightbox：保持原图比例；卡片宽度随图（窄图用下限宽度），长注释不换行撑宽
- * 
+ *
  * 继承自BaseComponent，使用统一的工具方法。
  */
 
@@ -46,7 +46,7 @@ class ArticleContentCard extends BaseComponent {
 
         // 加载文章数据
         await this.loadArticleData();
-        
+
         // 渲染组件
         this.render();
     }
@@ -101,15 +101,15 @@ class ArticleContentCard extends BaseComponent {
                     <div class="article-content markdown-content">
                         ${this.formatContent(content)}
                     </div>
-                    
+
                     ${this.renderAllAttachments(attachment, attachments)}
                 </div>
             </div>
         `;
-        
+
         // 在设置 innerHTML 之后添加样式
         this.addStyles();
-        
+
         // 设置图片模态框事件监听器
         this.setupImageModalEvents();
     }
@@ -136,16 +136,16 @@ class ArticleContentCard extends BaseComponent {
                 gfm: true,     // 启用GitHub风格的Markdown
                 pedantic: false
             };
-            
+
             // 使用marked.js解析Markdown
             const html = markedParser.parse(content, options);
-            
+
             // 对解析后的HTML进行安全过滤
             const safeHtml = this.sanitizeHtml(html);
-            
+
             // 处理文本中的链接（包括ed2k等非标准协议），采用DOM遍历避免破坏HTML结构
             const processedHtml = this.processTextWithLinks(safeHtml);
-            
+
             return processedHtml;
         } catch (error) {
             this.logError('Markdown parsing failed', error);
@@ -163,7 +163,7 @@ class ArticleContentCard extends BaseComponent {
 
         // 将换行符转换为HTML段落
         const paragraphs = escapedContent.split(/\r?\n/).filter(p => p.trim());
-        
+
         if (paragraphs.length === 0) {
             return '<p class="no-content">暂无内容</p>';
         }
@@ -226,7 +226,7 @@ class ArticleContentCard extends BaseComponent {
             </div>
         `;
     }
-    
+
     /**
      * 渲染单张图片附件
      */
@@ -257,17 +257,17 @@ class ArticleContentCard extends BaseComponent {
             `;
         }
     }
-    
+
     /**
      * 渲染多张图片附件
      */
     renderMultipleAttachments(attachments) {
         if (!attachments || attachments.length === 0) return '';
-        
+
         const imageAttachments = attachments.filter(att => isArticleImagePath(att.linkstr));
-        
+
         if (imageAttachments.length === 0) return '';
-        
+
         return `
             <div class="article-attachments">
                 <h3>更多图片 (${imageAttachments.length})</h3>
@@ -280,8 +280,8 @@ class ArticleContentCard extends BaseComponent {
                              data-image-src="/upload/${att.linkstr}"
                              data-image-title="${captionForAttr}">
                             <div class="attachment-image">
-                                <img src="/upload/${att.linkstr}" 
-                                     alt="${this.escapeHtml(att.comment || '图片附件')}" 
+                                <img src="/upload/${att.linkstr}"
+                                     alt="${this.escapeHtml(att.comment || '图片附件')}"
                                      loading="lazy"
                                      title="${captionForAttr}">
                             </div>
@@ -548,13 +548,13 @@ class ArticleContentCard extends BaseComponent {
                 @import url('/static/css/common-components.css');
                 @import url('/static/css/components.css');
                 .card { margin-bottom: 0; }
-                
+
                 :host {
                     display: block;
                     max-width: 100%;
                     min-width: 0;
                 }
-                
+
                 .article-content {
                     line-height: 1.8;
                     word-wrap: break-word;
@@ -567,18 +567,18 @@ class ArticleContentCard extends BaseComponent {
                     overflow-wrap: anywhere;
                     word-break: break-word;
                 }
-                
+
                 .article-content a {
                     word-break: break-all;    /* 链接内优先允许任意断行 */
                     overflow-wrap: anywhere;
                     max-width: 100%;
                     display: inline-block;
                 }
-                
+
                 .article-content p {
                     text-align: justify;
                 }
-                
+
                 /* 代码块样式修复 - 防止变形并添加滚动条；移动端用 100% 避免向右溢出 */
                 .markdown-content pre {
                     overflow-x: auto !important;
@@ -589,7 +589,7 @@ class ArticleContentCard extends BaseComponent {
                     max-width: min(700px, 100%) !important;
                     box-sizing: border-box !important;
                 }
-                
+
                 .markdown-content pre code {
                     white-space: pre !important;
                     word-wrap: normal !important;
@@ -598,7 +598,7 @@ class ArticleContentCard extends BaseComponent {
                     overflow-x: auto !important;
                     max-width: 100% !important;
                 }
-                
+
                 /* Markdown 表格在移动端不撑破布局，横向滚动 */
                 .markdown-content table {
                     display: block !important;
@@ -616,14 +616,14 @@ class ArticleContentCard extends BaseComponent {
                 .markdown-content td {
                     display: table-cell;
                 }
-                
+
                 .article-attachment,
                 .article-attachments {
                     margin-top: var(--spacing-8);
                     padding-top: var(--spacing-6);
                     border-top: 1px solid var(--gray-200);
                 }
-                
+
                 .article-attachment h3,
                 .article-attachments h3 {
                     font-size: var(--font-size-lg);
@@ -631,25 +631,25 @@ class ArticleContentCard extends BaseComponent {
                     color: var(--gray-700);
                     margin-bottom: var(--spacing-4);
                 }
-                
+
                 .article-attachment .attachment-image img {
                     max-width: 100%;
                     height: auto;
                     border-radius: var(--radius-lg);
                     box-shadow: var(--shadow-md);
                 }
-                
+
                 .article-attachment .attachment-image[data-image-src] {
                     cursor: pointer;
                 }
-                
+
                 .attachment-file {
                     padding: var(--spacing-4);
                     background-color: var(--gray-50);
                     border-radius: var(--radius-lg);
                     border: 1px solid var(--gray-200);
                 }
-                
+
                 .attachment-link {
                     display: inline-flex;
                     align-items: center;
@@ -659,7 +659,7 @@ class ArticleContentCard extends BaseComponent {
                     font-weight: 500;
                     transition: color var(--transition-fast);
                 }
-                
+
                 .attachment-link:hover {
                     color: var(--primary-hover);
                     text-decoration: underline;
@@ -668,7 +668,7 @@ class ArticleContentCard extends BaseComponent {
                 .article-attachments h3 {
                     text-align: left;
                 }
-                
+
                 .attachments-grid {
                     display: grid;
                     justify-content: start;
@@ -677,11 +677,11 @@ class ArticleContentCard extends BaseComponent {
                     margin-bottom: var(--spacing-4);
                     width: 100%;
                 }
-                
+
                 .attachments-grid:has(> .attachment-item:only-child) {
                     grid-template-columns: min(22rem, 100%);
                 }
-                
+
                 .attachment-item {
                     display: flex;
                     flex-direction: column;
@@ -694,13 +694,13 @@ class ArticleContentCard extends BaseComponent {
                     box-shadow: var(--shadow-sm);
                     transition: box-shadow var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
                 }
-                
+
                 .attachment-item:hover {
                     box-shadow: var(--shadow-md);
                     border-color: var(--gray-300);
                     transform: translateY(-2px);
                 }
-                
+
                 .attachment-item .attachment-image {
                     position: relative;
                     width: 100%;
@@ -709,7 +709,7 @@ class ArticleContentCard extends BaseComponent {
                     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
                     box-shadow: none;
                 }
-                
+
                 .attachment-item .attachment-image img {
                     position: absolute;
                     inset: 0;
@@ -720,27 +720,27 @@ class ArticleContentCard extends BaseComponent {
                     border-radius: 0;
                     box-shadow: none;
                 }
-                
+
                 .attachment-comment,
                 .modal-lightbox-footer-inner {
                     box-sizing: border-box;
                     padding: var(--spacing-2) var(--spacing-3);
                     text-align: left;
                 }
-                
+
                 .attachment-comment,
                 .modal-lightbox-footer {
                     background-color: var(--gray-50);
                     border-top: 1px solid var(--gray-200);
                     min-height: 2.75rem;
                 }
-                
+
                 .attachment-comment {
                     font-size: var(--font-size-sm);
                     color: var(--gray-700);
                     line-height: 1.45;
                 }
-                
+
                 .attachment-comment-placeholder {
                     color: var(--gray-400);
                     font-style: italic;
@@ -757,7 +757,7 @@ class ArticleContentCard extends BaseComponent {
                     justify-content: center;
                     padding: 0 var(--spacing-6);
                 }
-                
+
                 .modal-overlay {
                     position: absolute;
                     inset: 0;
@@ -765,7 +765,7 @@ class ArticleContentCard extends BaseComponent {
                     cursor: pointer;
                     z-index: 0;
                 }
-                
+
                 .modal-lightbox-card {
                     position: relative;
                     z-index: 1;
@@ -784,7 +784,7 @@ class ArticleContentCard extends BaseComponent {
                     box-shadow: var(--shadow-xl);
                     box-sizing: border-box;
                 }
-                
+
                 .modal-lightbox-media {
                     display: flex;
                     align-items: center;
@@ -796,7 +796,7 @@ class ArticleContentCard extends BaseComponent {
                     line-height: 0;
                     background-color: var(--white);
                 }
-                
+
                 .modal-lightbox-card .modal-image {
                     display: block;
                     width: auto;
@@ -809,14 +809,14 @@ class ArticleContentCard extends BaseComponent {
                     border-radius: 0;
                     box-shadow: none;
                 }
-                
+
                 .modal-lightbox-footer {
                     flex-shrink: 0;
                     box-sizing: border-box;
                     width: 100%;
                     min-width: 0;
                 }
-                
+
                 .modal-lightbox-footer-inner {
                     display: flex;
                     align-items: center;
@@ -827,7 +827,7 @@ class ArticleContentCard extends BaseComponent {
                     line-height: 1.8;
                     color: var(--gray-800);
                 }
-                
+
                 .modal-lightbox-caption {
                     flex: 1;
                     min-width: 0;
@@ -835,7 +835,7 @@ class ArticleContentCard extends BaseComponent {
                     overflow-wrap: anywhere;
                     word-break: break-word;
                 }
-                
+
                 .modal-lightbox-footer .modal-close {
                     flex-shrink: 0;
                     position: relative;
@@ -855,7 +855,7 @@ class ArticleContentCard extends BaseComponent {
                     appearance: none;
                     transition: background-color var(--transition-fast);
                 }
-                
+
                 .modal-lightbox-footer .modal-close::before,
                 .modal-lightbox-footer .modal-close::after {
                     content: '';
@@ -867,25 +867,25 @@ class ArticleContentCard extends BaseComponent {
                     background-color: var(--white, #fff);
                     border-radius: 1px;
                 }
-                
+
                 .modal-lightbox-footer .modal-close::before {
                     transform: translate(-50%, -50%) rotate(45deg);
                 }
-                
+
                 .modal-lightbox-footer .modal-close::after {
                     transform: translate(-50%, -50%) rotate(-45deg);
                 }
-                
+
                 .modal-lightbox-footer .modal-close:hover {
                     background-color: #dc2626;
                 }
-                
+
                 .loading {
                     text-align: center;
                     color: var(--gray-500);
                     padding: var(--spacing-8);
                 }
-                
+
                 .error-message {
                     text-align: center;
                     color: var(--error-color);

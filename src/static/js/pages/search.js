@@ -11,7 +11,7 @@ class SearchPage {
         this.currentType = 'all';
         this.currentSort = 'relevance';
         this.isLoading = false;
-        
+
         this.init();
     }
 
@@ -44,7 +44,7 @@ class SearchPage {
         // 过滤器变化
         const searchType = document.getElementById('searchType');
         const sortBy = document.getElementById('sortBy');
-        
+
         if (searchType) {
             searchType.addEventListener('change', (e) => {
                 this.currentType = e.target.value;
@@ -342,7 +342,7 @@ class SearchPage {
         this.isLoading = true;
         const loadingState = document.getElementById('loadingState');
         const searchButton = document.getElementById('searchButton');
-        
+
         if (loadingState) loadingState.style.display = 'block';
         if (searchButton) {
             searchButton.disabled = true;
@@ -354,7 +354,7 @@ class SearchPage {
         this.isLoading = false;
         const loadingState = document.getElementById('loadingState');
         const searchButton = document.getElementById('searchButton');
-        
+
         if (loadingState) loadingState.style.display = 'none';
         if (searchButton) {
             searchButton.disabled = false;
@@ -371,7 +371,7 @@ class SearchPage {
     showNoResults() {
         const noResultsState = document.getElementById('noResultsState');
         const searchResults = document.getElementById('searchResults');
-        
+
         if (noResultsState) noResultsState.style.display = 'block';
         if (searchResults) searchResults.style.display = 'none';
     }
@@ -383,13 +383,13 @@ class SearchPage {
             errorDiv = document.createElement('div');
             errorDiv.id = 'errorMessage';
             errorDiv.className = 'error-message';
-            
+
             const searchForm = document.getElementById('searchForm');
             if (searchForm) {
                 searchForm.parentNode.insertBefore(errorDiv, searchForm.nextSibling);
             }
         }
-        
+
         errorDiv.textContent = message;
         errorDiv.style.display = 'block';
     }
@@ -408,7 +408,7 @@ class SearchPage {
         url.searchParams.set('type', this.currentType);
         url.searchParams.set('sort', this.currentSort);
         url.searchParams.set('page', this.currentPage);
-        
+
         window.history.pushState({}, '', url);
     }
 
@@ -426,20 +426,20 @@ class SearchPage {
 
     formatDate(dateString) {
         if (!dateString) return '未知时间';
-        
+
         const date = new Date(dateString);
         const now = new Date();
         const diff = now - date;
-        
+
         const minutes = Math.floor(diff / 60000);
         const hours = Math.floor(diff / 3600000);
         const days = Math.floor(diff / 86400000);
-        
+
         if (minutes < 1) return '刚刚';
         if (minutes < 60) return `${minutes}分钟前`;
         if (hours < 24) return `${hours}小时前`;
         if (days < 7) return `${days}天前`;
-        
+
         return date.toLocaleDateString('zh-CN');
     }
 }

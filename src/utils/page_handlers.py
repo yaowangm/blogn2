@@ -26,15 +26,15 @@ from src.utils.share_preview import (
 
 class PageHandler:
     """页面处理器类"""
-    
+
     @staticmethod
     def _get_static_file_path(filename: str) -> str:
         """
         获取静态文件的绝对路径
-        
+
         Args:
             filename: 文件名
-            
+
         Returns:
             str: 文件的绝对路径
         """
@@ -85,23 +85,23 @@ class PageHandler:
                 public_base_url=public_base,
             ),
         )
-    
+
     @staticmethod
     def create_page_router() -> APIRouter:
         """
         创建页面路由
-        
+
         Returns:
             APIRouter: 页面路由实例
         """
         router = APIRouter()
-        
+
         # 根路径和首页
         @router.get("/")
         async def root():
             """根路径和首页路由"""
             return FileResponse(PageHandler._get_static_file_path("index.html"))
-        
+
         # 博客页面
         @router.get("/blog/{project_id}")
         async def blog_page(
@@ -119,13 +119,13 @@ class PageHandler:
                 not_found_detail="项目不存在",
                 og_type="website",
             )
-        
+
         # 留言本页面
         @router.get("/messages")
         async def messages_page():
             """留言本页面路由"""
             return FileResponse(PageHandler._get_static_file_path("messages.html"))
-        
+
         # 留言本主题页面
         @router.get("/thread/{thread_id}")
         async def thread_page(
@@ -143,38 +143,38 @@ class PageHandler:
                 not_found_detail="主题不存在",
                 og_type="article",
             )
-        
+
         # 发表博客文章页面
         @router.get("/blog/{project_id}/create-post")
         async def create_post_page(project_id: int):
             """发表博客文章页面路由"""
             return FileResponse(PageHandler._get_static_file_path("create-post.html"))
-        
+
         # 编辑博客文章页面
         @router.get("/edit-article/{article_id}")
         async def edit_article_page(article_id: int):
             """编辑博客文章页面路由"""
             return FileResponse(PageHandler._get_static_file_path("edit-article.html"))
-        
+
         # 个人资料页面
         @router.get("/profile")
         @router.get("/profile/{user_id}")
         async def profile_page(user_id: Optional[int] = None):
             """个人资料页面路由"""
             return FileResponse(PageHandler._get_static_file_path("profile.html"))
-        
+
         # 注册码管理页面
         @router.get("/regkey")
         async def registration_code_page():
             """注册码管理页面路由"""
             return FileResponse(PageHandler._get_static_file_path("regkey.html"))
-        
+
         # 用户列表页面
         @router.get("/users")
         async def users_list_page():
             """用户列表页面路由"""
             return FileResponse(PageHandler._get_static_file_path("users.html"))
-        
+
         # 用户注册页面
         @router.get("/user_register")
         async def user_register_page():
@@ -192,7 +192,7 @@ class PageHandler:
         async def reset_password_page():
             """重置密码页面路由"""
             return FileResponse(PageHandler._get_static_file_path("reset-password.html"))
-        
+
         # 博客文章页面
         @router.get("/article/{article_id}")
         async def article_page(
@@ -210,25 +210,25 @@ class PageHandler:
                 not_found_detail="文章不存在",
                 og_type="article",
             )
-        
+
         # 订阅的博客页面
         @router.get("/blog/{project_id}/subscriptions")
         async def subscriptions_page(project_id: int):
             """订阅的博客页面路由"""
             return FileResponse(PageHandler._get_static_file_path("subscriptions.html"))
-        
+
         # 分类维护页面
         @router.get("/blog/{project_id}/categories/maintenance")
         async def category_maintenance_page(project_id: int):
             """分类维护页面路由"""
             return FileResponse(PageHandler._get_static_file_path("category-maintenance.html"))
-        
+
         # 管理友情链接页面
         @router.get("/manage-friend-links")
         async def manage_friend_links_page():
             """管理友情链接页面路由"""
             return FileResponse(PageHandler._get_static_file_path("manage-friend-links.html"))
-        
+
         # 调试页面（这些文件可能在项目根目录）
         @router.get("/debug/article-api")
         async def debug_article_api():
@@ -238,7 +238,7 @@ class PageHandler:
             project_root = current_file.parent.parent.parent
             debug_file = project_root / "debug_article_api.html"
             return FileResponse(str(debug_file.resolve()))
-        
+
         @router.get("/debug/image-display")
         async def debug_image_display():
             """调试图片显示页面"""
@@ -247,12 +247,12 @@ class PageHandler:
             project_root = current_file.parent.parent.parent
             debug_file = project_root / "debug_image_display.html"
             return FileResponse(str(debug_file.resolve()))
-        
+
         # 搜索页面
         @router.get("/search")
         async def search_page():
             """搜索页面路由"""
             return FileResponse(PageHandler._get_static_file_path("search.html"))
-        
+
         return router
 

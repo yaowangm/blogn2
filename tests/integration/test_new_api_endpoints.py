@@ -63,7 +63,7 @@ class TestNewApiEndpoints:
         """测试获取所有友情链接"""
         response = test_client.get("/api/friend-links")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert isinstance(data, list)
 
@@ -80,7 +80,7 @@ class TestNewApiEndpoints:
         """测试健康检查端点"""
         response = test_client.get("/health")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "status" in data
         assert data["status"] == "healthy"
@@ -91,11 +91,11 @@ class TestNewApiEndpoints:
         # 缓存状态
         response = test_client.get("/api/cache/status")
         assert response.status_code == 200
-        
+
         # 缓存统计
         response = test_client.get("/api/cache/stats")
         assert response.status_code == 200
-        
+
         # 缓存清理
         response = test_client.post("/api/cache/clear")
         assert response.status_code == 200
@@ -106,7 +106,7 @@ class TestNewApiEndpoints:
         # 用户摘要
         response = test_client.get("/api/users/summary")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "total_users" in data
         assert isinstance(data["total_users"], int)
@@ -117,14 +117,14 @@ class TestNewApiEndpoints:
         # 最新博客
         response = test_client.get("/api/blogs/recent?limit=5")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert isinstance(data, list)
-        
+
         # 最新博文
         response = test_client.get("/api/blogs/posts/latest?page=1&page_size=5")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "posts" in data
         assert "total" in data

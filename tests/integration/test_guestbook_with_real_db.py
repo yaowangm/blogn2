@@ -31,19 +31,19 @@ class TestGuestbookWithRealDB:
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()
         test_data_tracker.add_user(user.id)  # 跟踪用户ID
-        
+
         # 测试创建匿名留言
         message_data = {
             "subject": "测试留言标题",
             "content": "这是一条测试留言内容",
             "user_id": 0  # 匿名用户
         }
-        
+
         response = test_client.post(
             "/api/messages",
             json=message_data
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -52,10 +52,10 @@ class TestGuestbookWithRealDB:
         assert data["subject"] == "测试留言标题"
         assert data["content"] == "这是一条测试留言内容"
         assert data["user_id"] == 0
-        
+
         # 跟踪留言ID
         test_data_tracker.add_message(data["message_id"])
-        
+
         # 验证留言已保存到数据库
         message_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == data["message_id"])
@@ -82,27 +82,27 @@ class TestGuestbookWithRealDB:
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()
         test_data_tracker.add_user(user.id)  # 跟踪用户ID
-        
+
         # 测试创建登录用户留言
         message_data = {
             "subject": "登录用户留言标题",
             "content": "这是登录用户的测试留言内容",
             "user_id": user.id
         }
-        
+
         response = test_client.post(
             "/api/messages",
             json=message_data
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
         assert data["user_id"] == user.id
-        
+
         # 跟踪留言ID
         test_data_tracker.add_message(data["message_id"])
-        
+
         # 验证留言已保存到数据库
         message_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == data["message_id"])
@@ -119,12 +119,12 @@ class TestGuestbookWithRealDB:
             "content": "这是没有标题的留言",
             "user_id": 0
         }
-        
+
         response = test_client.post(
             "/api/messages",
             json=message_data
         )
-        
+
         assert response.status_code == 400
         data = response.json()
         assert "留言标题不能为空" in data["detail"]
@@ -137,12 +137,12 @@ class TestGuestbookWithRealDB:
             "content": "",
             "user_id": 0
         }
-        
+
         response = test_client.post(
             "/api/messages",
             json=message_data
         )
-        
+
         assert response.status_code == 400
         data = response.json()
         assert "留言内容不能为空" in data["detail"]
@@ -156,12 +156,12 @@ class TestGuestbookWithRealDB:
             "content": "这是超长标题的留言",
             "user_id": 0
         }
-        
+
         response = test_client.post(
             "/api/messages",
             json=message_data
         )
-        
+
         assert response.status_code == 400
         data = response.json()
         assert "标题不能超过200个字符" in data["detail"]
@@ -179,7 +179,7 @@ class TestGuestbookWithRealDB:
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()
         test_data_tracker.add_user(user.id)  # 跟踪用户ID
-        
+
         # 先创建一个主贴
         main_message = Post(
             folderid=0,
@@ -198,7 +198,7 @@ class TestGuestbookWithRealDB:
         real_sync_session_with_commit.add(main_message)
         real_sync_session_with_commit.flush()
         test_data_tracker.add_message(main_message.id)  # 跟踪主贴ID
-        
+
         # 创建跟贴
         reply_data = {
             "subject": "",  # 跟贴可以没有标题
@@ -206,19 +206,19 @@ class TestGuestbookWithRealDB:
             "thread_id": main_message.id,
             "user_id": 0
         }
-        
+
         response = test_client.post(
             "/api/messages",
             json=reply_data
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
-        
+
         # 跟踪跟贴ID
         test_data_tracker.add_message(data["message_id"])
-        
+
         # 验证跟贴已保存到数据库
         reply_result = real_sync_session_with_commit.exec(
             select(Post).where(Post.id == data["message_id"])
@@ -242,7 +242,7 @@ class TestGuestbookWithRealDB:
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()
         test_data_tracker.add_user(user.id)  # 跟踪用户ID
-        
+
         # 创建测试留言
         message1 = Post(
             folderid=0,
@@ -259,7 +259,7 @@ class TestGuestbookWithRealDB:
             replycount=0
         )
         real_sync_session_with_commit.add(message1)
-        
+
         message2 = Post(
             folderid=0,
             projectitemid=0,  # 留言本
@@ -276,25 +276,25 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(message2)
         real_sync_session_with_commit.flush()
-        
+
         # 跟踪留言ID
         test_data_tracker.add_message(message1.id)
         test_data_tracker.add_message(message2.id)
-        
+
         # 获取留言列表
         response = test_client.get("/api/messages")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, dict)
         assert "messages" in data
         assert "current_page" in data
         assert "total_pages" in data
-        
+
         messages = data["messages"]
         assert isinstance(messages, list)
         assert len(messages) >= 0  # 数据库中可能已有其他留言
-        
+
         # 验证留言字段
         for message in messages:
             assert "id" in message
@@ -316,7 +316,7 @@ class TestGuestbookWithRealDB:
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 获取生成的用户ID
         test_data_tracker.add_user(user.id)  # 跟踪用户ID
-        
+
         # 创建主贴
         main_message = Post(
             folderid=0,
@@ -335,7 +335,7 @@ class TestGuestbookWithRealDB:
         real_sync_session_with_commit.add(main_message)
         real_sync_session_with_commit.flush()
         test_data_tracker.add_message(main_message.id)  # 跟踪主贴ID
-        
+
         # 创建跟贴
         reply1 = Post(
             folderid=0,
@@ -352,7 +352,7 @@ class TestGuestbookWithRealDB:
             replycount=0
         )
         real_sync_session_with_commit.add(reply1)
-        
+
         reply2 = Post(
             folderid=0,
             projectitemid=0,  # 留言本
@@ -369,33 +369,33 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(reply2)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        
+
         # 跟踪跟贴ID
         test_data_tracker.add_message(reply1.id)
         test_data_tracker.add_message(reply2.id)
-        
+
         # 临时提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
-        
+
         # 获取主题留言
         response = test_client.get(f"/api/thread/{main_message.id}")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, dict)
         assert "messages" in data
         assert "thread_id" in data
-        
+
         messages = data["messages"]
         assert isinstance(messages, list)
         assert len(messages) == 3  # 主贴 + 2个跟贴
-        
+
         # 验证主贴
         main_post = next((msg for msg in messages if msg["is_main_post"]), None)
         assert main_post is not None
         assert main_post["subject"] == "主贴标题"
         assert main_post["content"] == "这是主贴内容"
-        
+
         # 验证跟贴
         replies = [msg for msg in messages if not msg["is_main_post"]]
         assert len(replies) == 2
@@ -407,7 +407,7 @@ class TestGuestbookWithRealDB:
     def test_get_thread_messages_nonexistent(self, test_client):
         """测试获取不存在主题的留言"""
         response = test_client.get("/api/thread/99999")
-        
+
         assert response.status_code == 404
         data = response.json()
         assert "主题" in data["detail"] and "不存在" in data["detail"]
@@ -425,7 +425,7 @@ class TestGuestbookWithRealDB:
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 获取生成的用户ID
         test_data_tracker.add_user(user.id)  # 跟踪用户ID
-        
+
         # 创建测试项目（state=0 正常博客，与 project_repository 及生产库约定一致）
         project = Project(
             name="Test Project for Comments",
@@ -437,7 +437,7 @@ class TestGuestbookWithRealDB:
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 获取生成的项目ID
         test_data_tracker.add_project(project.id)  # 跟踪项目ID
-        
+
         # 创建测试文章
         article = ProjectItem(
             projectid=project.id,
@@ -452,11 +452,11 @@ class TestGuestbookWithRealDB:
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 获取生成的文章ID
         test_data_tracker.add_article(article.id)  # 跟踪文章ID
-        
+
         # 创建文章评论（应该被包含）- 使用当前时间确保是最新的
         from datetime import timezone
         now = datetime.now(timezone.utc)
-        
+
         article_comment = Post(
             folderid=0,
             projectitemid=article.id,  # 文章评论
@@ -472,7 +472,7 @@ class TestGuestbookWithRealDB:
             replycount=0
         )
         real_sync_session_with_commit.add(article_comment)
-        
+
         # 创建留言本留言（应该被排除）
         guestbook_message = Post(
             folderid=0,
@@ -490,21 +490,21 @@ class TestGuestbookWithRealDB:
         )
         real_sync_session_with_commit.add(guestbook_message)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        
+
         # 跟踪评论和留言ID
         test_data_tracker.add_comment(article_comment.id)
         test_data_tracker.add_message(guestbook_message.id)
-        
+
         # 临时提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
-        
+
         # 获取最近评论
         response = test_client.get("/api/comments/recent?limit=10")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
-        
+
         # 验证只包含文章评论，不包含留言本留言
         comment_ids = [comment["id"] for comment in data]
         assert article_comment.id in comment_ids

@@ -28,7 +28,7 @@ class TestDataTracker:
     调用 ``add_user`` / ``add_project`` 等登记；否则 autouse 清理不会删除，会污染数据库。
     认证相关表 ``user_auth_security_state`` 在按 user_id 清理时先于 ``users`` 显式删除（双保险）。
     """
-    
+
     def __init__(self):
         self.user_ids: Set[int] = set()
         self.project_ids: Set[int] = set()
@@ -39,43 +39,43 @@ class TestDataTracker:
         self.folder_ids: Set[int] = set()
         self.urllink_ids: Set[int] = set()
         self.subscription_ids: Set[int] = set()
-    
+
     def add_user(self, user_id: int):
         """记录用户ID"""
         self.user_ids.add(user_id)
-    
+
     def add_project(self, project_id: int):
         """记录项目ID"""
         self.project_ids.add(project_id)
-    
+
     def add_article(self, article_id: int):
         """记录文章ID"""
         self.article_ids.add(article_id)
-    
+
     def add_comment(self, comment_id: int):
         """记录评论ID"""
         self.comment_ids.add(comment_id)
-    
+
     def add_message(self, message_id: int):
         """记录留言ID"""
         self.message_ids.add(message_id)
-    
+
     def add_attachment(self, attachment_id: int):
         """记录附件ID"""
         self.attachment_ids.add(attachment_id)
-    
+
     def add_folder(self, folder_id: int):
         """记录分类ID"""
         self.folder_ids.add(folder_id)
-    
+
     def add_urllink(self, urllink_id: int):
         """记录友情链接ID"""
         self.urllink_ids.add(urllink_id)
-    
+
     def add_subscription(self, subscription_id: int):
         """记录订阅ID"""
         self.subscription_ids.add(subscription_id)
-    
+
     def clear(self):
         """清空所有记录的ID"""
         self.user_ids.clear()
@@ -87,11 +87,11 @@ class TestDataTracker:
         self.folder_ids.clear()
         self.urllink_ids.clear()
         self.subscription_ids.clear()
-    
+
     def has_data(self) -> bool:
         """检查是否有记录的数据"""
         return any([
-            self.user_ids, self.project_ids, self.article_ids, 
+            self.user_ids, self.project_ids, self.article_ids,
             self.comment_ids, self.message_ids, self.attachment_ids,
             self.folder_ids, self.urllink_ids, self.subscription_ids
         ])
@@ -202,7 +202,7 @@ try:
         logger.info(f"测试环境使用配置文件: {config_path}")
     else:
         logger.debug("测试环境使用默认配置（未找到配置文件）")
-    
+
     # 模型路径：优先使用 .env 中且在当前机器存在的路径；否则尝试本机可用路径（如 Docker 路径在宿主机不存在时）
     configured_exists = _configured_model_path_exists()
     if configured_exists:
@@ -233,7 +233,7 @@ except Exception as e:
     logger.debug(f"配置加载初始化失败（测试环境）: {e}")
     import traceback
     logger.debug(traceback.format_exc())
-    
+
     # 仅当未配置 MODEL_MODEL_PATH 时使用自动检测的路径
     if not os.getenv("MODEL_MODEL_PATH"):
         _test_local_model_path = _get_test_local_model_path()
@@ -248,24 +248,24 @@ def cleanup_test_data_by_ids(tracker: TestDataTracker):
     if not tracker.has_data():
         print("🧹 没有测试数据需要清理")
         return
-    
+
     print("🧹 开始基于ID清理测试数据...")
-    
+
     # 使用真实数据库连接
     from sqlmodel import create_engine, text
     from sqlalchemy import create_engine as create_sync_engine
-    
+
     # 创建同步引擎
     sync_engine = create_sync_engine(REAL_SYNC_DATABASE_URL, echo=False)
-    
+
     try:
         with sync_engine.connect() as conn:
             # 开始事务
             trans = conn.begin()
-            
+
             try:
                 total_deleted = 0
-                
+
                 # 按依赖关系顺序删除数据
                 if tracker.comment_ids or tracker.message_ids:
                     # 删除评论和留言
@@ -295,7 +295,7 @@ def cleanup_test_data_by_ids(tracker: TestDataTracker):
                     deleted_count = result.rowcount
                     total_deleted += deleted_count
                     print(f"🗑️ 删除了 {deleted_count} 个测试文章")
-                
+
                 if tracker.subscription_ids:
                     # 删除订阅（表名为 subsc）
                     placeholders = ','.join(map(str, tracker.subscription_ids))
@@ -304,7 +304,7 @@ def cleanup_test_data_by_ids(tracker: TestDataTracker):
                     deleted_count = result.rowcount
                     total_deleted += deleted_count
                     print(f"🗑️ 删除了 {deleted_count} 个测试订阅")
-                
+
                 if tracker.urllink_ids:
                     # 删除友情链接（project 之前）
                     placeholders = ','.join(map(str, tracker.urllink_ids))
@@ -331,7 +331,7 @@ def cleanup_test_data_by_ids(tracker: TestDataTracker):
                     deleted_count = result.rowcount
                     total_deleted += deleted_count
                     print(f"🗑️ 删除了 {deleted_count} 个测试项目")
-                
+
                 if tracker.user_ids:
                     placeholders = ','.join(map(str, tracker.user_ids))
                     # 认证安全状态：外键多为 ON DELETE CASCADE，仍先删以免历史库或漏登记 user 时残留
@@ -353,17 +353,17 @@ def cleanup_test_data_by_ids(tracker: TestDataTracker):
                     deleted_count = result.rowcount
                     total_deleted += deleted_count
                     print(f"🗑️ 删除了 {deleted_count} 个测试用户")
-                
+
                 # 提交事务
                 trans.commit()
                 print(f"✅ 基于ID的测试数据清理完成，共删除 {total_deleted} 条记录")
-                
+
             except Exception as e:
                 # 回滚事务
                 trans.rollback()
                 logger.error(f"Failed to cleanup test data by ID: {e}")
                 raise
-                
+
     except Exception as e:
         logger.error(f"Failed to connect to database: {e}")
         raise
@@ -394,23 +394,23 @@ def cleanup_test_data(engine):
     session = Session(engine)
     try:
         print("🧹 开始清理测试数据（BLOGN_ALLOW_DANGEROUS_TEST_SQL_CLEANUP 已开启）...")
-        
+
         # 获取当前最大的ID作为基准
         max_id_result = session.execute(text("SELECT MAX(id) as max_id FROM post"))
         max_id = max_id_result.fetchone()[0] or 0
         test_id_threshold = max_id - 1000  # 假设测试数据的ID比当前最大ID小1000以内
-        
+
         # 删除测试用户
         result1 = session.execute(text("DELETE FROM users WHERE name LIKE '%test%' OR email LIKE '%test%' OR name LIKE '%Test%' OR email LIKE '%Test%'"))
         print(f"🗑️ 删除了 {result1.rowcount} 个测试用户")
-        
+
         # 删除测试项目
         result2 = session.execute(text("DELETE FROM project WHERE name LIKE '%Test%' OR name LIKE '%test%'"))
         print(f"🗑️ 删除了 {result2.rowcount} 个测试项目")
-        
+
         # 删除测试文章
         result3 = session.execute(text("""
-            DELETE FROM projectitem WHERE 
+            DELETE FROM projectitem WHERE
                 name LIKE '%Test%' OR name LIKE '%test%' OR
                 name LIKE '%Article%' OR name LIKE '%Comment%' OR
                 name LIKE '%Message%' OR name LIKE '%Guest%' OR
@@ -419,19 +419,19 @@ def cleanup_test_data(engine):
                 id > 9000
         """))
         print(f"🗑️ 删除了 {result3.rowcount} 个测试文章")
-        
+
         # 删除测试评论和留言（更全面的清理策略）
         result4 = session.execute(text("""
-            DELETE FROM post WHERE 
-                (content LIKE '%测试%' OR content LIKE '%test%' OR 
+            DELETE FROM post WHERE
+                (content LIKE '%测试%' OR content LIKE '%test%' OR
                  subject LIKE '%测试%' OR subject LIKE '%test%' OR
                  content LIKE '%Test%' OR subject LIKE '%Test%' OR
                  content LIKE '%留言本%' OR subject LIKE '%留言本%' OR
                  content LIKE '%主贴%' OR subject LIKE '%主贴%' OR
                  content LIKE '%留言%' OR subject LIKE '%留言%') AND
-                (posttime > NOW() - INTERVAL '1 day' OR 
-                 posttime = '2024-01-01 10:00:00' OR 
-                 posttime = '2024-01-01 11:00:00' OR 
+                (posttime > NOW() - INTERVAL '1 day' OR
+                 posttime = '2024-01-01 10:00:00' OR
+                 posttime = '2024-01-01 11:00:00' OR
                  posttime = '2024-01-01 12:00:00' OR
                  posttime = '2024-01-01 11:01:00' OR
                  posttime = '2024-01-01 11:02:00' OR
@@ -445,23 +445,23 @@ def cleanup_test_data(engine):
                  posttime = '2024-01-01 11:10:00')
         """))
         print(f"🗑️ 删除了 {result4.rowcount} 个测试评论和留言")
-        
+
         # 删除测试附件
         result5 = session.execute(text("DELETE FROM attachment WHERE comment LIKE '%test%' OR comment LIKE '%Test%' OR linkstr LIKE '%test%' OR linkstr LIKE '%Test%'"))
         print(f"🗑️ 删除了 {result5.rowcount} 个测试附件")
-        
+
         # 删除测试分类
         result6 = session.execute(text("DELETE FROM folders WHERE name LIKE '%test%' OR name LIKE '%Test%'"))
         print(f"🗑️ 删除了 {result6.rowcount} 个测试分类")
-        
+
         # 删除测试友情链接
         result7 = session.execute(text("DELETE FROM urllink WHERE subject LIKE '%test%' OR subject LIKE '%Test%' OR linkstr LIKE '%test%' OR linkstr LIKE '%Test%'"))
         print(f"🗑️ 删除了 {result7.rowcount} 个测试友情链接")
-        
+
         # 删除测试订阅（基于项目ID）
         result8 = session.execute(text("DELETE FROM subsc WHERE projectid IN (SELECT id FROM project WHERE name LIKE '%test%' OR name LIKE '%Test%')"))
         print(f"🗑️ 删除了 {result8.rowcount} 个测试订阅")
-        
+
         session.commit()
         print("✅ 测试数据清理完成")
     except Exception as e:
@@ -472,19 +472,19 @@ def cleanup_test_data(engine):
 
 class UnifiedDatabaseManager:
     """统一的数据库连接和事务管理器"""
-    
+
     def __init__(self, sync_engine, async_engine):
         self.sync_engine = sync_engine
         self.async_engine = async_engine
         self._transaction = None
         self._async_transaction = None
-    
+
     def begin_transaction(self):
         """开始事务"""
         # 创建同步会话并开始事务
         self.sync_session = Session(self.sync_engine)
         self._transaction = self.sync_session.begin()
-        
+
         # 创建异步会话并开始事务
         from sqlmodel.ext.asyncio.session import AsyncSession
         from sqlalchemy.orm import sessionmaker
@@ -513,12 +513,12 @@ class UnifiedDatabaseManager:
                 self._async_transaction = loop.run_until_complete(self.async_session.begin())
             finally:
                 loop.close()
-    
+
     def commit(self):
         """提交事务 - 在测试环境中不提交"""
         # 在测试环境中不提交，让事务回滚处理
         pass
-    
+
     def rollback(self):
         """回滚事务"""
         if self._transaction:
@@ -555,7 +555,7 @@ class UnifiedDatabaseManager:
                     loop.close()
             except Exception:
                 pass
-    
+
     def close(self):
         """关闭连接"""
         if hasattr(self, 'sync_session'):
@@ -629,7 +629,7 @@ def real_async_engine():
             # 使用asyncio.run_coroutine_threadsafe确保在正确的线程中执行
             import concurrent.futures
             import threading
-            
+
             # 创建Future来等待任务完成
             future = asyncio.run_coroutine_threadsafe(engine.dispose(), loop)
             try:
@@ -734,14 +734,14 @@ async def real_async_session(real_async_engine):
     """创建真实PostgreSQL异步会话 - 每个测试后自动回滚"""
     from sqlmodel.ext.asyncio.session import AsyncSession
     from sqlalchemy.orm import sessionmaker
-    
+
     # 创建会话工厂
     async_session_factory = sessionmaker(
         real_async_engine,
         class_=AsyncSession,
         expire_on_commit=False
     )
-    
+
     async with async_session_factory() as session:
         # 开始事务
         await session.begin()
@@ -765,14 +765,14 @@ async def real_async_session_with_commit(real_async_engine):
     """创建真实PostgreSQL异步会话 - 使用事务回滚"""
     from sqlmodel.ext.asyncio.session import AsyncSession
     from sqlalchemy.orm import sessionmaker
-    
+
     # 创建会话工厂
     async_session_factory = sessionmaker(
         real_async_engine,
         class_=AsyncSession,
         expire_on_commit=False
     )
-    
+
     async with async_session_factory() as session:
         # 开始事务
         await session.begin()
@@ -792,20 +792,20 @@ def test_client(unified_db_manager):
     """创建测试客户端 - 使用统一数据库管理"""
     from src.database import async_engine, async_session
     from src.main import app
-    
+
     # 保存原始引擎和会话工厂
     original_engine = async_engine
     original_session = async_session
-    
+
     # 创建会话工厂函数
     def create_test_async_session():
         return unified_db_manager.async_session
-    
+
     # 替换为测试引擎和会话工厂
     import src.database
     src.database.async_engine = unified_db_manager.async_engine
     src.database.async_session = create_test_async_session
-    
+
     client = None
     try:
         client = TestClient(app)
@@ -830,11 +830,11 @@ def test_client_with_rollback(real_async_engine):
     from src.main import app
     from sqlalchemy.orm import sessionmaker
     from sqlmodel.ext.asyncio.session import AsyncSession
-    
+
     # 保存原始引擎和会话工厂
     original_engine = async_engine
     original_session = async_session
-    
+
     # 替换为测试引擎和会话工厂
     import src.database
     src.database.async_engine = real_async_engine
@@ -843,7 +843,7 @@ def test_client_with_rollback(real_async_engine):
         class_=AsyncSession,
         expire_on_commit=False
     )
-    
+
     client = None
     try:
         client = TestClient(app)
@@ -895,12 +895,12 @@ def setup_test_env():
     """设置测试环境 - 仅在需要时手动调用"""
     # 保存原始环境变量
     original_database_url = os.environ.get("DATABASE_URL")
-    
+
     # 设置测试数据库URL
     os.environ["DATABASE_URL"] = REAL_DATABASE_URL
-    
+
     yield
-    
+
     # 恢复原始环境变量
     if original_database_url:
         os.environ["DATABASE_URL"] = original_database_url
@@ -944,12 +944,12 @@ async def clear_cache_after_each_test():
             except RuntimeError:
                 # 没有运行的事件循环，跳过缓存清理
                 return
-            
+
             # 清理所有缓存
             await cache_manager.clear_pattern("*")
     except Exception as e:
         # 如果缓存清理失败，记录警告但继续测试
-        logger.warning(f"Failed to clear cache during test cleanup: {e}") 
+        logger.warning(f"Failed to clear cache during test cleanup: {e}")
 
 @pytest.fixture
 def test_data_tracker() -> TestDataTracker:

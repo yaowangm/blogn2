@@ -36,7 +36,7 @@ class TestBasicEndpoints:
         """测试获取用户摘要"""
         response = test_client.get("/api/users/summary")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "total_users" in data
         assert isinstance(data["total_users"], int)
@@ -46,7 +46,7 @@ class TestBasicEndpoints:
         """测试获取用户总数"""
         response = test_client.get("/api/users/count")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "count" in data
         assert isinstance(data["count"], int)
@@ -56,7 +56,7 @@ class TestBasicEndpoints:
         """测试获取最新博客"""
         response = test_client.get("/api/blogs/recent")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert isinstance(data, list)
 
@@ -65,7 +65,7 @@ class TestBasicEndpoints:
         """测试获取热门博客"""
         response = test_client.get("/api/blogs/popular")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert isinstance(data, list)
 
@@ -74,7 +74,7 @@ class TestBasicEndpoints:
         """测试获取站点元数据"""
         response = test_client.get("/api/metadata/")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "user_count" in data
         assert isinstance(data["user_count"], int)
