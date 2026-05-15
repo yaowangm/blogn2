@@ -452,8 +452,8 @@ class TestHierarchicalSearchService:
         assert formatted["type"] == "article"
         assert formatted["relevance_score"] == 0.95
         
-        # 测试评论结果格式化
-        comment_item = (2, "评论标题", "评论内容", "评论作者", datetime(2024, 1, 1, 11, 0, 0), 0.85)
+        # 测试评论结果格式化（元组索引 6 为所属博文 projectitem_id）
+        comment_item = (2, "评论标题", "评论内容", "评论作者", datetime(2024, 1, 1, 11, 0, 0), 0.85, 42)
         formatted = search_service._format_comment_result(comment_item)
         
         assert formatted["id"] == 2
@@ -462,6 +462,8 @@ class TestHierarchicalSearchService:
         assert formatted["author"] == "评论作者"
         assert formatted["type"] == "comment"
         assert formatted["relevance_score"] == 0.85
+        assert formatted["projectitem_id"] == 42
+        assert formatted["article_id"] == 42
 
     def test_row_relevance_extraction(self, search_service):
         """测试从查询行中正确解析 relevance_score（列名/索引/字典）"""

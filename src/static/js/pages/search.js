@@ -210,19 +210,7 @@ class SearchPage {
         const relevanceScore = result.relevance_score || 0;
         const similarityPercent = Math.round(relevanceScore * 100);
 
-        // 生成链接URL
-        let href = '#';
-        if (type === 'comment') {
-            const articleId = result.projectitem_id || result.article_id;
-            if (articleId) {
-                href = `/article/${articleId}`;
-            }
-        } else {
-            const articleId = result.id || result.projectitem_id;
-            if (articleId) {
-                href = `/article/${articleId}`;
-            }
-        }
+        const href = this.getResultHref(result);
 
         const div = document.createElement('div');
         div.className = 'result-item';
@@ -315,20 +303,38 @@ class SearchPage {
         this.performSearch();
     }
 
+    /**
+     * 搜索结果详情页 URL。博文评论使用 /article/{博文id}#post{评论id}，与文章页评论锚点一致。
+     */
+    getResultHref(result) {
+        const positiveInt = (v) => {
+            if (v === undefined || v === null || v === '') return NaN;
+            const n = Number(v);
+            return Number.isFinite(n) && n > 0 ? n : NaN;
+        };
+        const type = result.type || 'article';
+        if (type === 'comment') {
+            const nPid = positiveInt(result.projectitem_id ?? result.article_id);
+            const nCid = positiveInt(result.id);
+            if (Number.isFinite(nPid) && Number.isFinite(nCid)) {
+                return `/article/${nPid}#post${nCid}`;
+            }
+            if (Number.isFinite(nCid)) {
+                return `/thread/${nCid}`;
+            }
+            return '#';
+        }
+        const articleId = result.id ?? result.projectitem_id;
+        if (articleId !== undefined && articleId !== null && articleId !== '') {
+            return `/article/${articleId}`;
+        }
+        return '#';
+    }
+
     openResult(result) {
-        // 根据结果类型打开相应的页面
-        if (result.type === 'comment') {
-            // 评论结果，跳转到对应的文章页面
-            const articleId = result.projectitem_id || result.article_id;
-            if (articleId) {
-                window.open(`/article/${articleId}`, '_blank');
-            }
-        } else {
-            // 文章结果，直接跳转到文章页面
-            const articleId = result.id || result.projectitem_id;
-            if (articleId) {
-                window.open(`/article/${articleId}`, '_blank');
-            }
+        const href = this.getResultHref(result);
+        if (href !== '#') {
+            window.open(href, '_blank');
         }
     }
 

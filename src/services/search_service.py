@@ -700,7 +700,8 @@ class HierarchicalSearchService:
                 p.content,
                 u.name as author,
                 p.posttime,
-                (1 - (cv.content_vector <=> '{query_vector_json}'::vector)) as relevance_score
+                (1 - (cv.content_vector <=> '{query_vector_json}'::vector)) as relevance_score,
+                p.projectitemid as projectitem_id
             FROM comment_vectors cv
             LEFT JOIN post p ON cv.post_id = p.id
             LEFT JOIN users u ON p.userid = u.id
@@ -765,7 +766,8 @@ class HierarchicalSearchService:
         offset = (page - 1) * limit
         pattern = f"%{self._escape_like_pattern(query.strip())}%"
         sql = text("""
-            SELECT p.id, p.subject as title, p.content, u.name as author, p.posttime, 1.0 as relevance_score
+            SELECT p.id, p.subject as title, p.content, u.name as author, p.posttime, 1.0 as relevance_score,
+                   p.projectitemid as projectitem_id
             FROM post p
             LEFT JOIN users u ON p.userid = u.id
             WHERE p.status = 1 AND (p.subject ILIKE :pat ESCAPE '\\' OR p.content ILIKE :pat ESCAPE '\\' OR u.name ILIKE :pat ESCAPE '\\')
@@ -862,11 +864,14 @@ class HierarchicalSearchService:
         格式化评论搜索结果
         
         Args:
-            item: 数据库查询结果元组
+            item: 数据库查询结果元组，前 6 列为
+                id, title, content, author, createtime/posttime, relevance_score；
+                可选第 7 列为所属博文 projectitem_id（留言本为 0）。
             
         Returns:
             Dict[str, Any]: 格式化的评论搜索结果
         """
+        projectitem_id = item[6] if len(item) > 6 else None
         return {
             "id": item[0],
             "title": item[1],
@@ -874,5 +879,7 @@ class HierarchicalSearchService:
             "author": item[3],
             "created_at": item[4].isoformat() if item[4] else None,
             "relevance_score": self._row_relevance(item),
-            "type": "comment"
+            "type": "comment",
+            "projectitem_id": projectitem_id,
+            "article_id": projectitem_id,
         }
