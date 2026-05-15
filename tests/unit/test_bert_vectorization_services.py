@@ -465,6 +465,20 @@ class TestHierarchicalSearchService:
         assert formatted["projectitem_id"] == 42
         assert formatted["article_id"] == 42
 
+        # 旧版 SQL 仅 6 列时：无 projectitem_id，字段应为 None（兼容）
+        legacy = (3, "旧", "内", "作", datetime(2024, 1, 2, 12, 0, 0), 0.5)
+        leg_fmt = search_service._format_comment_result(legacy)
+        assert leg_fmt["id"] == 3
+        assert leg_fmt["type"] == "comment"
+        assert leg_fmt.get("projectitem_id") is None
+        assert leg_fmt.get("article_id") is None
+
+        # 留言本等非博文评论：projectitem_id 可为 0，仍应原样返回
+        guest = (9, "留", "言", "访", datetime(2024, 1, 3, 8, 0, 0), 0.4, 0)
+        gf = search_service._format_comment_result(guest)
+        assert gf["projectitem_id"] == 0
+        assert gf["article_id"] == 0
+
     def test_row_relevance_extraction(self, search_service):
         """测试从查询行中正确解析 relevance_score（列名/索引/字典）"""
         # 元组/列表：按索引 5 取值
