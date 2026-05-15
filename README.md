@@ -6,10 +6,12 @@
 
 > **认证与安全（限流与锁定）**：登录、注册、忘记密码等接口的限流与状态存储见 **[doc/LOGIN_BRUTE_FORCE_PROTECTION_DESIGN.md](doc/LOGIN_BRUTE_FORCE_PROTECTION_DESIGN.md)**；数据库表与 `AUTH_*` 配置见 **[doc/AUTH_SECURITY_USER_STATE_DB_DESIGN.md](doc/AUTH_SECURITY_USER_STATE_DB_DESIGN.md)**。
 
+> **分享与爬虫预览**：微信等爬虫读取首包 HTML 时的 Open Graph 注入与 `BASE_URL` 合并逻辑见 **[doc/SHARE_PREVIEW.md](doc/SHARE_PREVIEW.md)**（实现位于 `src/utils/share_preview.py`）。
+
 ## 🚀 主要特性
 
 - **高性能后端**: 基于FastAPI框架，支持异步操作
-- **智能缓存系统**: Redis后端缓存，显著提升性能
+- **智能缓存系统**: Redis 可选业务缓存（`CACHE_ENABLE_CACHE`），见 [doc/README_CACHE.md](doc/README_CACHE.md)
 - **现代化前端**: Web Components架构，响应式设计
 - **用户管理系统**: 完整的用户注册、登录、资料管理
 - **博客发布系统**: 支持富文本编辑、分类管理
@@ -25,7 +27,7 @@
 - **FastAPI**: 现代、快速的Web框架
 - **SQLModel**: 基于Pydantic的ORM
 - **PostgreSQL**: 主数据库，支持pgvector扩展
-- **Redis**: 缓存和会话存储
+- **Redis**: 可选业务数据缓存（`fastapi-cache2`，见 [doc/README_CACHE.md](doc/README_CACHE.md)）；认证限流与锁定状态在 PostgreSQL，不在 Redis
 - **Uvicorn**: ASGI服务器
 - **BERT**: 语义搜索和文本向量化
 
@@ -60,6 +62,7 @@ blogn2/
 │   │   ├── user.py              # 用户控制器
 │   │   ├── metadata.py          # 元数据控制器
 │   │   ├── project.py           # 项目控制器
+│   │   ├── search.py            # 搜索 API（挂载为 /api/search）
 │   │   └── urllink.py           # 链接控制器
 │   ├── models/                   # 数据模型
 │   │   ├── user.py              # 用户模型
@@ -152,6 +155,7 @@ python test_db.py
 主要配置项包括：
 
 - `DATABASE_URL`: PostgreSQL数据库连接URL
+- `BASE_URL`: 站点对外根 URL（RSS、密码重置邮件、分享预览中 `og:url`/`og:image` 等绝对地址；生产建议 HTTPS）。Docker 下若编排层已注入旧值，`docker-entrypoint.sh` 会从配置文件用 `dotenv_values` 再次导出，避免 `load_dotenv(override=False)` 导致文件中的 HTTPS 不生效
 - `CACHE_REDIS_HOST`: Redis服务器地址
 - `CACHE_ENABLE_CACHE`: 是否启用缓存
 - `CACHE_DEFAULT_TTL`: 默认缓存时间
@@ -180,6 +184,7 @@ BlogN集成了基于BERT的智能搜索系统：
 - **向量化存储**: 使用pgvector存储文本向量
 - **混合搜索**: 结合语义搜索和关键词搜索
 - **多语言支持**: 支持中文和英文搜索
+- **API**：`GET /api/search`（参数 `q`、`type`、`sort`、`page`、`limit`）；静态搜索界面为 `GET /search`。设计细节见 [doc/BERT_FULLTEXT_SEARCH_TECHNICAL_PLAN.md](doc/BERT_FULLTEXT_SEARCH_TECHNICAL_PLAN.md)
 
 ### BERT 模型安装
 
@@ -196,7 +201,7 @@ BlogN集成了基于BERT的智能搜索系统：
 
 ## 📊 缓存系统
 
-BlogN实现了完整的缓存系统：
+基于 **Redis** 的可选业务缓存（`CACHE_ENABLE_CACHE` 等），详见 [doc/README_CACHE.md](doc/README_CACHE.md)。
 
 - **自动缓存**: 使用装饰器自动缓存API响应
 - **智能失效**: 基于数据变更的缓存失效

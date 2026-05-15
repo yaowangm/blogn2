@@ -2,7 +2,7 @@
 
 本项目实现了基于FastAPI-Cache2和Redis的缓存机制，提供高性能的数据缓存功能。经过重构优化，代码质量、可读性和可维护性得到显著提升。
 
-> **与认证限流的区别**：本文所述 Redis（`CACHE_*`）仅用于**业务数据缓存**。登录、注册、忘记密码等接口的限流与锁定状态在 PostgreSQL 表 `user_auth_security_state` 中维护，见 `doc/AUTH_SECURITY_USER_STATE_DB_DESIGN.md` 与 `doc/LOGIN_BRUTE_FORCE_PROTECTION_DESIGN.md`。
+> **与认证限流的区别**：本文所述 Redis（`CACHE_*`）仅用于**业务数据缓存**。登录、注册、忘记密码等接口的限流与锁定状态在 PostgreSQL 表 `user_auth_security_state` 中维护，见 `doc/AUTH_SECURITY_USER_STATE_DB_DESIGN.md` 与 `doc/LOGIN_BRUTE_FORCE_PROTECTION_DESIGN.md`。分享预览、邮件/RSS 等绝对 URL 依赖 `BASE_URL`，见 `doc/SHARE_PREVIEW.md`。
 
 ## 🚀 功能特性
 

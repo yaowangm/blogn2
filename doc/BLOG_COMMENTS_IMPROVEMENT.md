@@ -113,20 +113,26 @@ setupEventListeners() {
 
 ### 3. URL生成和验证
 
+与当前实现 `src/static/js/components/recent-comments-card.js` 一致：校验 `projectitemid` 与评论 `id` 后返回 **`/article/{projectitemid}#post{commentId}`**，由文章页 `article-comments-card` 根据 hash 滚动到对应楼层。
+
 ```javascript
 getNavigationUrl(comment) {
     if (!comment.projectitemid || comment.projectitemid === undefined || comment.projectitemid === null) {
         return null;
     }
-    
-    const projectitemid = parseInt(comment.projectitemid);
-    if (isNaN(projectitemid) || projectitemid <= 0) {
+    if (!comment.id || comment.id === undefined || comment.id === null) {
         return null;
     }
-    
-    return `/projectitem/${projectitemid}`;
+    const projectitemid = parseInt(comment.projectitemid);
+    const commentId = parseInt(comment.id);
+    if (isNaN(projectitemid) || projectitemid <= 0 || isNaN(commentId) || commentId <= 0) {
+        return null;
+    }
+    return `/article/${projectitemid}#post${commentId}`;
 }
 ```
+
+全站搜索页对评论结果使用同一锚点约定（见 `src/static/js/pages/search.js` 与 `doc/BERT_FULLTEXT_SEARCH_TECHNICAL_PLAN.md` §6.1 响应说明）。
 
 ## 测试和验证
 
