@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>用户列表 - BlogN</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/components.css">
@@ -12,7 +13,7 @@
             padding: var(--spacing-8) 0;
             min-height: calc(100vh - 200px);
         }
-        
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -356,7 +357,7 @@
 </head>
 <body>
     <header-component></header-component>
-    
+
     <main class="main-content">
         <div class="container">
             <div class="page-header">
@@ -462,7 +463,7 @@
     <script src="/static/js/components/header-component.js"></script>
     <script src="/static/js/components/footer-component.js"></script>
     <script src="/static/js/components/icons.js"></script>
-    
+
     <!-- 用户管理工具 -->
     <script src="/static/js/utils/user-manager.js"></script>
     <script src="/static/js/utils/confirm-dialog.js"></script>
@@ -499,7 +500,7 @@
                 try {
                     const token = localStorage.getItem('access_token');
                     const userInfo = localStorage.getItem('user_info');
-                    
+
                     if (!token || !userInfo) {
                         this.redirectToHome('请先登录');
                         return;
@@ -532,16 +533,16 @@
             async loadUsers(page = 1) {
                 try {
                     this.showLoading();
-                    
+
                     const params = new URLSearchParams({
                         page: page.toString(),
                         page_size: this.pageSize.toString()
                     });
-                    
+
                     if (this.searchQuery.trim()) {
                         params.append('search', this.searchQuery.trim());
                     }
-                    
+
                     const response = await fetch(`/api/users/list?${params.toString()}`, {
                         headers: {
                             'Authorization': `Bearer ${localStorage.getItem('access_token')}`
@@ -643,8 +644,8 @@
                         <td>${this.formatDate(user.regtime)}</td>
                         <td class="user-point">${user.point}</td>
                         <td>
-                            ${user.projectid ? 
-                                `<a href="/blog/${user.projectid}" class="user-blog-link" target="_blank">${this.escapeHtml(user.project_name || '博客链接')}</a>` : 
+                            ${user.projectid ?
+                                `<a href="/blog/${user.projectid}" class="user-blog-link" target="_blank">${this.escapeHtml(user.project_name || '博客链接')}</a>` :
                                 '<span style="color: var(--gray-400);">-</span>'
                             }
                         </td>
@@ -656,7 +657,7 @@
                 });
 
                 this.setElementVisibility('usersTable', 'table');
-                
+
                 // 绑定操作按钮事件
                 this.bindActionButtons();
             }
@@ -779,7 +780,7 @@
                 const searchInput = document.getElementById('searchInput');
                 const searchButton = document.getElementById('searchButton');
                 const clearButton = document.getElementById('clearButton');
-                
+
                 if (searchInput) {
                     searchButton.addEventListener('click', () => this.performSearch());
                     searchInput.addEventListener('keypress', (e) => {
@@ -789,7 +790,7 @@
                     });
                     searchInput.addEventListener('input', () => this.toggleClearButton());
                 }
-                
+
                 if (clearButton) {
                     clearButton.addEventListener('click', () => this.clearSearch());
                 }
@@ -805,7 +806,7 @@
                         const userId = e.target.getAttribute('data-user-id');
                         const userName = e.target.getAttribute('data-user-name');
                         const action = e.target.getAttribute('data-action');
-                        
+
                         if (action === 'freeze') {
                             this.freezeUser(userId, userName);
                         } else if (action === 'restore') {
@@ -848,7 +849,7 @@
             toggleClearButton() {
                 const searchInput = document.getElementById('searchInput');
                 const clearButton = document.getElementById('clearButton');
-                
+
                 if (searchInput && clearButton) {
                     this.setElementVisibility('clearButton', searchInput.value.trim() ? 'flex' : 'none');
                 }
@@ -934,7 +935,7 @@
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `message message-${type}`;
                 messageDiv.textContent = message;
-                
+
                 // 添加样式
                 messageDiv.style.cssText = `
                     position: fixed;

@@ -11,7 +11,7 @@ class SearchPage {
         this.currentType = 'all';
         this.currentSort = 'relevance';
         this.isLoading = false;
-        
+
         this.init();
     }
 
@@ -44,7 +44,7 @@ class SearchPage {
         // 过滤器变化
         const searchType = document.getElementById('searchType');
         const sortBy = document.getElementById('sortBy');
-        
+
         if (searchType) {
             searchType.addEventListener('change', (e) => {
                 this.currentType = e.target.value;
@@ -210,19 +210,7 @@ class SearchPage {
         const relevanceScore = result.relevance_score || 0;
         const similarityPercent = Math.round(relevanceScore * 100);
 
-        // 生成链接URL
-        let href = '#';
-        if (type === 'comment') {
-            const articleId = result.projectitem_id || result.article_id;
-            if (articleId) {
-                href = `/article/${articleId}`;
-            }
-        } else {
-            const articleId = result.id || result.projectitem_id;
-            if (articleId) {
-                href = `/article/${articleId}`;
-            }
-        }
+        const href = this.getResultHref(result);
 
         const div = document.createElement('div');
         div.className = 'result-item';
@@ -315,20 +303,38 @@ class SearchPage {
         this.performSearch();
     }
 
+    /**
+     * 搜索结果详情页 URL。博文评论使用 /article/{博文id}#post{评论id}，与文章页评论锚点一致。
+     */
+    getResultHref(result) {
+        const positiveInt = (v) => {
+            if (v === undefined || v === null || v === '') return NaN;
+            const n = Number(v);
+            return Number.isFinite(n) && n > 0 ? n : NaN;
+        };
+        const type = result.type || 'article';
+        if (type === 'comment') {
+            const nPid = positiveInt(result.projectitem_id ?? result.article_id);
+            const nCid = positiveInt(result.id);
+            if (Number.isFinite(nPid) && Number.isFinite(nCid)) {
+                return `/article/${nPid}#post${nCid}`;
+            }
+            if (Number.isFinite(nCid)) {
+                return `/thread/${nCid}`;
+            }
+            return '#';
+        }
+        const articleId = result.id ?? result.projectitem_id;
+        if (articleId !== undefined && articleId !== null && articleId !== '') {
+            return `/article/${articleId}`;
+        }
+        return '#';
+    }
+
     openResult(result) {
-        // 根据结果类型打开相应的页面
-        if (result.type === 'comment') {
-            // 评论结果，跳转到对应的文章页面
-            const articleId = result.projectitem_id || result.article_id;
-            if (articleId) {
-                window.open(`/article/${articleId}`, '_blank');
-            }
-        } else {
-            // 文章结果，直接跳转到文章页面
-            const articleId = result.id || result.projectitem_id;
-            if (articleId) {
-                window.open(`/article/${articleId}`, '_blank');
-            }
+        const href = this.getResultHref(result);
+        if (href !== '#') {
+            window.open(href, '_blank');
         }
     }
 
@@ -336,7 +342,7 @@ class SearchPage {
         this.isLoading = true;
         const loadingState = document.getElementById('loadingState');
         const searchButton = document.getElementById('searchButton');
-        
+
         if (loadingState) loadingState.style.display = 'block';
         if (searchButton) {
             searchButton.disabled = true;
@@ -348,7 +354,7 @@ class SearchPage {
         this.isLoading = false;
         const loadingState = document.getElementById('loadingState');
         const searchButton = document.getElementById('searchButton');
-        
+
         if (loadingState) loadingState.style.display = 'none';
         if (searchButton) {
             searchButton.disabled = false;
@@ -365,7 +371,7 @@ class SearchPage {
     showNoResults() {
         const noResultsState = document.getElementById('noResultsState');
         const searchResults = document.getElementById('searchResults');
-        
+
         if (noResultsState) noResultsState.style.display = 'block';
         if (searchResults) searchResults.style.display = 'none';
     }
@@ -377,13 +383,13 @@ class SearchPage {
             errorDiv = document.createElement('div');
             errorDiv.id = 'errorMessage';
             errorDiv.className = 'error-message';
-            
+
             const searchForm = document.getElementById('searchForm');
             if (searchForm) {
                 searchForm.parentNode.insertBefore(errorDiv, searchForm.nextSibling);
             }
         }
-        
+
         errorDiv.textContent = message;
         errorDiv.style.display = 'block';
     }
@@ -402,7 +408,7 @@ class SearchPage {
         url.searchParams.set('type', this.currentType);
         url.searchParams.set('sort', this.currentSort);
         url.searchParams.set('page', this.currentPage);
-        
+
         window.history.pushState({}, '', url);
     }
 
@@ -420,20 +426,20 @@ class SearchPage {
 
     formatDate(dateString) {
         if (!dateString) return '未知时间';
-        
+
         const date = new Date(dateString);
         const now = new Date();
         const diff = now - date;
-        
+
         const minutes = Math.floor(diff / 60000);
         const hours = Math.floor(diff / 3600000);
         const days = Math.floor(diff / 86400000);
-        
+
         if (minutes < 1) return '刚刚';
         if (minutes < 60) return `${minutes}分钟前`;
         if (hours < 24) return `${hours}小时前`;
         if (days < 7) return `${days}天前`;
-        
+
         return date.toLocaleDateString('zh-CN');
     }
 }

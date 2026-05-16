@@ -38,27 +38,27 @@ TITLE_ONLY_MIN_SIMILARITY = 0.85
 class HierarchicalSearchService:
     """
     分层搜索服务
-    
+
     基于BERT向量实现智能语义搜索，支持文章和评论的混合搜索。
     使用优化的混合搜索策略：10%文章级 + 90%片段级相似度。
     使用动态阈值调整和智能排序提高搜索质量。
     """
-    
+
     def __init__(self, vectorization_service, session: AsyncSession):
         """
         初始化搜索服务
-        
+
         Args:
             vectorization_service: 向量化服务实例
             session: 数据库会话
         """
         self.vectorization_service = vectorization_service
         self.session = session
-        
+
         # 混合搜索权重配置（优化后：10%文章级 + 90%片段级）
         self.article_weight = 0.1  # 文章级权重
         self.segment_weight = 0.9  # 片段级权重
-        
+
         # 文章级内部权重（标题 vs 内容）
         self.title_weight = 0.3    # 标题权重
         self.content_weight = 0.7  # 内容权重
@@ -156,20 +156,20 @@ class HierarchicalSearchService:
     def calculate_dynamic_threshold(self, query: str, query_vector_json: str) -> float:
         """
         计算动态阈值
-        
+
         根据查询特征动态调整相似度阈值，提高搜索精度。
         短查询使用更高阈值，复杂查询使用较低阈值。
-        
+
         Args:
             query: 搜索查询
             query_vector_json: 查询向量JSON字符串（未使用，保留接口兼容性）
-            
+
         Returns:
             float: 动态阈值 (0.1-0.9)
         """
         # 基础阈值（默认 55%），再按查询长度/复杂度微调
         base_threshold = DEFAULT_THRESHOLD
-        
+
         # 根据查询长度调整阈值
         query_length = len(query.strip())
         if query_length <= 2:  # 短查询，提高阈值
@@ -178,29 +178,29 @@ class HierarchicalSearchService:
             length_factor = 0.05
         else:  # 长查询，降低阈值
             length_factor = 0.0
-        
+
         # 根据查询复杂度调整阈值
         word_count = len(query.split())
         if word_count >= 3:  # 复杂查询
             complexity_factor = -0.05
         else:
             complexity_factor = 0.0
-        
+
         # 根据查询类型调整阈值
         has_numbers = any(char.isdigit() for char in query)
         has_special = any(char in '!@#$%^&*()' for char in query)
-        
+
         if has_numbers or has_special:  # 精确查询，提高阈值
             precision_factor = 0.05
         else:
             precision_factor = 0.0
-        
+
         # 计算最终阈值
         dynamic_threshold = base_threshold + length_factor + complexity_factor + precision_factor
-        
+
         # 确保阈值在合理范围内
         return max(0.1, min(0.9, dynamic_threshold))
-    
+
     def _classify_query(self, query: str) -> str:
         """
         粗略判断查询类型：
@@ -240,34 +240,34 @@ class HierarchicalSearchService:
     ) -> Dict[str, Any]:
         """
         混合搜索文章（优化版：10%文章级 + 90%片段级）
-        
+
         结合标题、内容和最佳片段的相似度，使用优化的权重分配。
-        
+
         Args:
             query_vector_json: 查询向量JSON字符串
             sort_by: 排序方式
             page: 页码
             limit: 每页数量
             query: 原始查询字符串
-            
+
         Returns:
             Dict[str, Any]: 搜索结果
         """
         offset = (page - 1) * limit
-        
+
         # 计算动态阈值
         dynamic_threshold = self.calculate_dynamic_threshold(query, query_vector_json)
         adjusted_threshold = dynamic_threshold
-        
+
         # 过滤掉过短的段落
         keyword_length = len(query.strip()) if query else 0
         min_segment_length = max(3, keyword_length)
-        
+
         # 有正文：按动态阈值；无正文：仅当标题与查询相似度 >= TITLE_ONLY_MIN_SIMILARITY 时保留（标题即“邱华栋”可搜到，“上头像”等泛匹配排除）
         sql = f"""
             WITH all_segments AS (
                 -- 标题作为特殊片段（权重更高）
-                SELECT 
+                SELECT
                     av.projectitem_id,
                     0 as segment_index,
                     av.title_text as segment_text,
@@ -282,11 +282,11 @@ class HierarchicalSearchService:
                     LEFT JOIN projectitem pi2 ON av2.projectitem_id = pi2.id
                     WHERE pi2.status = 1
                 )
-                
+
                 UNION ALL
-                
+
                 -- 内容片段
-                SELECT 
+                SELECT
                     av.projectitem_id,
                     csv.segment_index,
                     csv.segment_text,
@@ -315,9 +315,9 @@ class HierarchicalSearchService:
             ),
             article_scores AS (
                 -- 文章级相似度（仅作为参考，权重很低）
-                SELECT 
+                SELECT
                     av.projectitem_id,
-                    (1 - (av.title_vector <=> '{query_vector_json}'::vector)) * 0.3 + 
+                    (1 - (av.title_vector <=> '{query_vector_json}'::vector)) * 0.3 +
                     (1 - (av.content_vector <=> '{query_vector_json}'::vector)) * 0.7 as article_similarity
                 FROM article_vectors av
                 LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
@@ -326,7 +326,7 @@ class HierarchicalSearchService:
                 AND av.content_vector IS NOT NULL
             ),
             ranked AS (
-                SELECT 
+                SELECT
                     bs.projectitem_id as id,
                     pi.name as title,
                     pi.comment as content,
@@ -346,13 +346,13 @@ class HierarchicalSearchService:
             ORDER BY relevance_score DESC
             LIMIT {{batch_limit}} OFFSET {{batch_offset}}
         """
-        
+
         # 过量拉取再过滤，保证每页返回固定条数：每批取 batch_size 条，过滤后累积；拉取到无更多数据为止，用实际有效条数作 total
         # batch_size 上限用于避免外部传入较大 limit 时 DB 批量拉取过大
         batch_size = max(min(limit * 5, 250), 50)
         all_valid: List[Dict[str, Any]] = []
         batch_offset = 0
-        
+
         while True:
             batch_sql = sql.replace("{batch_limit}", str(batch_size)).replace("{batch_offset}", str(batch_offset))
             result = await self.session.exec(text(batch_sql))
@@ -370,11 +370,11 @@ class HierarchicalSearchService:
             if len(batch_items) < batch_size:
                 break
             batch_offset += batch_size
-        
+
         items_for_page = all_valid[(page - 1) * limit : page * limit]
         # 若 max_items 生效，则 total 代表“候选池内的有效条目数”，并不一定是全量真实匹配数
         total = len(all_valid)
-        
+
         self._clamp_items_relevance(items_for_page, dynamic_threshold)
         return {
             "items": items_for_page,
@@ -383,26 +383,26 @@ class HierarchicalSearchService:
             "dynamic_threshold": self._safe_float(dynamic_threshold),
             "search_strategy": "hybrid_optimized"
         }
-    
-    async def search(self, query: str, search_type: str = "all", 
+
+    async def search(self, query: str, search_type: str = "all",
                     sort_by: str = "relevance", page: int = 1, limit: int = 10) -> Dict[str, Any]:
         """
         执行搜索
-        
+
         根据搜索类型执行相应的搜索策略，返回格式化的搜索结果。
-        
+
         Args:
             query: 搜索查询
             search_type: 搜索类型 (all/articles/comments)
             sort_by: 排序方式 (relevance/date/popularity)
             page: 页码
             limit: 每页结果数
-            
+
         Returns:
             Dict[str, Any]: 搜索结果，包含items、total、has_more等信息
         """
         start_time = time.time()
-        
+
         try:
             # 1. 将查询文本向量化（如果向量无效，语义通道会自动降级为仅关键词）
             query_vector = await self.vectorization_service.vectorize_text(query)
@@ -601,7 +601,7 @@ class HierarchicalSearchService:
                     "dynamic_threshold": DEFAULT_THRESHOLD,
                     "search_strategy": "hybrid_lexical_semantic_v2"
                 }
-            
+
             # 3. 计算搜索时间
             search_time = self._safe_float(round(time.time() - start_time, 3))
             return {
@@ -611,10 +611,10 @@ class HierarchicalSearchService:
                 "search_time": search_time,
                 "dynamic_threshold": self._safe_float(results.get("dynamic_threshold", DEFAULT_THRESHOLD))
             }
-            
+
         except Exception as e:
             logger.error(f"搜索服务错误: {e}")
-            
+
             # 返回空结果而不是抛出异常
             return {
                 "items": [],
@@ -623,24 +623,24 @@ class HierarchicalSearchService:
                 "search_time": self._safe_float(round(time.time() - start_time, 3)),
                 "error": str(e)
             }
-    
+
     async def _search_articles(self, query_vector_json: str, sort_by: str, page: int, limit: int, query: str = "") -> Dict[str, Any]:
         """搜索文章"""
         offset = (page - 1) * limit
-        
+
         # 计算动态阈值
         dynamic_threshold = self.calculate_dynamic_threshold(query, query_vector_json)
-        
+
         # 使用纯语义搜索，动态阈值范围为10%-90%
         # 直接使用动态阈值，不再进一步调整
         adjusted_threshold = dynamic_threshold
-        
+
         # 优化后的SQL：直接使用内容段相似度，避免UNION ALL和复杂GROUP BY
         # 使用DISTINCT ON去重，确保每篇文章只返回最高相似度的记录
         # 过滤掉过短的段落：长度小于3个字符或小于关键词长度的段落
         keyword_length = len(query.strip()) if query else 0
         min_segment_length = max(3, keyword_length)
-        
+
         sql = f"""
             SELECT DISTINCT ON (av.projectitem_id)
                 av.projectitem_id as id,
@@ -660,10 +660,10 @@ class HierarchicalSearchService:
             ORDER BY av.projectitem_id, (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) DESC
             LIMIT {limit} OFFSET {offset}
             """
-        
+
         result = await self.session.exec(text(sql))
         items = result.fetchall()
-        
+
         # 获取总数 - 简化查询，使用相同的过滤条件
         count_sql = f"""
         SELECT COUNT(DISTINCT av.projectitem_id)
@@ -677,7 +677,7 @@ class HierarchicalSearchService:
         """
         count_result = await self.session.exec(text(count_sql))
         total = count_result.fetchone()[0]
-        
+
         formatted = [self._format_article_result(item) for item in items]
         self._clamp_items_relevance(formatted, dynamic_threshold)
         return {
@@ -686,21 +686,22 @@ class HierarchicalSearchService:
             "has_more": (offset + len(items)) < total,
             "dynamic_threshold": self._safe_float(dynamic_threshold)
         }
-    
-    
+
+
     async def _search_comments(self, query_vector_json: str, sort_by: str, page: int, limit: int, query: str = "") -> Dict[str, Any]:
         """搜索评论"""
         offset = (page - 1) * limit
-        
+
         # 使用向量搜索
         sql = f"""
-            SELECT 
+            SELECT
                 p.id,
                 p.subject as title,
                 p.content,
                 u.name as author,
                 p.posttime,
-                (1 - (cv.content_vector <=> '{query_vector_json}'::vector)) as relevance_score
+                (1 - (cv.content_vector <=> '{query_vector_json}'::vector)) as relevance_score,
+                p.projectitemid as projectitem_id
             FROM comment_vectors cv
             LEFT JOIN post p ON cv.post_id = p.id
             LEFT JOIN users u ON p.userid = u.id
@@ -708,10 +709,10 @@ class HierarchicalSearchService:
             ORDER BY relevance_score DESC
             LIMIT {limit} OFFSET {offset}
             """
-        
+
         result = await self.session.exec(text(sql))
         items = result.fetchall()
-        
+
         # 获取总数
         count_sql = """
         SELECT COUNT(*)
@@ -721,13 +722,13 @@ class HierarchicalSearchService:
         """
         count_result = await self.session.exec(text(count_sql))
         total = count_result.fetchone()[0]
-        
+
         return {
             "items": [self._format_comment_result(item) for item in items],
             "total": total,
             "has_more": (offset + len(items)) < total
         }
-    
+
     async def _keyword_search_articles(self, query: str, page: int, limit: int) -> Dict[str, Any]:
         """关键词搜索：标题/内容/作者名 ILIKE 匹配（向量无效时回退，或第一页与向量结果合并）。"""
         if not query or not query.strip():
@@ -757,7 +758,7 @@ class HierarchicalSearchService:
             "has_more": (offset + len(items)) < total,
             "dynamic_threshold": DEFAULT_THRESHOLD
         }
-    
+
     async def _keyword_search_comments(self, query: str, page: int, limit: int) -> Dict[str, Any]:
         """关键词搜索：标题/内容/作者名 ILIKE 匹配（向量无效时回退）。"""
         if not query or not query.strip():
@@ -765,7 +766,8 @@ class HierarchicalSearchService:
         offset = (page - 1) * limit
         pattern = f"%{self._escape_like_pattern(query.strip())}%"
         sql = text("""
-            SELECT p.id, p.subject as title, p.content, u.name as author, p.posttime, 1.0 as relevance_score
+            SELECT p.id, p.subject as title, p.content, u.name as author, p.posttime, 1.0 as relevance_score,
+                   p.projectitemid as projectitem_id
             FROM post p
             LEFT JOIN users u ON p.userid = u.id
             WHERE p.status = 1 AND (p.subject ILIKE :pat ESCAPE '\\' OR p.content ILIKE :pat ESCAPE '\\' OR u.name ILIKE :pat ESCAPE '\\')
@@ -786,26 +788,26 @@ class HierarchicalSearchService:
             "total": total,
             "has_more": (offset + len(items)) < total
         }
-    
+
     def _vector_to_json(self, vector: np.ndarray) -> str:
         """
         将向量转换为JSON字符串
-        
+
         Args:
             vector: numpy向量数组
-            
+
         Returns:
             str: JSON格式的向量字符串
         """
         return json.dumps(vector.tolist())
-    
+
     def _json_to_vector(self, json_str: str) -> np.ndarray:
         """
         将JSON字符串转换为向量
-        
+
         Args:
             json_str: JSON格式的向量字符串
-            
+
         Returns:
             np.ndarray: 向量数组，失败时返回零向量
         """
@@ -813,14 +815,14 @@ class HierarchicalSearchService:
             return np.array(json.loads(json_str))
         except Exception:
             return np.zeros(384)
-    
+
     def _format_article_result(self, item: tuple) -> Dict[str, Any]:
         """
         格式化文章搜索结果
-        
+
         Args:
             item: 数据库查询结果元组
-            
+
         Returns:
             Dict[str, Any]: 格式化的文章搜索结果
         """
@@ -833,14 +835,14 @@ class HierarchicalSearchService:
             "relevance_score": self._row_relevance(item),
             "type": "article"
         }
-    
+
     def _format_hybrid_article_result(self, item: tuple) -> Dict[str, Any]:
         """
         格式化混合搜索文章结果
-        
+
         Args:
             item: 数据库查询结果元组 (id, title, content, author, createtime, relevance_score, best_match_text, match_type)
-            
+
         Returns:
             Dict[str, Any]: 格式化的混合搜索文章结果
         """
@@ -856,17 +858,20 @@ class HierarchicalSearchService:
             "type": "article",
             "search_strategy": "hybrid_optimized"
         }
-    
+
     def _format_comment_result(self, item: tuple) -> Dict[str, Any]:
         """
         格式化评论搜索结果
-        
+
         Args:
-            item: 数据库查询结果元组
-            
+            item: 数据库查询结果元组，前 6 列为
+                id, title, content, author, createtime/posttime, relevance_score；
+                可选第 7 列为所属博文 projectitem_id（留言本为 0）。
+
         Returns:
             Dict[str, Any]: 格式化的评论搜索结果
         """
+        projectitem_id = item[6] if len(item) > 6 else None
         return {
             "id": item[0],
             "title": item[1],
@@ -874,5 +879,7 @@ class HierarchicalSearchService:
             "author": item[3],
             "created_at": item[4].isoformat() if item[4] else None,
             "relevance_score": self._row_relevance(item),
-            "type": "comment"
+            "type": "comment",
+            "projectitem_id": projectitem_id,
+            "article_id": projectitem_id,
         }

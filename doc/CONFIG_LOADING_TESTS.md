@@ -4,6 +4,12 @@
 
 本文档说明新的配置加载逻辑的测试覆盖情况。新的配置加载规则支持通过 `BLOGN_CONFIG_FILE` 环境变量或 `.env` 文件加载配置，并在 Docker 容器中有特殊处理。
 
+## 环境变量模板与 `.env`
+
+- 对外模板为项目根目录 **`.env.example`**（Docker 与本地共用，见 `docker/README-DOCKER.md`）；私有配置写入 **`.env`**（gitignore，不提交）。
+- 本地 **`.env` 的活动键名**须与 **`.env.example` 的活动键名**完全一致（值可不同）。
+- **`BLOGN_ALLOW_DANGEROUS_TEST_SQL_CLEANUP`** 仅出现在 `.env.example` 的注释中，用于说明 `tests/conftest.py` 在显式设为 `1` 时的危险 SQL 清理行为；**不要**将其作为 `.env` 的活动配置项。
+
 ## 测试文件结构
 
 ```

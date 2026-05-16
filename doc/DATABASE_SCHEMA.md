@@ -133,7 +133,32 @@
 | status | INTEGER | NOT NULL | 1 | 状态：1为未使用，2为已使用 |
 | createtime | DATETIME | NOT NULL | NOW() | 创建时间 |
 
-### 10. 订阅表 (subsc)
+### 10. 密码重置令牌表 (password_reset_tokens)
+
+| 字段名 | 数据类型 | 是否为空 | 默认值 | 备注 |
+|--------|----------|----------|--------|------|
+| id | SERIAL | NOT NULL | - | 主键 |
+| user_id | INTEGER/BIGINT | NOT NULL | - | 用户 ID（外键：users.id，ON DELETE CASCADE） |
+| token | VARCHAR(64) | NOT NULL | - | 一次性令牌，唯一索引 |
+| expires_at | TIMESTAMP | NOT NULL | - | 过期时间 |
+| created_at | TIMESTAMP | NULL | - | 创建时间 |
+
+### 11. 用户认证安全状态表 (user_auth_security_state)
+
+用于登录防爆破、密码重置与注册等接口的**按用户、按操作类型**限流状态（PostgreSQL）。详见 `doc/AUTH_SECURITY_USER_STATE_DB_DESIGN.md`。
+
+| 字段名 | 数据类型 | 是否为空 | 默认值 | 备注 |
+|--------|----------|----------|--------|------|
+| id | BIGSERIAL | NOT NULL | - | 主键 |
+| user_id | BIGINT | NOT NULL | - | 用户 ID（外键：users.id，ON DELETE CASCADE） |
+| opt_type | VARCHAR(32) | NOT NULL | - | 操作类型：login / forgot_password / validate_reset_token / reset_password / register 等 |
+| fail_count | INTEGER | NOT NULL | 0 | 当前窗口内失败或广义计数（≥0） |
+| window_start | TIMESTAMPTZ | NOT NULL | now() | 当前计数窗口起点 |
+| next_allowed_at | TIMESTAMPTZ | NOT NULL | now() | 该操作类型下最早允许再请求的 UTC 时间 |
+
+唯一约束：`UNIQUE (user_id, opt_type)`。
+
+### 12. 订阅表 (subsc)
 
 | 字段名 | 数据类型 | 是否为空 | 默认值 | 备注 |
 |--------|----------|----------|--------|------|
@@ -141,7 +166,7 @@
 | projectid | INTEGER | NULL | NULL | 项目ID（外键：project.id） |
 | piid | INTEGER | NULL | NULL | 项目条目ID（外键：projectitem.id） |
 
-### 11. 积分记录表 (point_logs)
+### 13. 积分记录表 (point_logs)
 
 | 字段名 | 数据类型 | 是否为空 | 默认值 | 备注 |
 |--------|----------|----------|--------|------|
@@ -152,7 +177,7 @@
 | log_date | DATETIME | NOT NULL | - | 积分记录日期（只记录日期，不记录时间） |
 | created_at | DATETIME | NOT NULL | NOW() | 记录创建时间 |
 
-### 12. 关系表 (relation)
+### 14. 关系表 (relation)
 
 | 字段名 | 数据类型 | 是否为空 | 默认值 | 备注 |
 |--------|----------|----------|--------|------|
@@ -164,7 +189,7 @@
 
 ## 向量搜索相关表
 
-### 13. 文章向量表 (article_vectors)
+### 15. 文章向量表 (article_vectors)
 
 | 字段名 | 数据类型 | 是否为空 | 默认值 | 备注 |
 |--------|----------|----------|--------|------|
@@ -187,7 +212,7 @@
 | created_at | TIMESTAMP | NULL | CURRENT_TIMESTAMP | 创建时间 |
 | updated_at | TIMESTAMP | NULL | CURRENT_TIMESTAMP | 更新时间 |
 
-### 14. 内容片段向量表 (content_segment_vectors)
+### 16. 内容片段向量表 (content_segment_vectors)
 
 | 字段名 | 数据类型 | 是否为空 | 默认值 | 备注 |
 |--------|----------|----------|--------|------|
@@ -215,7 +240,7 @@
 | contains_title | BOOLEAN | NULL | FALSE | 是否包含标题 |
 | created_at | TIMESTAMP | NULL | CURRENT_TIMESTAMP | 创建时间 |
 
-### 15. 评论向量表 (comment_vectors)
+### 17. 评论向量表 (comment_vectors)
 
 | 字段名 | 数据类型 | 是否为空 | 默认值 | 备注 |
 |--------|----------|----------|--------|------|

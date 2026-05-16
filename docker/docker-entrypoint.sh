@@ -24,7 +24,7 @@ if config_file and Path(config_file).exists():
     for key, value in os.environ.items():
         # 检查是否匹配前缀或完全匹配特定变量
         if any(key.startswith(prefix) for prefix in [
-            "DATABASE_", "CACHE_", "MODEL_", "APP_", "SECRET_", 
+            "DATABASE_", "CACHE_", "MODEL_", "APP_", "SECRET_",
             "DEBUG", "BASE_URL", "UPLOAD_", "AVATAR_", "SMTP_", "MAIL_", "RESET_LINK"
         ]) or key in ["LOG_LEVEL"]:
             # 转义单引号
@@ -37,6 +37,22 @@ PYTHON_EOF
     else
         echo "⚠️  配置文件已读取，但未包含 DATABASE_URL，请检查文件格式与键名"
     fi
+    # 从配置文件原文导出站点根 URL（不依赖 load_dotenv 的 override=False：编排里旧的
+    # BASE_URL=http 会阻止文件里的 https 进入 os.environ，导致第一段 eval 仍导出 http 或不导出）
+    eval "$(python3 << 'PY_EXPORT_BASE_URL'
+import os
+from pathlib import Path
+from dotenv import dotenv_values
+
+path = os.getenv("BLOGN_CONFIG_FILE")
+if path and Path(path).exists():
+    vals = dotenv_values(path)
+    v = (vals.get("BASE_URL") or "").strip()
+    if v:
+        v = v.replace("'", "'\"'\"'")
+        print(f"export BASE_URL='{v}'")
+PY_EXPORT_BASE_URL
+)"
 else
     if [ -n "$BLOGN_CONFIG_FILE" ]; then
         echo "⚠️  警告: 配置文件不存在: $BLOGN_CONFIG_FILE"
@@ -186,7 +202,7 @@ url = sys.stdin.read().strip()
 try:
     # 解析 URL
     parsed = urlparse(url)
-    
+
     # 如果有用户名
     if parsed.username:
         # 如果有密码，隐藏密码；如果没有密码，只显示用户名
@@ -202,7 +218,7 @@ try:
                 new_netloc = f'{parsed.username}@{parsed.hostname}:{parsed.port}'
             else:
                 new_netloc = f'{parsed.username}@{parsed.hostname}'
-        
+
         # 重新构建 URL
         new_parsed = parsed._replace(netloc=new_netloc)
         print(urlunparse(new_parsed))
@@ -256,7 +272,7 @@ if [ "$1" = "uvicorn" ]; then
     LOG_LEVEL=${LOG_LEVEL:-warning}
     # 将日志级别转换为小写
     LOG_LEVEL=$(echo "$LOG_LEVEL" | tr '[:upper:]' '[:lower:]')
-    
+
     # 检查是否已经指定了 --log-level 参数
     HAS_LOG_LEVEL=false
     for arg in "${@:2}"; do
@@ -265,7 +281,7 @@ if [ "$1" = "uvicorn" ]; then
             break
         fi
     done
-    
+
     # 以 appuser 身份运行 uvicorn，避免容器内进程以 root 运行
     if [ "$HAS_LOG_LEVEL" = false ]; then
         exec gosu appuser env MODEL_MODEL_PATH="$MODEL_MODEL_PATH" MODEL_PREFER_LOCAL="${MODEL_PREFER_LOCAL:-true}" uvicorn "${@:2}" --log-level "$LOG_LEVEL"

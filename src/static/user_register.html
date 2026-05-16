@@ -4,22 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>新用户注册 - BlogN</title>
-    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/components.css">
-    
+
     <style>
         .main-content {
             padding: var(--spacing-8) 0;
             min-height: calc(100vh - 200px);
         }
-        
+
         .container {
             max-width: 600px;
             margin: 0 auto;
             padding: 0 var(--spacing-4);
         }
-        
+
         .register-form-container {
             background: var(--card-bg);
             border-radius: var(--card-radius);
@@ -27,43 +28,43 @@
             padding: var(--card-padding);
             border: 1px solid var(--card-border);
         }
-        
+
         .form-header {
             text-align: center;
             margin-bottom: var(--spacing-6);
         }
-        
+
         .form-title {
             font-size: var(--font-size-2xl);
             font-weight: var(--card-title-weight);
             color: var(--card-title-color);
             margin: 0 0 var(--spacing-2) 0;
         }
-        
+
         .form-subtitle {
             color: var(--gray-600);
             font-size: var(--font-size-base);
             margin: 0;
         }
-        
+
         .register-form {
             display: flex;
             flex-direction: column;
             gap: var(--spacing-4);
         }
-        
+
         .form-group {
             display: flex;
             flex-direction: column;
             gap: var(--spacing-2);
         }
-        
+
         .form-label {
             font-weight: 500;
             color: var(--gray-700);
             font-size: var(--font-size-sm);
         }
-        
+
         .form-input {
             padding: var(--spacing-3);
             border: 1px solid var(--gray-300);
@@ -72,28 +73,28 @@
             transition: var(--transition-fast);
             background: var(--white);
         }
-        
+
         .form-input:focus {
             outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 0 3px var(--primary-color-alpha);
         }
-        
+
         .form-input.error {
             border-color: var(--error-color);
         }
-        
+
         .form-input.success {
             border-color: var(--success-color);
         }
-        
+
         .form-error {
             color: var(--error-color);
             font-size: var(--font-size-sm);
             margin-top: var(--spacing-1);
             display: none;
         }
-        
+
         .form-error.show {
             display: block !important;
         }
@@ -104,7 +105,7 @@
             margin: 0 0 var(--spacing-1) 0;
             line-height: 1.4;
         }
-        
+
         .general-error {
             margin-bottom: var(--spacing-4);
             text-align: center;
@@ -116,14 +117,14 @@
             border: 2px solid var(--error-color) !important;
             box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2) !important;
         }
-        
+
         /* 强制显示通用错误信息 */
         .general-error.show {
             display: block !important;
             visibility: visible !important;
             opacity: 1 !important;
         }
-        
+
         .submit-button {
             background: var(--primary-color);
             color: var(--white);
@@ -136,62 +137,62 @@
             transition: var(--transition-fast);
             margin-top: var(--spacing-2);
         }
-        
+
         .submit-button:hover:not(:disabled) {
             background: var(--primary-hover);
         }
-        
+
         .submit-button:disabled {
             background: var(--gray-400);
             cursor: not-allowed;
         }
-        
+
         .login-link {
             text-align: center;
             margin-top: var(--spacing-6);
             padding-top: var(--spacing-4);
             border-top: 1px solid var(--gray-200);
         }
-        
+
         .login-link a {
             color: var(--primary-color);
             text-decoration: none;
             font-weight: 500;
         }
-        
+
         .login-link a:hover {
             text-decoration: underline;
         }
-        
+
         /* 成功页面样式 */
         .success-page {
             text-align: center;
             padding: var(--spacing-8) 0;
         }
-        
+
         .success-content {
             max-width: 400px;
             margin: 0 auto;
         }
-        
+
         .success-icon {
             font-size: 4rem;
             margin-bottom: var(--spacing-4);
         }
-        
+
         .success-title {
             font-size: var(--font-size-2xl);
             font-weight: var(--card-title-weight);
             color: var(--card-title-color);
             margin: 0 0 var(--spacing-3) 0;
         }
-        
+
         .success-message {
             color: var(--gray-600);
             font-size: var(--font-size-base);
             margin: 0 0 var(--spacing-4) 0;
         }
-        
+
         .success-username {
             color: var(--gray-700);
             font-size: var(--font-size-base);
@@ -199,35 +200,35 @@
             text-align: center;
             font-weight: 500;
         }
-        
+
         .success-username span {
             color: var(--primary-color);
             font-weight: 600;
         }
-        
+
         .success-tip {
             color: var(--gray-500);
             font-size: var(--font-size-sm);
             margin: 0 0 var(--spacing-6) 0;
             text-align: center;
         }
-        
+
         .success-actions {
             display: flex;
             flex-direction: column;
             gap: var(--spacing-3);
         }
-        
+
         .success-actions .btn {
             width: 100%;
             justify-content: center;
         }
-        
+
         @media (min-width: 480px) {
             .success-actions {
                 flex-direction: row;
             }
-            
+
             .success-actions .btn {
                 width: auto;
                 flex: 1;
@@ -245,45 +246,45 @@
                     <h1 class="form-title">新用户注册</h1>
                     <p class="form-subtitle">请填写以下信息完成注册</p>
                 </div>
-                
+
                 <form class="register-form" id="registerForm">
                     <!-- 通用错误信息显示区域 -->
                     <div class="form-error general-error" id="generalError"></div>
-                    
+
                     <div class="form-group">
                         <label for="username" class="form-label">用户名</label>
-                        <input 
-                            type="text" 
-                            id="username" 
-                            name="username" 
-                            class="form-input" 
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            class="form-input"
                             placeholder="请输入用户名（3-50个字符）"
                             required
                         >
                         <div class="form-error" id="usernameError"></div>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="email" class="form-label">邮箱地址</label>
-                        <input 
-                            type="email" 
-                            id="email" 
-                            name="email" 
-                            class="form-input" 
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            class="form-input"
                             placeholder="请输入邮箱地址"
                             required
                         >
                         <div class="form-error" id="emailError"></div>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="password" class="form-label">密码</label>
                         <p class="form-hint">8–30 个字符，须包含大写字母、小写字母和数字，仅限可打印英文与符号（空格到 ~）。</p>
-                        <input 
-                            type="password" 
-                            id="password" 
-                            name="password" 
-                            class="form-input" 
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            class="form-input"
                             placeholder="请输入密码"
                             required
                             minlength="8"
@@ -291,30 +292,30 @@
                         >
                         <div class="form-error" id="passwordError"></div>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="regkey" class="form-label">注册码</label>
-                        <input 
-                            type="text" 
-                            id="regkey" 
-                            name="regkey" 
-                            class="form-input" 
+                        <input
+                            type="text"
+                            id="regkey"
+                            name="regkey"
+                            class="form-input"
                             placeholder="请输入25位注册码（可包含连字符）"
                             required
                             maxlength="35"
                         >
                         <div class="form-error" id="regkeyError"></div>
                     </div>
-                    
+
                     <button type="submit" class="submit-button" id="submitBtn">
                         注册
                     </button>
                 </form>
-                
+
                 <div class="login-link">
                     已有账号？<a href="#" id="loginLink">立即登录</a>
                 </div>
-                
+
                 <!-- 注册成功页面 -->
                 <div class="success-page" id="successPage" style="display: none;">
                     <div class="success-content">
@@ -335,7 +336,7 @@
     <footer-component></footer-component>
 
     <script src="/static/js/components/icons.js"></script>
-    
+
     <!-- 用户管理工具 -->
     <script src="/static/js/utils/user-manager.js"></script>
         <script src="/static/js/utils/html-utils.js"></script>
@@ -343,7 +344,7 @@
 <script src="/static/js/components/base-component.js"></script>
     <script src="/static/js/components/header-component.js"></script>
     <script src="/static/js/components/footer-component.js"></script>
-    
+
     <script>
         // 用户注册页面脚本
         class UserRegisterPage {
@@ -353,31 +354,31 @@
                 this.loginLink = document.getElementById('loginLink');
                 this.init();
             }
-            
+
             init() {
                 this.bindEvents();
                 this.setupFormValidation();
             }
-            
+
             bindEvents() {
                 this.form.addEventListener('submit', (e) => this.handleSubmit(e));
                 this.loginLink.addEventListener('click', (e) => this.handleLoginClick(e));
                 this.setupRealTimeValidation();
             }
-            
+
             setupFormValidation() {
                 const usernameInput = document.getElementById('username');
                 const emailInput = document.getElementById('email');
                 const passwordInput = document.getElementById('password');
                 const regkeyInput = document.getElementById('regkey');
-                
+
                 usernameInput.addEventListener('blur', () => this.validateUsername());
                 emailInput.addEventListener('blur', () => this.validateEmail());
                 passwordInput.addEventListener('blur', () => this.validatePassword());
                 regkeyInput.addEventListener('blur', () => this.validateRegkey());
                 regkeyInput.addEventListener('input', (e) => this.formatRegkey(e));
             }
-            
+
             setupRealTimeValidation() {
                 const inputs = this.form.querySelectorAll('input');
                 inputs.forEach(input => {
@@ -388,11 +389,11 @@
                     });
                 });
             }
-            
+
             formatRegkey(e) {
                 e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
             }
-            
+
             validateUsername() {
                 const username = document.getElementById('username').value.trim();
                 if (!username) {
@@ -414,7 +415,7 @@
                 this.showSuccess('username');
                 return true;
             }
-            
+
             validateEmail() {
                 const email = document.getElementById('email').value.trim();
                 if (!email) {
@@ -428,7 +429,7 @@
                 this.showSuccess('email');
                 return true;
             }
-            
+
             validatePassword() {
                 const password = document.getElementById('password').value;
                 const err = this._passwordRuleError(password);
@@ -442,37 +443,37 @@
             _passwordRuleError(pwd) {
                 return window.passwordRuleError(pwd);
             }
-            
+
             validateRegkey() {
                 const regkey = document.getElementById('regkey').value.trim();
                 if (!regkey) {
                     this.showError('regkey', '注册码不能为空');
                     return false;
                 }
-                
+
                 // 检查总长度（包括连字符）不能超过35
                 if (regkey.length > 35) {
                     this.showError('regkey', '注册码总长度不能超过35个字符');
                     return false;
                 }
-                
+
                 // 检查字符格式
                 if (!/^[A-Z0-9-]+$/.test(regkey)) {
                     this.showError('regkey', '注册码只能包含大写字母、数字和连字符');
                     return false;
                 }
-                
+
                 // 检查去除连字符后的长度是否为25位
                 const regkeyWithoutDashes = regkey.replace(/-/g, '');
                 if (regkeyWithoutDashes.length !== 25) {
                     this.showError('regkey', '注册码去除连字符后必须是25位字符');
                     return false;
                 }
-                
+
                 this.showSuccess('regkey');
                 return true;
             }
-            
+
             showError(fieldName, message) {
                 const errorElement = document.getElementById(fieldName + 'Error');
                 const inputElement = document.getElementById(fieldName);
@@ -483,7 +484,7 @@
                     inputElement.classList.remove('success');
                 }
             }
-            
+
             showSuccess(fieldName) {
                 const errorElement = document.getElementById(fieldName + 'Error');
                 const inputElement = document.getElementById(fieldName);
@@ -493,7 +494,7 @@
                     inputElement.classList.add('success');
                 }
             }
-            
+
             clearError(fieldName) {
                 const errorElement = document.getElementById(fieldName + 'Error');
                 const inputElement = document.getElementById(fieldName);
@@ -502,7 +503,7 @@
                     inputElement.classList.remove('error', 'success');
                 }
             }
-            
+
             updateSubmitButton() {
                 const inputs = this.form.querySelectorAll('input[required]');
                 const isValid = Array.from(inputs).every(input => {
@@ -510,22 +511,22 @@
                 });
                 this.submitBtn.disabled = !isValid;
             }
-            
+
             async handleSubmit(e) {
                 e.preventDefault();
-                
+
                 const isUsernameValid = this.validateUsername();
                 const isEmailValid = this.validateEmail();
                 const isPasswordValid = this.validatePassword();
                 const isRegkeyValid = this.validateRegkey();
-                
+
                 if (!isUsernameValid || !isEmailValid || !isPasswordValid || !isRegkeyValid) {
                     return;
                 }
-                
+
                 this.submitBtn.disabled = true;
                 this.submitBtn.textContent = '注册中...';
-                
+
                 try {
                     const formData = {
                         username: document.getElementById('username').value.trim(),
@@ -533,7 +534,7 @@
                         password: document.getElementById('password').value,
                         regkey: document.getElementById('regkey').value.trim()
                     };
-                    
+
                     const response = await fetch('/api/register/register', {
                         method: 'POST',
                         headers: {
@@ -541,15 +542,15 @@
                         },
                         body: JSON.stringify(formData)
                     });
-                    
+
                     const result = await response.json();
-                    
+
                     if (response.ok) {
                         this.showSuccessPage();
                     } else {
                         this.handleRegistrationError(result);
                     }
-                    
+
                 } catch (error) {
                     console.error('注册请求失败:', error);
                     this.showErrorMessage('网络错误，请检查网络连接后重试');
@@ -558,39 +559,39 @@
                     this.submitBtn.textContent = '注册';
                 }
             }
-            
+
             handleLoginClick(e) {
                 e.preventDefault();
                 document.dispatchEvent(new CustomEvent('showLoginModal'));
             }
-            
+
             showSuccessPage() {
                 // 隐藏表单
                 this.form.style.display = 'none';
                 document.querySelector('.login-link').style.display = 'none';
-                
+
                 // 设置注册成功的用户名
                 const username = document.getElementById('username').value;
                 const usernameSpan = document.getElementById('registeredUsername');
                 if (usernameSpan) {
                     usernameSpan.textContent = username;
                 }
-                
+
                 // 显示成功页面
                 const successPage = document.getElementById('successPage');
                 successPage.style.display = 'block';
             }
-            
 
-            
+
+
             handleRegistrationError(result) {
                 // 清除之前的错误
                 this.clearGeneralError();
                 this.clearAllFieldErrors();
-                
+
                 // 显示错误信息
                 let errorMessage = '注册失败，请重试';
-                
+
                 if (result.detail) {
                     if (Array.isArray(result.detail)) {
                         // 处理字段验证错误
@@ -612,11 +613,21 @@
                         errorMessage = '注册失败，请重试';
                     }
                 }
-                
+
                 // 显示通用错误
-                this.showGeneralError(errorMessage);
+                this.showGeneralError(this.withSecurityHint(errorMessage));
             }
-            
+
+            withSecurityHint(message) {
+                const text = String(message || '').trim();
+                if (!text) return '注册失败，请重试';
+                if (text.includes('安全规则')) return text;
+                if (text.includes('注册请求过于频繁')) {
+                    return `${text}（安全规则：注册相关接口每IP每小时最多10次）`;
+                }
+                return text;
+            }
+
             showFieldError(fieldName, message) {
                 const errorElement = document.getElementById(fieldName + 'Error');
                 const inputElement = document.getElementById(fieldName);
@@ -627,12 +638,12 @@
                     inputElement.classList.remove('success');
                 }
             }
-            
+
             showGeneralError(message) {
                 const generalError = document.getElementById('generalError');
                 if (generalError) {
                     generalError.textContent = message;
-                    
+
                     // 使用更强制的方式设置样式
                     generalError.setAttribute('style', `
                         display: block !important;
@@ -648,34 +659,34 @@
                         position: relative !important;
                         z-index: 1000 !important;
                     `);
-                    
+
                     // 同时添加CSS类
                     generalError.classList.add('show');
-                    
+
                     // 强制重绘
                     generalError.offsetHeight;
                 }
             }
-            
+
             clearGeneralError() {
                 const generalError = document.getElementById('generalError');
                 if (generalError) {
                     // 使用更强制的方式清除样式
                     generalError.setAttribute('style', 'display: none !important;');
-                    
+
                     // 同时移除CSS类
                     generalError.classList.remove('show');
                     generalError.textContent = '';
                 }
             }
-            
+
             clearAllFieldErrors() {
                 const fields = ['username', 'email', 'password', 'regkey'];
                 fields.forEach(field => {
                     this.clearError(field);
                 });
             }
-            
+
             showSuccessMessage(message) {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'success-message';
@@ -693,14 +704,14 @@
                 `;
                 messageDiv.textContent = message;
                 document.body.appendChild(messageDiv);
-                
+
                 setTimeout(() => {
                     if (messageDiv.parentNode) {
                         messageDiv.parentNode.removeChild(messageDiv);
                     }
                 }, 3000);
             }
-            
+
             showErrorMessage(message) {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'error-message';
@@ -718,7 +729,7 @@
                 `;
                 messageDiv.textContent = message;
                 document.body.appendChild(messageDiv);
-                
+
                 setTimeout(() => {
                     if (messageDiv.parentNode) {
                         messageDiv.parentNode.removeChild(messageDiv);
@@ -726,7 +737,7 @@
                 }, 5000);
             }
         }
-        
+
         document.addEventListener('DOMContentLoaded', () => {
             new UserRegisterPage();
         });

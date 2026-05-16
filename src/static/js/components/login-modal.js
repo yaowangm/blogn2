@@ -230,14 +230,14 @@ class LoginModal extends BaseComponent {
                             <div class="error-icon">${Icons.warning}</div>
                             <div class="error-text" id="globalErrorText"></div>
                         </div>
-                        
+
                         <div class="form-group">
                             <label class="form-label" for="username">用户名或邮箱</label>
-                            <input 
-                                type="text" 
-                                id="username" 
-                                name="username" 
-                                class="form-input" 
+                            <input
+                                type="text"
+                                id="username"
+                                name="username"
+                                class="form-input"
                                 placeholder="请输入用户名或邮箱"
                                 required
                             >
@@ -246,11 +246,11 @@ class LoginModal extends BaseComponent {
 
                         <div class="form-group">
                             <label class="form-label" for="password">密码</label>
-                            <input 
-                                type="password" 
-                                id="password" 
-                                name="password" 
-                                class="form-input" 
+                            <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                class="form-input"
                                 placeholder="请输入密码"
                                 required
                             >
@@ -267,7 +267,7 @@ class LoginModal extends BaseComponent {
 
                 <div class="modal-footer">
                     <p class="footer-text">
-                        还没有账号？ 
+                        还没有账号？
                         <a href="#" class="footer-link" id="registerLink">立即注册</a>
                     </p>
                 </div>
@@ -301,7 +301,7 @@ class LoginModal extends BaseComponent {
         this.returnUrl = returnUrl;
         this.setAttribute('visible', '');
         this.resetForm();
-        
+
         setTimeout(() => {
             const usernameInput = this.shadowRoot.querySelector('#username');
             usernameInput.focus();
@@ -327,14 +327,14 @@ class LoginModal extends BaseComponent {
         if (globalError) {
             globalError.style.display = 'none';
         }
-        
+
         // 清除字段错误
         const errorElements = this.shadowRoot.querySelectorAll('.error-message');
         errorElements.forEach(el => {
             el.textContent = '';
             el.classList.remove('show');
         });
-        
+
         const inputs = this.shadowRoot.querySelectorAll('.form-input');
         inputs.forEach(input => input.classList.remove('error'));
     }
@@ -342,7 +342,7 @@ class LoginModal extends BaseComponent {
     showError(field, message) {
         const input = this.shadowRoot.querySelector(`#${field}`);
         const errorElement = this.shadowRoot.querySelector(`#${field}Error`);
-        
+
         if (input && errorElement) {
             input.classList.add('error');
             errorElement.textContent = message;
@@ -353,11 +353,11 @@ class LoginModal extends BaseComponent {
     showGlobalError(message) {
         const globalError = this.shadowRoot.querySelector('#globalError');
         const globalErrorText = this.shadowRoot.querySelector('#globalErrorText');
-        
+
         if (globalError && globalErrorText) {
             globalErrorText.textContent = message;
             globalError.style.display = 'flex';
-            
+
             // 滚动到错误提示区域
             globalError.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
@@ -368,7 +368,7 @@ class LoginModal extends BaseComponent {
         const button = this.shadowRoot.querySelector('#loginButton');
         const spinner = this.shadowRoot.querySelector('#loadingSpinner');
         const buttonText = this.shadowRoot.querySelector('#buttonText');
-        
+
         if (loading) {
             button.disabled = true;
             spinner.style.display = 'inline-block';
@@ -382,26 +382,26 @@ class LoginModal extends BaseComponent {
 
     async handleLogin(e) {
         e.preventDefault();
-        
+
         if (this.isLoading) return;
-        
+
         this.clearErrors();
-        
+
         const username = this.shadowRoot.querySelector('#username').value.trim();
         const password = this.shadowRoot.querySelector('#password').value;
-        
+
         if (!username) {
             this.showError('username', '请输入用户名或邮箱');
             return;
         }
-        
+
         if (!password) {
             this.showError('password', '请输入密码');
             return;
         }
-        
+
         this.setLoading(true);
-        
+
         try {
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
@@ -413,15 +413,15 @@ class LoginModal extends BaseComponent {
                     password: password
                 })
             });
-            
+
             const data = await response.json();
-            
+
             if (response.ok) {
                 this.handleLoginSuccess(data);
             } else {
                 this.handleLoginError(data.detail || '登录失败，请检查用户名和密码');
             }
-            
+
         } catch (error) {
             console.error('Login error:', error);
             this.handleLoginError('网络错误，请稍后重试');
@@ -434,16 +434,16 @@ class LoginModal extends BaseComponent {
         localStorage.setItem('access_token', data.access_token);
         localStorage.setItem('refresh_token', data.refresh_token);
         localStorage.setItem('user_info', JSON.stringify(data.user));
-        
+
         const event = new CustomEvent('userLoginSuccess', {
             detail: data.user,
             bubbles: true
         });
         document.dispatchEvent(event);
-        
+
         this.hide();
         this.showSuccessMessage('登录成功！');
-        
+
         // 检查是否是注册后的登录，如果是则不自动跳转
         const headerComponent = document.querySelector('header-component');
         if (headerComponent && headerComponent.registrationLogin) {
@@ -455,20 +455,35 @@ class LoginModal extends BaseComponent {
     }
 
     handleLoginError(message) {
+        const safeMessage = this.buildSecurityHintedMessage(message);
+
         // 显示全局错误提示
-        this.showGlobalError(message);
-        
+        this.showGlobalError(safeMessage);
+
         // 同时显示在用户名字段上（保持向后兼容）
-        this.showError('username', message);
-        
+        this.showError('username', safeMessage);
+
         // 密码字段也显示错误状态
         const passwordInput = this.shadowRoot.querySelector('#password');
         if (passwordInput) {
             passwordInput.classList.add('error');
         }
-        
+
         // 密码输入框获得焦点
         passwordInput.focus();
+    }
+
+    buildSecurityHintedMessage(message) {
+        const text = String(message || '').trim();
+        if (!text) return '登录失败，请稍后重试';
+        if (text.includes('安全规则')) return text;
+        if (text.includes('用户名或密码错误')) {
+            return `${text}（安全规则：同一IP或账号5次失败将锁定24小时，且两次登录尝试至少间隔5秒）`;
+        }
+        if (text.includes('登录失败次数过多') || text.includes('两次登录尝试间隔')) {
+            return `${text}（安全规则：同一IP或账号5次失败将锁定24小时，且两次登录尝试至少间隔5秒）`;
+        }
+        return text;
     }
 
     handleRedirect() {
@@ -494,9 +509,9 @@ class LoginModal extends BaseComponent {
             font-size: 14px;
         `;
         successDiv.textContent = message;
-        
+
         document.body.appendChild(successDiv);
-        
+
         setTimeout(() => {
             if (successDiv.parentNode) {
                 successDiv.parentNode.removeChild(successDiv);

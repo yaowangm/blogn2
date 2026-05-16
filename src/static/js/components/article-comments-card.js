@@ -23,10 +23,10 @@ class ArticleCommentsCard extends BaseComponent {
 
         // 加载文章数据
         await this.loadArticleData();
-        
+
         // 渲染组件
         this.render();
-        
+
         // 检查URL锚点，如果需要定位到特定评论
         this.checkAndScrollToComment();
     }
@@ -46,18 +46,18 @@ class ArticleCommentsCard extends BaseComponent {
         try {
             // 获取认证头
             const headers = UserManager.createHeaders();
-            
+
             const response = await fetch(`/api/articles/${this.articleId}?page=${this.currentPage}&per_page=${this.perPage}`, {
                 headers: headers
             });
             if (response.ok) {
                 this.articleData = await response.json();
-                
+
                 // 保存分页信息
                 if (this.articleData.comments_pagination) {
                     this.pagination = this.articleData.comments_pagination;
                 }
-                
+
                 // 如果有评论，获取每个评论的用户信息
                 if (this.articleData.comments && this.articleData.comments.length > 0) {
                     await this.loadCommentUsers();
@@ -81,13 +81,13 @@ class ArticleCommentsCard extends BaseComponent {
      */
     async loadCommentUsers() {
         if (!this.articleData.comments) return;
-        
+
         try {
             // 获取所有不重复的用户ID
             const userIds = [...new Set(this.articleData.comments
                 .map(comment => comment.user_id)
                 .filter(id => id))];
-            
+
             // 批量获取用户信息
             const userPromises = userIds.map(async (userId) => {
                 try {
@@ -100,9 +100,9 @@ class ArticleCommentsCard extends BaseComponent {
                 }
                 return null;
             });
-            
+
             const users = await Promise.all(userPromises);
-            
+
             // 创建用户ID到用户信息的映射
             this.userMap = {};
             users.forEach(user => {
@@ -158,7 +158,7 @@ class ArticleCommentsCard extends BaseComponent {
         if (this.clickHandler) {
             this.shadowRoot.removeEventListener('click', this.clickHandler);
         }
-        
+
         // 创建新的事件处理器
         this.clickHandler = (e) => {
             if (e.target.closest('.delete-comment-btn')) {
@@ -169,7 +169,7 @@ class ArticleCommentsCard extends BaseComponent {
                 }
             }
         };
-        
+
         // 添加新的事件监听器
         this.shadowRoot.addEventListener('click', this.clickHandler);
     }
@@ -182,26 +182,26 @@ class ArticleCommentsCard extends BaseComponent {
         if (!UserManager.isLoggedIn()) {
             return false;
         }
-        
+
         try {
             const currentUser = UserManager.getCurrentUser();
             if (!currentUser) return false;
-            
+
             const currentUserId = currentUser.id;
             const isAdmin = currentUser.state === 10;
-            
+
             // 管理员可以删除任何评论
             if (isAdmin) {
                 return true;
             }
-            
+
             // 文章作者可以删除评论（需要检查文章作者）
             // 这里我们假设文章数据中包含了作者信息
             if (this.articleData && this.articleData.author) {
                 const articleAuthorId = this.articleData.author.id;
                 return articleAuthorId === currentUserId;
             }
-            
+
             return false;
         } catch (error) {
             console.error('Error checking delete permission:', error);
@@ -219,12 +219,12 @@ class ArticleCommentsCard extends BaseComponent {
             this.showError('找不到要删除的评论');
             return;
         }
-        
+
         // 获取评论内容的前10个字符
-        const contentPreview = comment.content ? 
-            (comment.content.length > 10 ? comment.content.substring(0, 10) + '...' : comment.content) : 
+        const contentPreview = comment.content ?
+            (comment.content.length > 10 ? comment.content.substring(0, 10) + '...' : comment.content) :
             '无内容';
-        
+
         if (typeof openConfirmDialog !== 'function' || !await openConfirmDialog({
             title: '删除评论',
             message: `确定要删除这条评论吗？\n\n评论内容预览：${contentPreview}\n\n此操作不可撤销。`,
@@ -232,22 +232,22 @@ class ArticleCommentsCard extends BaseComponent {
         })) {
             return;
         }
-        
+
         try {
             // 获取认证头
             const headers = UserManager.createHeaders({
                 'Content-Type': 'application/json'
             });
-            
+
             const response = await fetch(`/api/articles/${this.articleId}/comments/${commentId}`, {
                 method: 'DELETE',
                 headers: headers
             });
-            
+
             if (response.ok) {
                 const result = await response.json();
                 this.showSuccess('评论删除成功！');
-                
+
                 // 刷新评论列表
                 await this.refreshComments();
             } else {
@@ -267,19 +267,19 @@ class ArticleCommentsCard extends BaseComponent {
         try {
             // 跳转到第一页以显示最新评论
             this.currentPage = 1;
-            
+
             // 重新加载文章数据（包含评论）
             await this.loadArticleData();
-            
+
             // 重新渲染组件
             this.render();
-            
+
             // 重新加载用户信息
             await this.loadCommentUsers();
-            
+
             // 重新渲染以显示用户信息
             this.render();
-            
+
             // 如果有指定的评论ID，滚动到该评论并突出显示
             if (commentId) {
                 this.scrollToCommentAndHighlight(commentId);
@@ -299,28 +299,31 @@ class ArticleCommentsCard extends BaseComponent {
             const commentElement = this.shadowRoot.querySelector(`#post${commentId}`);
             if (commentElement) {
                 // 滚动到评论位置
-                commentElement.scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'center' 
+                commentElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
                 });
-                
+
                 // 添加突出显示效果
                 this.highlightComment(commentElement);
             }
         }, 100);
     }
 
+    /** 锚点定位评论的蓝色边框闪烁总时长（毫秒），与原先整行高亮一致 */
+    static COMMENT_HASH_FLASH_MS = 3000;
+
     /**
-     * 突出显示评论
+     * 突出显示目标评论：仅边缘蓝色闪烁，不覆盖文字/背景。
      */
     highlightComment(commentElement) {
-        // 添加高亮样式
-        commentElement.classList.add('comment-highlight');
-        
-        // 3秒后移除高亮效果
+        commentElement.classList.remove('comment-hash-flash');
+        // 强制重绘，便于从 hash 再次点击同一条时重触发动画
+        void commentElement.offsetWidth;
+        commentElement.classList.add('comment-hash-flash');
         setTimeout(() => {
-            commentElement.classList.remove('comment-highlight');
-        }, 3000);
+            commentElement.classList.remove('comment-hash-flash');
+        }, ArticleCommentsCard.COMMENT_HASH_FLASH_MS);
     }
 
     /**
@@ -330,33 +333,24 @@ class ArticleCommentsCard extends BaseComponent {
         // 获取URL中的锚点
         const hash = window.location.hash;
         if (!hash) return;
-        
+
         // 检查锚点格式是否为 #post{commentId}
         const match = hash.match(/^#post(\d+)$/);
         if (!match) return;
-        
+
         const commentId = match[1];
-        
+
         // 等待DOM渲染完成后再滚动
         setTimeout(() => {
             // 查找对应的评论元素
             const commentElement = this.shadowRoot.querySelector(`#post${commentId}`);
             if (commentElement) {
                 // 滚动到评论位置
-                commentElement.scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'center' 
+                commentElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
                 });
-                
-                // 添加高亮效果
-                commentElement.style.backgroundColor = 'var(--primary-color)';
-                commentElement.style.color = 'var(--white)';
-                
-                // 3秒后恢复原样式
-                setTimeout(() => {
-                    commentElement.style.backgroundColor = '';
-                    commentElement.style.color = '';
-                }, 3000);
+                this.highlightComment(commentElement);
             }
         }, 500); // 增加延迟，确保评论完全渲染
     }
@@ -385,21 +379,21 @@ class ArticleCommentsCard extends BaseComponent {
      */
     renderComment(comment) {
         const { id, content, user_id, post_time, reply_count } = comment;
-        
+
         // 获取用户名和博客ID，如果没有则显示用户ID或匿名
         let userName = '匿名';
         let blogId = null;
         let userAvatar = null;
-        
+
         // 检查当前用户是否有删除权限
         const canDelete = this.canDeleteComment(comment);
-        
+
         if (user_id) {
             if (this.userMap && this.userMap[user_id]) {
                 const user = this.userMap[user_id];
                 userName = user.name || `用户${user_id}`;
                 blogId = user.projectid || null;
-                
+
                 // 构建头像路径
                 if (user.id) {
                     const prefix = Math.floor(user.id / 10000) + 1;
@@ -409,18 +403,18 @@ class ArticleCommentsCard extends BaseComponent {
                 userName = `用户${user_id}`;
             }
         }
-        
+
         return `
             <div class="comment-item" id="post${id}" data-comment-id="${id}">
                 <div class="comment-avatar">
                     ${blogId ? `
                         <a href="/blog/${blogId}" class="avatar-link" title="查看博客" target="_blank" rel="noopener noreferrer">
                             <div class="user-avatar">
-                                ${userAvatar ? 
-                                    `<img src="${userAvatar}" alt="${this.escapeHtml(userName)}" 
+                                ${userAvatar ?
+                                    `<img src="${userAvatar}" alt="${this.escapeHtml(userName)}"
                                           onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
                                           onload="this.style.display='block'; this.nextElementSibling.style.display='none';"
-                                          style="display: block;">` : 
+                                          style="display: block;">` :
                                     ''
                                 }
                                 <span style="display: ${userAvatar ? 'none' : 'flex'}; color: var(--gray-600);">${userName.charAt(0).toUpperCase()}</span>
@@ -432,7 +426,7 @@ class ArticleCommentsCard extends BaseComponent {
                         </div>
                     `}
                 </div>
-                
+
                 <div class="comment-content-wrapper">
                     <div class="comment-header">
                         <div class="comment-user">
@@ -449,8 +443,8 @@ class ArticleCommentsCard extends BaseComponent {
                                 ${this.formatDate(post_time)}
                             </div>
                             ${canDelete ? `
-                                <button class="delete-comment-btn" 
-                                        data-comment-id="${id}" 
+                                <button class="delete-comment-btn"
+                                        data-comment-id="${id}"
                                         title="删除评论">
                                     <i class="fas fa-trash"></i>
                                     删除
@@ -458,11 +452,11 @@ class ArticleCommentsCard extends BaseComponent {
                             ` : ''}
                         </div>
                     </div>
-                    
+
                     <div class="comment-content">
                         ${this.processTextWithLinks(content || '')}
                     </div>
-                    
+
                     ${reply_count > 0 ? `
                         <div class="comment-replies">
                             <span class="reply-count">${reply_count} 条回复</span>
@@ -504,7 +498,7 @@ class ArticleCommentsCard extends BaseComponent {
 
         // 通用的URL正则表达式，匹配任何 aaa://bbb 形式的链接
         const urlRegex = /([a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^\s<>"']+)/gi;
-        
+
         return text.replace(urlRegex, (url) => {
             // 使用严格的URL验证
             if (this.isValidUrl(url)) {
@@ -550,7 +544,7 @@ class ArticleCommentsCard extends BaseComponent {
             animation: slideIn 0.3s ease-out;
         `;
         successDiv.textContent = message;
-        
+
         // 添加动画样式
         const style = document.createElement('style');
         style.textContent = `
@@ -566,9 +560,9 @@ class ArticleCommentsCard extends BaseComponent {
             }
         `;
         document.head.appendChild(style);
-        
+
         document.body.appendChild(successDiv);
-        
+
         // 3秒后自动移除
         setTimeout(() => {
             if (successDiv.parentNode) {
@@ -602,7 +596,7 @@ class ArticleCommentsCard extends BaseComponent {
         if (page < 1 || page > this.pagination.total_pages) {
             return;
         }
-        
+
         this.currentPage = page;
         await this.loadArticleData();
         this.render();
@@ -635,24 +629,24 @@ class ArticleCommentsCard extends BaseComponent {
             style.textContent = `
                 @import url('/static/css/common-components.css');
                 .card { margin-bottom: 0; }
-                
+
                 .card-header {
                     padding: var(--spacing-4) var(--spacing-6);
                     border-bottom: 1px solid var(--gray-200);
                     background-color: var(--gray-50);
                 }
-                
+
                 .card-header h3 {
                     font-size: var(--font-size-lg);
                     font-weight: 600;
                     color: var(--gray-800);
                     margin: 0;
                 }
-                
+
                 .comments-list {
                     /* 移除高度限制和滚动，分页后一次显示所有评论 */
                 }
-                
+
                 .comment-item {
                     display: flex;
                     gap: var(--spacing-4);
@@ -660,34 +654,29 @@ class ArticleCommentsCard extends BaseComponent {
                     border-bottom: 1px solid var(--gray-100);
                     transition: background-color var(--transition-fast);
                 }
-                
+
                 .comment-item:last-child {
                     border-bottom: none;
                 }
-                
+
                 .comment-item:hover {
                     background-color: var(--gray-50);
                 }
 
-                .comment-highlight {
-                    background-color: #fef3c7 !important;
-                    border: 2px solid #f59e0b !important;
-                    border-radius: var(--border-radius-md);
-                    animation: highlightPulse 0.6s ease-in-out;
+                /* 从 #post{id} 进入：仅边缘蓝色闪烁，不改变正文背景色，总时长 3s（6×0.5s） */
+                .comment-hash-flash {
+                    border-radius: var(--radius-md, 8px);
+                    position: relative;
+                    z-index: 1;
+                    animation: commentHashBorderBlink 0.5s ease-in-out 6;
                 }
 
-                @keyframes highlightPulse {
-                    0% {
-                        transform: scale(1);
-                        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+                @keyframes commentHashBorderBlink {
+                    0%, 100% {
+                        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.95);
                     }
                     50% {
-                        transform: scale(1.02);
-                        box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.3);
-                    }
-                    100% {
-                        transform: scale(1);
-                        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+                        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
                     }
                 }
 
@@ -726,14 +715,14 @@ class ArticleCommentsCard extends BaseComponent {
                     flex: 1;
                     min-width: 0;
                 }
-                
+
                 .comment-header {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
                     margin-bottom: var(--spacing-3);
                 }
-                
+
                 .comment-user .user-name {
                     font-weight: 600;
                     color: var(--primary-color);
@@ -750,18 +739,18 @@ class ArticleCommentsCard extends BaseComponent {
                     color: var(--primary-hover);
                     text-decoration: underline;
                 }
-                
+
                 .comment-actions {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-2);
                 }
-                
+
                 .comment-time {
                     font-size: var(--font-size-xs);
                     color: var(--gray-500);
                 }
-                
+
                 .delete-comment-btn {
                     padding: var(--spacing-2) var(--spacing-3);
                     font-size: var(--font-size-sm);
@@ -777,18 +766,18 @@ class ArticleCommentsCard extends BaseComponent {
                     font-weight: 500;
                     min-height: 32px;
                 }
-                
+
                 .delete-comment-btn:hover {
                     background-color: var(--red-50);
                     border-color: var(--red-400);
                     color: var(--red-700);
                 }
-                
+
                 .delete-comment-btn:active {
                     background-color: var(--red-100);
                     transform: translateY(1px);
                 }
-                
+
                 .comment-content {
                     line-height: 1.6;
                     color: var(--gray-700);
@@ -797,47 +786,47 @@ class ArticleCommentsCard extends BaseComponent {
                     white-space: pre-line;
                     overflow-wrap: break-word;
                 }
-                
+
                 .comment-content a {
                     word-break: break-all;
                     overflow-wrap: anywhere;
                     max-width: 100%;
                     display: inline-block;
                 }
-                
+
                 .comment-replies {
                     display: flex;
                     justify-content: flex-end;
                 }
-                
+
                 .reply-count {
                     font-size: var(--font-size-xs);
                     color: var(--gray-500);
                     cursor: pointer;
                     transition: color var(--transition-fast);
                 }
-                
+
                 .reply-count:hover {
                     color: var(--primary-color);
                 }
-                
+
                 .no-comments {
                     text-align: center;
                     padding: var(--spacing-8);
                     color: var(--gray-500);
                 }
-                
+
                 .no-comments p {
                     margin: 0;
                     font-style: italic;
                 }
-                
+
                 .loading {
                     text-align: center;
                     color: var(--gray-500);
                     padding: var(--spacing-8);
                 }
-                
+
                 .error-message {
                     text-align: center;
                     color: var(--error-color);

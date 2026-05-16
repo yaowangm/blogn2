@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>管理友情链接 - 博客管理系统</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/components.css">
     <style>
@@ -13,13 +13,13 @@
             background: var(--gray-50);
             min-height: 100vh;
         }
-        
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: var(--spacing-6);
         }
-        
+
         .page-header {
             background: var(--white);
             border-radius: var(--radius-lg);
@@ -28,7 +28,7 @@
             padding: var(--spacing-6);
             margin-bottom: var(--spacing-6);
         }
-        
+
         .page-title {
             font-size: var(--font-size-2xl);
             font-weight: 700;
@@ -38,25 +38,25 @@
             align-items: center;
             gap: var(--spacing-3);
         }
-        
+
         .page-title-icon {
             width: 24px;
             height: 24px;
             color: var(--primary-color);
         }
-        
+
         .page-description {
             color: var(--gray-600);
             font-size: var(--font-size-base);
             margin: 0;
         }
-        
+
         .management-container {
             display: grid;
             grid-template-columns: 1fr 400px;
             gap: var(--spacing-6);
         }
-        
+
         .links-section {
             background: var(--white);
             border-radius: var(--radius-lg);
@@ -64,13 +64,13 @@
             border: 1px solid var(--gray-200);
             overflow: hidden;
         }
-        
+
         .section-header {
             padding: var(--spacing-5);
             border-bottom: 1px solid var(--gray-200);
             background: var(--gray-50);
         }
-        
+
         .section-title {
             font-size: var(--font-size-lg);
             font-weight: 600;
@@ -80,7 +80,7 @@
             align-items: center;
             justify-content: space-between;
         }
-        
+
         .add-button {
             padding: var(--spacing-2) var(--spacing-4);
             background: var(--primary-color);
@@ -95,16 +95,16 @@
             align-items: center;
             gap: var(--spacing-2);
         }
-        
+
         .add-button:hover {
             background: var(--primary-dark);
             transform: translateY(-1px);
         }
-        
+
         .links-list {
             padding: var(--spacing-5);
         }
-        
+
         .link-item {
             display: flex;
             align-items: center;
@@ -116,17 +116,17 @@
             background: var(--gray-50);
             transition: var(--transition-fast);
         }
-        
+
         .link-item:hover {
             background: var(--white);
             box-shadow: var(--shadow-sm);
         }
-        
+
         .link-info {
             flex: 1;
             min-width: 0;
         }
-        
+
         .link-name {
             font-weight: 500;
             color: var(--gray-900);
@@ -135,7 +135,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        
+
         .link-url {
             font-size: var(--font-size-sm);
             color: var(--gray-600);
@@ -143,12 +143,12 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        
+
         .link-actions {
             display: flex;
             gap: var(--spacing-2);
         }
-        
+
         .action-button {
             padding: var(--spacing-1) var(--spacing-2);
             border: none;
@@ -157,53 +157,53 @@
             cursor: pointer;
             transition: var(--transition-fast);
         }
-        
+
         .edit-button {
             background: var(--blue-100);
             color: var(--blue-700);
         }
-        
+
         .edit-button:hover {
             background: var(--blue-200);
         }
-        
+
         .delete-button {
             background: var(--red-100);
             color: var(--red-700);
         }
-        
+
         .delete-button:hover {
             background: var(--red-200);
         }
-        
-        
+
+
         .empty-state {
             text-align: center;
             padding: var(--spacing-8);
             color: var(--gray-500);
         }
-        
+
         .empty-state-icon {
             font-size: var(--font-size-4xl);
             margin-bottom: var(--spacing-4);
         }
-        
+
         .empty-state-text {
             font-size: var(--font-size-lg);
             margin-bottom: var(--spacing-2);
         }
-        
+
         .empty-state-description {
             font-size: var(--font-size-sm);
             color: var(--gray-400);
         }
-        
+
         .loading {
             text-align: center;
             padding: var(--spacing-8);
             color: var(--gray-500);
         }
-        
+
         .error-message {
             background: var(--red-50);
             color: var(--red-700);
@@ -218,7 +218,7 @@
             position: relative;
             animation: slideDown 0.3s ease-out;
         }
-        
+
         .success-message {
             background: var(--green-50);
             color: var(--green-700);
@@ -233,7 +233,7 @@
             position: relative;
             animation: slideDown 0.3s ease-out;
         }
-        
+
         @keyframes slideDown {
             from {
                 opacity: 0;
@@ -244,7 +244,7 @@
                 transform: translateY(0);
             }
         }
-        
+
         .limit-warning {
             background: var(--yellow-50);
             color: var(--yellow-700);
@@ -254,12 +254,12 @@
             margin-bottom: var(--spacing-4);
             font-size: var(--font-size-sm);
         }
-        
+
         @media (max-width: 768px) {
             .management-container {
                 grid-template-columns: 1fr;
             }
-            
+
             .container {
                 padding: var(--spacing-4);
             }
@@ -316,17 +316,17 @@
 
     <!-- 图标库 -->
     <script src="/static/js/components/icons.js"></script>
-    
+
     <!-- 用户管理工具 -->
     <script src="/static/js/utils/user-manager.js"></script>
     <script src="/static/js/utils/confirm-dialog.js"></script>
-    
+
     <!-- Web Components -->
     <script src="/static/js/utils/html-utils.js"></script>
     <script src="/static/js/components/base-component.js"></script>
     <script src="/static/js/components/footer-component.js"></script>
     <script src="/static/js/components/header-component.js"></script>
-    
+
     <!-- 管理友情链接脚本 -->
     <script src="/static/js/manage-friend-links.js"></script>
 </body>

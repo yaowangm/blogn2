@@ -455,7 +455,8 @@ SQL 中不再对 `relevance_score` 做 `GREATEST(..., threshold)`，直接返回
 
 ### 6.1 搜索API端点（当前实现）
 
-路由：`GET /search`（控制器 `src/controllers/search.py`）。需传入向量化服务（如通过 `request.app.state.model_cache` 或 `get_cached_model()`）和异步会话。
+- **静态搜索页**：`GET /search`（`src/utils/page_handlers.py`）返回 `search.html`，由前端调用下方 JSON API。
+- **搜索 JSON API**：`GET /api/search`（`src/controllers/search.py` 的路由器在 `src/utils/api_handlers.py` 中以 `prefix="/api"` 挂载）。需向量化服务（`request.app.state.model_cache` 或 `get_cached_model()`）与异步数据库会话。
 
 **请求参数**：
 
@@ -468,6 +469,16 @@ SQL 中不再对 `relevance_score` 做 `GREATEST(..., threshold)`，直接返回
 | `limit` | int | 每页条数，默认 10，上限 100 |
 
 **响应**：`search_service.search()` 返回的 `items`、`total`、`has_more`、`dynamic_threshold` 等经控制器组装后返回；控制器会对每条结果的 `relevance_score` 做兜底（0 或缺失时设为 `dynamic_threshold`）。返回字段包括 `query`、`type`、`sort`、`page`、`limit`、`total`、`results`、`has_more`、`search_time`、`dynamic_threshold`、`search_method` 等。
+
+**评论类结果（`type: "comment"`）字段约定（与当前 SQL / `_format_comment_result` 一致）**：
+
+| 字段 | 含义 |
+|------|------|
+| `id` | `post` 表主键，即该条评论（或回复）记录 ID |
+| `projectitem_id` / `article_id` | 所属博文的 `projectitem.id`；二者相同。关键词与向量评论查询的 SELECT 均附带该列 |
+| 其余 | `title`、`content`、`author`、`created_at`、`relevance_score` 等与文章条目结构类似 |
+
+前端（`src/static/js/pages/search.js`）对博文评论生成 `/article/{projectitem_id}#post{id}`，与文章页 `article-comments-card` 的 `#post{id}` 锚点滚动一致；无有效博文 id 时（如留言本 `projectitem_id` 为 0）可退化为 `/thread/{id}`。
 
 ### 6.2 管理API端点
 ```python

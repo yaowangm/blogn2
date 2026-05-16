@@ -13,6 +13,7 @@ from src.repositories.project_repository import ProjectRepository
 from src.repositories.post_repository import PostRepository
 from src.repositories.glovar_repository import GlovarRepository
 from src.repositories.password_reset_token_repository import PasswordResetTokenRepository
+from src.services.auth_security_service import AuthSecurityService
 from src.services.metadata_service import MetadataService
 from src.services.user_service import UserService
 from src.services.blog_service import BlogService
@@ -20,38 +21,38 @@ from src.services.blog_service import BlogService
 def create_service_dependency(service_class: Type, *repository_classes: Type):
     """
     创建服务依赖注入函数
-    
+
     Args:
         service_class: 服务类
         *repository_classes: 仓储类列表
-        
+
     Returns:
         Callable: 依赖注入函数
     """
     async def get_service(session: AsyncSession = Depends(get_async_session)):
         """
         依赖注入：创建服务实例
-        
+
         Args:
             session: 数据库会话
-            
+
         Returns:
             服务实例
         """
         repositories = [repo_cls(session) for repo_cls in repository_classes]
         return service_class(*repositories)
-    
+
     return get_service
 
 # 预定义的服务依赖
 get_metadata_service = create_service_dependency(
-    MetadataService, 
-    UserRepository, 
+    MetadataService,
+    UserRepository,
     ProjectItemRepository
 )
 
 get_user_service = create_service_dependency(
-    UserService, 
+    UserService,
     UserRepository,
     ProjectRepository
 )
@@ -71,3 +72,10 @@ async def get_password_reset_token_repository(
 ) -> PasswordResetTokenRepository:
     """每请求复用同一 session 的 token 仓库，与 get_user_service 等模式一致。"""
     return PasswordResetTokenRepository(session)
+
+
+async def get_auth_security_service(
+    session: AsyncSession = Depends(get_async_session),
+) -> AuthSecurityService:
+    """认证安全状态（DB）与当前请求会话绑定。"""
+    return AuthSecurityService(session)

@@ -19,7 +19,14 @@ logger = logging.getLogger(__name__)
 def get_base_url() -> str:
     """
     获取应用基础URL
-    
+
+    生产环境建议设为对外 HTTPS 地址（例如 ``https://bloggern.com``）。分享预览中的
+    ``og:url`` / ``og:image`` 与 ``merge_public_base_with_config`` 均依赖此值。
+
+    ``load_dotenv(..., override=False)`` 下：**进程里已存在的环境变量不会被配置文件覆盖**。
+    Docker 入口脚本会从挂载的配置文件用 ``dotenv_values`` 再导出 ``BASE_URL``，使文件中的
+    HTTPS 在容器内生效；若仍异常，请检查编排层是否强行注入了错误的 ``BASE_URL``。
+
     Returns:
         str: 应用基础URL，从环境变量BASE_URL读取，默认为http://localhost:8000
     """
@@ -29,7 +36,7 @@ def get_base_url() -> str:
 def get_blog_posts_page_size() -> int:
     """
     获取博客文章列表每页显示数量
-    
+
     Returns:
         int: 每页显示的文章数量，从环境变量BLOG_POSTS_PAGE_SIZE读取，默认为10
     """
@@ -42,7 +49,7 @@ def get_blog_posts_page_size() -> int:
 def get_max_attachments_per_article() -> int:
     """
     获取每篇文章最大附件数量
-    
+
     Returns:
         int: 每篇文章最大附件数量，从环境变量MAX_ATTACHMENTS_PER_ARTICLE读取，默认为10
     """
@@ -55,7 +62,7 @@ def get_max_attachments_per_article() -> int:
 def get_upload_dir() -> str:
     """
     获取文件上传目录
-    
+
     本地与 Docker 共用 .env：本地填宿主机路径，Docker 由 compose 覆盖为容器路径并挂载同一目录。
     """
     return os.getenv('UPLOAD_DIR', '../pic/blogn_img/upload')
@@ -64,7 +71,7 @@ def get_upload_dir() -> str:
 def get_avatar_dir() -> str:
     """
     获取用户头像目录
-    
+
     本地与 Docker 共用 .env：本地填宿主机路径，Docker 由 compose 覆盖为容器路径并挂载同一目录。
     """
     return os.getenv('AVATAR_DIR', '../pic/blogn_img/userlogo')
@@ -73,7 +80,7 @@ def get_avatar_dir() -> str:
 def get_mail_from() -> str:
     """
     获取密码重置邮件发件人地址
-    
+
     Returns:
         str: 发件人邮箱，从环境变量 MAIL_FROM 读取
     """
@@ -83,7 +90,7 @@ def get_mail_from() -> str:
 def get_reset_link_expire_minutes() -> int:
     """
     获取密码重置链接有效期（分钟）
-    
+
     Returns:
         int: 有效期分钟数，从环境变量 RESET_LINK_EXPIRE_MINUTES 读取，默认 60
     """
@@ -131,6 +138,34 @@ def get_smtp_password() -> Optional[str]:
     return v or None
 
 
+def _parse_csv_env(raw: str, default_values: list[str]) -> list[str]:
+    """解析逗号分隔环境变量为列表。"""
+    if not raw or not raw.strip():
+        return default_values
+    values = [v.strip() for v in raw.split(",") if v.strip()]
+    return values or default_values
+
+
+def get_cors_allow_origins() -> list[str]:
+    """获取 CORS 允许来源列表（逗号分隔）。"""
+    return _parse_csv_env(os.getenv("CORS_ALLOW_ORIGINS", "*"), ["*"])
+
+
+def get_cors_allow_methods() -> list[str]:
+    """获取 CORS 允许方法列表（逗号分隔）。"""
+    return _parse_csv_env(os.getenv("CORS_ALLOW_METHODS", "*"), ["*"])
+
+
+def get_cors_allow_headers() -> list[str]:
+    """获取 CORS 允许请求头列表（逗号分隔）。"""
+    return _parse_csv_env(os.getenv("CORS_ALLOW_HEADERS", "*"), ["*"])
+
+
+def get_cors_allow_credentials() -> bool:
+    """是否允许携带凭据。"""
+    return os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() == "true"
+
+
 _UVICORN_LOG_LEVELS = frozenset(
     ("critical", "error", "warning", "info", "debug", "trace")
 )
@@ -151,7 +186,7 @@ def get_uvicorn_log_level() -> str:
 def validate_app_config() -> dict:
     """
     验证应用配置并返回配置信息
-    
+
     Returns:
         Dict: 包含完整应用配置信息的字典
     """
@@ -168,8 +203,8 @@ def validate_app_config() -> dict:
         "avatar_dir": get_avatar_dir(),
         "config_source": str(config_file) if config_file else "defaults"
     }
-    
+
     if config_info["debug"]:
         logger.debug(f"App configuration loaded: {config_info}")
-    
+
     return config_info

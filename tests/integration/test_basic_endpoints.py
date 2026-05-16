@@ -36,7 +36,7 @@ class TestBasicEndpoints:
         """测试获取用户摘要"""
         response = test_client.get("/api/users/summary")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "total_users" in data
         assert isinstance(data["total_users"], int)
@@ -46,7 +46,7 @@ class TestBasicEndpoints:
         """测试获取用户总数"""
         response = test_client.get("/api/users/count")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "count" in data
         assert isinstance(data["count"], int)
@@ -56,7 +56,7 @@ class TestBasicEndpoints:
         """测试获取最新博客"""
         response = test_client.get("/api/blogs/recent")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert isinstance(data, list)
 
@@ -65,7 +65,7 @@ class TestBasicEndpoints:
         """测试获取热门博客"""
         response = test_client.get("/api/blogs/popular")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert isinstance(data, list)
 
@@ -74,7 +74,7 @@ class TestBasicEndpoints:
         """测试获取站点元数据"""
         response = test_client.get("/api/metadata/")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "user_count" in data
         assert isinstance(data["user_count"], int)
@@ -95,4 +95,68 @@ class TestBasicEndpoints:
     def test_invalid_endpoint(self, test_client):
         """测试无效端点"""
         response = test_client.get("/api/invalid/endpoint")
-        assert response.status_code == 404 
+        assert response.status_code == 404
+
+    @pytest.mark.integration
+    def test_article_page_normal_browser(self, test_client):
+        """文章页：始终返回注入分享 meta 的 HTML；库中无该文时为 404。"""
+        response = test_client.get(
+            "/article/1",
+            headers={"User-Agent": "Mozilla/5.0 Chrome/120.0.0.0"},
+        )
+        assert response.status_code in (200, 404)
+        if response.status_code == 200:
+            assert "text/html" in response.headers.get("content-type", "")
+            assert 'property="og:type"' in response.text
+            assert 'property="og:url"' in response.text
+
+    @pytest.mark.integration
+    def test_article_page_share_crawler_nonexistent_404(self, test_client):
+        """文章页：分享爬虫请求不存在的文章返回 404"""
+        response = test_client.get(
+            "/article/999999999",
+            headers={"User-Agent": "Mozilla/5.0 MicroMessenger/8.0"},
+        )
+        assert response.status_code == 404
+
+    @pytest.mark.integration
+    def test_blog_page_normal_browser(self, test_client):
+        """博客首页：始终注入分享 meta；无该项目时为 404。"""
+        response = test_client.get(
+            "/blog/1",
+            headers={"User-Agent": "Mozilla/5.0 Chrome/120.0.0.0"},
+        )
+        assert response.status_code in (200, 404)
+        if response.status_code == 200:
+            assert "text/html" in response.headers.get("content-type", "")
+            assert 'property="og:type"' in response.text
+
+    @pytest.mark.integration
+    def test_blog_page_share_crawler_nonexistent_404(self, test_client):
+        """博客首页：分享爬虫请求不存在的项目返回 404"""
+        response = test_client.get(
+            "/blog/999999999",
+            headers={"User-Agent": "Mozilla/5.0 MicroMessenger/8.0"},
+        )
+        assert response.status_code == 404
+
+    @pytest.mark.integration
+    def test_thread_page_normal_browser(self, test_client):
+        """留言主题页：始终注入分享 meta；无该主题时为 404。"""
+        response = test_client.get(
+            "/thread/1",
+            headers={"User-Agent": "Mozilla/5.0 Chrome/120.0.0.0"},
+        )
+        assert response.status_code in (200, 404)
+        if response.status_code == 200:
+            assert "text/html" in response.headers.get("content-type", "")
+            assert 'property="og:type"' in response.text
+
+    @pytest.mark.integration
+    def test_thread_page_share_crawler_nonexistent_404(self, test_client):
+        """留言主题页：分享爬虫请求不存在的主题返回 404"""
+        response = test_client.get(
+            "/thread/999999999",
+            headers={"User-Agent": "Mozilla/5.0 MicroMessenger/8.0"},
+        )
+        assert response.status_code == 404

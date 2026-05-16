@@ -181,7 +181,7 @@
             overlay.innerHTML = `
                 <div class="blogn-confirm-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="blogn-cd-title">
                     <div class="blogn-confirm-dialog-header">
-                        <img class="blogn-confirm-dialog-favicon" src="/static/favicon.svg" width="32" height="32" alt="" />
+                        <img class="blogn-confirm-dialog-favicon" src="/static/favicon.png" width="32" height="32" alt="" />
                         <h3 class="blogn-confirm-dialog-title" id="blogn-cd-title">${escapeHtml(title)}</h3>
                     </div>
                     <div class="blogn-confirm-dialog-body">${bodyHtml}</div>

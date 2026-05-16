@@ -16,6 +16,7 @@ from src.models.subscription import Subscription
 from src.models.urllink import UrlLink
 from src.models.relation import Relation
 from src.models.password_reset_token import PasswordResetToken
+from src.models.user_auth_security_state import UserAuthSecurityState
 
 # 加载环境变量
 load_dotenv()
@@ -57,4 +58,4 @@ def create_db_and_tables():
 # 初始化数据库
 if __name__ == "__main__":
     create_db_and_tables()
-    logger.info("数据库表创建完成！") 
+    logger.info("数据库表创建完成！")
