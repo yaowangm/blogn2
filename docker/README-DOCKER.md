@@ -37,8 +37,8 @@ git checkout docker
 ### 2. 配置环境变量
 
 ```bash
-# 在项目根目录复制环境变量模板
-cp docker/env.docker.example .env
+# 在项目根目录复制环境变量模板（与本地开发共用根目录 .env）
+cp .env.example .env
 
 # 编辑配置文件
 nano .env
@@ -338,7 +338,7 @@ print('模型加载成功！')
   - `info`: 显示信息、警告和错误
   - `debug`: 显示所有日志（包括调试信息）
 
-详细配置请参考 `docker/env.docker.example` 文件。
+详细配置请参考项目根目录的 `.env.example`（复制为 `.env` 后按环境修改）。
 
 ### 网络配置
 
@@ -724,7 +724,7 @@ docker inspect blogn2-app | grep -A 10 Health
 
 - [INSTALL.md](../INSTALL.md) - 详细安装指南
 - [README.md](../README.md) - 项目说明
-- [env.docker.example](env.docker.example) - 环境变量配置示例
+- [.env.example](../.env.example) - 环境变量配置模板（Docker 与本地共用）
 
 ## 🆘 获取帮助
 
