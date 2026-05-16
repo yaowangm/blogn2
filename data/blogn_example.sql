@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 16.9 (Ubuntu 16.9-0ubuntu0.24.04.1)
--- Dumped by pg_dump version 16.9 (Ubuntu 16.9-0ubuntu0.24.04.1)
+-- Dumped from database version 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)
+-- Dumped by pg_dump version 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -677,6 +677,78 @@ ALTER SEQUENCE public.levels_id_seq OWNED BY public.levels.id;
 
 
 --
+-- Name: password_reset_tokens; Type: TABLE; Schema: public; Owner: wy
+--
+
+CREATE TABLE public.password_reset_tokens (
+    id integer NOT NULL,
+    user_id integer NOT NULL,
+    token character varying(64) NOT NULL,
+    expires_at timestamp without time zone NOT NULL,
+    created_at timestamp without time zone
+);
+
+
+ALTER TABLE public.password_reset_tokens OWNER TO wy;
+
+--
+-- Name: TABLE password_reset_tokens; Type: COMMENT; Schema: public; Owner: wy
+--
+
+COMMENT ON TABLE public.password_reset_tokens IS '密码重置一次性令牌（邮件重置密码）';
+
+
+--
+-- Name: COLUMN password_reset_tokens.user_id; Type: COMMENT; Schema: public; Owner: wy
+--
+
+COMMENT ON COLUMN public.password_reset_tokens.user_id IS '用户 ID';
+
+
+--
+-- Name: COLUMN password_reset_tokens.token; Type: COMMENT; Schema: public; Owner: wy
+--
+
+COMMENT ON COLUMN public.password_reset_tokens.token IS '一次性令牌';
+
+
+--
+-- Name: COLUMN password_reset_tokens.expires_at; Type: COMMENT; Schema: public; Owner: wy
+--
+
+COMMENT ON COLUMN public.password_reset_tokens.expires_at IS '过期时间';
+
+
+--
+-- Name: COLUMN password_reset_tokens.created_at; Type: COMMENT; Schema: public; Owner: wy
+--
+
+COMMENT ON COLUMN public.password_reset_tokens.created_at IS '创建时间';
+
+
+--
+-- Name: password_reset_tokens_id_seq; Type: SEQUENCE; Schema: public; Owner: wy
+--
+
+CREATE SEQUENCE public.password_reset_tokens_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.password_reset_tokens_id_seq OWNER TO wy;
+
+--
+-- Name: password_reset_tokens_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: wy
+--
+
+ALTER SEQUENCE public.password_reset_tokens_id_seq OWNED BY public.password_reset_tokens.id;
+
+
+--
 -- Name: point_logs; Type: TABLE; Schema: public; Owner: wy
 --
 
@@ -1019,6 +1091,93 @@ ALTER SEQUENCE public.urllink_id_seq OWNED BY public.urllink.id;
 
 
 --
+-- Name: user_auth_security_state; Type: TABLE; Schema: public; Owner: wy
+--
+
+CREATE TABLE public.user_auth_security_state (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    opt_type character varying(32) NOT NULL,
+    fail_count integer DEFAULT 0 NOT NULL,
+    window_start timestamp with time zone DEFAULT now() NOT NULL,
+    next_allowed_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT user_auth_security_state_fail_count_check CHECK ((fail_count >= 0))
+);
+
+
+ALTER TABLE public.user_auth_security_state OWNER TO wy;
+
+--
+-- Name: TABLE user_auth_security_state; Type: COMMENT; Schema: public; Owner: wy
+--
+
+COMMENT ON TABLE public.user_auth_security_state IS '认证安全状态：每用户每操作类型一行，失败计数窗口与最早可再试时间';
+
+
+--
+-- Name: COLUMN user_auth_security_state.id; Type: COMMENT; Schema: public; Owner: wy
+--
+
+COMMENT ON COLUMN public.user_auth_security_state.id IS '代理主键';
+
+
+--
+-- Name: COLUMN user_auth_security_state.user_id; Type: COMMENT; Schema: public; Owner: wy
+--
+
+COMMENT ON COLUMN public.user_auth_security_state.user_id IS '用户 ID，关联 users';
+
+
+--
+-- Name: COLUMN user_auth_security_state.opt_type; Type: COMMENT; Schema: public; Owner: wy
+--
+
+COMMENT ON COLUMN public.user_auth_security_state.opt_type IS '操作类型：login / forgot_password / validate_reset_token / reset_password / register 等';
+
+
+--
+-- Name: COLUMN user_auth_security_state.fail_count; Type: COMMENT; Schema: public; Owner: wy
+--
+
+COMMENT ON COLUMN public.user_auth_security_state.fail_count IS '当前窗口内累计失败（或广义计数）';
+
+
+--
+-- Name: COLUMN user_auth_security_state.window_start; Type: COMMENT; Schema: public; Owner: wy
+--
+
+COMMENT ON COLUMN public.user_auth_security_state.window_start IS '当前失败计数窗口起点';
+
+
+--
+-- Name: COLUMN user_auth_security_state.next_allowed_at; Type: COMMENT; Schema: public; Owner: wy
+--
+
+COMMENT ON COLUMN public.user_auth_security_state.next_allowed_at IS '该操作类型下最早允许再发起请求的 UTC 时间';
+
+
+--
+-- Name: user_auth_security_state_id_seq; Type: SEQUENCE; Schema: public; Owner: wy
+--
+
+CREATE SEQUENCE public.user_auth_security_state_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.user_auth_security_state_id_seq OWNER TO wy;
+
+--
+-- Name: user_auth_security_state_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: wy
+--
+
+ALTER SEQUENCE public.user_auth_security_state_id_seq OWNED BY public.user_auth_security_state.id;
+
+
+--
 -- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: wy
 --
 
@@ -1103,6 +1262,13 @@ ALTER TABLE ONLY public.levels ALTER COLUMN id SET DEFAULT nextval('public.level
 
 
 --
+-- Name: password_reset_tokens id; Type: DEFAULT; Schema: public; Owner: wy
+--
+
+ALTER TABLE ONLY public.password_reset_tokens ALTER COLUMN id SET DEFAULT nextval('public.password_reset_tokens_id_seq'::regclass);
+
+
+--
 -- Name: point_logs id; Type: DEFAULT; Schema: public; Owner: wy
 --
 
@@ -1156,6 +1322,13 @@ ALTER TABLE ONLY public.subsc ALTER COLUMN id SET DEFAULT nextval('public.subsc_
 --
 
 ALTER TABLE ONLY public.urllink ALTER COLUMN id SET DEFAULT nextval('public.urllink_id_seq'::regclass);
+
+
+--
+-- Name: user_auth_security_state id; Type: DEFAULT; Schema: public; Owner: wy
+--
+
+ALTER TABLE ONLY public.user_auth_security_state ALTER COLUMN id SET DEFAULT nextval('public.user_auth_security_state_id_seq'::regclass);
 
 
 --
@@ -1242,6 +1415,14 @@ COPY public.levels (id, name) FROM stdin;
 
 
 --
+-- Data for Name: password_reset_tokens; Type: TABLE DATA; Schema: public; Owner: wy
+--
+
+COPY public.password_reset_tokens (id, user_id, token, expires_at, created_at) FROM stdin;
+\.
+
+
+--
 -- Data for Name: point_logs; Type: TABLE DATA; Schema: public; Owner: wy
 --
 
@@ -1302,6 +1483,14 @@ COPY public.subsc (id, projectid, piid) FROM stdin;
 --
 
 COPY public.urllink (id, subject, linkstr, projectid, ordernum) FROM stdin;
+\.
+
+
+--
+-- Data for Name: user_auth_security_state; Type: TABLE DATA; Schema: public; Owner: wy
+--
+
+COPY public.user_auth_security_state (id, user_id, opt_type, fail_count, window_start, next_allowed_at) FROM stdin;
 \.
 
 
@@ -1378,6 +1567,13 @@ SELECT pg_catalog.setval('public.levels_id_seq', 1, false);
 
 
 --
+-- Name: password_reset_tokens_id_seq; Type: SEQUENCE SET; Schema: public; Owner: wy
+--
+
+SELECT pg_catalog.setval('public.password_reset_tokens_id_seq', 1, false);
+
+
+--
 -- Name: point_logs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: wy
 --
 
@@ -1431,6 +1627,13 @@ SELECT pg_catalog.setval('public.subsc_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.urllink_id_seq', 1, false);
+
+
+--
+-- Name: user_auth_security_state_id_seq; Type: SEQUENCE SET; Schema: public; Owner: wy
+--
+
+SELECT pg_catalog.setval('public.user_auth_security_state_id_seq', 1, false);
 
 
 --
@@ -1537,6 +1740,22 @@ ALTER TABLE ONLY public.levels
 
 
 --
+-- Name: password_reset_tokens password_reset_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: wy
+--
+
+ALTER TABLE ONLY public.password_reset_tokens
+    ADD CONSTRAINT password_reset_tokens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: password_reset_tokens password_reset_tokens_token_key; Type: CONSTRAINT; Schema: public; Owner: wy
+--
+
+ALTER TABLE ONLY public.password_reset_tokens
+    ADD CONSTRAINT password_reset_tokens_token_key UNIQUE (token);
+
+
+--
 -- Name: point_logs point_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: wy
 --
 
@@ -1593,11 +1812,27 @@ ALTER TABLE ONLY public.subsc
 
 
 --
+-- Name: user_auth_security_state uq_user_auth_security_state_user_opt; Type: CONSTRAINT; Schema: public; Owner: wy
+--
+
+ALTER TABLE ONLY public.user_auth_security_state
+    ADD CONSTRAINT uq_user_auth_security_state_user_opt UNIQUE (user_id, opt_type);
+
+
+--
 -- Name: urllink urllink_pkey; Type: CONSTRAINT; Schema: public; Owner: wy
 --
 
 ALTER TABLE ONLY public.urllink
     ADD CONSTRAINT urllink_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_auth_security_state user_auth_security_state_pkey; Type: CONSTRAINT; Schema: public; Owner: wy
+--
+
+ALTER TABLE ONLY public.user_auth_security_state
+    ADD CONSTRAINT user_auth_security_state_pkey PRIMARY KEY (id);
 
 
 --
@@ -2106,6 +2341,20 @@ CREATE INDEX idx_users_state_regtime ON public.users USING btree (state, regtime
 
 
 --
+-- Name: ix_password_reset_tokens_token; Type: INDEX; Schema: public; Owner: wy
+--
+
+CREATE INDEX ix_password_reset_tokens_token ON public.password_reset_tokens USING btree (token);
+
+
+--
+-- Name: ix_user_auth_security_state_idle_next_allowed; Type: INDEX; Schema: public; Owner: wy
+--
+
+CREATE INDEX ix_user_auth_security_state_idle_next_allowed ON public.user_auth_security_state USING btree (next_allowed_at) WHERE (fail_count = 0);
+
+
+--
 -- Name: article_vectors trigger_update_article_vectors_updated_at; Type: TRIGGER; Schema: public; Owner: wy
 --
 
@@ -2149,6 +2398,22 @@ ALTER TABLE ONLY public.content_segment_vectors
 
 ALTER TABLE ONLY public.point_logs
     ADD CONSTRAINT fk_point_logs_user_id FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: password_reset_tokens password_reset_tokens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: wy
+--
+
+ALTER TABLE ONLY public.password_reset_tokens
+    ADD CONSTRAINT password_reset_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_auth_security_state user_auth_security_state_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: wy
+--
+
+ALTER TABLE ONLY public.user_auth_security_state
+    ADD CONSTRAINT user_auth_security_state_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
