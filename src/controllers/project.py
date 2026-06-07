@@ -21,7 +21,7 @@ from src.utils.permission_manager import permission_manager
 from src.services.blog_service import BlogService
 from src.repositories.user_repository import UserRepository
 from src.constants import ArticleStatus
-from src.utils.file_utils import get_temp_dir
+from src.utils.file_utils import promote_temp_relative_path
 from src.utils.time_utils import TimeUtils
 
 # 创建项目API路由器
@@ -517,28 +517,14 @@ async def create_post(
         # 处理主图片的临时文件移动
         if new_post.attachment and new_post.attachment.startswith("temp/"):
             try:
-                # 从临时目录移动到正式目录
-                temp_filename = new_post.attachment.replace("temp/", "")
-                temp_path = os.path.join(get_temp_dir(), temp_filename)
-                
-                if os.path.exists(temp_path):
-                    # 创建按月份命名的子目录
-                    current_time = TimeUtils.now_utc()
-                    month_dir = current_time.strftime("%Y%m")
-                    monthly_upload_path = os.path.join(upload_dir, month_dir)
-                    os.makedirs(monthly_upload_path, exist_ok=True)
-                    
-                    # 移动到正式目录
-                    final_filename = temp_filename
-                    final_path = os.path.join(monthly_upload_path, final_filename)
-                    os.rename(temp_path, final_path)
-                    
-                    # 更新attachment路径
-                    new_post.attachment = f"{month_dir}/{final_filename}"
-                    
-                else:
-                    pass  # 临时文件不存在，继续处理
-            except Exception as e:
+                promoted = promote_temp_relative_path(new_post.attachment, upload_dir)
+                if promoted:
+                    new_post.attachment = promoted
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception(
+                    "临时文件移动失败 attachment=%s", new_post.attachment
+                )
                 raise HTTPException(status_code=500, detail="临时文件移动失败")
         
         created_post = await project_item_repo.create(new_post)
@@ -555,28 +541,14 @@ async def create_post(
                 relative_path = attachment_data.get("relative_path", "")
                 if relative_path.startswith("temp/"):
                     try:
-                        # 从临时目录移动到正式目录
-                        temp_filename = relative_path.replace("temp/", "")
-                        temp_path = os.path.join(get_temp_dir(), temp_filename)
-                        
-                        if os.path.exists(temp_path):
-                            # 创建按月份命名的子目录
-                            current_time = TimeUtils.now_utc()
-                            month_dir = current_time.strftime("%Y%m")
-                            monthly_upload_path = os.path.join(upload_dir, month_dir)
-                            os.makedirs(monthly_upload_path, exist_ok=True)
-                            
-                            # 移动到正式目录
-                            final_filename = temp_filename
-                            final_path = os.path.join(monthly_upload_path, final_filename)
-                            os.rename(temp_path, final_path)
-                            
-                            # 更新路径
-                            relative_path = f"{month_dir}/{final_filename}"
-                            
-                        else:
-                            pass  # 临时文件不存在，继续处理
-                    except Exception as e:
+                        promoted = promote_temp_relative_path(relative_path, upload_dir)
+                        if promoted:
+                            relative_path = promoted
+                    except Exception:
+                        import logging
+                        logging.getLogger(__name__).exception(
+                            "临时附件移动失败 path=%s", relative_path
+                        )
                         raise HTTPException(status_code=500, detail="临时文件移动失败")
                 
                 # 创建附件记录
