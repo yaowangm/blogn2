@@ -247,26 +247,11 @@ BlogN集成了基于BERT的智能搜索系统：
 | `-v 宿主机HF缓存:/app/.cache/huggingface:ro` | Hugging Face 缓存（可选，若模型从宿主机挂载可省略） |
 | `-v 宿主机ModelScope缓存:/app/.cache/modelscope:ro` | ModelScope 缓存（可选） |
 | `-v 宿主机BERT模型目录:/app/.cache/models/bert-model-hub:ro` | BERT 模型 hub 目录（含 `snapshots/`），宿主机路径按本机实际修改；不挂载则无法使用智能搜索 |
-| `blogn2-app` | 镜像名（需先 `docker build -f docker/Dockerfile -t blogn2-app .`） |
+| `blogn2-app:latest` | 镜像名（推荐 `./docker/build-base.sh` + `./docker/build-app.sh`；见 [docker/README-DOCKER.md](docker/README-DOCKER.md)） |
 
-示例（宿主机路径请按本机修改）：
+生产环境 `docker run` 示例见 [docker/README-DOCKER.md](docker/README-DOCKER.md#启动容器)（含完整参数与续行注意）。
 
-```bash
-docker run -d \
-  --name blogn2-app \
-  --restart unless-stopped \
-  --network host \
-  -e BLOGN_CONFIG_FILE=/app/config.env \
-  -v /home/wy/blogn2/.env:/app/config.env:ro \
-  -v /home/wy/pic/blogn_img/upload:/app/uploads \
-  -v /home/wy/pic/blogn_img/userlogo:/app/avatars \
-  -v /home/wy/.cache/huggingface:/app/.cache/huggingface:ro \
-  -v /home/wy/.cache/modelscope:/app/.cache/modelscope:ro \
-  -v /home/wy/snap/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2:/app/.cache/models/bert-model-hub:ro \
-  blogn2-app
-```
-
-更多细节见 [docker/README-DOCKER.md](docker/README-DOCKER.md)。
+构建与远程发版见 [docker/README-DOCKER.md](docker/README-DOCKER.md)（分层镜像、`save-images.sh` / `load-images.sh`）。
 
 ---
 

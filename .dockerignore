@@ -67,10 +67,14 @@ tmp/
 temp/
 *.tmp
 
-# Docker
+# Docker（构建脚本/导出包不打进 app 镜像）
 Dockerfile*
 docker-compose*.yml
 .dockerignore
+docker/dist/
+docker/docker/
+**/*.tar.gz
+**/*.tgz
 
 # CI/CD
 .github/
