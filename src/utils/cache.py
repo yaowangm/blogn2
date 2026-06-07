@@ -15,6 +15,7 @@ from typing import Any, Callable, Optional, Union
 from datetime import datetime, timedelta
 
 from fastapi import HTTPException
+from starlette.responses import Response as StarletteResponse
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 from fastapi_cache.decorator import cache
@@ -281,6 +282,10 @@ def cache_decorator(
 
                 # 执行函数并缓存结果
                 result = await func(*args, **kwargs)
+
+                # Response（如 RSS XML）含 bytes，无法 JSON 序列化，跳过写入缓存
+                if isinstance(result, StarletteResponse):
+                    return result
 
                 # 设置缓存
                 cache_ttl = ttl or cache_settings.default_ttl

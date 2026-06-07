@@ -76,7 +76,7 @@ class TestProjectController:
         with patch('src.controllers.project.ProjectItemRepository') as mock_repo_class:
             mock_repo = MagicMock()
             mock_repo.get_by_project_id_and_folder = AsyncMock(return_value=[])
-            mock_repo.get_count_from_folder_recordcount = AsyncMock(return_value=0)
+            mock_repo.count_by_project_id_and_folder = AsyncMock(return_value=0)
             mock_repo_class.return_value = mock_repo
 
             # 模拟权限管理器
@@ -136,7 +136,7 @@ class TestProjectController:
         with patch('src.controllers.project.ProjectItemRepository') as mock_repo_class:
             mock_repo = MagicMock()
             mock_repo.get_by_project_id_and_folder = AsyncMock(return_value=[])
-            mock_repo.get_count_from_folder_recordcount = AsyncMock(return_value=0)
+            mock_repo.count_by_project_id_and_folder = AsyncMock(return_value=0)
             mock_repo_class.return_value = mock_repo
 
             # 模拟权限管理器

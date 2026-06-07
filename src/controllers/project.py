@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Dict, Any, Optional
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -23,6 +25,9 @@ from src.repositories.user_repository import UserRepository
 from src.constants import ArticleStatus
 from src.utils.file_utils import promote_temp_relative_path
 from src.utils.time_utils import TimeUtils
+from src.config.app import validate_app_config
+
+logger = logging.getLogger(__name__)
 
 # 创建项目API路由器
 router = APIRouter()
@@ -102,21 +107,14 @@ async def get_project_posts(
         should_include_deleted = include_deleted and is_admin
         posts = await project_item_repo.get_by_project_id_and_folder(project_id, folderid, limit, offset, should_include_deleted)
         
-        if folderid:
-            # 如果指定了文件夹，直接从folders表获取
+        total = None
+        if folderid is not None and folderid > 0:
             folder_repo = FolderRepository(session)
-            try:
-                folder = await folder_repo.get_by_id(folderid)
-                if folder and folder.recordcount is not None:
-                    total = folder.recordcount
-                else:
-                    # 如果recordcount为空，回退到实时查询
-                    total = await project_item_repo.count_by_project_id_and_folder(project_id, folderid)
-            except:
-                # 如果获取失败，回退到实时查询
-                total = await project_item_repo.count_by_project_id_and_folder(project_id, folderid)
-        else:
-            total = await project_item_repo.get_count_from_folder_recordcount(project_id)
+            folder = await folder_repo.get_by_id(folderid)
+            if folder and folder.recordcount is not None:
+                total = folder.recordcount
+        if total is None:
+            total = await project_item_repo.count_by_project_id_and_folder(project_id, folderid)
         
         # 获取分类信息
         category_name = "全部文章"
@@ -506,11 +504,6 @@ async def create_post(
             lastmodifytime=None,
         )
         
-        # 处理临时文件移动
-        import os
-        from src.config.app import validate_app_config
-        
-        # 获取上传目录配置
         config = validate_app_config()
         upload_dir = config["upload_dir"]
         
@@ -521,10 +514,7 @@ async def create_post(
                 if promoted:
                     new_post.attachment = promoted
             except Exception:
-                import logging
-                logging.getLogger(__name__).exception(
-                    "临时文件移动失败 attachment=%s", new_post.attachment
-                )
+                logger.exception("临时文件移动失败 attachment=%s", new_post.attachment)
                 raise HTTPException(status_code=500, detail="临时文件移动失败")
         
         created_post = await project_item_repo.create(new_post)
@@ -545,10 +535,7 @@ async def create_post(
                         if promoted:
                             relative_path = promoted
                     except Exception:
-                        import logging
-                        logging.getLogger(__name__).exception(
-                            "临时附件移动失败 path=%s", relative_path
-                        )
+                        logger.exception("临时附件移动失败 path=%s", relative_path)
                         raise HTTPException(status_code=500, detail="临时文件移动失败")
                 
                 # 创建附件记录
@@ -566,15 +553,12 @@ async def create_post(
         await project_repo.increment_record_count(project_id)
         
         # 更新用户积分（每发表一篇文章获得10积分，每日最多10分）
-        from src.repositories.user_repository import UserRepository
         user_repo = UserRepository(session)
         point_added = await user_repo.increment_point(current_user["id"], 10, "article_create")
         
         # 如果达到每日积分限制，记录日志但不影响文章创建
         if not point_added:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.info(f"用户 {current_user['id']} 今日积分已达上限，未获得积分奖励")
+            logger.info("用户 %s 今日积分已达上限，未获得积分奖励", current_user["id"])
         
         # 更新全局项目项数量统计
         from src.services.global_stats_service import GlobalStatsService
@@ -592,10 +576,7 @@ async def create_post(
             )
             
         except Exception as e:
-            # 向量化创建失败不影响文章创建成功
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"向量化创建失败: {e}")
+            logger.error("向量化创建失败: %s", e)
         
         # 提交事务（所有操作在同一个事务中）
         await session.commit()

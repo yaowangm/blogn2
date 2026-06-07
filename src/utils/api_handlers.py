@@ -13,7 +13,6 @@ from src.controllers import metadata, user, blog, project, article, urllink, rss
 from src.routes import regkey, user_register
 from src.utils.file_handlers import FileHandler
 from src.utils.file_utils import get_temp_dir, validate_and_sanitize_path
-from src.config.app import get_upload_dir
 
 
 class APIHandler:

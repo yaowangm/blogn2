@@ -206,47 +206,6 @@ class ProjectItemRepository:
         result = await self.session.exec(statement)
         return result.first() or 0
     
-    async def get_count_from_folder_recordcount(self, project_id: int, folder_id: Optional[int] = None) -> int:
-        """
-        从folders表的recordcount字段获取文章数量，避免实时查询
-        
-        Args:
-            project_id: 项目ID
-            folder_id: 文件夹ID（可选）
-            
-        Returns:
-            int: 文章数量
-        """
-        from src.models.folder import Folder
-        
-        if folder_id is not None:
-            # 如果指定了文件夹，直接从该文件夹的recordcount获取
-            folder_query = select(Folder.recordcount).where(
-                Folder.id == folder_id,
-                Folder.projectid == project_id
-            )
-            result = await self.session.exec(folder_query)
-            folder_recordcount = result.first()
-            return folder_recordcount if folder_recordcount is not None else 0
-        else:
-            # 如果没有指定文件夹，统计项目下所有文件夹的文章总数
-            # 注意：这里需要包含未分配到任何文件夹的文章
-            folders_query = select(Folder.recordcount).where(Folder.projectid == project_id)
-            result = await self.session.exec(folders_query)
-            folder_recordcounts = result.all()
-            folder_count = sum(recordcount or 0 for recordcount in folder_recordcounts)
-            
-            # 还需要统计没有分配到任何文件夹的文章数量
-            unassigned_query = select(func.count(ProjectItem.id)).where(
-                ProjectItem.projectid == project_id,
-                ProjectItem.folderid.is_(None),  # 未分配文件夹的文章
-                ProjectItem.status == 1  # 只统计正常状态的文章
-            )
-            unassigned_result = await self.session.exec(unassigned_query)
-            unassigned_count = unassigned_result.first() or 0
-            
-            return folder_count + unassigned_count
-    
     async def get_recent_articles(self, limit: int = 20) -> List[dict]:
         """获取最新发布的文章列表（用于RSS）"""
         from src.models.project import Project
@@ -400,24 +359,6 @@ class ProjectItemRepository:
             
             return True
         return False
-    
-    async def count_by_project_id_and_folder(self, project_id: int, folder_id: Optional[int] = None) -> int:
-        """根据项目ID和文件夹ID统计文章数量
-        
-        Args:
-            project_id: 项目ID
-            folder_id: 文件夹ID，None表示所有文章，0表示未分类
-            
-        Returns:
-            int: 文章数量
-        """
-        query = select(func.count(ProjectItem.id)).where(ProjectItem.projectid == project_id)
-        
-        if folder_id is not None:
-            query = query.where(ProjectItem.folderid == folder_id)
-        
-        result = await self.session.exec(query)
-        return result.first() or 0
     
     async def increment_access_count(self, project_item_id: int) -> bool:
         """
