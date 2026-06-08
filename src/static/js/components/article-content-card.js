@@ -26,6 +26,9 @@ function isArticleImagePath(path) {
 }
 
 class ArticleContentCard extends BaseComponent {
+    /** 自此日期（含）起发布的文章按 Markdown 渲染；此前为纯文本 + 自动链接 */
+    static MARKDOWN_CONTENT_SINCE = '2026-03-28T00:00:00Z';
+
     constructor() {
         super();
         this.articleId = null;
@@ -93,13 +96,16 @@ class ArticleContentCard extends BaseComponent {
             return;
         }
 
-        const { content, attachment, attachments } = this.articleData;
+        const { content, attachment, attachments, created_at } = this.articleData;
+        const contentModeClass = this.usesMarkdownContent(created_at)
+            ? 'markdown-content'
+            : 'plain-text-content';
 
         this.shadowRoot.innerHTML = `
             <div class="card article-content-card">
                 <div class="card-body">
-                    <div class="article-content markdown-content">
-                        ${this.formatContent(content)}
+                    <div class="article-content ${contentModeClass}">
+                        ${this.formatContent(content, created_at)}
                     </div>
 
                     ${this.renderAllAttachments(attachment, attachments)}
@@ -115,19 +121,38 @@ class ArticleContentCard extends BaseComponent {
     }
 
     /**
+     * 是否按 Markdown 渲染正文（2026-03-28 及之后发表的文章）。
+     */
+    usesMarkdownContent(createdAt) {
+        if (!createdAt) {
+            return false;
+        }
+        const created = new Date(createdAt);
+        if (Number.isNaN(created.getTime())) {
+            return false;
+        }
+        const cutoff = new Date(ArticleContentCard.MARKDOWN_CONTENT_SINCE);
+        return created.getTime() >= cutoff.getTime();
+    }
+
+    /**
      * 格式化文章内容
      */
-    formatContent(content) {
+    formatContent(content, createdAt = this.articleData?.created_at) {
         if (!content) {
             return '<p class="no-content">暂无内容</p>';
+        }
+
+        if (!this.usesMarkdownContent(createdAt)) {
+            return this.formatContentPlainText(content);
         }
 
         try {
             // 检查marked.js是否可用
             const markedParser = typeof marked !== 'undefined' ? marked : window.marked;
             if (!markedParser) {
-                console.warn('marked.js not available, using fallback formatting');
-                return this.formatContentFallback(content);
+                console.warn('marked.js not available, using plain text formatting');
+                return this.formatContentPlainText(content);
             }
 
             // 配置marked.js选项（与预览功能保持一致）
@@ -149,26 +174,22 @@ class ArticleContentCard extends BaseComponent {
             return processedHtml;
         } catch (error) {
             this.logError('Markdown parsing failed', error);
-            // 如果Markdown解析失败，回退到原始文本处理
-            return this.formatContentFallback(content);
+            return this.formatContentPlainText(content);
         }
     }
 
     /**
-     * 回退的内容格式化方法（当Markdown解析失败时使用）
+     * 纯文本正文：转义后按行分段，仅将 URL 转为可点击链接。
      */
-    formatContentFallback(content) {
-        // 首先对内容进行HTML转义，防止XSS攻击
+    formatContentPlainText(content) {
         const escapedContent = this.escapeHtml(content);
-
-        // 将换行符转换为HTML段落
-        const paragraphs = escapedContent.split(/\r?\n/).filter(p => p.trim());
+        const paragraphs = escapedContent.split(/\r?\n/).filter((p) => p.trim());
 
         if (paragraphs.length === 0) {
             return '<p class="no-content">暂无内容</p>';
         }
 
-        return paragraphs.map(p => `<p>${this.processTextWithLinks(p)}</p>`).join('');
+        return paragraphs.map((p) => `<p>${this.processTextWithLinks(p)}</p>`).join('');
     }
 
     /**
@@ -580,6 +601,14 @@ class ArticleContentCard extends BaseComponent {
 
                 .article-content p {
                     text-align: justify;
+                }
+
+                .plain-text-content p {
+                    margin: 0 0 var(--spacing-3);
+                }
+
+                .plain-text-content p:last-child {
+                    margin-bottom: 0;
                 }
 
                 /* 代码块样式修复 - 防止变形并添加滚动条；移动端用 100% 避免向右溢出 */
