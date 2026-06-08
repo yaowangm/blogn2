@@ -334,6 +334,20 @@ class BlogListCard extends BaseComponent {
                     margin: 0;
                 }
 
+                #pagination-placeholder {
+                    max-width: 100%;
+                    overflow: hidden;
+                    padding: var(--spacing-2) var(--spacing-5);
+                    border-bottom: 1px solid var(--gray-200);
+                    background: var(--gray-50);
+                    box-sizing: border-box;
+                }
+
+                #pagination-placeholder navigation-card {
+                    display: block;
+                    max-width: 100%;
+                }
+
                 .card-body {
                     padding: var(--spacing-5);
                     max-width: 100%;
@@ -482,12 +496,14 @@ class BlogListCard extends BaseComponent {
 
                 .pagination {
                     display: flex;
-                    justify-content: space-between; /* Changed to space-between */
+                    flex-wrap: wrap;
+                    justify-content: flex-end;
                     align-items: center;
                     gap: var(--spacing-3);
-                    margin-top: var(--spacing-5);
-                    padding: var(--spacing-5) 20px;
-                    border-top: 1px solid var(--gray-200);
+                    margin-top: var(--spacing-2);
+                    padding: var(--spacing-2) 0 0;
+                    max-width: 100%;
+                    box-sizing: border-box;
                 }
 
                 .pagination-left {
