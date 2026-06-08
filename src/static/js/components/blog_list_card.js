@@ -288,19 +288,17 @@ class BlogListCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
+                @import url('/static/css/common-components.css?v=20250609');
+
                 :host {
                     display: block;
                 }
 
                 .card {
-                    background: var(--white);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    transition: var(--transition-normal);
+                    margin-bottom: 0;
                     max-width: 100%;
                     width: 100%;
+                    transition: var(--transition-normal);
                 }
                 #pagination-placeholder {
                     max-width: 100%;
@@ -317,7 +315,6 @@ class BlogListCard extends BaseComponent {
                 }
 
                 .card-body {
-                    padding: var(--spacing-3) var(--spacing-4);
                     max-width: 100%;
                     overflow: hidden;
                 }
