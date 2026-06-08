@@ -256,10 +256,10 @@ class BlogListCard extends BaseComponent {
     }
 
     updatePagination() {
-        const placeholder = this.shadowRoot.querySelector('#pagination-placeholder');
-        if (placeholder) {
-            placeholder.innerHTML = this.renderPagination();
-        }
+        const html = this.renderPagination();
+        this.shadowRoot.querySelectorAll('.pagination-bar').forEach((placeholder) => {
+            placeholder.innerHTML = html;
+        });
     }
 
     goToPage(page) {
@@ -301,31 +301,42 @@ class BlogListCard extends BaseComponent {
                     width: 100%;
                     transition: var(--transition-normal);
                 }
-                #pagination-placeholder {
+                .pagination-bar {
                     max-width: 100%;
                     overflow: hidden;
                     margin: 0;
                     padding: var(--spacing-2) var(--spacing-4);
-                    border-bottom: 1px solid var(--gray-200);
                     background: var(--gray-50);
                     box-sizing: border-box;
                 }
 
-                #pagination-placeholder .pagination-toolbar {
+                .pagination-bar--top {
+                    border-bottom: 1px solid var(--gray-200);
+                }
+
+                .pagination-bar--bottom {
+                    border-top: 1px solid var(--gray-200);
+                }
+
+                .pagination-bar:empty {
+                    display: none;
+                }
+
+                .pagination-bar .pagination-toolbar {
                     display: flex;
                     flex-wrap: wrap;
                     align-items: center;
                     gap: var(--spacing-2) var(--spacing-3);
                 }
 
-                #pagination-placeholder navigation-card {
+                .pagination-bar navigation-card {
                     flex: 1 1 auto;
                     min-width: min(100%, 16rem);
                     max-width: 100%;
                     margin: 0;
                 }
 
-                #pagination-placeholder .pagination {
+                .pagination-bar .pagination {
                     flex: 0 0 auto;
                     margin: 0 0 0 auto;
                 }
@@ -574,7 +585,7 @@ class BlogListCard extends BaseComponent {
                 <div class="card-header">
                     <h3 class="card-title">${this.getCardTitle()}</h3>
                 </div>
-                <div id="pagination-placeholder"></div>
+                <div class="pagination-bar pagination-bar--top"></div>
                 <div class="card-body">
                     <div class="post-list">
                         <div class="post-item">
@@ -585,6 +596,7 @@ class BlogListCard extends BaseComponent {
                         </div>
                     </div>
                 </div>
+                <div class="pagination-bar pagination-bar--bottom"></div>
             </div>
         `;
     }
