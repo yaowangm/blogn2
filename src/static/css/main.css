@@ -350,8 +350,14 @@ a:hover {
 /* 响应式设计 */
 @media (max-width: 1024px) {
     .content-grid {
-        grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column;
         gap: var(--card-gap);
+    }
+
+    /* 单栏时主内容（右栏）在上，辅助侧栏（左栏）在下 */
+    .sidebar-left {
+        order: 2;
     }
     
     .container {
