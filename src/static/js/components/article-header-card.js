@@ -133,77 +133,17 @@ class ArticleHeaderCard extends BaseComponent {
                         <h1>${title || '无标题'}</h1>
                     </div>
                     
-                    <div class="article-meta">
-                        <div class="meta-item">
-                            <span class="meta-label">作者:</span>
-                            <span class="meta-value">${author?.name || '未知作者'}</span>
-                        </div>
-                        
-                        <div class="meta-item">
-                            <span class="meta-label">发布时间:</span>
-                            <span class="meta-value">${this.formatDate(created_at)}</span>
-                        </div>
-                        
-                        ${updated_at && updated_at !== created_at ? `
-                            <div class="meta-item">
-                                <span class="meta-label">更新时间:</span>
-                                <span class="meta-value">${this.formatDate(updated_at)}</span>
-                            </div>
-                        ` : ''}
-                        
-                        ${category?.name ? `
-                            <div class="meta-item">
-                                <span class="meta-label">分类:</span>
-                                <span class="meta-value">${category.name}</span>
-                            </div>
-                        ` : ''}
-                        
-                        <div class="meta-item">
-                            <span class="meta-label">点击数:</span>
-                            <span class="meta-value">${hits || 0}</span>
-                        </div>
-                        
-                        <div class="meta-item">
-                            <span class="meta-label">文章长度:</span>
-                            <span class="meta-value">${this.formatFileSize(itemsize || 0)}</span>
-                        </div>
-                        
-                        <div class="meta-item">
-                            <span class="meta-label">评论数:</span>
-                            <span class="meta-value">${comment_count || 0}</span>
-                        </div>
-                        
-                        <div class="meta-item">
-                            <span class="meta-label">文章状态:</span>
-                            <span class="meta-value status-${itemtype}">${this.getStatusText(itemtype)}</span>
-                        </div>
-                    </div>
-                    
-                    ${showToolbar ? `
-                        <div class="btn-toolbar">
-                            ${showSetSiteIntroButton ? `
-                                <button type="button" class="btn btn-secondary btn-sm" id="set-site-intro-btn">
-                                    ${this.getBtnIcon('globe')}<span>设为网站介绍</span>
-                                </button>
-                            ` : ''}
-                            ${showSetIntroButton ? `
-                                <button type="button" class="btn btn-secondary btn-sm" id="set-intro-btn">
-                                    ${this.getBtnIcon('user')}<span>设为个人介绍</span>
-                                </button>
-                            ` : ''}
-                            <button type="button" class="btn btn-primary btn-sm" id="edit-article-btn">
-                                ${this.getBtnIcon('edit')}<span>修改文章</span>
-                            </button>
-                            <button type="button" class="btn btn-danger btn-sm" id="delete-article-btn">
-                                ${this.getBtnIcon('delete')}<span>删除文章</span>
-                            </button>
-                            ${this.isAdmin ? `
-                                <button type="button" class="btn btn-danger btn-sm" id="permanent-delete-article-btn">
-                                    ${this.getBtnIcon('delete')}<span>彻底删除</span>
-                                </button>
-                            ` : ''}
-                        </div>
-                    ` : ''}
+                    ${this.renderArticleStats(hits, comment_count, itemsize)}
+                    ${this.renderArticleMeta({
+                        author,
+                        category,
+                        created_at,
+                        updated_at,
+                        itemtype,
+                        showToolbar,
+                        showSetSiteIntroButton,
+                        showSetIntroButton
+                    })}
                 </div>
             </div>
         `;
@@ -451,6 +391,126 @@ class ArticleHeaderCard extends BaseComponent {
         }
     }
 
+    static get ICON_STROKE() {
+        return '#475569';
+    }
+
+    getStatIcons() {
+        const s = ArticleHeaderCard.ICON_STROKE;
+        const svg = (paths) =>
+            `<svg class="stat-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${s}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+        return {
+            views: svg('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'),
+            comments: svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
+            size: svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>'),
+        };
+    }
+
+    getMetaIcon(type) {
+        const s = ArticleHeaderCard.ICON_STROKE;
+        const svg = (paths) =>
+            `<svg class="meta-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${s}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+        switch (type) {
+            case 'user':
+                return svg('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>');
+            case 'category':
+                return svg('<path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 0 1 0 2.828l-7 7a2 2 0 0 1-2.828 0l-7-7A1.994 1.994 0 0 1 3 12V7a4 4 0 0 1 4-4z"/>');
+            case 'created':
+                return svg('<path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>');
+            case 'updated':
+            default:
+                return svg('<circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/>');
+        }
+    }
+
+    renderStatItem(iconSvg, label, value) {
+        return `
+            <div class="stat-item">
+                ${iconSvg}
+                <span class="stat-label">${label}</span>
+                <span class="stat-number">${value}</span>
+            </div>
+        `;
+    }
+
+    renderArticleStats(hits, commentCount, itemsize) {
+        const icons = this.getStatIcons();
+        return `
+            <div class="article-stats">
+                ${this.renderStatItem(icons.views, '点击', hits || 0)}
+                ${this.renderStatItem(icons.comments, '评论', commentCount || 0)}
+                ${this.renderStatItem(icons.size, '长度', this.formatFileSize(itemsize || 0))}
+            </div>
+        `;
+    }
+
+    renderArticleToolbar(showSetSiteIntroButton, showSetIntroButton) {
+        return `
+            <div class="btn-toolbar">
+                ${showSetSiteIntroButton ? `
+                    <button type="button" class="btn btn-secondary btn-sm" id="set-site-intro-btn">
+                        ${this.getBtnIcon('globe')}<span>设为网站介绍</span>
+                    </button>
+                ` : ''}
+                ${showSetIntroButton ? `
+                    <button type="button" class="btn btn-secondary btn-sm" id="set-intro-btn">
+                        ${this.getBtnIcon('user')}<span>设为个人介绍</span>
+                    </button>
+                ` : ''}
+                <button type="button" class="btn btn-primary btn-sm" id="edit-article-btn">
+                    ${this.getBtnIcon('edit')}<span>修改文章</span>
+                </button>
+                <button type="button" class="btn btn-danger btn-sm" id="delete-article-btn">
+                    ${this.getBtnIcon('delete')}<span>删除文章</span>
+                </button>
+                ${this.isAdmin ? `
+                    <button type="button" class="btn btn-danger btn-sm" id="permanent-delete-article-btn">
+                        ${this.getBtnIcon('delete')}<span>彻底删除</span>
+                    </button>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    renderArticleMeta({ author, category, created_at, updated_at, itemtype, showToolbar, showSetSiteIntroButton, showSetIntroButton }) {
+        const safeAuthor = this.escapeHtml(author?.name || '未知作者');
+        const safeCategory = category?.name ? this.escapeHtml(category.name) : '';
+        const createDate = this.formatDate(created_at);
+        const updateDate = this.formatDate(updated_at);
+        const statusText = this.getStatusText(itemtype);
+
+        return `
+            <div class="article-meta">
+                <div class="meta-items-left">
+                    <div class="meta-item">
+                        ${this.getMetaIcon('user')}
+                        <span>${safeAuthor}</span>
+                    </div>
+                    <div class="meta-item">
+                        ${this.getMetaIcon('created')}
+                        <span>发布于 ${createDate}</span>
+                    </div>
+                    ${updated_at && updated_at !== created_at ? `
+                        <div class="meta-item">
+                            ${this.getMetaIcon('updated')}
+                            <span>更新于 ${updateDate}</span>
+                        </div>
+                    ` : ''}
+                    ${safeCategory ? `
+                        <div class="meta-item">
+                            ${this.getMetaIcon('category')}
+                            <span>${safeCategory}</span>
+                        </div>
+                    ` : ''}
+                    <div class="meta-item">
+                        <span class="status-${itemtype}">${statusText}</span>
+                    </div>
+                </div>
+                ${showToolbar ? this.renderArticleToolbar(showSetSiteIntroButton, showSetIntroButton) : ''}
+            </div>
+        `;
+    }
+
     getBtnIcon(type) {
         const wrap = (paths) =>
             `<svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
@@ -560,44 +620,84 @@ class ArticleHeaderCard extends BaseComponent {
                 .card { margin-bottom: 0; }
                 
                 .article-title h1 {
-                    font-size: var(--font-size-3xl);
+                    font-size: var(--font-size-xl);
                     font-weight: 700;
                     color: var(--gray-900);
-                    margin-bottom: var(--spacing-6);
-                    line-height: 1.2;
+                    margin: 0 0 var(--spacing-3);
+                    line-height: 1.3;
                 }
-                
-                .article-meta {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: var(--spacing-3);
-                    padding: var(--spacing-3);
-                    background-color: var(--gray-50);
-                    border-radius: var(--radius-lg);
-                    border: 1px solid var(--gray-200);
-                }
-                
-                .meta-item {
+
+                .article-stats {
                     display: flex;
-                    align-items: center;
+                    flex-wrap: wrap;
                     gap: var(--spacing-2);
+                    margin-bottom: var(--spacing-3);
                 }
-                
-                .meta-label {
-                    font-weight: 600;
+
+                .stat-item {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: var(--spacing-1);
+                    padding: var(--spacing-1) var(--spacing-2);
+                    background: var(--gray-50);
+                    border: 1px solid var(--gray-200);
+                    border-radius: var(--radius-sm);
+                    font-size: var(--font-size-xs);
                     color: var(--gray-600);
-                    min-width: 80px;
+                    line-height: 1.3;
                 }
-                
-                .meta-value {
+
+                .stat-icon,
+                .meta-icon,
+                .btn-icon {
+                    display: block;
+                    width: 18px;
+                    height: 18px;
+                    flex-shrink: 0;
+                }
+
+                .stat-label {
+                    font-weight: 500;
+                    color: var(--gray-600);
+                }
+
+                .stat-number {
+                    font-weight: 600;
                     color: var(--gray-900);
                 }
-                
-                .btn-toolbar {
-                    margin-top: var(--spacing-4);
-                    padding-top: var(--spacing-3);
-                    border-top: 1px solid var(--gray-200);
-                    width: 100%;
+
+                .article-meta {
+                    display: flex;
+                    flex-wrap: wrap;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: var(--spacing-2) var(--spacing-3);
+                    padding-top: var(--spacing-2);
+                    border-top: 1px solid var(--gray-100);
+                }
+
+                .meta-items-left {
+                    display: flex;
+                    flex-wrap: wrap;
+                    align-items: center;
+                    gap: var(--spacing-3);
+                    min-width: 0;
+                }
+
+                .meta-item {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: var(--spacing-1);
+                    color: var(--gray-500);
+                    font-size: var(--font-size-xs);
+                    white-space: nowrap;
+                }
+
+                .article-meta .btn-toolbar {
+                    margin-top: 0;
+                    padding-top: 0;
+                    border-top: none;
+                    width: auto;
                 }
 
                 .btn.btn-sm {
@@ -612,12 +712,23 @@ class ArticleHeaderCard extends BaseComponent {
                     height: 16px;
                 }
 
-                :host([data-layout-single-column]) .btn-toolbar {
+                :host([data-layout-single-column]) .article-meta {
                     flex-direction: column;
                     align-items: stretch;
                 }
 
-                :host([data-layout-single-column]) .btn-toolbar .btn {
+                :host([data-layout-single-column]) .meta-items-left,
+                :host([data-layout-single-column]) .article-meta .btn-toolbar {
+                    justify-content: flex-start;
+                }
+
+                :host([data-layout-single-column]) .article-meta .btn-toolbar {
+                    flex-direction: column;
+                    align-items: stretch;
+                    width: 100%;
+                }
+
+                :host([data-layout-single-column]) .article-meta .btn-toolbar .btn {
                     width: 100%;
                     box-sizing: border-box;
                 }
