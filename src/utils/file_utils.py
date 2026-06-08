@@ -26,7 +26,13 @@ def promote_temp_relative_path(relative_path: str, upload_dir: str) -> str | Non
     if not relative_path.startswith("temp/"):
         return relative_path
 
-    temp_filename = relative_path[len("temp/") :]
+    if ".." in relative_path.split("/"):
+        raise ValueError(f"invalid temp path: {relative_path}")
+
+    temp_filename = os.path.basename(relative_path[len("temp/") :])
+    if not temp_filename or temp_filename in (".", ".."):
+        raise ValueError(f"invalid temp path: {relative_path}")
+
     temp_path = os.path.join(get_temp_dir(), temp_filename)
     if not os.path.exists(temp_path):
         return None

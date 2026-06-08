@@ -43,6 +43,20 @@ resolve_base_file() {
   archive_resolve_input "blogn2-base-${BASE_VERSION}.tar.gz" "${explicit}" "${ROOT}"
 }
 
+# 根据文件名判断 base / app 增量包（all 模式仅传一个路径时使用）
+_archive_guess_kind() {
+  local file="$1"
+  local base
+  base="$(basename "${file}")"
+  if [[ "${base}" =~ ^blogn2-base-.+\.tar\.gz$ ]]; then
+    echo "base"
+  elif [[ "${base}" =~ ^blogn2-app-.+-delta\.tar\.gz$ ]] || [[ "${base}" =~ ^blogn2-app-.+\.tar\.gz$ ]]; then
+    echo "app-delta"
+  else
+    echo "unknown"
+  fi
+}
+
 resolve_app_file() {
   local tag="$1"
   local explicit="${2:-}"
@@ -103,8 +117,20 @@ case "${MODE}" in
       load_archive "${ARG3}" app-delta
     elif _archive_is_path "${ARG2}"; then
       APP_TAG="latest"
-      load_archive "${ARG2}" app-delta
-      load_archive "$(resolve_app_file "${APP_TAG}" "")" app-delta
+      case "$( _archive_guess_kind "${ARG2}" )" in
+        base)
+          load_archive "${ARG2}" base
+          load_archive "$(resolve_app_file "${APP_TAG}" "")" app-delta
+          ;;
+        app-delta)
+          load_archive "$(resolve_base_file "")" base
+          load_archive "${ARG2}" app-delta
+          ;;
+        *)
+          echo "错误: 无法识别镜像包类型（须为 blogn2-base-*.tar.gz 或 blogn2-app-*.tar.gz）: ${ARG2}" >&2
+          exit 1
+          ;;
+      esac
     else
       APP_TAG="${ARG2:-latest}"
       load_archive "$(resolve_base_file "")" base

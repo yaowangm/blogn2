@@ -593,6 +593,7 @@ async def update_article(
                             relative_path = promoted
                     except Exception:
                         logger.exception("临时附件移动失败 path=%s", relative_path)
+                        raise HTTPException(status_code=500, detail="临时文件移动失败")
 
                 attachment = Attachment(
                     parentid=article_id,

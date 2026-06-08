@@ -107,15 +107,18 @@ async def get_project_posts(
         should_include_deleted = include_deleted and is_admin
         posts = await project_item_repo.get_by_project_id_and_folder(project_id, folderid, limit, offset, should_include_deleted)
         
-        total = None
+        total = await project_item_repo.count_by_project_id_and_folder(project_id, folderid)
         if folderid is not None and folderid > 0:
             folder_repo = FolderRepository(session)
             folder = await folder_repo.get_by_id(folderid)
-            if folder and folder.recordcount is not None:
-                total = folder.recordcount
-        if total is None:
-            total = await project_item_repo.count_by_project_id_and_folder(project_id, folderid)
-        
+            if folder and folder.recordcount is not None and folder.recordcount != total:
+                logger.warning(
+                    "folder %s recordcount stale: cached=%s live=%s",
+                    folderid,
+                    folder.recordcount,
+                    total,
+                )
+
         # 获取分类信息
         category_name = "全部文章"
         if folderid:
@@ -124,8 +127,8 @@ async def get_project_posts(
                 folder = await folder_repo.get_by_id(folderid)
                 if folder:
                     category_name = folder.name
-            except:
-                pass
+            except Exception:
+                logger.exception("获取分类名称失败 folderid=%s", folderid)
         
         # 转换为字典格式
         posts_data = []

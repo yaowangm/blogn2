@@ -92,17 +92,6 @@ class BlogPostsListCard extends BaseComponent {
         }
     }
 
-    normalizeFolderId(folderId) {
-        if (folderId === '' || folderId === undefined || folderId === null) {
-            return null;
-        }
-        return folderId;
-    }
-
-    shouldIncludeFolderInApi() {
-        return this.currentFolderId !== null && this.currentFolderId !== '';
-    }
-
     reloadBlogListCard(page = 1) {
         const blogListCard = this.shadowRoot?.querySelector('blog-list-card:not(#subscription-posts-card)');
         if (blogListCard && this.activeTab === 'original') {
@@ -121,7 +110,7 @@ class BlogPostsListCard extends BaseComponent {
         // 监听分类变化事件：直接更新内层 blog-list-card，避免 render() 销毁子组件
         this.addEventListener('categoryChanged', (event) => {
             const { folderId, folderName } = event.detail;
-            this.currentFolderId = this.normalizeFolderId(folderId);
+            this.currentFolderId = FolderFilter.normalizeFolderId(folderId);
             this.currentCategoryName = folderName || '全部文章';
             this.currentPage = 1;
             if (!this.reloadBlogListCard(1)) {
@@ -157,7 +146,7 @@ class BlogPostsListCard extends BaseComponent {
         try {
             let apiUrl = `/api/projects/${this.projectId}/posts?page=${this.currentPage}&limit=${this.pageSize}&type=${this.activeTab}`;
             
-            if (this.shouldIncludeFolderInApi()) {
+            if (FolderFilter.shouldIncludeFolderInApi(this.currentFolderId)) {
                 apiUrl += `&folderid=${this.currentFolderId}`;
             }
             
@@ -235,7 +224,7 @@ class BlogPostsListCard extends BaseComponent {
         // 更新URL参数
         const url = new URL(window.location);
         url.searchParams.set('page', page);
-        if (this.shouldIncludeFolderInApi()) {
+        if (FolderFilter.shouldIncludeFolderInApi(this.currentFolderId)) {
             url.searchParams.set('folderid', this.currentFolderId);
         } else {
             url.searchParams.delete('folderid');

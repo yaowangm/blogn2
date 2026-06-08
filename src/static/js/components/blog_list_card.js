@@ -38,18 +38,6 @@ class BlogListCard extends BaseComponent {
         return url.searchParams.get('folderid');
     }
 
-    /** folderid=0（未分类）为有效筛选条件，不能用 truthy 判断 */
-    shouldIncludeFolderInApi() {
-        return this.currentFolderId !== null && this.currentFolderId !== '';
-    }
-
-    normalizeFolderId(folderId) {
-        if (folderId === '' || folderId === undefined || folderId === null) {
-            return null;
-        }
-        return folderId;
-    }
-
     /**
      * 获取卡片标题
      * @returns {string} 卡片标题
@@ -89,7 +77,7 @@ class BlogListCard extends BaseComponent {
         // 监听分类变化事件
         this.addEventListener('categoryChanged', (event) => {
             const { folderId, folderName } = event.detail;
-            this.currentFolderId = this.normalizeFolderId(folderId);
+            this.currentFolderId = FolderFilter.normalizeFolderId(folderId);
             this.currentCategoryName = folderName || '全部文章';
             this.currentPage = 1;
             this.loadContent(1);
@@ -121,7 +109,7 @@ class BlogListCard extends BaseComponent {
                         apiUrl = `/api/projects/${projectId}/posts?page=${page}&limit=${this.pageSize}&type=subscription`;
                     } else {
                         apiUrl = `/api/projects/${projectId}/posts?page=${page}&limit=${this.pageSize}&type=original`;
-                        if (this.shouldIncludeFolderInApi()) {
+                        if (FolderFilter.shouldIncludeFolderInApi(this.currentFolderId)) {
                             apiUrl += `&folderid=${this.currentFolderId}`;
                         }
                     }
@@ -280,7 +268,7 @@ class BlogListCard extends BaseComponent {
         // 更新URL参数
         const url = new URL(window.location);
         url.searchParams.set('page', page);
-        if (this.shouldIncludeFolderInApi()) {
+        if (FolderFilter.shouldIncludeFolderInApi(this.currentFolderId)) {
             url.searchParams.set('folderid', this.currentFolderId);
         } else {
             url.searchParams.delete('folderid');
