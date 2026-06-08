@@ -223,8 +223,8 @@ class BlogListCard extends BaseComponent {
     }
 
     renderPagination() {
-        let paginationHtml = '';
-        
+        let innerHtml = '';
+
         if (this.totalPages > 1) {
             const pagination = {
                 current_page: this.currentPage,
@@ -233,25 +233,26 @@ class BlogListCard extends BaseComponent {
                 has_prev: this.currentPage > 1,
                 has_next: this.currentPage < this.totalPages
             };
-            
-            paginationHtml = `<navigation-card mode="pagination" compact pagination='${JSON.stringify(pagination)}'></navigation-card>`;
+
+            innerHtml += `<navigation-card mode="pagination" compact pagination='${JSON.stringify(pagination)}'></navigation-card>`;
         }
-        
-        // 添加分类信息（如果启用的话）
+
         if (this.showCategoryInfo) {
-            paginationHtml += `
+            innerHtml += `
                 <div class="pagination">
-                    <div class="pagination-right">
-                        <div class="category-info">
-                            <span class="category-label">分类：</span>
-                            <span class="category-name">${this.escapeHtml(this.currentCategoryName)}</span>
-                        </div>
+                    <div class="category-info">
+                        <span class="category-label">分类：</span>
+                        <span class="category-name">${this.escapeHtml(this.currentCategoryName)}</span>
                     </div>
                 </div>
             `;
         }
-        
-        return paginationHtml;
+
+        if (!innerHtml) {
+            return '';
+        }
+
+        return `<div class="pagination-toolbar">${innerHtml}</div>`;
     }
 
     updatePagination() {
@@ -310,10 +311,23 @@ class BlogListCard extends BaseComponent {
                     box-sizing: border-box;
                 }
 
+                #pagination-placeholder .pagination-toolbar {
+                    display: flex;
+                    flex-wrap: wrap;
+                    align-items: center;
+                    gap: var(--spacing-2) var(--spacing-3);
+                }
+
                 #pagination-placeholder navigation-card {
-                    display: block;
+                    flex: 1 1 auto;
+                    min-width: min(100%, 16rem);
                     max-width: 100%;
                     margin: 0;
+                }
+
+                #pagination-placeholder .pagination {
+                    flex: 0 0 auto;
+                    margin: 0 0 0 auto;
                 }
 
                 .card-body {
@@ -463,30 +477,6 @@ class BlogListCard extends BaseComponent {
 
                 .post-attachment-image img:hover {
                     transform: scale(1.02);
-                }
-
-                .pagination {
-                    display: flex;
-                    flex-wrap: wrap;
-                    justify-content: flex-end;
-                    align-items: center;
-                    gap: var(--spacing-3);
-                    margin-top: var(--spacing-2);
-                    padding: var(--spacing-2) 0 0;
-                    max-width: 100%;
-                    box-sizing: border-box;
-                }
-
-                .pagination-left {
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-3);
-                }
-
-                .pagination-right {
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-3);
                 }
 
                 .category-info {
