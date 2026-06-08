@@ -7,6 +7,7 @@ class BlogHeaderCard extends BaseComponent {
         super();
         this.projectId = null;
         this.blogData = null;
+        this.userData = null;
         this.loading = true;
         this.subscriptionStatus = null;
         this.isCurrentUserBlog = false;
@@ -41,6 +42,17 @@ class BlogHeaderCard extends BaseComponent {
                 return;
             }
             this.blogData = blogData;
+
+            if (blogData.userid) {
+                try {
+                    const userResponse = await fetch(`/api/users/${blogData.userid}`);
+                    if (userResponse.ok) {
+                        this.userData = await userResponse.json();
+                    }
+                } catch (error) {
+                    console.error('Error loading blog owner data:', error);
+                }
+            }
             
             // 检查是否为当前用户的博客
             this.checkIfCurrentUserBlog();
@@ -132,151 +144,136 @@ class BlogHeaderCard extends BaseComponent {
         this.shadowRoot.innerHTML = `
             <style>
                 @import url('/static/css/common-components.css');
-                /* 根 .card 不设 margin，由父级 .sidebar 的 gap 统一控制间距，避免双倍间距 */
+                :host {
+                    --gray-50: #f8fafc;
+                    --gray-100: #f1f5f9;
+                    --gray-200: #e2e8f0;
+                    --gray-500: #64748b;
+                    --gray-600: #475569;
+                    --gray-900: #0f172a;
+                }
                 .card { margin-bottom: 0; }
-                .card-header { padding: var(--spacing-5) var(--spacing-4); background: var(--gray-50); color: var(--gray-800); text-align: center; border-bottom: 1px solid var(--gray-200); }
-                .blog-title { margin: 0 0 var(--spacing-2) 0; font-size: var(--font-size-2xl); font-weight: 700; color: var(--gray-800); }
-                .blog-description { margin: 0; font-size: var(--font-size-lg); color: var(--gray-600); opacity: 0.9; line-height: 1.6; max-width: 650px; margin-left: auto; margin-right: auto; }
-                .blog-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--spacing-2); margin-bottom: var(--spacing-4); }
-                :host([data-layout-single-column]) .blog-stats {
-                    grid-template-columns: 1fr;
+                .card-header {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: var(--spacing-3);
+                    padding: var(--spacing-3) var(--spacing-4);
+                    background: var(--gray-50);
+                    border-bottom: 1px solid var(--gray-200);
+                    text-align: left;
                 }
-                .stat-item { text-align: center; padding: var(--spacing-2) var(--spacing-3); background: var(--gray-50); border-radius: var(--radius-md); border: 1px solid var(--gray-200); line-height: 1.4; }
-                .stat-label { display: inline; font-size: var(--font-size-sm); font-weight: 500; color: var(--gray-600); margin: 0; }
-                .stat-number { display: inline; font-size: var(--font-size-sm); font-weight: 700; color: var(--primary-color); margin: 0; }
-                .blog-meta { display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-4) var(--spacing-6); background: var(--gray-50); border-radius: var(--radius-lg); }
-                .meta-items-left { 
-                    display: flex; 
-                    align-items: center; 
-                    gap: var(--spacing-6); 
+                .header-avatar {
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 50%;
+                    flex-shrink: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: var(--gray-100);
+                    font-size: var(--font-size-base);
+                    font-weight: 600;
+                    color: var(--gray-600);
+                    border: 1px solid var(--gray-200);
+                    overflow: hidden;
                 }
-                .meta-item { display: flex; align-items: center; gap: var(--spacing-2); color: var(--gray-600); font-size: var(--font-size-sm); }
-                .meta-icon { width: 16px; height: 16px; color: var(--gray-500); }
-                .meta-subscription-right { 
-                    display: flex; 
-                    align-items: center; 
+                .header-avatar img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    display: block;
+                }
+                .header-text {
+                    min-width: 0;
+                    flex: 1;
+                }
+                .card-body { padding: var(--spacing-3) var(--spacing-4); }
+                .blog-title {
+                    margin: 0 0 var(--spacing-1);
+                    font-size: var(--font-size-xl);
+                    font-weight: 700;
+                    color: var(--gray-900);
+                    line-height: 1.3;
+                }
+                .blog-description {
+                    margin: 0;
+                    font-size: var(--font-size-sm);
+                    color: var(--gray-600);
+                    line-height: 1.5;
+                }
+                .blog-stats {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: var(--spacing-2);
+                    margin-bottom: var(--spacing-3);
+                }
+                .stat-item {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: var(--spacing-1);
+                    padding: var(--spacing-1) var(--spacing-2);
+                    background: var(--gray-50);
+                    border: 1px solid var(--gray-200);
+                    border-radius: var(--radius-sm);
+                    font-size: var(--font-size-xs);
+                    color: var(--gray-600);
+                    line-height: 1.3;
+                }
+                .stat-icon,
+                .meta-icon,
+                .btn-icon {
+                    display: block;
+                    width: 18px;
+                    height: 18px;
+                    flex-shrink: 0;
+                }
+                .stat-label {
+                    font-weight: 500;
+                    color: var(--gray-600);
+                }
+                .stat-number {
+                    font-weight: 600;
+                    color: var(--gray-900);
+                }
+                .blog-meta {
+                    display: flex;
+                    flex-wrap: wrap;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: var(--spacing-2) var(--spacing-3);
+                    padding-top: var(--spacing-2);
+                    border-top: 1px solid var(--gray-100);
+                }
+                .meta-items-left {
+                    display: flex;
+                    flex-wrap: wrap;
+                    align-items: center;
+                    gap: var(--spacing-3);
+                    min-width: 0;
+                }
+                .meta-item {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: var(--spacing-1);
+                    color: var(--gray-500);
+                    font-size: var(--font-size-xs);
+                    white-space: nowrap;
+                }
+                .btn .btn-icon {
+                    width: 16px;
+                    height: 16px;
                 }
                 :host([data-layout-single-column]) .blog-meta {
                     flex-direction: column;
                     align-items: stretch;
+                }
+                :host([data-layout-single-column]) .meta-items-left,
+                :host([data-layout-single-column]) .btn-toolbar {
                     justify-content: flex-start;
-                    gap: var(--spacing-4);
                 }
-                :host([data-layout-single-column]) .meta-items-left {
-                    justify-content: center;
-                    flex-wrap: nowrap;
-                    gap: var(--spacing-4);
-                }
-                :host([data-layout-single-column]) .meta-subscription-right {
-                    justify-content: center;
-                    flex-wrap: nowrap;
-                    gap: var(--spacing-2);
-                }
-                :host([data-layout-single-column]) .meta-subscription-right .edit-blog-button {
-                    margin-right: 0;
-                }
-                .subscription-section { 
-                    margin-top: var(--spacing-4); 
-                    padding: var(--spacing-4); 
-                    background: var(--gray-50); 
-                    border-radius: var(--radius-lg); 
-                    border: 1px solid var(--gray-200);
+                .subscription-section {
+                    margin-top: var(--spacing-3);
                     text-align: center;
-                }
-                .subscription-button { 
-                    background: var(--primary-color); 
-                    color: white; 
-                    border: none; 
-                    padding: var(--spacing-3) var(--spacing-6); 
-                    border-radius: var(--radius-md); 
-                    cursor: pointer; 
-                    font-size: var(--font-size-sm); 
-                    font-weight: 500; 
-                    transition: all 0.2s ease;
-                    display: inline-block;
-                    text-decoration: none;
-                    min-width: 80px;
-                    min-height: 36px;
-                    position: relative;
-                    z-index: 1;
-                }
-                .subscription-button:hover { 
-                    background: #1d4ed8; 
-                    transform: translateY(-1px); 
-                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-                }
-                .subscription-button:disabled { 
-                    background: var(--gray-400); 
-                    cursor: not-allowed; 
-                    transform: none; 
-                    box-shadow: none;
-                }
-                .subscription-button.unsubscribe { 
-                    background: var(--red-500); 
-                }
-                .subscription-button.unsubscribe:hover {
-                    background: #dc2626;
-                    transform: translateY(-1px);
-                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-                }
-                .subscription-button-inline { 
-                    background: var(--primary-color); 
-                    color: white; 
-                    border: none; 
-                    padding: var(--spacing-2) var(--spacing-4); 
-                    border-radius: var(--radius-md); 
-                    cursor: pointer; 
-                    font-size: var(--font-size-xs); 
-                    font-weight: 500; 
-                    transition: all 0.2s ease;
-                    display: inline-block;
-                    text-decoration: none;
-                    min-width: 60px;
-                    min-height: 28px;
-                    position: relative;
-                    z-index: 1;
-                }
-                .subscription-button-inline:hover { 
-                    background: #1d4ed8; 
-                    transform: translateY(-1px); 
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                }
-                .subscription-button-inline:disabled { 
-                    background: var(--gray-400); 
-                    cursor: not-allowed; 
-                    transform: none; 
-                    box-shadow: none;
-                }
-                .subscription-button-inline.unsubscribe {
-                    background: var(--red-500);
-                }
-                .subscription-button-inline.unsubscribe:hover {
-                    background: #dc2626;
-                    transform: translateY(-1px);
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                }
-                .edit-blog-button { 
-                    background: var(--gray-600); 
-                    color: white; 
-                    border: none; 
-                    padding: var(--spacing-2) var(--spacing-4); 
-                    border-radius: var(--radius-md); 
-                    cursor: pointer; 
-                    font-size: var(--font-size-xs); 
-                    font-weight: 500; 
-                    transition: all 0.2s ease;
-                    display: inline-block;
-                    text-decoration: none;
-                    min-width: 80px;
-                    min-height: 28px;
-                    margin-right: var(--spacing-2);
-                    position: relative;
-                    z-index: 1;
-                }
-                .edit-blog-button:hover { 
-                    background: var(--gray-700); 
-                    transform: translateY(-1px); 
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
                 }
             </style>
 
@@ -292,49 +289,117 @@ class BlogHeaderCard extends BaseComponent {
         return `<div class="loading"><div>加载中...</div></div>`;
     }
 
+    static get ICON_STROKE() {
+        return '#475569';
+    }
+
+    getStatIcons() {
+        const s = BlogHeaderCard.ICON_STROKE;
+        const svg = (paths) =>
+            `<svg class="stat-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${s}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+        return {
+            posts: svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>'),
+            comments: svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
+            views: svg('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'),
+            history: svg('<circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/>'),
+        };
+    }
+
+    getMetaIcon(calendar) {
+        const s = BlogHeaderCard.ICON_STROKE;
+        if (calendar) {
+            return `<svg class="meta-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${s}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>`;
+        }
+        return `<svg class="meta-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${s}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>`;
+    }
+
+    getBtnIcon(type) {
+        const s = 'currentColor';
+        const wrap = (paths) =>
+            `<svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${s}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+        if (type === 'edit') {
+            if (typeof Icons !== 'undefined') {
+                return Icons.edit.replace('<svg ', '<svg class="btn-icon" width="16" height="16" aria-hidden="true" ');
+            }
+            return wrap('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>');
+        }
+        if (typeof Icons !== 'undefined') {
+            return Icons.subscription.replace('<svg ', '<svg class="btn-icon" width="16" height="16" aria-hidden="true" ');
+        }
+        return wrap('<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>');
+    }
+
+    getAvatarPath(userId) {
+        if (!userId) return null;
+        const prefix = Math.floor(userId / 10000) + 1;
+        return `/avatar/${prefix}/${userId}.jpg`;
+    }
+
+    renderHeaderAvatar() {
+        const userId = this.userData?.id || this.blogData?.userid;
+        const displayName = this.userData?.name || this.blogData?.name || '?';
+        const safeFallback = this.escapeHtml(displayName.charAt(0).toUpperCase());
+        const avatarPath = this.getAvatarPath(userId);
+
+        return `
+            <div class="header-avatar" aria-hidden="true">
+                ${avatarPath ? `
+                    <img src="${avatarPath}" alt=""
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                         onload="this.style.display='block'; this.nextElementSibling.style.display='none';"
+                         style="display: block;">
+                ` : ''}
+                <span style="display: ${avatarPath ? 'none' : 'flex'}; width: 100%; height: 100%; align-items: center; justify-content: center;">${safeFallback}</span>
+            </div>
+        `;
+    }
+
+    renderStatItem(iconSvg, label, value, suffix = '') {
+        return `
+            <div class="stat-item">
+                ${iconSvg}
+                <span class="stat-label">${label}</span>
+                <span class="stat-number">${value}</span>
+                ${suffix ? `<span class="stat-label">${suffix}</span>` : ''}
+            </div>
+        `;
+    }
+
     renderContent() {
         // 安全处理所有文本字段，防止HTML注入和XSS攻击
         const safeBlogName = this.escapeHtml(this.blogData.name || '未命名博客');
         const safeBlogDesc = this.escapeHtml(this.blogData.comment || '这个博客还没有描述');
         const createDate = this.blogData.createtime ? this.formatDate(this.blogData.createtime) : '未知';
         const updateDate = this.blogData.updatetime ? this.formatDate(this.blogData.updatetime) : '未知';
+        const icons = this.getStatIcons();
 
         return `
             <div class="card-header">
-                <h1 class="blog-title">${safeBlogName}</h1>
-                <p class="blog-description">${safeBlogDesc}</p>
+                ${this.renderHeaderAvatar()}
+                <div class="header-text">
+                    <h1 class="blog-title">${safeBlogName}</h1>
+                    <p class="blog-description">${safeBlogDesc}</p>
+                </div>
             </div>
             <div class="card-body">
                 <div class="blog-stats">
-                    <div class="stat-item">
-                        <span class="stat-label">文章</span><span class="stat-number">${this.blogData.recordcount || 0}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">评论</span><span class="stat-number">${this.blogData.commentcount || 0}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">访问</span><span class="stat-number">${this.blogData.accesscount || 0}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">历史</span><span class="stat-number">${this.getDaysSinceCreation()}</span><span class="stat-label">天</span>
-                    </div>
+                    ${this.renderStatItem(icons.posts, '文章', this.blogData.recordcount || 0)}
+                    ${this.renderStatItem(icons.comments, '评论', this.blogData.commentcount || 0)}
+                    ${this.renderStatItem(icons.views, '访问', this.blogData.accesscount || 0)}
+                    ${this.renderStatItem(icons.history, '历史', this.getDaysSinceCreation(), '天')}
                 </div>
                 <div class="blog-meta">
                     <div class="meta-items-left">
                         <div class="meta-item">
-                            <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
-                            </svg>
+                            ${this.getMetaIcon(true)}
                             <span>创建于 ${createDate}</span>
                         </div>
                         <div class="meta-item">
-                            <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
-                            </svg>
+                            ${this.getMetaIcon(false)}
                             <span>更新于 ${updateDate}</span>
                         </div>
                     </div>
-                    <div class="meta-subscription-right">
+                    <div class="btn-toolbar">
                         ${this.renderEditButton()}
                         ${this.renderSubscriptionButton()}
                     </div>
@@ -366,7 +431,7 @@ class BlogHeaderCard extends BaseComponent {
             return '';
         }
 
-        return `<button class="edit-blog-button" onclick="this.getRootNode().host.showEditModal()">修改博客信息</button>`;
+        return `<button type="button" class="btn btn-secondary btn-sm" onclick="this.getRootNode().host.showEditModal()">${this.getBtnIcon('edit')}<span>修改博客信息</span></button>`;
     }
 
     /**
@@ -391,15 +456,13 @@ class BlogHeaderCard extends BaseComponent {
 
         // 如果订阅状态未加载，显示加载中
         if (this.subscriptionStatus === null) {
-            return `<button class="subscription-button-inline" disabled>加载中...</button>`;
+            return `<button type="button" class="btn btn-sm" disabled>加载中...</button>`;
         }
 
-        // 根据订阅状态显示相应按钮
         const isSubscribed = this.subscriptionStatus.is_subscribed;
         const buttonText = isSubscribed ? '取消订阅' : '订阅';
-        const buttonClass = isSubscribed ? 'subscription-button-inline unsubscribe' : 'subscription-button-inline';
-
-        return `<button class="${buttonClass}" onclick="this.getRootNode().host.handleSubscription()">${buttonText}</button>`;
+        const buttonClass = isSubscribed ? 'btn btn-danger btn-sm' : 'btn btn-primary btn-sm';
+        return `<button type="button" class="${buttonClass}" onclick="this.getRootNode().host.handleSubscription()">${this.getBtnIcon('subscription')}<span>${buttonText}</span></button>`;
     }
 
     /**
@@ -426,20 +489,18 @@ class BlogHeaderCard extends BaseComponent {
         if (this.subscriptionStatus === null) {
             return `
                 <div class="subscription-section">
-                    <button class="subscription-button" disabled>加载中...</button>
+                    <button type="button" class="btn btn-sm" disabled>加载中...</button>
                 </div>
             `;
         }
 
-        // 根据订阅状态显示相应按钮
         const isSubscribed = this.subscriptionStatus.is_subscribed;
         const buttonText = isSubscribed ? '取消订阅' : '订阅';
-        const buttonClass = isSubscribed ? 'subscription-button unsubscribe' : 'subscription-button';
-
+        const buttonClass = isSubscribed ? 'btn btn-danger' : 'btn btn-primary';
         return `
             <div class="subscription-section">
-                <button class="${buttonClass}" onclick="this.getRootNode().host.handleSubscription()">
-                    ${buttonText}
+                <button type="button" class="${buttonClass}" onclick="this.getRootNode().host.handleSubscription()">
+                    ${this.getBtnIcon('subscription')}<span>${buttonText}</span>
                 </button>
             </div>
         `;
@@ -548,8 +609,8 @@ class BlogHeaderCard extends BaseComponent {
                         </form>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn-cancel" onclick="this.closest('.edit-blog-modal').remove(); window.blogHeaderComponent = null;">取消</button>
-                        <button type="button" class="btn-save" onclick="window.blogHeaderComponent.saveBlogInfo()">保存</button>
+                        <button type="button" class="btn btn-secondary" onclick="this.closest('.edit-blog-modal').remove(); window.blogHeaderComponent = null;">取消</button>
+                        <button type="button" class="btn btn-primary" onclick="window.blogHeaderComponent.saveBlogInfo()">保存</button>
                     </div>
                 </div>
             </div>
@@ -629,31 +690,29 @@ class BlogHeaderCard extends BaseComponent {
                     display: flex;
                     justify-content: flex-end;
                     gap: 10px;
-                    padding: 20px;
+                    padding: 16px 20px;
                     border-top: 1px solid #e5e7eb;
                 }
-                .btn-cancel,
-                .btn-save {
+                .modal-footer .btn {
                     padding: 8px 16px;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
                     font-size: 14px;
-                    font-weight: 500;
-                }
-                .btn-cancel {
-                    background: #f3f4f6;
+                    border-radius: 6px;
+                    border: 1px solid #d1d5db;
+                    background: #fff;
                     color: #374151;
+                    cursor: pointer;
                 }
-                .btn-save {
-                    background: #3b82f6;
-                    color: white;
-                }
-                .btn-cancel:hover {
-                    background: #e5e7eb;
-                }
-                .btn-save:hover {
+                .modal-footer .btn-primary {
                     background: #2563eb;
+                    border-color: #2563eb;
+                    color: #fff;
+                }
+                .modal-footer .btn-secondary:hover {
+                    background: #f9fafb;
+                }
+                .modal-footer .btn-primary:hover {
+                    background: #1d4ed8;
+                    border-color: #1d4ed8;
                 }
             </style>
         `;

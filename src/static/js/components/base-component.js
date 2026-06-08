@@ -486,7 +486,7 @@ class BaseComponent extends HTMLElement {
                 return false;
             }
             return node.matches(
-                'a[target="_blank"], a.post-item, a.blog-item, .nav-item, button.tab, .pagination-btn, .create-post-button'
+                'a[target="_blank"], a.post-item, a.blog-item, a.blog-profile-link, .nav-item, button.tab, .pagination-btn, .create-post-button'
             );
         });
         if (el && typeof el.blur === 'function') {
