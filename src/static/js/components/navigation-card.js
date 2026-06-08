@@ -7,7 +7,7 @@ class NavigationCard extends BaseComponent {
     }
 
     static get observedAttributes() {
-        return ['mode', 'pagination', 'on-page-change'];
+        return ['mode', 'pagination', 'on-page-change', 'compact'];
     }
 
     connectedCallback() {
@@ -178,12 +178,20 @@ class NavigationCard extends BaseComponent {
 
                 .pagination {
                     display: flex;
-                    flex-direction: column;
-                    align-items: stretch;
-                    gap: var(--spacing-2);
+                    flex-wrap: wrap;
+                    align-items: center;
+                    justify-content: center;
+                    column-gap: var(--spacing-3);
+                    row-gap: var(--spacing-2);
+                    margin: 0;
                     padding: var(--spacing-3) 0;
                     max-width: 100%;
                     box-sizing: border-box;
+                }
+
+                :host([compact]) .pagination {
+                    margin: 0;
+                    padding: 0;
                 }
 
                 .pagination-pages {
@@ -192,6 +200,7 @@ class NavigationCard extends BaseComponent {
                     justify-content: center;
                     align-content: flex-start;
                     gap: 0.375rem;
+                    flex: 0 1 auto;
                     max-width: 100%;
                 }
 
@@ -260,11 +269,13 @@ class NavigationCard extends BaseComponent {
                 }
 
                 .pagination-meta {
-                    width: 100%;
+                    flex: 0 1 auto;
+                    max-width: 100%;
                     text-align: center;
                     font-size: var(--font-size-xs);
                     color: var(--gray-500);
                     line-height: 1.5;
+                    white-space: nowrap;
                 }
             </style>
 

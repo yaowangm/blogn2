@@ -234,7 +234,7 @@ class BlogListCard extends BaseComponent {
                 has_next: this.currentPage < this.totalPages
             };
             
-            paginationHtml = `<navigation-card mode="pagination" pagination='${JSON.stringify(pagination)}'></navigation-card>`;
+            paginationHtml = `<navigation-card mode="pagination" compact pagination='${JSON.stringify(pagination)}'></navigation-card>`;
         }
         
         // 添加分类信息（如果启用的话）
@@ -303,7 +303,8 @@ class BlogListCard extends BaseComponent {
                 #pagination-placeholder {
                     max-width: 100%;
                     overflow: hidden;
-                    padding: var(--spacing-2) var(--spacing-5);
+                    margin: 0;
+                    padding: var(--spacing-2) var(--spacing-4);
                     border-bottom: 1px solid var(--gray-200);
                     background: var(--gray-50);
                     box-sizing: border-box;
@@ -312,6 +313,7 @@ class BlogListCard extends BaseComponent {
                 #pagination-placeholder navigation-card {
                     display: block;
                     max-width: 100%;
+                    margin: 0;
                 }
 
                 .card-body {
