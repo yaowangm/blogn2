@@ -300,20 +300,85 @@ class ArticleCommentsCard extends BaseComponent {
      * 滚动到指定评论并突出显示
      */
     scrollToCommentAndHighlight(commentId) {
-        // 等待DOM渲染完成
-        setTimeout(() => {
+        void this.scrollToCommentElement(commentId);
+    }
+
+    /**
+     * 等待根节点内图片加载完成，避免正文附图撑高布局后滚动偏移。
+     */
+    waitForImagesIn(root, timeoutMs = 3000) {
+        if (!root) {
+            return Promise.resolve();
+        }
+        const images = root.querySelectorAll('img');
+        if (images.length === 0) {
+            return Promise.resolve();
+        }
+        return Promise.all([...images].map((img) => {
+            if (img.complete) {
+                return Promise.resolve();
+            }
+            return new Promise((resolve) => {
+                const timer = setTimeout(resolve, timeoutMs);
+                const done = () => {
+                    clearTimeout(timer);
+                    resolve();
+                };
+                img.addEventListener('load', done, { once: true });
+                img.addEventListener('error', done, { once: true });
+            });
+        }));
+    }
+
+    /**
+     * 等待页面上方正文与评论区布局稳定后再定位锚点。
+     */
+    async waitForUpstreamLayout() {
+        const contentCard = document.querySelector('article-content-card');
+        await this.waitForImagesIn(contentCard?.shadowRoot);
+        await this.waitForImagesIn(this.shadowRoot);
+        await this.waitForLayoutIdle();
+    }
+
+    /**
+     * 在页面高度连续稳定一小段时间后结束等待。
+     */
+    waitForLayoutIdle(timeoutMs = 4000, idleMs = 120) {
+        return new Promise((resolve) => {
+            let idleTimer;
+            const finish = () => {
+                clearTimeout(timeoutTimer);
+                clearTimeout(idleTimer);
+                observer.disconnect();
+                resolve();
+            };
+            const timeoutTimer = setTimeout(finish, timeoutMs);
+            const observer = new ResizeObserver(() => {
+                clearTimeout(idleTimer);
+                idleTimer = setTimeout(finish, idleMs);
+            });
+            observer.observe(document.body);
+            idleTimer = setTimeout(finish, idleMs);
+        });
+    }
+
+    /**
+     * 定位到评论元素：先等布局稳定，再滚动并高亮。
+     */
+    async scrollToCommentElement(commentId) {
+        for (let attempt = 0; attempt < 8; attempt += 1) {
             const commentElement = this.shadowRoot.querySelector(`#post${commentId}`);
             if (commentElement) {
-                // 滚动到评论位置
+                await this.waitForUpstreamLayout();
                 commentElement.scrollIntoView({
                     behavior: 'smooth',
                     block: 'center'
                 });
-
-                // 添加突出显示效果
                 this.highlightComment(commentElement);
+                return;
             }
-        }, 100);
+            await new Promise((resolve) => setTimeout(resolve, 100));
+        }
     }
 
     /** 锚点定位评论的蓝色边框闪烁总时长（毫秒），与原先整行高亮一致 */
@@ -336,29 +401,13 @@ class ArticleCommentsCard extends BaseComponent {
      * 检查URL锚点并滚动到对应评论
      */
     checkAndScrollToComment() {
-        // 获取URL中的锚点
         const hash = window.location.hash;
         if (!hash) return;
 
-        // 检查锚点格式是否为 #post{commentId}
         const match = hash.match(/^#post(\d+)$/);
         if (!match) return;
 
-        const commentId = match[1];
-
-        // 等待DOM渲染完成后再滚动
-        setTimeout(() => {
-            // 查找对应的评论元素
-            const commentElement = this.shadowRoot.querySelector(`#post${commentId}`);
-            if (commentElement) {
-                // 滚动到评论位置
-                commentElement.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center'
-                });
-                this.highlightComment(commentElement);
-            }
-        }, 500); // 增加延迟，确保评论完全渲染
+        void this.scrollToCommentElement(match[1]);
     }
 
     /**
@@ -638,7 +687,7 @@ class ArticleCommentsCard extends BaseComponent {
             style.textContent = `
                 @import url('/static/css/common-components.css');
 
-                .card { margin-bottom: 0; }
+                .card { margin-bottom: 0; overflow: visible; }
 
                 .card-title {
                     display: flex;
@@ -655,7 +704,7 @@ class ArticleCommentsCard extends BaseComponent {
                 .comments-list {
                     list-style: none;
                     margin: 0;
-                    padding: 0;
+                    padding: 2px var(--spacing-1);
                 }
 
                 .comment-item {
@@ -665,6 +714,7 @@ class ArticleCommentsCard extends BaseComponent {
                     padding: var(--spacing-3) var(--spacing-4);
                     border-bottom: 1px solid var(--gray-100);
                     transition: background-color var(--transition-fast);
+                    border-radius: var(--radius-md, 8px);
                 }
 
                 .comment-item:last-child {
@@ -675,20 +725,20 @@ class ArticleCommentsCard extends BaseComponent {
                     background: var(--gray-50);
                 }
 
-                /* 从 #post{id} 进入：仅边缘蓝色闪烁，不改变正文背景色，总时长 3s（6×0.5s） */
-                .comment-hash-flash {
-                    border-radius: var(--radius-md, 8px);
+                /* 从 #post{id} 进入：内嵌蓝框闪烁，避免被卡片裁切，总时长 3s（6×0.5s） */
+                .comment-item.comment-hash-flash {
                     position: relative;
                     z-index: 1;
+                    background-color: var(--white);
                     animation: commentHashBorderBlink 0.5s ease-in-out 6;
                 }
 
                 @keyframes commentHashBorderBlink {
                     0%, 100% {
-                        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.95);
+                        box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.95);
                     }
                     50% {
-                        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+                        box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.12);
                     }
                 }
 
