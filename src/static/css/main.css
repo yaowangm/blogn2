@@ -352,7 +352,13 @@ a:hover {
     .content-grid {
         display: flex;
         flex-direction: column;
+        align-items: stretch; /* 覆盖桌面 grid 的 start，侧栏占满宽度 */
         gap: var(--card-gap);
+    }
+
+    .content-grid > .sidebar {
+        width: 100%;
+        max-width: 100%;
     }
 
     /* 单栏时主内容（右栏）在上，辅助侧栏（左栏）在下 */
