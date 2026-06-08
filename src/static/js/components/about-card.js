@@ -93,6 +93,11 @@ class AboutCard extends BaseComponent {
         this.shadowRoot.innerHTML = `
             <style>
                 @import url('/static/css/common-components.css?v=20250609');
+
+                .card-body {
+                    padding: calc(var(--spacing-3) + 5px) calc(var(--spacing-4) + 5px);
+                }
+
                 :host {
                     display: block;
                 }

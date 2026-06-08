@@ -548,6 +548,10 @@ class ArticleContentCard extends BaseComponent {
                 @import url('/static/css/components.css');
                 .card { margin-bottom: 0; }
 
+                .card-body {
+                    padding: calc(var(--spacing-3) + 5px) calc(var(--spacing-4) + 5px);
+                }
+
                 :host {
                     display: block;
                     max-width: 100%;
