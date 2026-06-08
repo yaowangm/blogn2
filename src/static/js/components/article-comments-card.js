@@ -793,7 +793,7 @@ class ArticleCommentsCard extends BaseComponent {
                 }
 
                 .comment-text {
-                    line-height: 1.5;
+                    line-height: calc(1.5em + 2px);
                     color: var(--gray-700);
                     font-size: var(--font-size-sm);
                     margin: 5px 0 0;

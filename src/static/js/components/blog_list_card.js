@@ -352,7 +352,7 @@ class BlogListCard extends BaseComponent {
                 .post-list {
                     display: flex;
                     flex-direction: column;
-                    gap: var(--spacing-2);
+                    gap: calc(var(--spacing-2) + 2px);
                     max-width: 100%;
                     overflow: hidden;
                 }
