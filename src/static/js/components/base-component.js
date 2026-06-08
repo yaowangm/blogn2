@@ -469,5 +469,31 @@ class BaseComponent extends HTMLElement {
     }
 }
 
+// 鼠标点击后移除焦点环（尤其 target="_blank" 的卡片链接）
+(function initBlognUiFocusHandlers() {
+    if (typeof document === 'undefined' || document.__blognUiFocusInit) {
+        return;
+    }
+    document.__blognUiFocusInit = true;
+
+    document.addEventListener('click', (event) => {
+        if (event.detail === 0) {
+            return;
+        }
+        const path = event.composedPath();
+        const el = path.find((node) => {
+            if (!(node instanceof Element)) {
+                return false;
+            }
+            return node.matches(
+                'a[target="_blank"], a.post-item, a.blog-item, .nav-item, button.tab, .pagination-btn, .create-post-button'
+            );
+        });
+        if (el && typeof el.blur === 'function') {
+            requestAnimationFrame(() => el.blur());
+        }
+    });
+})();
+
 // 注册基础组件（不直接使用，仅作为基类）
 customElements.define('base-component', BaseComponent); 

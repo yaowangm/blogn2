@@ -54,7 +54,7 @@
     --font-size-4xl: 2.25rem;
     
     /* 间距 */
-    --card-gap: 20px; /* 卡片之间垂直间距，统一由此处继承 */
+    --card-gap: 12px; /* 卡片之间垂直间距，统一由此处继承 */
     --card-margin: var(--card-gap); /* 卡片 margin，侧栏内由 .sidebar 覆盖为 0 */
     --spacing-1: 0.25rem;
     --spacing-2: 0.5rem;
@@ -107,14 +107,14 @@ body {
 /* 主要内容区域 */
 .main-content {
     min-height: calc(100vh - 140px); /* 减去header和footer的高度 */
-    padding: var(--spacing-8) 0;
+    padding: var(--spacing-4) 0;
 }
 
 /* 内容网格布局 */
 .content-grid {
     display: grid;
-    grid-template-columns: 320px 1fr;
-    gap: var(--spacing-8);
+    grid-template-columns: 300px 1fr;
+    gap: var(--spacing-4);
     align-items: start;
 }
 
@@ -148,11 +148,10 @@ body {
 
 .card:hover {
     box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
 }
 
 .card-header {
-    padding: var(--spacing-4) var(--spacing-5);
+    padding: var(--spacing-3) var(--spacing-4);
     border-bottom: 1px solid var(--gray-200);
     background: var(--gray-50);
 }
@@ -165,23 +164,44 @@ body {
 }
 
 .card-body {
-    padding: var(--spacing-5);
+    padding: var(--spacing-4);
 }
 
-/* 按钮样式 */
+/* 统一按钮：默认中性样式，仅重要/危险操作用色 */
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: var(--spacing-2) var(--spacing-4);
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-3);
     font-size: var(--font-size-sm);
     font-weight: 500;
     border-radius: var(--radius-md);
-    border: 1px solid transparent;
+    border: 1px solid var(--gray-300);
+    background-color: var(--white);
+    color: var(--gray-700);
     cursor: pointer;
     transition: var(--transition-fast);
     text-decoration: none;
-    line-height: 1;
+    line-height: 1.25;
+    white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+    background-color: var(--gray-50);
+    border-color: var(--gray-400);
+    color: var(--gray-900);
+}
+
+.btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.btn .btn-icon {
+    width: 1em;
+    height: 1em;
+    flex-shrink: 0;
 }
 
 .btn-primary {
@@ -190,9 +210,10 @@ body {
     border-color: var(--primary-color);
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
     background-color: var(--primary-hover);
     border-color: var(--primary-hover);
+    color: var(--white);
 }
 
 .btn-secondary {
@@ -201,7 +222,7 @@ body {
     border-color: var(--gray-300);
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
     background-color: var(--gray-50);
     border-color: var(--gray-400);
 }
@@ -212,9 +233,22 @@ body {
     border-color: transparent;
 }
 
-.btn-ghost:hover {
+.btn-ghost:hover:not(:disabled) {
     background-color: var(--gray-100);
     color: var(--gray-800);
+    border-color: transparent;
+}
+
+.btn-danger {
+    background-color: var(--white);
+    color: var(--error-color);
+    border-color: var(--red-300);
+}
+
+.btn-danger:hover:not(:disabled) {
+    background-color: var(--red-50);
+    border-color: var(--error-color);
+    color: var(--red-700);
 }
 
 /* 链接样式 */
@@ -407,7 +441,7 @@ a:hover {
 
 @media (max-width: 768px) {
     .main-content {
-        padding: var(--spacing-6) 0;
+        padding: var(--spacing-3) 0;
     }
     
     .content-grid {
@@ -460,10 +494,22 @@ a:hover {
     }
 }
 
-/* 焦点样式 */
+/* 焦点：鼠标点击不显示蓝框，键盘 Tab 保留可见焦点 */
 :focus {
+    outline: none;
+}
+
+:focus-visible {
     outline: 2px solid var(--primary-color);
     outline-offset: 2px;
+}
+
+a.post-item:focus,
+a.blog-item:focus,
+.nav-item:focus,
+.card:focus,
+button:focus:not(:focus-visible) {
+    outline: none;
 }
 
 /* 跳过链接 */

@@ -11,7 +11,7 @@
 }
 
 .card-body {
-    padding: var(--spacing-6);
+    padding: var(--spacing-4);
 }
 
 /* 全局长文本断行策略，防止超长连续字符串/链接撑破卡片布局 */
@@ -47,14 +47,14 @@
 .loading {
     text-align: center;
     color: var(--gray-500);
-    padding: var(--spacing-8);
+    padding: var(--spacing-4);
 }
 
 /* 错误消息 */
 .error-message {
     text-align: center;
     color: var(--error-color);
-    padding: var(--spacing-8);
+    padding: var(--spacing-4);
 }
 
 /* 无内容状态 */
@@ -62,7 +62,7 @@
     color: var(--gray-500);
     font-style: italic;
     text-align: center;
-    padding: var(--spacing-8);
+    padding: var(--spacing-4);
 }
 
 /* 自动链接样式 */
@@ -110,19 +110,29 @@
     text-decoration: underline;
 }
 
-/* 按钮样式 */
+/* 按钮与焦点（与 main.css 一致，供 Shadow DOM @import） */
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: var(--spacing-2) var(--spacing-4);
-    border: 1px solid transparent;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-3);
+    border: 1px solid var(--gray-300);
     border-radius: var(--radius-md);
     font-size: var(--font-size-sm);
     font-weight: 500;
     text-decoration: none;
     cursor: pointer;
     transition: all var(--transition-fast);
+    background-color: var(--white);
+    color: var(--gray-700);
+    line-height: 1.25;
+}
+
+.btn:hover:not(:disabled) {
+    background-color: var(--gray-50);
+    border-color: var(--gray-400);
+    color: var(--gray-900);
 }
 
 .btn-primary {
@@ -131,18 +141,46 @@
     border-color: var(--primary-color);
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
     background-color: var(--primary-hover);
     border-color: var(--primary-hover);
+    color: var(--white);
 }
 
 .btn-secondary {
-    background-color: var(--gray-100);
+    background-color: var(--white);
     color: var(--gray-700);
     border-color: var(--gray-300);
 }
 
-.btn-secondary:hover {
-    background-color: var(--gray-200);
+.btn-secondary:hover:not(:disabled) {
+    background-color: var(--gray-50);
     border-color: var(--gray-400);
+}
+
+.btn-danger {
+    background-color: var(--white);
+    color: var(--error-color);
+    border-color: var(--red-300);
+}
+
+.btn-danger:hover:not(:disabled) {
+    background-color: var(--red-50);
+    border-color: var(--error-color);
+    color: var(--red-700);
+}
+
+:focus {
+    outline: none;
+}
+
+:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+a.post-item:focus,
+a.blog-item:focus,
+.nav-item:focus {
+    outline: none;
 }

@@ -241,15 +241,30 @@ class HeaderComponent extends BaseComponent {
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
-                    padding: var(--spacing-2) var(--spacing-4);
+                    gap: var(--spacing-2);
+                    padding: var(--spacing-2) var(--spacing-3);
                     font-size: var(--font-size-sm);
                     font-weight: 500;
                     border-radius: var(--radius-md);
-                    border: 1px solid transparent;
+                    border: 1px solid var(--gray-300);
+                    background-color: var(--white);
+                    color: var(--gray-700);
                     cursor: pointer;
                     transition: var(--transition-fast);
                     text-decoration: none;
-                    line-height: 1;
+                    line-height: 1.25;
+                }
+
+                .btn:hover {
+                    background-color: var(--gray-50);
+                    border-color: var(--gray-400);
+                    color: var(--gray-900);
+                }
+
+                .btn:focus { outline: none; }
+                .btn:focus-visible {
+                    outline: 2px solid var(--primary-color);
+                    outline-offset: 2px;
                 }
 
                 .btn-primary {
@@ -261,6 +276,7 @@ class HeaderComponent extends BaseComponent {
                 .btn-primary:hover {
                     background-color: var(--primary-hover);
                     border-color: var(--primary-hover);
+                    color: var(--white);
                 }
 
                 .btn-ghost {
@@ -272,6 +288,7 @@ class HeaderComponent extends BaseComponent {
                 .btn-ghost:hover {
                     background-color: var(--gray-100);
                     color: var(--gray-800);
+                    border-color: transparent;
                 }
 
                 @media (max-width: 768px) {

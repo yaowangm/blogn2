@@ -306,11 +306,10 @@ class BlogListCard extends BaseComponent {
 
                 .card:hover {
                     box-shadow: var(--shadow-md);
-                    transform: translateY(-2px);
                 }
 
                 .card-header {
-                    padding: var(--spacing-4) var(--spacing-5);
+                    padding: var(--spacing-3) var(--spacing-4);
                     border-bottom: 1px solid var(--gray-200);
                     background: var(--gray-50);
                 }
@@ -337,7 +336,7 @@ class BlogListCard extends BaseComponent {
                 }
 
                 .card-body {
-                    padding: var(--spacing-5);
+                    padding: var(--spacing-4);
                     max-width: 100%;
                     overflow: hidden;
                 }
@@ -345,16 +344,16 @@ class BlogListCard extends BaseComponent {
                 .post-list {
                     display: flex;
                     flex-direction: column;
-                    gap: var(--spacing-4);
+                    gap: var(--spacing-2);
                     max-width: 100%;
                     overflow: hidden;
                 }
 
                 .post-item {
                     display: flex;
-                    gap: var(--spacing-4);
-                    padding: var(--spacing-4);
-                    border-radius: var(--radius-lg);
+                    gap: var(--spacing-3);
+                    padding: var(--spacing-3);
+                    border-radius: var(--radius-md);
                     background: var(--gray-50);
                     border: 1px solid var(--gray-200);
                     transition: var(--transition-fast);
@@ -366,8 +365,12 @@ class BlogListCard extends BaseComponent {
 
                 .post-item:hover {
                     background: var(--white);
-                    box-shadow: var(--shadow-md);
-                    transform: translateY(-2px);
+                    box-shadow: var(--shadow-sm);
+                    border-color: var(--gray-300);
+                }
+
+                .post-item:focus {
+                    outline: none;
                 }
 
                 .post-avatar {
@@ -385,7 +388,7 @@ class BlogListCard extends BaseComponent {
                     overflow: hidden;
                     border: 2px solid var(--gray-200);
                     position: relative;
-                    margin-top: 20px;
+                    margin-top: 0;
                 }
 
                 .post-avatar img {

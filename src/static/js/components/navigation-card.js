@@ -86,11 +86,10 @@ class NavigationCard extends BaseComponent {
 
                 .card:hover {
                     box-shadow: var(--shadow-md);
-                    transform: translateY(-2px);
                 }
 
                 .card-header {
-                    padding: var(--spacing-4) var(--spacing-5);
+                    padding: var(--spacing-3) var(--spacing-4);
                     border-bottom: 1px solid var(--gray-200);
                     background: var(--gray-50);
                 }
@@ -103,7 +102,7 @@ class NavigationCard extends BaseComponent {
                 }
 
                 .card-body {
-                    padding: var(--spacing-5);
+                    padding: var(--spacing-4);
                 }
 
                 .nav-list {
@@ -125,7 +124,11 @@ class NavigationCard extends BaseComponent {
 
                 .nav-item:hover {
                     background: var(--gray-50);
-                    color: var(--primary-color);
+                    color: var(--gray-900);
+                }
+
+                .nav-item:focus {
+                    outline: none;
                 }
 
                 .nav-icon {
@@ -240,10 +243,19 @@ class NavigationCard extends BaseComponent {
                 }
 
                 .pagination-btn.active {
-                    background: var(--primary-color);
-                    border-color: var(--primary-color);
-                    color: var(--white);
+                    background: var(--gray-100);
+                    border-color: var(--gray-500);
+                    color: var(--gray-900);
                     font-weight: 600;
+                }
+
+                .pagination-btn:focus {
+                    outline: none;
+                }
+
+                .pagination-btn:focus-visible {
+                    outline: 2px solid var(--primary-color);
+                    outline-offset: 1px;
                 }
 
                 .pagination-btn.disabled,

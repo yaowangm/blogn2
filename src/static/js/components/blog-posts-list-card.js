@@ -281,11 +281,29 @@ class BlogPostsListCard extends BaseComponent {
                 }
                 
                 .tabs { display: flex; border-bottom: 1px solid var(--gray-200); }
-                .tab { flex: 1; padding: var(--spacing-4) var(--spacing-6); text-align: center; background: var(--gray-100); border: none; cursor: pointer; transition: var(--transition-fast); font-size: var(--font-size-sm); color: var(--gray-600); }
-                .tab.active { background: var(--white); color: var(--primary-color); border-bottom: 2px solid var(--primary-color); }
-                .tab:hover:not(.active) { background: var(--gray-200); }
+                .tab {
+                    flex: 1;
+                    padding: var(--spacing-3) var(--spacing-4);
+                    text-align: center;
+                    background: var(--gray-50);
+                    border: none;
+                    border-bottom: 2px solid transparent;
+                    cursor: pointer;
+                    transition: var(--transition-fast);
+                    font-size: var(--font-size-sm);
+                    font-weight: 500;
+                    color: var(--gray-600);
+                }
+                .tab.active {
+                    background: var(--white);
+                    color: var(--gray-900);
+                    border-bottom-color: var(--gray-700);
+                }
+                .tab:hover:not(.active) { background: var(--gray-100); color: var(--gray-800); }
+                .tab:focus { outline: none; }
+                .tab:focus-visible { outline: 2px solid var(--primary-color); outline-offset: -2px; }
                 .posts-list { list-style: none; margin: 0; padding: 0; }
-                .post-item { border-bottom: 1px solid var(--gray-100); padding: var(--spacing-6); }
+                .post-item { border-bottom: 1px solid var(--gray-100); padding: var(--spacing-4); }
                 .post-item:last-child { border-bottom: none; }
                 .post-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-3); }
                 .post-title { margin: 0; font-size: var(--font-size-lg); font-weight: 600; color: var(--gray-800); text-decoration: none; }
@@ -294,7 +312,7 @@ class BlogPostsListCard extends BaseComponent {
                 .post-category { background: var(--primary-color); color: var(--white); padding: var(--spacing-1) var(--spacing-2); border-radius: var(--radius-full); font-size: var(--font-size-xs); }
                 .post-content { color: var(--gray-700); line-height: 1.6; margin-bottom: var(--spacing-4); }
                 .post-stats { display: flex; align-items: center; gap: var(--spacing-4); font-size: var(--font-size-xs); color: var(--gray-500); }
-                .loading { text-align: center; padding: var(--spacing-8); color: var(--gray-500); }
+                .loading { text-align: center; padding: var(--spacing-4); color: var(--gray-500); }
                 .error { text-align: center; padding: var(--spacing-6); color: var(--error-color); background: var(--gray-50); border-radius: var(--radius-lg); }
                 .empty-state { text-align: center; padding: var(--spacing-6); color: var(--gray-500); }
                 
@@ -313,34 +331,34 @@ class BlogPostsListCard extends BaseComponent {
                     padding: 0;
                 }
                 
-                /* 发表博客文章按钮样式 */
+                /* 发表文章：重要操作，使用主色按钮 */
                 .create-post-button {
-                    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
-                    color: var(--white);
-                    border: none;
-                    padding: var(--spacing-4) var(--spacing-6);
-                    border-radius: var(--radius-lg);
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                    box-shadow: var(--shadow-md);
-                    margin: var(--spacing-4) var(--spacing-5) var(--spacing-3) var(--spacing-5);
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     gap: var(--spacing-2);
-                    width: calc(100% - var(--spacing-10));
+                    width: calc(100% - var(--spacing-8));
+                    margin: var(--spacing-3) var(--spacing-4) var(--spacing-2);
+                    padding: var(--spacing-2) var(--spacing-4);
+                    border: 1px solid var(--primary-color);
+                    border-radius: var(--radius-md);
+                    background: var(--primary-color);
+                    color: var(--white);
+                    font-size: var(--font-size-sm);
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: var(--transition-fast);
                 }
                 
                 .create-post-button:hover {
-                    transform: translateY(-2px);
-                    box-shadow: var(--shadow-lg);
-                    background: linear-gradient(135deg, var(--primary-hover), var(--primary-color));
+                    background: var(--primary-hover);
+                    border-color: var(--primary-hover);
                 }
-                
-                .create-post-button:active {
-                    transform: translateY(0);
+
+                .create-post-button:focus { outline: none; }
+                .create-post-button:focus-visible {
+                    outline: 2px solid var(--primary-color);
+                    outline-offset: 2px;
                 }
                 
                 .create-post-icon {

@@ -134,14 +134,14 @@ class BlogHeaderCard extends BaseComponent {
                 @import url('/static/css/common-components.css');
                 /* 根 .card 不设 margin，由父级 .sidebar 的 gap 统一控制间距，避免双倍间距 */
                 .card { margin-bottom: 0; }
-                .card-header { padding: var(--spacing-8) var(--spacing-6); background: var(--gray-50); color: var(--gray-800); text-align: center; border-bottom: 1px solid var(--gray-200); }
-                .blog-title { margin: 0 0 var(--spacing-4) 0; font-size: var(--font-size-3xl); font-weight: 700; color: var(--gray-800); }
+                .card-header { padding: var(--spacing-5) var(--spacing-4); background: var(--gray-50); color: var(--gray-800); text-align: center; border-bottom: 1px solid var(--gray-200); }
+                .blog-title { margin: 0 0 var(--spacing-2) 0; font-size: var(--font-size-2xl); font-weight: 700; color: var(--gray-800); }
                 .blog-description { margin: 0; font-size: var(--font-size-lg); color: var(--gray-600); opacity: 0.9; line-height: 1.6; max-width: 650px; margin-left: auto; margin-right: auto; }
-                .blog-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--spacing-4); margin-bottom: var(--spacing-6); }
+                .blog-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--spacing-2); margin-bottom: var(--spacing-4); }
                 :host([data-layout-single-column]) .blog-stats {
                     grid-template-columns: 1fr;
                 }
-                .stat-item { text-align: center; padding: var(--spacing-4); background: var(--gray-50); border-radius: var(--radius-lg); border: 1px solid var(--gray-200); line-height: 1.4; }
+                .stat-item { text-align: center; padding: var(--spacing-2) var(--spacing-3); background: var(--gray-50); border-radius: var(--radius-md); border: 1px solid var(--gray-200); line-height: 1.4; }
                 .stat-label { display: inline; font-size: var(--font-size-sm); font-weight: 500; color: var(--gray-600); margin: 0; }
                 .stat-number { display: inline; font-size: var(--font-size-sm); font-weight: 700; color: var(--primary-color); margin: 0; }
                 .blog-meta { display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-4) var(--spacing-6); background: var(--gray-50); border-radius: var(--radius-lg); }
