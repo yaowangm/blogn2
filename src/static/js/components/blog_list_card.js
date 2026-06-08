@@ -398,7 +398,7 @@ class BlogListCard extends BaseComponent {
                     font-size: var(--font-size-base);
                     font-weight: 600;
                     color: var(--gray-900);
-                    margin-bottom: var(--spacing-2);
+                    margin: 0 0 var(--spacing-1);
                     line-height: 1.4;
                     overflow: hidden;
                     max-width: 100%;
@@ -408,7 +408,7 @@ class BlogListCard extends BaseComponent {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-3);
-                    margin-bottom: var(--spacing-2);
+                    margin-bottom: var(--spacing-1);
                     font-size: var(--font-size-sm);
                     color: var(--gray-500);
                 }
@@ -439,7 +439,7 @@ class BlogListCard extends BaseComponent {
                     -webkit-line-clamp: 2;
                     -webkit-box-orient: vertical;
                     overflow: hidden;
-                    margin-bottom: var(--spacing-3);
+                    margin: 0 0 var(--spacing-3);
                     max-width: 100%;
                     word-wrap: break-word;
                     word-break: break-word;
