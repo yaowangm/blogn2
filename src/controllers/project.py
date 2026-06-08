@@ -119,16 +119,19 @@ async def get_project_posts(
                     total,
                 )
 
-        # 获取分类信息
+        # 获取分类信息（folderid=0 表示未分类，为有效筛选值）
         category_name = "全部文章"
-        if folderid:
-            folder_repo = FolderRepository(session)
-            try:
-                folder = await folder_repo.get_by_id(folderid)
-                if folder:
-                    category_name = folder.name
-            except Exception:
-                logger.exception("获取分类名称失败 folderid=%s", folderid)
+        if folderid is not None:
+            if folderid == 0:
+                category_name = "未分类"
+            else:
+                folder_repo = FolderRepository(session)
+                try:
+                    folder = await folder_repo.get_by_id(folderid)
+                    if folder:
+                        category_name = folder.name
+                except Exception:
+                    logger.exception("获取分类名称失败 folderid=%s", folderid)
         
         # 转换为字典格式
         posts_data = []

@@ -23,6 +23,8 @@ class TestFolderFilterJs:
         content = FOLDER_FILTER_JS.read_text(encoding="utf-8")
         assert "normalizeFolderId" in content
         assert "shouldIncludeFolderInApi" in content
+        assert "getCategoryLabel" in content
+        assert "isUncategorizedFolderId" in content
         assert "window.FolderFilter" in content
 
     def test_blog_pages_load_folder_filter_before_list_cards(self):
@@ -37,4 +39,5 @@ class TestFolderFilterJs:
             content = js_path.read_text(encoding="utf-8")
             assert "FolderFilter.shouldIncludeFolderInApi" in content, js_path.name
             assert "FolderFilter.normalizeFolderId" in content, js_path.name
+            assert "FolderFilter.getCategoryLabel" in content, js_path.name
             assert "this.shouldIncludeFolderInApi" not in content, js_path.name

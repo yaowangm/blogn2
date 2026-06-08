@@ -62,7 +62,8 @@ class BlogListCard extends BaseComponent {
 
     async connectedCallback() {
         this.showCategoryInfo = this.shouldShowCategoryInfo();
-        this.currentFolderId = this.getCurrentFolderId();
+        this.currentFolderId = FolderFilter.normalizeFolderId(this.getCurrentFolderId());
+        this.currentCategoryName = FolderFilter.getCategoryLabel(this.currentFolderId);
         await this.loadPageSizeConfig();
         // 从 URL 读取 page，直接加载对应页（如 /blog/12?page=24 加载第 24 页）
         const initialPage = typeof this.getCurrentPageFromUrl === 'function' ? this.getCurrentPageFromUrl() : 1;
@@ -77,8 +78,9 @@ class BlogListCard extends BaseComponent {
         this.addEventListener('categoryChanged', (event) => {
             const { folderId, folderName } = event.detail;
             this.currentFolderId = FolderFilter.normalizeFolderId(folderId);
-            this.currentCategoryName = folderName || '全部文章';
+            this.currentCategoryName = FolderFilter.getCategoryLabel(folderId, null, folderName);
             this.currentPage = 1;
+            this.updatePagination();
             this.loadContent(1);
         });
         
@@ -140,9 +142,10 @@ class BlogListCard extends BaseComponent {
             ? data.total_pages
             : Math.ceil(this.totalPosts / this.pageSize);
         this.loading = false;
-        if (data.category) {
-            this.currentCategoryName = data.category;
-        }
+        this.currentCategoryName = FolderFilter.getCategoryLabel(
+            this.currentFolderId,
+            data.category
+        );
         this.updatePagination();
         // 通知父级 blog-posts-list-card 同步总数，供分页校验
         const host = this.getRootNode().host;

@@ -67,17 +67,10 @@ class CategoriesCard extends BaseComponent {
     }
 
     handleCategoryClick(folderId, folderName) {
-        // 更新URL参数
-        const url = new URL(window.location);
-        if (folderId) {
-            url.searchParams.set('folderid', folderId);
-        } else {
-            url.searchParams.delete('folderid');
-        }
-        url.searchParams.delete('page'); // 重置页码
+        const url = FolderFilter.syncFolderIdToUrl(folderId);
+        url.searchParams.delete('page');
         window.history.pushState({}, '', url);
-        
-        // 通知博客文章列表卡片更新
+
         this.notifyBlogPostsList(folderId, folderName);
         
         // 更新分类卡片的激活状态
@@ -85,14 +78,15 @@ class CategoriesCard extends BaseComponent {
     }
 
     notifyBlogPostsList(folderId, folderName) {
-        // 查找博客文章列表卡片并通知它更新
+        const detail = { folderId, folderName };
+        const event = new CustomEvent('categoryChanged', { detail });
         const blogPostsListCard = document.querySelector('blog-posts-list-card');
         if (blogPostsListCard) {
-            // 触发自定义事件
-            const event = new CustomEvent('categoryChanged', {
-                detail: { folderId, folderName }
-            });
             blogPostsListCard.dispatchEvent(event);
+            const innerCard = blogPostsListCard.shadowRoot?.querySelector('blog-list-card[show-category]');
+            if (innerCard) {
+                innerCard.dispatchEvent(new CustomEvent('categoryChanged', { detail }));
+            }
         }
     }
 

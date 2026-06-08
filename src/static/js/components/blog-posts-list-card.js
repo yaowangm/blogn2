@@ -22,7 +22,8 @@ class BlogPostsListCard extends BaseComponent {
 
     connectedCallback() {
         this.projectId = this.getProjectIdFromUrl();
-        this.currentFolderId = this.getCurrentFolderId();
+        this.currentFolderId = FolderFilter.normalizeFolderId(this.getCurrentFolderId());
+        this.currentCategoryName = FolderFilter.getCategoryLabel(this.currentFolderId);
         this.currentPage = this.getCurrentPageFromUrl();
         // 不阻塞：先渲染内层 blog-list-card，由它单独请求文章列表，避免重复请求
         this.loading = false;
@@ -96,8 +97,15 @@ class BlogPostsListCard extends BaseComponent {
         const blogListCard = this.shadowRoot?.querySelector('blog-list-card:not(#subscription-posts-card)');
         if (blogListCard && this.activeTab === 'original') {
             blogListCard.currentFolderId = this.currentFolderId;
-            blogListCard.currentCategoryName = this.currentCategoryName;
+            blogListCard.currentCategoryName = FolderFilter.getCategoryLabel(
+                this.currentFolderId,
+                null,
+                this.currentCategoryName
+            );
             blogListCard.currentPage = page;
+            if (typeof blogListCard.updatePagination === 'function') {
+                blogListCard.updatePagination();
+            }
             if (typeof blogListCard.loadContent === 'function') {
                 blogListCard.loadContent(page);
             }
@@ -111,7 +119,7 @@ class BlogPostsListCard extends BaseComponent {
         this.addEventListener('categoryChanged', (event) => {
             const { folderId, folderName } = event.detail;
             this.currentFolderId = FolderFilter.normalizeFolderId(folderId);
-            this.currentCategoryName = folderName || '全部文章';
+            this.currentCategoryName = FolderFilter.getCategoryLabel(folderId, null, folderName);
             this.currentPage = 1;
             if (!this.reloadBlogListCard(1)) {
                 this.loadData();
@@ -156,7 +164,10 @@ class BlogPostsListCard extends BaseComponent {
                 this.posts = data.posts || [];
                 this.totalPosts = typeof data.total === 'number' ? data.total : 0;
                 this.totalPages = typeof data.total_pages === 'number' ? data.total_pages : 0;
-                this.currentCategoryName = data.category || '全部文章';
+                this.currentCategoryName = FolderFilter.getCategoryLabel(
+                    this.currentFolderId,
+                    data.category
+                );
             } else if (response.status === 404) {
                 // 如果博客不存在，跳转到错误页面
                 window.location.href = '/static/error.html';
