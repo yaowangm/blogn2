@@ -439,7 +439,7 @@ class BlogListCard extends BaseComponent {
                     -webkit-line-clamp: 2;
                     -webkit-box-orient: vertical;
                     overflow: hidden;
-                    margin: 0 0 var(--spacing-3);
+                    margin: 0;
                     max-width: 100%;
                     word-wrap: break-word;
                     word-break: break-word;
