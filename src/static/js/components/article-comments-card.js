@@ -804,7 +804,7 @@ class ArticleCommentsCard extends BaseComponent {
 
                 .no-comments {
                     text-align: center;
-                    padding: var(--spacing-8);
+                    padding: var(--spacing-3) var(--spacing-4);
                     color: var(--gray-500);
                 }
 

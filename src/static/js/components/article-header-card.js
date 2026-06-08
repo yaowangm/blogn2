@@ -180,31 +180,26 @@ class ArticleHeaderCard extends BaseComponent {
                     </div>
                     
                     ${showToolbar ? `
-                        <div class="article-toolbar">
+                        <div class="btn-toolbar">
                             ${showSetSiteIntroButton ? `
-                                <button class="btn btn-info btn-sm" id="set-site-intro-btn">
-                                    <i class="icon-globe"></i>
-                                    设为网站介绍
+                                <button type="button" class="btn btn-secondary btn-sm" id="set-site-intro-btn">
+                                    ${this.getBtnIcon('globe')}<span>设为网站介绍</span>
                                 </button>
                             ` : ''}
                             ${showSetIntroButton ? `
-                                <button class="btn btn-success btn-sm" id="set-intro-btn">
-                                    <i class="icon-user"></i>
-                                    设为个人介绍
+                                <button type="button" class="btn btn-secondary btn-sm" id="set-intro-btn">
+                                    ${this.getBtnIcon('user')}<span>设为个人介绍</span>
                                 </button>
                             ` : ''}
-                            <button class="btn btn-primary btn-sm" id="edit-article-btn">
-                                <i class="icon-edit"></i>
-                                修改文章
+                            <button type="button" class="btn btn-primary btn-sm" id="edit-article-btn">
+                                ${this.getBtnIcon('edit')}<span>修改文章</span>
                             </button>
-                            <button class="btn btn-danger btn-sm" id="delete-article-btn">
-                                <i class="icon-trash"></i>
-                                删除文章
+                            <button type="button" class="btn btn-danger btn-sm" id="delete-article-btn">
+                                ${this.getBtnIcon('delete')}<span>删除文章</span>
                             </button>
                             ${this.isAdmin ? `
-                                <button class="btn btn-warning btn-sm" id="permanent-delete-article-btn">
-                                    <i class="icon-delete"></i>
-                                    彻底删除
+                                <button type="button" class="btn btn-danger btn-sm" id="permanent-delete-article-btn">
+                                    ${this.getBtnIcon('delete')}<span>彻底删除</span>
                                 </button>
                             ` : ''}
                         </div>
@@ -456,6 +451,27 @@ class ArticleHeaderCard extends BaseComponent {
         }
     }
 
+    getBtnIcon(type) {
+        const wrap = (paths) =>
+            `<svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+        if (type === 'edit' && typeof Icons !== 'undefined') {
+            return Icons.edit.replace('<svg ', '<svg class="btn-icon" width="16" height="16" aria-hidden="true" ');
+        }
+        if (type === 'delete' && typeof Icons !== 'undefined') {
+            return Icons.delete.replace('<svg ', '<svg class="btn-icon" width="16" height="16" aria-hidden="true" ');
+        }
+        if (type === 'globe') {
+            return wrap('<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>');
+        }
+        if (type === 'user' && typeof Icons !== 'undefined') {
+            return Icons.user.replace('<svg ', '<svg class="btn-icon" width="16" height="16" aria-hidden="true" ');
+        }
+        if (type === 'edit') {
+            return wrap('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>');
+        }
+        return wrap('<polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/>');
+    }
+
     /**
      * 格式化文件大小显示
      */
@@ -577,82 +593,33 @@ class ArticleHeaderCard extends BaseComponent {
                     color: var(--gray-900);
                 }
                 
-                .article-toolbar {
-                    margin-top: 24px;
-                    padding-top: 16px;
-                    border-top: 1px solid #e5e7eb;
-                    display: flex !important;
-                    gap: 12px;
-                    justify-content: flex-end;
+                .btn-toolbar {
+                    margin-top: var(--spacing-4);
+                    padding-top: var(--spacing-3);
+                    border-top: 1px solid var(--gray-200);
                     width: 100%;
-                }
-                
-                .article-toolbar .btn {
-                    display: inline-flex !important;
-                    align-items: center;
-                    gap: 8px;
-                    padding: 8px 16px;
-                    border: none;
-                    border-radius: 6px;
-                    font-size: 14px;
-                    font-weight: 500;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    text-decoration: none;
-                    margin-left: 8px;
-                }
-                
-                .article-toolbar .btn-primary {
-                    background-color: #2563eb !important;
-                    color: white !important;
-                }
-                
-                .article-toolbar .btn-primary:hover {
-                    background-color: #1d4ed8 !important;
-                }
-                
-                .article-toolbar .btn-danger {
-                    background-color: #dc2626 !important;
-                    color: white !important;
-                }
-                
-                .article-toolbar .btn-danger:hover {
-                    background-color: #b91c1c !important;
-                }
-                
-                .article-toolbar .btn-warning {
-                    background-color: #f59e0b !important;
-                    color: white !important;
-                }
-                
-                .article-toolbar .btn-warning:hover {
-                    background-color: #d97706 !important;
-                }
-                
-                .article-toolbar .btn-success {
-                    background-color: #059669 !important;
-                    color: white !important;
-                }
-                
-                .article-toolbar .btn-success:hover {
-                    background-color: #047857 !important;
-                }
-                
-                .article-toolbar .btn i {
-                    font-size: 14px;
                 }
 
-                /* 宿主 data-layout-single-column 由 BaseComponent._attachLayoutSingleColumnObserver 与 body 同步 */
-                :host([data-layout-single-column]) .article-toolbar {
+                .btn.btn-sm {
+                    padding: calc(var(--spacing-2) * 1.2) calc(var(--spacing-3) * 1.2);
+                    gap: calc(var(--spacing-2) * 1.2);
+                    font-size: calc(var(--font-size-xs) * 1.2);
+                    line-height: 1.25;
+                }
+
+                .btn .btn-icon {
+                    width: 16px;
+                    height: 16px;
+                }
+
+                :host([data-layout-single-column]) .btn-toolbar {
                     flex-direction: column;
                     align-items: stretch;
-                    justify-content: flex-start;
                 }
-                :host([data-layout-single-column]) .article-toolbar .btn {
-                    margin-left: 0 !important;
+
+                :host([data-layout-single-column]) .btn-toolbar .btn {
                     width: 100%;
                     box-sizing: border-box;
-                    justify-content: center;
                 }
 
                 .status-0 {
