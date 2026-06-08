@@ -1,4 +1,8 @@
-# Dockerfile for BlogN2
+# Dockerfile for BlogN2（单镜像一体构建，兼容旧流程）
+# 推荐：./docker/build-base.sh && ./docker/build-app.sh
+# 本文件：./docker/build-legacy.sh [tag]
+# 文档：docker/README-DOCKER.md
+#
 # 使用 CPU-only PyTorch 和排除测试依赖，减小镜像大小
 # 预期大小：约 1.1–1.3GB（随 PyTorch/transformers 版本变化）
 #
@@ -8,10 +12,10 @@
 # - pip --no-cache-dir + 精简 venv（去掉 pycache、tests、pip）进一步减体积
 # - 使用清华大学镜像源加速构建
 #
-# 若需构建时复用 pip/apt 缓存，需先安装 Docker buildx 插件后再启用 BuildKit。
+# 推荐改用分层构建：./docker/build-base.sh && ./docker/build-app.sh
 
 # 第一阶段：构建依赖
-FROM python:3.12-slim AS builder
+FROM python:3.12-slim@sha256:090ba77e2958f6af52a5341f788b50b032dd4ca28377d2893dcf1ecbdfdfe203 AS builder
 
 # 设置工作目录
 WORKDIR /build
@@ -35,7 +39,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# 升级 pip（使用清华镜像源，不保留缓存）
 RUN pip install --no-cache-dir --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 先安装 PyTorch CPU 版本（独立层，不依赖 requirements 文件，便于缓存）
@@ -45,7 +48,6 @@ RUN pip install --no-cache-dir --extra-index-url https://download.pytorch.org/wh
 # 复制生产环境依赖文件（放在 PyTorch 安装之后，避免 requirements 变化导致 PyTorch 层缓存失效）
 COPY requirements-prod.txt .
 
-# 安装其他依赖（使用清华镜像源，不保留缓存）
 RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements-prod.txt
 
 # 精简 venv：删除 __pycache__、.pyc、以及各包内的 tests 目录（运行时不需要，可显著减小体积）
@@ -57,7 +59,7 @@ RUN find /opt/venv -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || tr
 RUN /opt/venv/bin/python -m pip uninstall -y pip
 
 # 第二阶段：运行环境
-FROM python:3.12-slim
+FROM python:3.12-slim@sha256:090ba77e2958f6af52a5341f788b50b032dd4ca28377d2893dcf1ecbdfdfe203
 
 # 设置环境变量
 ENV PYTHONUNBUFFERED=1 \

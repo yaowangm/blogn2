@@ -134,8 +134,9 @@ fi
 # 模型缓存目录根据环境变量 MODEL_CACHE_DIR 创建（默认为 /app/.cache/models）
 MODEL_CACHE_DIR=${MODEL_CACHE_DIR:-/app/.cache/models}
 mkdir -p /app/uploads /app/avatars "${MODEL_CACHE_DIR}"
-# 只对可写目录设置权限（模型缓存目录可能是只读挂载）
-chmod -R 755 /app/uploads /app/avatars 2>/dev/null || true
+# 挂载的宿主机目录属主常与容器内 appuser(UID 1000) 不一致，需 root 修正否则无法创建 YYYYMM 子目录
+chown -R appuser:appuser /app/uploads /app/avatars 2>/dev/null || true
+chmod -R u+rwX,g+rX,o+rX /app/uploads /app/avatars 2>/dev/null || true
 chmod -R 755 "${MODEL_CACHE_DIR}" 2>/dev/null || true
 
 # 等待数据库连接（可选，如果数据库在同一网络）

@@ -182,73 +182,97 @@ class NavigationCard extends BaseComponent {
             <style>
                 :host {
                     display: block;
+                    max-width: 100%;
+                    box-sizing: border-box;
                 }
 
-                .pagination-container {
+                .pagination {
                     display: flex;
-                    justify-content: center;
-                    align-items: center;
+                    flex-direction: column;
+                    align-items: stretch;
                     gap: var(--spacing-2);
-                    margin: var(--spacing-6) 0;
-                    padding: var(--spacing-4);
+                    padding: var(--spacing-3) 0;
+                    max-width: 100%;
+                    box-sizing: border-box;
+                }
+
+                .pagination-pages {
+                    display: flex;
+                    flex-wrap: wrap;
+                    justify-content: center;
+                    align-content: flex-start;
+                    gap: 0.375rem;
+                    max-width: 100%;
                 }
 
                 .pagination-btn {
-                    display: flex;
+                    display: inline-flex;
                     align-items: center;
                     justify-content: center;
-                    padding: var(--spacing-2) var(--spacing-3);
+                    min-width: 2rem;
+                    height: 2rem;
+                    padding: 0 0.5rem;
                     border: 1px solid var(--gray-300);
-                    border-radius: var(--radius-md);
+                    border-radius: var(--radius-sm);
                     background: var(--white);
-                    color: var(--gray-700);
+                    color: var(--gray-600);
                     text-decoration: none;
                     font-size: var(--font-size-sm);
                     font-weight: 500;
-                    transition: var(--transition-fast);
+                    line-height: 1;
+                    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
                     cursor: pointer;
-                    min-width: 40px;
+                    flex: 0 0 auto;
+                    box-sizing: border-box;
+                    user-select: none;
                 }
 
-                .pagination-btn:hover:not(.disabled) {
+                .pagination-btn--nav {
+                    padding: 0 0.625rem;
+                    color: var(--gray-700);
+                    background: var(--gray-50);
+                }
+
+                .pagination-btn:hover:not(.disabled):not(.active):not(.ellipsis) {
                     background: var(--gray-50);
                     border-color: var(--gray-400);
                     color: var(--gray-900);
-                }
-
-                .pagination-btn.disabled {
-                    opacity: 0.5;
-                    cursor: not-allowed;
                 }
 
                 .pagination-btn.active {
                     background: var(--primary-color);
                     border-color: var(--primary-color);
                     color: var(--white);
+                    font-weight: 600;
                 }
 
-                .pagination-info {
-                    color: var(--gray-600);
-                    font-size: var(--font-size-sm);
-                    margin: 0 var(--spacing-4);
+                .pagination-btn.disabled,
+                .pagination-btn.ellipsis {
+                    opacity: 0.45;
+                    cursor: default;
+                    pointer-events: none;
                 }
 
-                @media (max-width: 768px) {
-                    .pagination-container {
-                        flex-wrap: wrap;
-                        gap: var(--spacing-1);
-                    }
+                .pagination-btn.ellipsis {
+                    min-width: 1.25rem;
+                    padding: 0;
+                    background: transparent;
+                    border-color: transparent;
+                }
 
-                    .pagination-info {
-                        margin: var(--spacing-2) 0;
-                        width: 100%;
-                        text-align: center;
-                    }
+                .pagination-meta {
+                    width: 100%;
+                    text-align: center;
+                    font-size: var(--font-size-xs);
+                    color: var(--gray-500);
+                    line-height: 1.5;
                 }
             </style>
 
-            <nav class="pagination-container" role="navigation" aria-label="分页导航">
-                ${this.renderPaginationButtons()}
+            <nav class="pagination" role="navigation" aria-label="分页导航">
+                <div class="pagination-pages">
+                    ${this.renderPaginationButtons()}
+                </div>
                 ${this.renderPaginationInfo()}
             </nav>
         `;
@@ -314,11 +338,19 @@ class NavigationCard extends BaseComponent {
         const { current_page, total_pages, total, total_count } = this.pagination;
         const count = total || total_count || 0;
         const itemType = this.pagination.item_type || '条记录';
-        return `<div class="pagination-info" role="status" aria-live="polite">第 ${current_page} 页，共 ${total_pages} 页，总计 ${count} ${itemType}</div>`;
+        return `<div class="pagination-meta" role="status" aria-live="polite">第 ${current_page} / ${total_pages} 页 · 共 ${count} ${itemType}</div>`;
     }
 
     createPaginationButton(text, enabled, onClick, isActive = false) {
-        const classes = `pagination-btn ${isActive ? 'active' : ''} ${!enabled ? 'disabled' : ''}`;
+        const isNav = text === '上一页' || text === '下一页';
+        const isEllipsis = text === '...';
+        const classes = [
+            'pagination-btn',
+            isNav ? 'pagination-btn--nav' : '',
+            isEllipsis ? 'ellipsis' : '',
+            isActive ? 'active' : '',
+            !enabled ? 'disabled' : '',
+        ].filter(Boolean).join(' ');
         const dataAction = enabled ? `data-action="${text}"` : '';
         const ariaLabel = this.getPaginationButtonAriaLabel(text, isActive);
         

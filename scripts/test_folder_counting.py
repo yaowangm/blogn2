@@ -13,7 +13,9 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+from sqlalchemy import or_
 from sqlmodel import select, func
+from src.constants import ArticleStatus
 from src.database import async_session
 from src.repositories.project_item_repository import ProjectItemRepository
 from src.models.project_item import ProjectItem
@@ -36,31 +38,33 @@ async def test_folder_counting():
         real_time_total = await project_item_repo.count_by_project_id_and_folder(test_project_id)
         print(f"   实时查询总数: {real_time_total}")
         
-        # 2. 测试预存储字段统计
-        print("\n📊 预存储字段统计:")
-        cached_total = await project_item_repo.get_count_from_folder_recordcount(test_project_id)
-        print(f"   预存储字段总数: {cached_total}")
-        
-        # 3. 详细分析
-        print("\n📊 详细分析:")
-        
-        # 统计有文件夹的文章
+        # 2. 测试 folders.recordcount 汇总
+        print("\n📊 folders.recordcount 汇总:")
         folders_query = select(Folder).where(Folder.projectid == test_project_id)
         folders_result = await session.exec(folders_query)
         folders = folders_result.all()
+        cached_total = sum((f.recordcount or 0) for f in folders)
+        print(f"   folders.recordcount 合计: {cached_total}")
+        
+        # 3. 详细分析
+        print("\n📊 详细分析:")
         
         folder_count = 0
         for folder in folders:
             folder_count += folder.recordcount or 0
             print(f"   文件夹 '{folder.name}': {folder.recordcount or 0} 篇文章")
         
-        print(f"   文件夹文章总数: {folder_count}")
+        print(f"   文件夹 recordcount 合计: {folder_count}")
         
-        # 统计未分配文件夹的文章
+        # 未分类：folderid 为 NULL 或 0
         unassigned_query = select(func.count(ProjectItem.id)).where(
             ProjectItem.projectid == test_project_id,
-            ProjectItem.folderid.is_(None),
-            ProjectItem.status == 1
+            or_(ProjectItem.folderid.is_(None), ProjectItem.folderid == 0),
+            ProjectItem.status == 1,
+            or_(
+                ProjectItem.itemtype.is_(None),
+                ProjectItem.itemtype != ArticleStatus.DELETED,
+            ),
         )
         unassigned_result = await session.exec(unassigned_query)
         unassigned_count = unassigned_result.first() or 0

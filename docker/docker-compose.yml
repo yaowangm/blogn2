@@ -2,9 +2,12 @@ version: '3.8'
 
 services:
   blogn2:
+    image: blogn2-app:${APP_TAG:-latest}
     build:
       context: ..
-      dockerfile: docker/Dockerfile
+      dockerfile: docker/Dockerfile.app
+      args:
+        BASE_IMAGE: blogn2-base:${BASE_VERSION:-1.0}
     container_name: blogn2-app
     restart: unless-stopped
     network_mode: "host"

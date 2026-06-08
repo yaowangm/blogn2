@@ -48,9 +48,21 @@ class BlogPostsListCard extends BaseComponent {
     async initializeAsync() {
         try {
             await this.checkOwnership();
-            this.render();
+            this.updateOwnerUi();
         } catch (error) {
             console.error('组件初始化失败:', error);
+        }
+    }
+
+    updateOwnerUi() {
+        const button = this.shadowRoot?.querySelector('.create-post-button');
+        if (this.isOwner && !button) {
+            const tabs = this.shadowRoot?.querySelector('.tabs');
+            if (tabs) {
+                tabs.insertAdjacentHTML('beforebegin', this.renderCreatePostButton());
+            }
+        } else if (!this.isOwner && button) {
+            button.remove();
         }
     }
 
@@ -80,14 +92,30 @@ class BlogPostsListCard extends BaseComponent {
         }
     }
 
+    reloadBlogListCard(page = 1) {
+        const blogListCard = this.shadowRoot?.querySelector('blog-list-card:not(#subscription-posts-card)');
+        if (blogListCard && this.activeTab === 'original') {
+            blogListCard.currentFolderId = this.currentFolderId;
+            blogListCard.currentCategoryName = this.currentCategoryName;
+            blogListCard.currentPage = page;
+            if (typeof blogListCard.loadContent === 'function') {
+                blogListCard.loadContent(page);
+            }
+            return true;
+        }
+        return false;
+    }
+
     addCategoryEventListeners() {
-        // 监听分类变化事件
+        // 监听分类变化事件：直接更新内层 blog-list-card，避免 render() 销毁子组件
         this.addEventListener('categoryChanged', (event) => {
             const { folderId, folderName } = event.detail;
-            this.currentFolderId = folderId || null;
+            this.currentFolderId = FolderFilter.normalizeFolderId(folderId);
             this.currentCategoryName = folderName || '全部文章';
-            this.currentPage = 1; // 重置页码
-            this.loadData();
+            this.currentPage = 1;
+            if (!this.reloadBlogListCard(1)) {
+                this.loadData();
+            }
         });
         
         // 监听用户登录状态变化
@@ -98,7 +126,7 @@ class BlogPostsListCard extends BaseComponent {
         
         this.boundEventHandlers.tokensCleared = () => {
             this.isOwner = false;
-            this.render();
+            this.updateOwnerUi();
         };
         window.addEventListener('tokensCleared', this.boundEventHandlers.tokensCleared);
         
@@ -118,8 +146,7 @@ class BlogPostsListCard extends BaseComponent {
         try {
             let apiUrl = `/api/projects/${this.projectId}/posts?page=${this.currentPage}&limit=${this.pageSize}&type=${this.activeTab}`;
             
-            // 添加folderid参数
-            if (this.currentFolderId) {
+            if (FolderFilter.shouldIncludeFolderInApi(this.currentFolderId)) {
                 apiUrl += `&folderid=${this.currentFolderId}`;
             }
             
@@ -127,7 +154,8 @@ class BlogPostsListCard extends BaseComponent {
             if (response.ok) {
                 const data = await response.json();
                 this.posts = data.posts || [];
-                this.totalPosts = data.total || 0;
+                this.totalPosts = typeof data.total === 'number' ? data.total : 0;
+                this.totalPages = typeof data.total_pages === 'number' ? data.total_pages : 0;
                 this.currentCategoryName = data.category || '全部文章';
             } else if (response.status === 404) {
                 // 如果博客不存在，跳转到错误页面
@@ -196,11 +224,15 @@ class BlogPostsListCard extends BaseComponent {
         // 更新URL参数
         const url = new URL(window.location);
         url.searchParams.set('page', page);
-        if (this.currentFolderId) {
+        if (FolderFilter.shouldIncludeFolderInApi(this.currentFolderId)) {
             url.searchParams.set('folderid', this.currentFolderId);
+        } else {
+            url.searchParams.delete('folderid');
         }
         window.history.pushState({}, '', url);
-        this.loadData();
+        if (!this.reloadBlogListCard(page)) {
+            this.loadData();
+        }
     }
 
     render() {

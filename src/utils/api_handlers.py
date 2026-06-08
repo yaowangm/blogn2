@@ -4,14 +4,15 @@ API路由处理器
 提供API路由的统一注册和管理。
 """
 
+import os
+
 from fastapi import FastAPI, UploadFile, File, Depends
 from typing import Dict, Any
 
 from src.controllers import metadata, user, blog, project, article, urllink, rss, auth, subscription, broadcast, global_stats, search, vectorization_admin
 from src.routes import regkey, user_register
 from src.utils.file_handlers import FileHandler
-from src.utils.file_utils import validate_and_sanitize_path
-from src.config.app import get_upload_dir
+from src.utils.file_utils import get_temp_dir, validate_and_sanitize_path
 
 
 class APIHandler:
@@ -79,8 +80,7 @@ class APIHandler:
         async def serve_temp_file(filename: str):
             """提供临时文件服务"""
             safe_filename = FileHandler.sanitize_filename(filename)
-            temp_dir = FileHandler.get_temp_dir()
-            file_path = f"{temp_dir}/{safe_filename}"
+            file_path = os.path.join(get_temp_dir(), safe_filename)
             return FileHandler.serve_file(file_path)
         
         @app.delete("/api/temp-upload/{filename}")

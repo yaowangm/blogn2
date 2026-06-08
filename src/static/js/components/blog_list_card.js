@@ -9,7 +9,6 @@ class BlogListCard extends BaseComponent {
         this.currentFolderId = null;
         this.currentCategoryName = '全部文章';
         this.showCategoryInfo = false; // 控制是否显示分类信息
-        this.loadPageSizeConfig();
     }
 
     /**
@@ -62,9 +61,10 @@ class BlogListCard extends BaseComponent {
     }
 
 
-    connectedCallback() {
+    async connectedCallback() {
         this.showCategoryInfo = this.shouldShowCategoryInfo();
         this.currentFolderId = this.getCurrentFolderId();
+        await this.loadPageSizeConfig();
         // 从 URL 读取 page，直接加载对应页（如 /blog/12?page=24 加载第 24 页）
         const initialPage = typeof this.getCurrentPageFromUrl === 'function' ? this.getCurrentPageFromUrl() : 1;
         this.currentPage = initialPage;
@@ -77,10 +77,10 @@ class BlogListCard extends BaseComponent {
         // 监听分类变化事件
         this.addEventListener('categoryChanged', (event) => {
             const { folderId, folderName } = event.detail;
-            this.currentFolderId = folderId || null;
+            this.currentFolderId = FolderFilter.normalizeFolderId(folderId);
             this.currentCategoryName = folderName || '全部文章';
-            this.currentPage = 1; // 重置页码
-            this.loadContent();
+            this.currentPage = 1;
+            this.loadContent(1);
         });
         
         // 监听分页变化事件
@@ -109,8 +109,7 @@ class BlogListCard extends BaseComponent {
                         apiUrl = `/api/projects/${projectId}/posts?page=${page}&limit=${this.pageSize}&type=subscription`;
                     } else {
                         apiUrl = `/api/projects/${projectId}/posts?page=${page}&limit=${this.pageSize}&type=original`;
-                        // 添加folderid参数
-                        if (this.currentFolderId) {
+                        if (FolderFilter.shouldIncludeFolderInApi(this.currentFolderId)) {
                             apiUrl += `&folderid=${this.currentFolderId}`;
                         }
                     }
@@ -137,8 +136,10 @@ class BlogListCard extends BaseComponent {
 
     updateContent(data) {
         this.posts = data.posts || data;
-        this.totalPosts = data.total || this.posts.length;
-        this.totalPages = Math.ceil(this.totalPosts / this.pageSize);
+        this.totalPosts = typeof data.total === 'number' ? data.total : this.posts.length;
+        this.totalPages = typeof data.total_pages === 'number'
+            ? data.total_pages
+            : Math.ceil(this.totalPosts / this.pageSize);
         this.loading = false;
         if (data.category) {
             this.currentCategoryName = data.category;
@@ -267,8 +268,10 @@ class BlogListCard extends BaseComponent {
         // 更新URL参数
         const url = new URL(window.location);
         url.searchParams.set('page', page);
-        if (this.currentFolderId) {
+        if (FolderFilter.shouldIncludeFolderInApi(this.currentFolderId)) {
             url.searchParams.set('folderid', this.currentFolderId);
+        } else {
+            url.searchParams.delete('folderid');
         }
         window.history.pushState({}, '', url);
         
@@ -317,6 +320,20 @@ class BlogListCard extends BaseComponent {
                     font-weight: 600;
                     color: var(--gray-900);
                     margin: 0;
+                }
+
+                #pagination-placeholder {
+                    max-width: 100%;
+                    overflow: hidden;
+                    padding: var(--spacing-2) var(--spacing-5);
+                    border-bottom: 1px solid var(--gray-200);
+                    background: var(--gray-50);
+                    box-sizing: border-box;
+                }
+
+                #pagination-placeholder navigation-card {
+                    display: block;
+                    max-width: 100%;
                 }
 
                 .card-body {
@@ -467,12 +484,14 @@ class BlogListCard extends BaseComponent {
 
                 .pagination {
                     display: flex;
-                    justify-content: space-between; /* Changed to space-between */
+                    flex-wrap: wrap;
+                    justify-content: flex-end;
                     align-items: center;
                     gap: var(--spacing-3);
-                    margin-top: var(--spacing-5);
-                    padding: var(--spacing-5) 20px;
-                    border-top: 1px solid var(--gray-200);
+                    margin-top: var(--spacing-2);
+                    padding: var(--spacing-2) 0 0;
+                    max-width: 100%;
+                    box-sizing: border-box;
                 }
 
                 .pagination-left {
@@ -597,18 +616,16 @@ class BlogListCard extends BaseComponent {
         `;
     }
 
-    loadPageSizeConfig() {
-        fetch('/api/config/app')
-            .then(response => response.json())
-            .then(config => {
-                // 使用BLOG_POSTS_PAGE_SIZE环境变量对应的配置参数覆盖默认值
-                // 环境变量: BLOG_POSTS_PAGE_SIZE -> API配置键: blog_posts_page_size
+    async loadPageSizeConfig() {
+        try {
+            const response = await fetch('/api/config/app');
+            if (response.ok) {
+                const config = await response.json();
                 this.pageSize = config.blog_posts_page_size || 10;
-        
-            })
-            .catch(error => {
-                console.warn('⚠️ 加载应用配置失败，使用默认pagesize=10:', error);
-            });
+            }
+        } catch (error) {
+            console.warn('⚠️ 加载应用配置失败，使用默认pagesize=10:', error);
+        }
     }
 }
 

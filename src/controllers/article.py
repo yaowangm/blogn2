@@ -39,7 +39,7 @@ from src.utils.permission_decorators import require_auth
 from src.utils.comment_handlers import CommentHandler
 from src.utils.time_utils import TimeUtils
 from src.constants import ArticleStatus, ErrorMessages
-from src.utils.file_utils import get_temp_dir
+from src.utils.file_utils import promote_temp_relative_path
 from src.utils.article_hit_cookie import (
     COOKIE_NAME,
     build_cookie_value,
@@ -504,30 +504,12 @@ async def update_article(
         # 处理临时文件移动
         if new_attachment and new_attachment.startswith("temp/"):
             try:
-                # 从临时目录移动到正式目录
-                temp_filename = new_attachment.replace("temp/", "")
-                temp_path = os.path.join(get_temp_dir(), temp_filename)
-
-                if os.path.exists(temp_path):
-                    # 创建按月份命名的子目录
-                    from datetime import datetime
-                    current_time = TimeUtils.now_utc()
-                    month_dir = current_time.strftime("%Y%m")
-                    monthly_upload_path = os.path.join(upload_dir, month_dir)
-                    os.makedirs(monthly_upload_path, exist_ok=True)
-
-                    # 移动到正式目录
-                    final_filename = temp_filename
-                    final_path = os.path.join(monthly_upload_path, final_filename)
-                    os.rename(temp_path, final_path)
-
-                    # 更新attachment路径
-                    new_attachment = f"{month_dir}/{final_filename}"
-                    article_data["attachment"] = new_attachment
-
-                else:
-                    pass  # 临时文件不存在，继续处理
-            except Exception as e:
+                promoted = promote_temp_relative_path(new_attachment, upload_dir)
+                if promoted:
+                    new_attachment = promoted
+                    article_data["attachment"] = promoted
+            except Exception:
+                logger.exception("临时文件移动失败 attachment=%s", new_attachment)
                 raise HTTPException(status_code=500, detail="临时文件移动失败")
 
         # 如果旧图片存在且与新图片不同，删除旧图片
@@ -606,30 +588,12 @@ async def update_article(
                 # 处理临时文件移动
                 if relative_path.startswith("temp/"):
                     try:
-                        # 从临时目录移动到正式目录
-                        temp_filename = relative_path.replace("temp/", "")
-                        temp_path = os.path.join(get_temp_dir(), temp_filename)
-
-                        if os.path.exists(temp_path):
-                            # 创建按月份命名的子目录
-                            current_time = TimeUtils.now_utc()
-                            month_dir = current_time.strftime("%Y%m")
-                            monthly_upload_path = os.path.join(upload_dir, month_dir)
-                            os.makedirs(monthly_upload_path, exist_ok=True)
-
-                            # 移动到正式目录
-                            final_filename = temp_filename
-                            final_path = os.path.join(monthly_upload_path, final_filename)
-                            os.rename(temp_path, final_path)
-
-                            # 更新relative_path
-                            relative_path = f"{month_dir}/{final_filename}"
-
-                        else:
-                            pass  # 临时文件不存在，继续处理
-                    except Exception as e:
-                        # 继续处理，不中断整个流程
-                        pass
+                        promoted = promote_temp_relative_path(relative_path, upload_dir)
+                        if promoted:
+                            relative_path = promoted
+                    except Exception:
+                        logger.exception("临时附件移动失败 path=%s", relative_path)
+                        raise HTTPException(status_code=500, detail="临时文件移动失败")
 
                 attachment = Attachment(
                     parentid=article_id,
@@ -661,9 +625,7 @@ async def update_article(
 
         except Exception as e:
             # 向量化更新失败不影响文章更新成功
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"向量化更新失败: {e}")
+            logger.error("向量化更新失败: %s", e)
 
         if updated_article.projectid:
             project_repo = ProjectRepository(session)
@@ -803,9 +765,7 @@ async def permanently_delete_article(
             await vectorization_service.delete_article_vectors(article_id)
         except Exception as e:
             # 向量化删除失败不影响文章删除，记录错误但继续
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"硬删除文章 {article_id} 时向量化数据删除失败: {e}")
+            logger.error("硬删除文章 %s 时向量化数据删除失败: %s", article_id, e)
 
         # 删除文件系统中的图片
         if article.attachment:
