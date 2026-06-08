@@ -188,7 +188,7 @@ class RecentUpdatesCard extends BaseComponent {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    margin-bottom: var(--spacing-2);
+                    margin-bottom: var(--spacing-1);
                 }
 
                 .blog-name {

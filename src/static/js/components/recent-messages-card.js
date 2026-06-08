@@ -166,7 +166,7 @@ class RecentMessagesCard extends BaseComponent {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    margin-bottom: var(--spacing-2);
+                    margin-bottom: var(--spacing-1);
                     flex-wrap: wrap;
                     gap: var(--spacing-2);
                 }
