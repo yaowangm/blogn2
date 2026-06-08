@@ -136,6 +136,7 @@ class ArticleHeaderCard extends BaseComponent {
                     ${this.renderArticleStats(hits, comment_count, itemsize)}
                     ${this.renderArticleMeta({
                         author,
+                        project,
                         category,
                         created_at,
                         updated_at,
@@ -472,8 +473,52 @@ class ArticleHeaderCard extends BaseComponent {
         `;
     }
 
-    renderArticleMeta({ author, category, created_at, updated_at, itemtype, showToolbar, showSetSiteIntroButton, showSetIntroButton }) {
+    getSmallAvatarPath(userId) {
+        if (!userId) {
+            return null;
+        }
+        const prefix = Math.floor(userId / 10000) + 1;
+        return `/avatar/${prefix}/s_${userId}.jpg`;
+    }
+
+    renderAuthorMetaItem(author, project) {
         const safeAuthor = this.escapeHtml(author?.name || '未知作者');
+        const blogId = project?.id;
+        const avatarPath = author?.avatar || this.getSmallAvatarPath(author?.id);
+        const fallbackLetter = safeAuthor.charAt(0).toUpperCase();
+
+        const avatarHtml = `
+            <span class="author-avatar" aria-hidden="true">
+                ${avatarPath ? `
+                    <img src="${avatarPath}" alt=""
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                         onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
+                ` : ''}
+                <span class="author-avatar-fallback" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackLetter}</span>
+            </span>
+        `;
+        const nameHtml = `<span class="author-name">${safeAuthor}</span>`;
+
+        if (blogId) {
+            return `
+                <div class="meta-item meta-item-author">
+                    <a href="/blog/${blogId}" class="author-link" title="查看博客" target="_blank" rel="noopener noreferrer">
+                        ${avatarHtml}
+                        ${nameHtml}
+                    </a>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="meta-item meta-item-author">
+                ${avatarHtml}
+                ${nameHtml}
+            </div>
+        `;
+    }
+
+    renderArticleMeta({ author, project, category, created_at, updated_at, itemtype, showToolbar, showSetSiteIntroButton, showSetIntroButton }) {
         const safeCategory = category?.name ? this.escapeHtml(category.name) : '';
         const createDate = this.formatDate(created_at);
         const updateDate = this.formatDate(updated_at);
@@ -482,10 +527,7 @@ class ArticleHeaderCard extends BaseComponent {
         return `
             <div class="article-meta">
                 <div class="meta-items-left">
-                    <div class="meta-item">
-                        ${this.getMetaIcon('user')}
-                        <span>${safeAuthor}</span>
-                    </div>
+                    ${this.renderAuthorMetaItem(author, project)}
                     <div class="meta-item">
                         ${this.getMetaIcon('created')}
                         <span>发布于 ${createDate}</span>
@@ -695,6 +737,72 @@ class ArticleHeaderCard extends BaseComponent {
                     color: var(--gray-500);
                     font-size: var(--font-size-xs);
                     white-space: nowrap;
+                }
+
+                .meta-item-author {
+                    gap: var(--spacing-2);
+                }
+
+                .author-link {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                    color: inherit;
+                    text-decoration: none;
+                    transition: color var(--transition-fast);
+                }
+
+                .author-link:hover {
+                    color: var(--primary-color);
+                }
+
+                .author-link:focus {
+                    outline: none;
+                }
+
+                .author-link:focus-visible {
+                    outline: 2px solid var(--primary-color);
+                    outline-offset: 2px;
+                    border-radius: var(--radius-sm);
+                }
+
+                .author-avatar {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    flex-shrink: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: var(--gray-100);
+                    border: 1px solid var(--gray-200);
+                    overflow: hidden;
+                }
+
+                .author-avatar img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    display: block;
+                }
+
+                .author-avatar-fallback {
+                    width: 100%;
+                    height: 100%;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: var(--font-size-xs);
+                    font-weight: 600;
+                    color: var(--gray-600);
+                }
+
+                .author-name {
+                    font-weight: 500;
+                    color: var(--gray-700);
+                }
+
+                .author-link:hover .author-name {
+                    color: var(--primary-color);
                 }
 
                 .article-meta .btn-toolbar {

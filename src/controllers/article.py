@@ -136,8 +136,13 @@ async def get_article_detail(
 
         # 获取作者信息
         author = None
+        author_avatar = None
         if article.userid:
             author = await user_repo.get_by_id(article.userid)
+            if author:
+                from src.utils.dependencies import get_blog_service
+                blog_service = await get_blog_service(session)
+                author_avatar = blog_service._check_avatar_exists(author.id)
 
         # 获取项目信息
         project = None
@@ -176,7 +181,7 @@ async def get_article_detail(
             "author": {
                 "id": author.id if author else None,
                 "name": author.name if author else "未知作者",
-                "avatar": None  # users表没有logo字段
+                "avatar": author_avatar,
             } if author else None,
             "project": {
                 "id": project.id if project else None,
