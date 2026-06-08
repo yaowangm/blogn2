@@ -143,8 +143,11 @@ class BlogHeaderCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
-                @import url('/static/css/common-components.css');
+                @import url('/static/css/common-components.css?v=20250609');
                 :host {
+                    --spacing-2: 0.5rem;
+                    --spacing-3: 0.75rem;
+                    --font-size-xs: 0.75rem;
                     --gray-50: #f8fafc;
                     --gray-100: #f1f5f9;
                     --gray-200: #e2e8f0;
@@ -258,6 +261,12 @@ class BlogHeaderCard extends BaseComponent {
                     color: var(--gray-500);
                     font-size: var(--font-size-xs);
                     white-space: nowrap;
+                }
+                .btn.btn-sm {
+                    padding: calc(var(--spacing-2) * 1.2) calc(var(--spacing-3) * 1.2);
+                    gap: calc(var(--spacing-2) * 1.2);
+                    font-size: calc(var(--font-size-xs) * 1.2);
+                    line-height: 1.25;
                 }
                 .btn .btn-icon {
                     width: 16px;
