@@ -258,6 +258,10 @@ class CommentFormCard extends BaseComponent {
                     margin-bottom: 0;
                 }
 
+                .card-body {
+                    padding: calc(var(--spacing-3) * 0.6) var(--spacing-4);
+                }
+
                 .card-header h3 {
                     font-size: var(--font-size-base);
                     font-weight: 600;

@@ -165,9 +165,14 @@ class CommentSettingsCard extends BaseComponent {
             const style = document.createElement('style');
             style.textContent = `
                 @import url('/static/css/common-components.css');
-                
+
                 .card { margin-bottom: 0; }
-.comment-settings-info {
+
+                .card-body {
+                    padding: calc(var(--spacing-3) * 0.6) var(--spacing-4);
+                }
+
+                .comment-settings-info {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-3);

@@ -618,7 +618,11 @@ class ArticleHeaderCard extends BaseComponent {
             style.textContent = `
                 @import url('/static/css/common-components.css');
                 .card { margin-bottom: 0; }
-                
+
+                .card-body {
+                    padding: calc(var(--spacing-3) * 0.6) var(--spacing-4);
+                }
+
                 .article-title h1 {
                     font-size: var(--font-size-xl);
                     font-weight: 700;
