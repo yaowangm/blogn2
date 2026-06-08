@@ -471,7 +471,6 @@ class ArticleCommentsCard extends BaseComponent {
      * HTML转义并处理换行
      */
 
-
     /**
      * 验证URL是否安全有效
      * @param {string} url - 要验证的URL
@@ -627,19 +626,12 @@ class ArticleCommentsCard extends BaseComponent {
         if (!this.shadowRoot.querySelector('style')) {
             const style = document.createElement('style');
             style.textContent = `
-                @import url('/static/css/common-components.css');
+                @import url('/static/css/common-components.css?v=20250609');
                 .card { margin-bottom: 0; }
-
-                .card-header {
-                    padding: var(--spacing-4) var(--spacing-6);
-                    border-bottom: 1px solid var(--gray-200);
-                    background-color: var(--gray-50);
-                }
-
-                .card-header h3 {
-                    font-size: var(--font-size-lg);
+.card-header h3 {
+                    font-size: var(--font-size-base);
                     font-weight: 600;
-                    color: var(--gray-800);
+                    color: var(--gray-900);
                     margin: 0;
                 }
 
@@ -649,8 +641,8 @@ class ArticleCommentsCard extends BaseComponent {
 
                 .comment-item {
                     display: flex;
-                    gap: var(--spacing-4);
-                    padding: var(--spacing-4);
+                    gap: var(--spacing-3);
+                    padding: var(--spacing-3);
                     border-bottom: 1px solid var(--gray-100);
                     transition: background-color var(--transition-fast);
                 }
@@ -698,7 +690,7 @@ class ArticleCommentsCard extends BaseComponent {
                     align-items: center;
                     justify-content: center;
                     background: var(--gray-100);
-                    font-size: var(--font-size-lg);
+                    font-size: var(--font-size-base);
                     font-weight: 600;
                     color: var(--gray-600);
                     border: 2px solid var(--gray-200);

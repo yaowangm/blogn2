@@ -451,7 +451,6 @@ class ArticleContentCard extends BaseComponent {
         });
     }
 
-
     /**
      * 处理文本中的链接，安全地转换为可点击的链接
      */
@@ -545,7 +544,7 @@ class ArticleContentCard extends BaseComponent {
         if (!this.shadowRoot.querySelector('style')) {
             const style = document.createElement('style');
             style.textContent = `
-                @import url('/static/css/common-components.css');
+                @import url('/static/css/common-components.css?v=20250609');
                 @import url('/static/css/components.css');
                 .card { margin-bottom: 0; }
 
@@ -626,7 +625,7 @@ class ArticleContentCard extends BaseComponent {
 
                 .article-attachment h3,
                 .article-attachments h3 {
-                    font-size: var(--font-size-lg);
+                    font-size: var(--font-size-base);
                     font-weight: 600;
                     color: var(--gray-700);
                     margin-bottom: var(--spacing-4);
@@ -644,7 +643,7 @@ class ArticleContentCard extends BaseComponent {
                 }
 
                 .attachment-file {
-                    padding: var(--spacing-4);
+                    padding: var(--spacing-3);
                     background-color: var(--gray-50);
                     border-radius: var(--radius-lg);
                     border: 1px solid var(--gray-200);
@@ -698,7 +697,7 @@ class ArticleContentCard extends BaseComponent {
                 .attachment-item:hover {
                     box-shadow: var(--shadow-md);
                     border-color: var(--gray-300);
-                    transform: translateY(-2px);
+                    
                 }
 
                 .attachment-item .attachment-image {
@@ -825,7 +824,7 @@ class ArticleContentCard extends BaseComponent {
                     font-family: inherit;
                     font-size: var(--font-size-base);
                     line-height: 1.8;
-                    color: var(--gray-800);
+                    color: var(--gray-900);
                 }
 
                 .modal-lightbox-caption {

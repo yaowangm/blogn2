@@ -148,23 +148,10 @@ class BlogProfileCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
-                @import url('/static/css/common-components.css');
+                @import url('/static/css/common-components.css?v=20250609');
 
                 :host {
                     display: block;
-                }
-
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    margin-bottom: var(--card-margin);
-                }
-
-                .card:hover {
-                    box-shadow: var(--shadow-md);
                 }
 
                 .blog-profile-link {
@@ -193,7 +180,7 @@ class BlogProfileCard extends BaseComponent {
                     align-items: center;
                     justify-content: center;
                     background: var(--gray-100);
-                    font-size: var(--font-size-lg);
+                    font-size: var(--font-size-base);
                     font-weight: 600;
                     color: var(--gray-600);
                     border: 1px solid var(--gray-200);
@@ -245,7 +232,7 @@ class BlogProfileCard extends BaseComponent {
 
                 .profile-stat strong {
                     font-weight: 600;
-                    color: var(--gray-800);
+                    color: var(--gray-900);
                     margin-right: var(--spacing-1);
                 }
 

@@ -5,7 +5,6 @@ class PopularBlogsCard extends BaseComponent {
         this.loading = true;
     }
 
-
     connectedCallback() {
         this.render();
         this.loadData();
@@ -37,40 +36,10 @@ class PopularBlogsCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
+                @import url('/static/css/common-components.css?v=20250609');
                 :host {
                     display: block;
                 }
-
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    transition: var(--transition-normal);
-                }
-
-                .card:hover {
-                    box-shadow: var(--shadow-md);
-                    transform: translateY(-2px);
-                }
-
-                .card-header {
-                    padding: var(--spacing-4) var(--spacing-5);
-                    border-bottom: 1px solid var(--gray-200);
-                    background: var(--gray-50);
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-3);
-                }
-
-                .card-title {
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--gray-900);
-                    margin: 0;
-                }
-
                 .icon {
                     width: 24px;
                     height: 24px;
@@ -88,11 +57,6 @@ class PopularBlogsCard extends BaseComponent {
                     stroke-linecap: round;
                     stroke-linejoin: round;
                 }
-
-                .card-body {
-                    padding: var(--spacing-5);
-                }
-
                 .blog-list {
                     display: flex;
                     flex-direction: column;

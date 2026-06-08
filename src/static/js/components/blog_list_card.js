@@ -60,7 +60,6 @@ class BlogListCard extends BaseComponent {
                this.hasAttribute('show-category');
     }
 
-
     async connectedCallback() {
         this.showCategoryInfo = this.shouldShowCategoryInfo();
         this.currentFolderId = this.getCurrentFolderId();
@@ -303,24 +302,6 @@ class BlogListCard extends BaseComponent {
                     max-width: 100%;
                     width: 100%;
                 }
-
-                .card:hover {
-                    box-shadow: var(--shadow-md);
-                }
-
-                .card-header {
-                    padding: var(--spacing-3) var(--spacing-4);
-                    border-bottom: 1px solid var(--gray-200);
-                    background: var(--gray-50);
-                }
-
-                .card-title {
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--gray-900);
-                    margin: 0;
-                }
-
                 #pagination-placeholder {
                     max-width: 100%;
                     overflow: hidden;
@@ -336,7 +317,7 @@ class BlogListCard extends BaseComponent {
                 }
 
                 .card-body {
-                    padding: var(--spacing-4);
+                    padding: var(--spacing-3) var(--spacing-4);
                     max-width: 100%;
                     overflow: hidden;
                 }
@@ -384,7 +365,7 @@ class BlogListCard extends BaseComponent {
                     justify-content: center;
                     color: var(--white);
                     font-weight: 600;
-                    font-size: var(--font-size-lg);
+                    font-size: var(--font-size-base);
                     overflow: hidden;
                     border: 2px solid var(--gray-200);
                     position: relative;
@@ -415,7 +396,7 @@ class BlogListCard extends BaseComponent {
                 }
 
                 .post-title {
-                    font-size: var(--font-size-lg);
+                    font-size: var(--font-size-base);
                     font-weight: 600;
                     color: var(--gray-900);
                     margin-bottom: var(--spacing-2);

@@ -164,22 +164,10 @@ class CommentSettingsCard extends BaseComponent {
         if (!this.shadowRoot.querySelector('style')) {
             const style = document.createElement('style');
             style.textContent = `
-                @import url('/static/css/common-components.css');
+                @import url('/static/css/common-components.css?v=20250609');
                 
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    margin-bottom: 0;
-                }
-                
-                .card-body {
-                    padding: var(--spacing-4) var(--spacing-5);
-                }
-                
-                .comment-settings-info {
+                .card { margin-bottom: 0; }
+.comment-settings-info {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-3);
@@ -201,7 +189,7 @@ class CommentSettingsCard extends BaseComponent {
                 .settings-title {
                     font-size: var(--font-size-sm);
                     font-weight: 600;
-                    color: var(--gray-800);
+                    color: var(--gray-900);
                     margin-bottom: var(--spacing-1);
                 }
                 

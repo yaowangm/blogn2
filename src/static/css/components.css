@@ -5,10 +5,10 @@
     /* 卡片基础样式 */
     --card-bg: var(--white);
     --card-border: var(--gray-200);
-    --card-shadow: var(--shadow-md);
-    --card-shadow-hover: var(--shadow-lg);
-    --card-radius: var(--radius-xl);
-    --card-padding: var(--spacing-4);
+    --card-shadow: var(--shadow-sm);
+    --card-shadow-hover: var(--shadow-md);
+    --card-radius: var(--radius-lg);
+    --card-padding: var(--spacing-3) var(--spacing-4);
     --card-margin: var(--card-gap);
     
     /* 卡片头部样式 */
@@ -17,13 +17,13 @@
     --card-header-padding: var(--spacing-3) var(--spacing-4);
     
     /* 卡片标题样式 */
-    --card-title-color: var(--gray-800);
-    --card-title-size: var(--font-size-lg);
+    --card-title-color: var(--gray-900);
+    --card-title-size: var(--font-size-base);
     --card-title-weight: 600;
     
     /* 卡片内容样式 */
-    --card-content-padding: var(--spacing-4);
-    --card-content-gap: var(--spacing-3);
+    --card-content-padding: var(--spacing-3) var(--spacing-4);
+    --card-content-gap: var(--spacing-2);
     
     /* 状态颜色 */
     --state-admin: var(--red-600);

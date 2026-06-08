@@ -103,6 +103,7 @@ class BlogInfoCard extends BaseComponent {
 
         this.shadowRoot.innerHTML = `
             <style>
+                @import url('/static/css/common-components.css?v=20250609');
                 :host {
                     display: block;
                     background: var(--card-bg);
@@ -118,7 +119,7 @@ class BlogInfoCard extends BaseComponent {
                     align-items: center;
                     gap: var(--spacing-3);
                     margin-bottom: var(--card-content-gap);
-                    padding-bottom: var(--spacing-4);
+                    padding-bottom: var(--spacing-3);
                     border-bottom: 1px solid var(--card-header-border);
                 }
                 
@@ -134,7 +135,7 @@ class BlogInfoCard extends BaseComponent {
                 }
                 
                 .blog-name {
-                    font-size: var(--font-size-lg);
+                    font-size: var(--font-size-base);
                     font-weight: 600;
                     color: var(--primary-color);
                     margin-bottom: var(--spacing-3);
@@ -204,7 +205,7 @@ class BlogInfoCard extends BaseComponent {
                 
                 .info-value {
                     flex: 1;
-                    color: var(--gray-800);
+                    color: var(--gray-900);
                     font-size: var(--font-size-sm);
                 }
                 
@@ -286,7 +287,7 @@ class BlogInfoCard extends BaseComponent {
                     align-items: center;
                     gap: var(--spacing-3);
                     margin-bottom: var(--card-content-gap);
-                    padding-bottom: var(--spacing-4);
+                    padding-bottom: var(--spacing-3);
                     border-bottom: 1px solid var(--card-header-border);
                 }
                 
@@ -309,7 +310,7 @@ class BlogInfoCard extends BaseComponent {
                 }
                 
                 .create-blog-title {
-                    font-size: var(--font-size-lg);
+                    font-size: var(--font-size-base);
                     font-weight: 600;
                     color: var(--gray-700);
                     margin-bottom: var(--spacing-3);
@@ -360,7 +361,7 @@ class BlogInfoCard extends BaseComponent {
                 
                 .create-blog-modal-content {
                     background: white;
-                    padding: var(--spacing-6);
+                    padding: var(--spacing-3) var(--spacing-4);
                     border-radius: var(--radius-lg);
                     box-shadow: var(--shadow-xl);
                     max-width: 500px;
@@ -368,7 +369,7 @@ class BlogInfoCard extends BaseComponent {
                 }
                 
                 .create-blog-modal-title {
-                    font-size: var(--font-size-lg);
+                    font-size: var(--font-size-base);
                     font-weight: 600;
                     margin-bottom: var(--spacing-4);
                     color: var(--gray-900);

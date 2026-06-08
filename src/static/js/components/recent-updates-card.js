@@ -11,13 +11,10 @@ class RecentUpdatesCard extends BaseComponent {
         this.errorMessage = '';
     }
 
-
     connectedCallback() {
         this.render();
         this.loadData();
     }
-
-
 
     async loadData() {
         // 检测是否在博客页面
@@ -114,31 +111,8 @@ class RecentUpdatesCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
-                :host {
-                    display: block;
-                    font-family: var(--font-family);
-                }
-
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-xl);
-                    box-shadow: var(--shadow-md);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    margin-bottom: var(--card-margin);
-                }
-
-                .card-header {
-                    padding: var(--spacing-4) var(--spacing-6);
-                    background: var(--gray-50);
-                    border-bottom: 1px solid var(--gray-200);
-                }
-
+                @import url('/static/css/common-components.css?v=20250609');
                 .card-title {
-                    margin: 0;
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--gray-800);
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-2);
@@ -158,7 +132,7 @@ class RecentUpdatesCard extends BaseComponent {
 
                 .update-item {
                     border-bottom: 1px solid var(--gray-100);
-                    padding: var(--spacing-4) var(--spacing-6);
+                    padding: var(--spacing-3) var(--spacing-4);
                     transition: var(--transition-normal);
                 }
 
@@ -192,7 +166,7 @@ class RecentUpdatesCard extends BaseComponent {
                     align-items: center;
                     justify-content: center;
                     background: var(--gray-100);
-                    font-size: var(--font-size-lg);
+                    font-size: var(--font-size-base);
                     font-weight: 600;
                     color: var(--gray-600);
                     border: 2px solid var(--gray-200);
@@ -246,7 +220,7 @@ class RecentUpdatesCard extends BaseComponent {
 
                 .error {
                     text-align: center;
-                    padding: var(--spacing-6);
+                    padding: var(--spacing-3) var(--spacing-4);
                     color: var(--error-color);
                     background: var(--gray-50);
                     border-radius: var(--radius-lg);
@@ -254,7 +228,7 @@ class RecentUpdatesCard extends BaseComponent {
 
                 .empty-state {
                     text-align: center;
-                    padding: var(--spacing-6);
+                    padding: var(--spacing-3) var(--spacing-4);
                     color: var(--gray-500);
                 }
             </style>

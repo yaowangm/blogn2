@@ -14,7 +14,6 @@ class FriendLinksCard extends BaseComponent {
         this.isAdmin = false;
     }
 
-
     async connectedCallback() {
         this.projectId = this.getProjectIdFromUrl();
         this.render();
@@ -113,35 +112,8 @@ class FriendLinksCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
-                :host {
-                    display: block;
-                }
-
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    transition: var(--transition-normal);
-                }
-
-                .card:hover {
-                    box-shadow: var(--shadow-md);
-                    transform: translateY(-2px);
-                }
-
-                .card-header {
-                    padding: var(--spacing-4) var(--spacing-5);
-                    border-bottom: 1px solid var(--gray-200);
-                    background: var(--gray-50);
-                }
-
+                @import url('/static/css/common-components.css?v=20250609');
                 .card-title {
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--gray-900);
-                    margin: 0;
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
@@ -170,19 +142,13 @@ class FriendLinksCard extends BaseComponent {
 
                 .manage-button:hover {
                     background: var(--primary-dark);
-                    transform: translateY(-1px);
-                }
+                    }
 
                 .card-title-icon {
                     width: 20px;
                     height: 20px;
                     color: var(--primary-color);
                 }
-
-                .card-body {
-                    padding: var(--spacing-5);
-                }
-
                 .friend-links {
                     display: grid;
                     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -212,8 +178,7 @@ class FriendLinksCard extends BaseComponent {
                     background: var(--primary-color);
                     color: var(--white);
                     border-color: var(--primary-color);
-                    transform: translateY(-1px);
-                }
+                    }
 
                 .loading {
                     text-align: center;
@@ -247,7 +212,6 @@ class FriendLinksCard extends BaseComponent {
                         grid-template-columns: repeat(2, 1fr);
                     }
                 }
-
 
             </style>
 

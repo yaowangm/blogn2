@@ -111,6 +111,7 @@ class UserProfileCard extends BaseComponent {
 
         this.shadowRoot.innerHTML = `
             <style>
+                @import url('/static/css/common-components.css?v=20250609');
                 :host {
                     display: block;
                     background: var(--card-bg);
@@ -127,7 +128,7 @@ class UserProfileCard extends BaseComponent {
                     justify-content: space-between;
                     gap: var(--spacing-3);
                     margin-bottom: var(--card-content-gap);
-                    padding-bottom: var(--spacing-4);
+                    padding-bottom: var(--spacing-3);
                     border-bottom: 1px solid var(--card-header-border);
                 }
                 
@@ -194,7 +195,7 @@ class UserProfileCard extends BaseComponent {
                 
                 .profile-value {
                     flex: 1;
-                    color: var(--gray-800);
+                    color: var(--gray-900);
                     font-size: var(--font-size-sm);
                     word-break: break-word;
                 }
@@ -261,7 +262,7 @@ class UserProfileCard extends BaseComponent {
                 
                 .reset-password-content {
                     background: white;
-                    padding: var(--spacing-6);
+                    padding: var(--spacing-3) var(--spacing-4);
                     border-radius: var(--radius-lg);
                     box-shadow: var(--shadow-xl);
                     max-width: 400px;
@@ -269,7 +270,7 @@ class UserProfileCard extends BaseComponent {
                 }
                 
                 .reset-password-title {
-                    font-size: var(--font-size-lg);
+                    font-size: var(--font-size-base);
                     font-weight: 600;
                     margin-bottom: var(--spacing-4);
                     color: var(--gray-900);

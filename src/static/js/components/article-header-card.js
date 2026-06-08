@@ -540,7 +540,7 @@ class ArticleHeaderCard extends BaseComponent {
         if (!this.shadowRoot.querySelector('style')) {
             const style = document.createElement('style');
             style.textContent = `
-                @import url('/static/css/common-components.css');
+                @import url('/static/css/common-components.css?v=20250609');
                 .card { margin-bottom: 0; }
                 
                 .article-title h1 {
@@ -554,8 +554,8 @@ class ArticleHeaderCard extends BaseComponent {
                 .article-meta {
                     display: grid;
                     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: var(--spacing-4);
-                    padding: var(--spacing-4);
+                    gap: var(--spacing-3);
+                    padding: var(--spacing-3);
                     background-color: var(--gray-50);
                     border-radius: var(--radius-lg);
                     border: 1px solid var(--gray-200);
@@ -574,7 +574,7 @@ class ArticleHeaderCard extends BaseComponent {
                 }
                 
                 .meta-value {
-                    color: var(--gray-800);
+                    color: var(--gray-900);
                 }
                 
                 .article-toolbar {

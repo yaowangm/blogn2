@@ -54,7 +54,6 @@ class CommentFormCard extends BaseComponent {
         }
     }
 
-
     /**
      * 检查是否可以发表评论
      */
@@ -221,7 +220,6 @@ class CommentFormCard extends BaseComponent {
         }
     }
 
-
     showSuccess(message) {
         this.showMessage(message, 'success');
     }
@@ -254,23 +252,24 @@ class CommentFormCard extends BaseComponent {
         if (!this.shadowRoot.querySelector('style')) {
             const style = document.createElement('style');
             style.textContent = `
+                @import url('/static/css/common-components.css?v=20250609');
                 .comment-form-card {
                     margin-bottom: 0;
                 }
                 .card-header {
-                    padding: var(--spacing-4) var(--spacing-6);
+                    padding: var(--spacing-3) var(--spacing-4);
                     border-bottom: 1px solid var(--gray-200);
                     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
                     background-color: var(--gray-50);
                 }
                 .card-header h3 {
-                    font-size: var(--font-size-lg);
+                    font-size: var(--font-size-base);
                     font-weight: 600;
-                    color: var(--gray-800);
+                    color: var(--gray-900);
                     margin: 0;
                 }
                 .comment-form {
-                    padding: var(--spacing-4) var(--spacing-6);
+                    padding: var(--spacing-3) var(--spacing-4);
                 }
                 .form-group {
                     margin-bottom: var(--spacing-4);
@@ -329,7 +328,7 @@ class CommentFormCard extends BaseComponent {
                 .message {
                     padding: var(--spacing-3) var(--spacing-4);
                     border-radius: var(--radius-md);
-                    margin: var(--spacing-4) var(--spacing-6) 0;
+                    margin: var(--spacing-3) var(--spacing-4) 0;
                     font-size: var(--font-size-sm);
                 }
                 .message-success {

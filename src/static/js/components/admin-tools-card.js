@@ -21,40 +21,33 @@ class AdminToolsCard extends BaseComponent {
         this.style.display = '';
         this.shadowRoot.innerHTML = `
             <style>
+                @import url('/static/css/common-components.css?v=20250609');
                 :host { display: block; margin-bottom: var(--card-margin, 24px); }
                 .card-wrap {
-                    background: var(--card-bg, #fff);
-                    border-radius: var(--card-radius, 8px);
-                    box-shadow: var(--card-shadow, 0 1px 3px rgba(0,0,0,.1));
-                    padding: var(--card-padding, 24px);
-                    border: 1px solid var(--gray-200, #e5e7eb);
+                    background: var(--white);
+                    border-radius: var(--radius-lg);
+                    box-shadow: var(--shadow-sm);
+                    padding: var(--spacing-3) var(--spacing-4);
+                    border: 1px solid var(--gray-200);
+                }
+                .card-wrap:hover {
+                    box-shadow: var(--shadow-md);
                 }
                 .card-header {
-                    margin-bottom: 16px;
-                    padding-bottom: 12px;
-                    border-bottom: 1px solid var(--gray-200, #e5e7eb);
-                }
-                .card-title {
-                    margin: 0;
-                    font-size: 20px;
-                    font-weight: 600;
-                    color: var(--gray-800, #111827);
+                    margin-bottom: var(--spacing-3);
+                    padding-bottom: var(--spacing-2);
+                    border-bottom: 1px solid var(--gray-200);
                 }
                 .hint {
-                    font-size: 13px;
-                    color: var(--gray-600, #4b5563);
-                    margin-bottom: 16px;
+                    font-size: var(--font-size-sm);
+                    color: var(--gray-600);
+                    margin-bottom: var(--spacing-3);
                     line-height: 1.5;
                 }
                 .btn-primary {
-                    background: var(--primary-color, #2563eb);
-                    color: #fff;
-                    border: none;
-                    padding: 10px 18px;
-                    border-radius: 6px;
-                    font-size: 14px;
-                    font-weight: 500;
-                    cursor: pointer;
+                    padding: calc(var(--spacing-2) * 1.2) calc(var(--spacing-3) * 1.2);
+                    font-size: calc(var(--font-size-xs) * 1.2);
+                    line-height: 1.25;
                 }
                 .btn-primary:hover:not(:disabled) {
                     filter: brightness(0.95);

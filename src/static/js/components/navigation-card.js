@@ -71,40 +71,10 @@ class NavigationCard extends BaseComponent {
     renderNavigation() {
         this.shadowRoot.innerHTML = `
             <style>
+                @import url('/static/css/common-components.css?v=20250609');
                 :host {
                     display: block;
                 }
-
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    transition: var(--transition-normal);
-                }
-
-                .card:hover {
-                    box-shadow: var(--shadow-md);
-                }
-
-                .card-header {
-                    padding: var(--spacing-3) var(--spacing-4);
-                    border-bottom: 1px solid var(--gray-200);
-                    background: var(--gray-50);
-                }
-
-                .card-title {
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--gray-900);
-                    margin: 0;
-                }
-
-                .card-body {
-                    padding: var(--spacing-4);
-                }
-
                 .nav-list {
                     display: flex;
                     flex-direction: column;

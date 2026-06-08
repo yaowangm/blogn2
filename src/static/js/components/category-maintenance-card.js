@@ -43,34 +43,8 @@ class CategoryMaintenanceCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
-                :host {
-                    display: block;
-                    font-family: var(--font-family);
-                }
-
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-xl);
-                    box-shadow: var(--shadow-md);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    margin-bottom: var(--card-margin);
-                }
-
-                .card-header {
-                    padding: var(--spacing-4) var(--spacing-6);
-                    background: var(--gray-50);
-                    border-bottom: 1px solid var(--gray-200);
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }
-
+                @import url('/static/css/common-components.css?v=20250609');
                 .card-title {
-                    margin: 0;
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--gray-800);
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-2);
@@ -99,14 +73,8 @@ class CategoryMaintenanceCard extends BaseComponent {
 
                 .add-button:hover {
                     background: var(--primary-hover);
-                    transform: translateY(-1px);
                     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
                 }
-
-                .card-body {
-                    padding: var(--spacing-6);
-                }
-
                 .category-list {
                     list-style: none;
                     margin: 0;
@@ -117,7 +85,7 @@ class CategoryMaintenanceCard extends BaseComponent {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    padding: var(--spacing-4);
+                    padding: var(--spacing-3) var(--spacing-4);
                     border: 1px solid var(--gray-200);
                     border-radius: var(--radius-lg);
                     margin-bottom: var(--spacing-3);
@@ -146,7 +114,7 @@ class CategoryMaintenanceCard extends BaseComponent {
 
                 .category-name {
                     font-weight: 500;
-                    color: var(--gray-800);
+                    color: var(--gray-900);
                 }
 
                 .category-count {
@@ -275,7 +243,7 @@ class CategoryMaintenanceCard extends BaseComponent {
 
                 .error {
                     text-align: center;
-                    padding: var(--spacing-6);
+                    padding: var(--spacing-3) var(--spacing-4);
                     color: var(--error-color);
                     background: var(--gray-50);
                     border-radius: var(--radius-lg);
@@ -283,7 +251,7 @@ class CategoryMaintenanceCard extends BaseComponent {
 
                 .empty-state {
                     text-align: center;
-                    padding: var(--spacing-6);
+                    padding: var(--spacing-3) var(--spacing-4);
                     color: var(--gray-500);
                 }
             </style>

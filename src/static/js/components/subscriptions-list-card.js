@@ -160,80 +160,7 @@ class SubscriptionsListCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
-                :host {
-                    display: block;
-                    font-family: var(--font-family);
-                    
-                    /* CSS Variables for Shadow DOM */
-                    --primary-color: #3b82f6;
-                    --primary-hover: #2563eb;
-                    --white: #ffffff;
-                    --gray-50: #f9fafb;
-                    --gray-100: #f3f4f6;
-                    --gray-200: #e5e7eb;
-                    --gray-300: #d1d5db;
-                    --gray-400: #9ca3af;
-                    --gray-500: #6b7280;
-                    --gray-600: #4b5563;
-                    --gray-700: #374151;
-                    --gray-800: #1f2937;
-                    --gray-900: #111827;
-                    --error-color: #ef4444;
-                    --success-color: #10b981;
-                    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    --font-size-xs: 0.75rem;
-                    --font-size-sm: 0.875rem;
-                    --font-size-base: 1rem;
-                    --font-size-lg: 1.125rem;
-                    --font-size-xl: 1.25rem;
-                    --spacing-1: 0.25rem;
-                    --spacing-2: 0.5rem;
-                    --spacing-3: 0.75rem;
-                    --spacing-4: 1rem;
-                    --spacing-5: 1.25rem;
-                    --spacing-6: 1.5rem;
-                    --spacing-8: 2rem;
-                    --radius-sm: 0.25rem;
-                    --radius-md: 0.375rem;
-                    --radius-lg: 0.5rem;
-                    --radius-xl: 0.75rem;
-                    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-                    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-                    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-                    --transition-fast: all 0.15s ease;
-                    --transition-normal: all 0.3s ease;
-                }
-                
-                
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    margin-bottom: var(--card-margin);
-                }
-                
-                .card-header {
-                    padding: var(--spacing-5);
-                    border-bottom: 1px solid var(--gray-200);
-                    background: var(--gray-50);
-                }
-                
-                .card-title {
-                    font-size: var(--font-size-xl);
-                    font-weight: 600;
-                    color: var(--gray-900);
-                    margin: 0;
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-3);
-                }
-                
-                .card-body {
-                    padding: var(--spacing-5);
-                }
-                
+                @import url('/static/css/common-components.css?v=20250609');
                 .blog-list {
                     display: flex;
                     flex-direction: column;
@@ -244,7 +171,7 @@ class SubscriptionsListCard extends BaseComponent {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-4);
-                    padding: var(--spacing-4);
+                    padding: var(--spacing-3) var(--spacing-4);
                     border: 1px solid var(--gray-200);
                     border-radius: var(--radius-lg);
                     transition: var(--transition-fast);
@@ -254,7 +181,6 @@ class SubscriptionsListCard extends BaseComponent {
                 
                 .blog-item:hover {
                     box-shadow: var(--shadow-md);
-                    transform: translateY(-1px);
                     border-color: var(--primary-color);
                 }
                 
@@ -284,7 +210,7 @@ class SubscriptionsListCard extends BaseComponent {
                 }
                 
                 .blog-name {
-                    font-size: var(--font-size-lg);
+                    font-size: var(--font-size-base);
                     font-weight: 600;
                     color: var(--gray-900);
                     margin: 0 0 var(--spacing-1) 0;

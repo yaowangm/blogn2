@@ -238,48 +238,8 @@ class BlogPostsListCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
-                :host { display: block; font-family: var(--font-family); }
-                
-                /* CSS Variables */
-                :root {
-                    --primary-color: #3b82f6;
-                    --primary-hover: #2563eb;
-                    --white: #ffffff;
-                    --gray-50: #f9fafb;
-                    --gray-100: #f3f4f6;
-                    --gray-200: #e5e7eb;
-                    --gray-300: #d1d5db;
-                    --gray-400: #9ca3af;
-                    --gray-500: #6b7280;
-                    --gray-600: #4b5563;
-                    --gray-700: #374151;
-                    --gray-800: #1f2937;
-                    --gray-900: #111827;
-                    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    --font-size-xs: 0.75rem;
-                    --font-size-sm: 0.875rem;
-                    --font-size-base: 1rem;
-                    --font-size-lg: 1.125rem;
-                    --font-size-xl: 1.25rem;
-                    --spacing-1: 0.25rem;
-                    --spacing-2: 0.5rem;
-                    --spacing-3: 0.75rem;
-                    --spacing-4: 1rem;
-                    --spacing-5: 1.25rem;
-                    --spacing-6: 1.5rem;
-                    --spacing-8: 2rem;
-                    --spacing-10: 2.5rem;
-                    --radius-sm: 0.25rem;
-                    --radius-md: 0.375rem;
-                    --radius-lg: 0.5rem;
-                    --radius-xl: 0.75rem;
-                    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-                    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-                    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-                    --transition-fast: all 0.15s ease;
-                    --transition-normal: all 0.3s ease;
-                }
-                
+                @import url('/static/css/common-components.css?v=20250609');
+
                 .tabs { display: flex; border-bottom: 1px solid var(--gray-200); }
                 .tab {
                     flex: 1;
@@ -299,32 +259,25 @@ class BlogPostsListCard extends BaseComponent {
                     color: var(--gray-900);
                     border-bottom-color: var(--gray-700);
                 }
-                .tab:hover:not(.active) { background: var(--gray-100); color: var(--gray-800); }
+                .tab:hover:not(.active) { background: var(--gray-100); color: var(--gray-900); }
                 .tab:focus { outline: none; }
                 .tab:focus-visible { outline: 2px solid var(--primary-color); outline-offset: -2px; }
                 .posts-list { list-style: none; margin: 0; padding: 0; }
-                .post-item { border-bottom: 1px solid var(--gray-100); padding: var(--spacing-4); }
+                .post-item { border-bottom: 1px solid var(--gray-100); padding: var(--spacing-3) var(--spacing-4); }
                 .post-item:last-child { border-bottom: none; }
                 .post-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-3); }
-                .post-title { margin: 0; font-size: var(--font-size-lg); font-weight: 600; color: var(--gray-800); text-decoration: none; }
+                .post-title { margin: 0; font-size: var(--font-size-base); font-weight: 600; color: var(--gray-900); text-decoration: none; }
                 .post-title:hover { color: var(--primary-color); }
                 .post-meta { display: flex; align-items: center; gap: var(--spacing-4); font-size: var(--font-size-xs); color: var(--gray-500); }
                 .post-category { background: var(--primary-color); color: var(--white); padding: var(--spacing-1) var(--spacing-2); border-radius: var(--radius-full); font-size: var(--font-size-xs); }
                 .post-content { color: var(--gray-700); line-height: 1.6; margin-bottom: var(--spacing-4); }
                 .post-stats { display: flex; align-items: center; gap: var(--spacing-4); font-size: var(--font-size-xs); color: var(--gray-500); }
                 .loading { text-align: center; padding: var(--spacing-4); color: var(--gray-500); }
-                .error { text-align: center; padding: var(--spacing-6); color: var(--error-color); background: var(--gray-50); border-radius: var(--radius-lg); }
-                .empty-state { text-align: center; padding: var(--spacing-6); color: var(--gray-500); }
+                .error { text-align: center; padding: var(--spacing-3) var(--spacing-4); color: var(--error-color); background: var(--gray-50); border-radius: var(--radius-lg); }
+                .empty-state { text-align: center; padding: var(--spacing-3) var(--spacing-4); color: var(--gray-500); }
                 
                 /* 卡片样式：根 .card 不设 margin，由父级 .sidebar 的 gap 统一控制间距，避免双倍间距 */
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    margin-bottom: 0;
-                }
+                .card { margin-bottom: 0; }
                 
                 /* 博文列表容器样式 */
                 .blog-list-container {
