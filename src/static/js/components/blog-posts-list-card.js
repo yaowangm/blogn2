@@ -240,28 +240,57 @@ class BlogPostsListCard extends BaseComponent {
             <style>
                 @import url('/static/css/common-components.css');
 
-                .tabs { display: flex; border-bottom: 1px solid var(--gray-200); }
+                .tabs {
+                    display: flex;
+                    padding: var(--spacing-3) var(--spacing-4) var(--spacing-2);
+                }
+
+                .tab-group {
+                    display: flex;
+                    flex: 1;
+                    gap: 2px;
+                    padding: 3px;
+                    background: var(--gray-100);
+                    border: 1px solid var(--gray-200);
+                    border-radius: var(--radius-lg);
+                }
+
                 .tab {
                     flex: 1;
-                    padding: var(--spacing-3) var(--spacing-4);
+                    min-width: 0;
+                    padding: var(--spacing-2) var(--spacing-3);
                     text-align: center;
-                    background: var(--gray-50);
-                    border: none;
-                    border-bottom: 2px solid transparent;
+                    background: transparent;
+                    border: 1.5px solid transparent;
+                    border-radius: calc(var(--radius-lg) - 3px);
+                    box-sizing: border-box;
                     cursor: pointer;
-                    transition: var(--transition-fast);
+                    transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
                     font-size: var(--font-size-sm);
                     font-weight: 500;
                     color: var(--gray-600);
+                    line-height: 1.25;
                 }
+
                 .tab.active {
                     background: var(--white);
                     color: var(--gray-900);
-                    border-bottom-color: var(--gray-700);
+                    font-weight: 600;
+                    border: 1.5px solid var(--gray-300);
+                    box-shadow: var(--shadow-sm);
                 }
-                .tab:hover:not(.active) { background: var(--gray-100); color: var(--gray-900); }
+
+                .tab:hover:not(.active) {
+                    color: var(--gray-900);
+                    background: rgba(255, 255, 255, 0.55);
+                }
+
                 .tab:focus { outline: none; }
-                .tab:focus-visible { outline: 2px solid var(--primary-color); outline-offset: -2px; }
+
+                .tab:focus-visible {
+                    outline: 2px solid var(--primary-color);
+                    outline-offset: 1px;
+                }
                 .posts-list { list-style: none; margin: 0; padding: 0; }
                 .post-item { border-bottom: 1px solid var(--gray-100); padding: var(--spacing-3) var(--spacing-4); }
                 .post-item:last-child { border-bottom: none; }
@@ -323,9 +352,23 @@ class BlogPostsListCard extends BaseComponent {
 
             <div class="card">
                 ${this.isOwner ? this.renderCreatePostButton() : ''}
-                <div class="tabs">
-                    <button class="tab ${this.activeTab === 'original' ? 'active' : ''}" onclick="this.getRootNode().host.switchTab('original')">原创文章</button>
-                    <button class="tab ${this.activeTab === 'subscription' ? 'active' : ''}" onclick="this.getRootNode().host.switchTab('subscription')">订阅文章</button>
+                <div class="tabs" role="tablist" aria-label="文章类型">
+                    <div class="tab-group">
+                        <button
+                            type="button"
+                            class="tab ${this.activeTab === 'original' ? 'active' : ''}"
+                            role="tab"
+                            aria-selected="${this.activeTab === 'original'}"
+                            onclick="this.getRootNode().host.switchTab('original')"
+                        >原创文章</button>
+                        <button
+                            type="button"
+                            class="tab ${this.activeTab === 'subscription' ? 'active' : ''}"
+                            role="tab"
+                            aria-selected="${this.activeTab === 'subscription'}"
+                            onclick="this.getRootNode().host.switchTab('subscription')"
+                        >订阅文章</button>
+                    </div>
                 </div>
                 ${this.loading ? this.renderLoading() : 
                   this.activeTab === 'original' ? this.renderOriginalPosts() :
