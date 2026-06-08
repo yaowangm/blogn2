@@ -211,8 +211,8 @@ class BlogListCard extends BaseComponent {
                                 ${blogInfo}
                             </div>
                             <p class="post-excerpt">${safeExcerpt}</p>
-                            ${image ? `<div class="post-attachment-image"><img src="${image}" alt="${safeTitle}" onerror="this.style.display='none'"></div>` : ''}
                         </div>
+                        ${image ? `<div class="post-attachment-image"><img src="${image}" alt="${safeTitle}" onerror="this.style.display='none'"></div>` : ''}
                     </a>
                 `;
             }).join('');
@@ -358,8 +358,10 @@ class BlogListCard extends BaseComponent {
                 }
 
                 .post-item {
-                    display: flex;
-                    gap: var(--spacing-3);
+                    display: grid;
+                    grid-template-columns: 60px 1fr;
+                    column-gap: var(--spacing-3);
+                    row-gap: var(--spacing-3);
                     padding: var(--spacing-3);
                     border-radius: var(--radius-md);
                     background: var(--gray-50);
@@ -382,6 +384,8 @@ class BlogListCard extends BaseComponent {
                 }
 
                 .post-avatar {
+                    grid-column: 1;
+                    grid-row: 1;
                     width: 60px;
                     height: 60px;
                     border-radius: 50%;
@@ -413,7 +417,8 @@ class BlogListCard extends BaseComponent {
                 }
 
                 .post-content {
-                    flex: 1;
+                    grid-column: 2;
+                    grid-row: 1;
                     min-width: 0;
                     max-width: 100%;
                     overflow: hidden;
@@ -475,7 +480,8 @@ class BlogListCard extends BaseComponent {
                 }
 
                 .post-attachment-image {
-                    margin-top: var(--spacing-3);
+                    grid-column: 2;
+                    grid-row: 2;
                     border-radius: var(--radius-md);
                     overflow: hidden;
                     max-width: 100%;
@@ -564,22 +570,15 @@ class BlogListCard extends BaseComponent {
                     font-size: var(--font-size-xs);
                 }
 
-                @media (max-width: 768px) {
-                    .post-item {
-                        flex-direction: column;
-                        gap: var(--spacing-3);
-                    }
-                    
-                    .post-avatar {
-                        width: 80px;
-                        height: 80px;
-                        align-self: center;
-                        margin-top: 25px;
+                /* 单栏：头像左、正文右；配图占满卡片宽度 */
+                @media (max-width: 1024px) {
+                    .post-attachment-image {
+                        grid-column: 1 / -1;
                     }
 
                     .post-attachment-image img {
                         max-width: 100%;
-                        height: auto;
+                        width: 100%;
                     }
                 }
             </style>
