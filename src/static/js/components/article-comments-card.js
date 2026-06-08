@@ -31,6 +31,10 @@ class ArticleCommentsCard extends BaseComponent {
         this.checkAndScrollToComment();
     }
 
+    disconnectedCallback() {
+        this._detachCommentScrollCorrection();
+    }
+
     /**
      * 从URL获取文章ID
      */
@@ -304,77 +308,104 @@ class ArticleCommentsCard extends BaseComponent {
     }
 
     /**
-     * 等待根节点内图片加载完成，避免正文附图撑高布局后滚动偏移。
+     * 将评论滚入视口中央。
      */
-    waitForImagesIn(root, timeoutMs = 3000) {
-        if (!root) {
-            return Promise.resolve();
-        }
-        const images = root.querySelectorAll('img');
-        if (images.length === 0) {
-            return Promise.resolve();
-        }
-        return Promise.all([...images].map((img) => {
-            if (img.complete) {
-                return Promise.resolve();
+    scrollCommentIntoView(commentElement, behavior = 'auto') {
+        commentElement.scrollIntoView({ behavior, block: 'center' });
+    }
+
+    /**
+     * 正文附图加载或布局变化后再次校正滚动位置（不重复高亮）。
+     */
+    _attachCommentScrollCorrection(commentElement) {
+        this._detachCommentScrollCorrection();
+
+        const resync = () => {
+            if (!commentElement.isConnected) {
+                this._detachCommentScrollCorrection();
+                return;
             }
-            return new Promise((resolve) => {
-                const timer = setTimeout(resolve, timeoutMs);
-                const done = () => {
-                    clearTimeout(timer);
-                    resolve();
-                };
-                img.addEventListener('load', done, { once: true });
-                img.addEventListener('error', done, { once: true });
-            });
-        }));
-    }
+            this.scrollCommentIntoView(commentElement);
+        };
 
-    /**
-     * 等待页面上方正文与评论区布局稳定后再定位锚点。
-     */
-    async waitForUpstreamLayout() {
-        const contentCard = document.querySelector('article-content-card');
-        await this.waitForImagesIn(contentCard?.shadowRoot);
-        await this.waitForImagesIn(this.shadowRoot);
-        await this.waitForLayoutIdle();
-    }
+        const contentRoot = document.querySelector('article-content-card')?.shadowRoot;
+        const imageCleanups = [];
 
-    /**
-     * 在页面高度连续稳定一小段时间后结束等待。
-     */
-    waitForLayoutIdle(timeoutMs = 4000, idleMs = 120) {
-        return new Promise((resolve) => {
-            let idleTimer;
-            const finish = () => {
-                clearTimeout(timeoutTimer);
-                clearTimeout(idleTimer);
-                observer.disconnect();
-                resolve();
-            };
-            const timeoutTimer = setTimeout(finish, timeoutMs);
-            const observer = new ResizeObserver(() => {
-                clearTimeout(idleTimer);
-                idleTimer = setTimeout(finish, idleMs);
+        if (contentRoot) {
+            contentRoot.querySelectorAll('img').forEach((img) => {
+                if (img.complete) {
+                    return;
+                }
+                const onImageSettled = () => resync();
+                img.addEventListener('load', onImageSettled, { once: true });
+                img.addEventListener('error', onImageSettled, { once: true });
+                imageCleanups.push(() => {
+                    img.removeEventListener('load', onImageSettled);
+                    img.removeEventListener('error', onImageSettled);
+                });
             });
-            observer.observe(document.body);
-            idleTimer = setTimeout(finish, idleMs);
+        }
+
+        let resizeFrame = null;
+        const resizeObserver = new ResizeObserver(() => {
+            if (resizeFrame !== null) {
+                cancelAnimationFrame(resizeFrame);
+            }
+            resizeFrame = requestAnimationFrame(() => {
+                resizeFrame = null;
+                resync();
+            });
         });
+
+        if (contentRoot) {
+            resizeObserver.observe(contentRoot);
+        }
+
+        this._commentScrollCleanupTimer = setTimeout(() => {
+            this._detachCommentScrollCorrection();
+        }, 30000);
+
+        this._commentScrollCorrection = {
+            resizeObserver,
+            imageCleanups,
+            cancelResizeFrame: () => {
+                if (resizeFrame !== null) {
+                    cancelAnimationFrame(resizeFrame);
+                    resizeFrame = null;
+                }
+            }
+        };
+    }
+
+    _detachCommentScrollCorrection() {
+        if (this._commentScrollCleanupTimer) {
+            clearTimeout(this._commentScrollCleanupTimer);
+            this._commentScrollCleanupTimer = null;
+        }
+
+        const state = this._commentScrollCorrection;
+        if (!state) {
+            return;
+        }
+
+        state.cancelResizeFrame();
+        state.resizeObserver.disconnect();
+        state.imageCleanups.forEach((cleanup) => cleanup());
+        this._commentScrollCorrection = null;
     }
 
     /**
-     * 定位到评论元素：先等布局稳定，再滚动并高亮。
+     * 定位到评论：先按当前布局立即滚动，再在正文图片加载后校正。
      */
     async scrollToCommentElement(commentId) {
+        this._detachCommentScrollCorrection();
+
         for (let attempt = 0; attempt < 8; attempt += 1) {
             const commentElement = this.shadowRoot.querySelector(`#post${commentId}`);
             if (commentElement) {
-                await this.waitForUpstreamLayout();
-                commentElement.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center'
-                });
+                this.scrollCommentIntoView(commentElement);
                 this.highlightComment(commentElement);
+                this._attachCommentScrollCorrection(commentElement);
                 return;
             }
             await new Promise((resolve) => setTimeout(resolve, 100));
