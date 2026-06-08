@@ -71,63 +71,78 @@ class NavigationCard extends BaseComponent {
     renderNavigation() {
         this.shadowRoot.innerHTML = `
             <style>
-                @import url('/static/css/common-components.css?v=20250609');
-                :host {
-                    display: block;
-                }
-                .nav-list {
+                @import url('/static/css/common-components.css?v=20250610');
+
+                .card-title {
                     display: flex;
-                    flex-direction: column;
+                    align-items: center;
                     gap: var(--spacing-2);
                 }
 
+                .card-title svg {
+                    width: 20px;
+                    height: 20px;
+                    color: var(--primary-color);
+                    flex-shrink: 0;
+                }
+
+                .nav-list {
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
+                }
+
                 .nav-item {
+                    border-bottom: 1px solid var(--gray-100);
+                }
+
+                .nav-item:last-child {
+                    border-bottom: none;
+                }
+
+                .nav-link {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-3);
-                    padding: var(--spacing-3);
-                    border-radius: var(--radius-md);
-                    transition: var(--transition-fast);
-                    text-decoration: none;
+                    padding: var(--spacing-3) var(--spacing-4);
                     color: var(--gray-700);
+                    text-decoration: none;
+                    transition: var(--transition-fast);
+                    font-size: var(--font-size-sm);
                 }
 
-                .nav-item:hover {
+                .nav-link:hover {
                     background: var(--gray-50);
-                    color: var(--gray-900);
-                }
-
-                .nav-item:focus {
-                    outline: none;
-                }
-
-                .nav-icon {
-                    width: 20px;
-                    height: 20px;
-                    color: var(--gray-500);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-
-                .nav-item:hover .nav-icon {
                     color: var(--primary-color);
                 }
 
-                .nav-text {
+                .nav-link:focus {
+                    outline: none;
+                }
+
+                .nav-link svg {
+                    width: 18px;
+                    height: 18px;
+                    flex-shrink: 0;
+                }
+
+                .link-text {
                     font-weight: 500;
                 }
             </style>
 
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">全站导航</h3>
+                    <h3 class="card-title">
+                        ${Icons.menu}
+                        全站导航
+                    </h3>
                 </div>
-                <div class="card-body">
-                    <div class="nav-list">
+                <nav>
+                    <ul class="nav-list">
                         ${this.renderNavigationItems()}
-                    </div>
-                </div>
+                    </ul>
+                </nav>
             </div>
         `;
     }
@@ -135,10 +150,12 @@ class NavigationCard extends BaseComponent {
     renderNavigationItems() {
         const items = this.navigationItems || this.getDefaultNavigationItems();
         return items.map(item => `
-            <a href="${item.href}" class="nav-item" ${item.target ? `target="${item.target}"` : ''}>
-                <div class="nav-icon">${item.icon}</div>
-                <span class="nav-text">${item.text}</span>
-            </a>
+            <li class="nav-item">
+                <a href="${item.href}" class="nav-link" ${item.target ? `target="${item.target}"` : ''}>
+                    ${item.icon}
+                    <span class="link-text">${item.text}</span>
+                </a>
+            </li>
         `).join('');
     }
 

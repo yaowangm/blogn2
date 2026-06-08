@@ -19,7 +19,6 @@ class PopularBlogsCard extends BaseComponent {
             this.blogs = await response.json();
         } catch (error) {
             this.logError('Error loading popular blogs', error);
-            // 使用默认数据作为后备
             this.blogs = [
                 { name: '技术前沿', followers: '1.2k', avatar: '技', rank: 1 },
                 { name: '生活美学', followers: '856', avatar: '生', rank: 2 },
@@ -36,68 +35,67 @@ class PopularBlogsCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
-                @import url('/static/css/common-components.css?v=20250609');
-                :host {
-                    display: block;
-                }
-                .icon {
-                    width: 24px;
-                    height: 24px;
+                @import url('/static/css/common-components.css?v=20250610');
+
+                .card-title {
                     display: flex;
                     align-items: center;
-                    justify-content: center;
+                    gap: var(--spacing-2);
                 }
 
-                .icon svg {
+                .title-icon {
                     width: 20px;
                     height: 20px;
-                    stroke: var(--accent-color);
-                    stroke-width: 2;
-                    fill: none;
-                    stroke-linecap: round;
-                    stroke-linejoin: round;
+                    color: var(--primary-color);
                 }
+
                 .blog-list {
-                    display: flex;
-                    flex-direction: column;
-                    gap: var(--spacing-3);
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
                 }
 
                 .blog-item {
+                    border-bottom: 1px solid var(--gray-100);
+                }
+
+                .blog-item:last-child {
+                    border-bottom: none;
+                }
+
+                .blog-link {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-3);
-                    padding: var(--spacing-3);
-                    border-radius: var(--radius-md);
-                    transition: var(--transition-fast);
+                    padding: var(--spacing-3) var(--spacing-4);
                     text-decoration: none;
-                    color: var(--gray-700);
+                    color: inherit;
+                    transition: var(--transition-fast);
                 }
 
                 .blog-item:hover {
                     background: var(--gray-50);
-                    color: var(--primary-color);
                 }
 
                 .blog-avatar {
                     width: 40px;
                     height: 40px;
                     border-radius: 50%;
-                    background: var(--accent-color);
+                    flex-shrink: 0;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    color: var(--white);
+                    background: var(--gray-100);
+                    font-size: var(--font-size-base);
                     font-weight: 600;
-                    font-size: var(--font-size-sm);
-                    flex-shrink: 0;
-                    position: relative;
+                    color: var(--gray-600);
+                    border: 2px solid var(--gray-200);
+                    overflow: hidden;
                 }
 
                 .blog-avatar img {
                     width: 100%;
                     height: 100%;
-                    border-radius: 50%;
                     object-fit: cover;
                 }
 
@@ -107,68 +105,54 @@ class PopularBlogsCard extends BaseComponent {
                 }
 
                 .blog-name {
-                    font-weight: 500;
-                    margin-bottom: var(--spacing-1);
+                    font-weight: 600;
+                    color: var(--gray-900);
+                    font-size: var(--font-size-sm);
+                    margin: 0 0 var(--spacing-1) 0;
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
                 }
 
                 .blog-meta {
-                    font-size: var(--font-size-sm);
+                    font-size: var(--font-size-xs);
                     color: var(--gray-500);
+                    margin: 0;
                 }
 
                 .blog-rank {
-                    font-size: var(--font-size-sm);
+                    font-size: var(--font-size-xs);
                     color: var(--accent-color);
                     font-weight: 600;
+                    flex-shrink: 0;
                 }
 
                 .loading {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
+                    text-align: center;
                     padding: var(--spacing-8);
                     color: var(--gray-500);
-                }
-
-                .loading-spinner {
-                    width: 20px;
-                    height: 20px;
-                    border: 2px solid var(--gray-200);
-                    border-top: 2px solid var(--accent-color);
-                    border-radius: 50%;
-                    animation: spin 1s linear infinite;
-                    margin-right: var(--spacing-2);
-                }
-
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
                 }
             </style>
 
             <div class="card">
                 <div class="card-header">
-                    <div class="icon">
+                    <h3 class="card-title">
                         ${Icons.popular}
-                    </div>
-                    <h3 class="card-title">最热门</h3>
+                        最热门
+                    </h3>
                 </div>
-                <div class="card-body">
-                    ${this.loading ? this.createLoadingHTML() : `
-                        <div class="blog-list">
-                            ${this.blogs.map(blog => {
-                                // 安全处理所有文本字段，防止HTML注入和XSS攻击
-                                const safeName = this.escapeHtml(blog.name);
-                                const safeFollowers = this.escapeHtml(blog.followers);
-                                const safeRank = this.escapeHtml(blog.rank);
-                                
-                                return `
-                                    <a href="/blog/${blog.id}" class="blog-item" target="_blank" rel="noopener noreferrer">
+                ${this.loading ? `<div class="loading">${this.createLoadingHTML()}</div>` : `
+                    <ul class="blog-list">
+                        ${this.blogs.map(blog => {
+                            const safeName = this.escapeHtml(blog.name);
+                            const safeFollowers = this.escapeHtml(blog.followers);
+                            const safeRank = this.escapeHtml(blog.rank);
+
+                            return `
+                                <li class="blog-item">
+                                    <a href="/blog/${blog.id}" class="blog-link" target="_blank" rel="noopener noreferrer">
                                         <div class="blog-avatar">
-                                            ${blog.avatar ? 
+                                            ${blog.avatar ?
                                                 `<img src="${blog.avatar}" alt="${safeName}">` :
                                                 `<span>${safeName ? safeName.charAt(0) : '博'}</span>`
                                             }
@@ -179,14 +163,14 @@ class PopularBlogsCard extends BaseComponent {
                                         </div>
                                         <div class="blog-rank">#${safeRank}</div>
                                     </a>
-                                `;
-                            }).join('')}
-                        </div>
-                    `}
-                </div>
+                                </li>
+                            `;
+                        }).join('')}
+                    </ul>
+                `}
             </div>
         `;
     }
 }
 
-customElements.define('popular-blogs-card', PopularBlogsCard); 
+customElements.define('popular-blogs-card', PopularBlogsCard);

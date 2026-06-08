@@ -206,53 +206,46 @@ class RecentCommentsCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
-                @import url('/static/css/common-components.css?v=20250609');
-                :host {
-                    display: block;
-                }
-                .icon {
-                    width: 24px;
-                    height: 24px;
+                @import url('/static/css/common-components.css?v=20250610');
+
+                .card-title {
                     display: flex;
                     align-items: center;
-                    justify-content: center;
+                    gap: var(--spacing-2);
                 }
 
-                .icon svg {
+                .title-icon {
                     width: 20px;
                     height: 20px;
-                    stroke: var(--primary-color);
-                    stroke-width: 2;
-                    fill: none;
-                    stroke-linecap: round;
-                    stroke-linejoin: round;
+                    color: var(--primary-color);
                 }
+
                 .comment-list {
-                    display: flex;
-                    flex-direction: column;
-                    gap: var(--spacing-3);
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
                 }
 
                 .comment-item {
-                    padding: var(--spacing-3);
-                    border-radius: var(--radius-md);
-                    background: var(--gray-50);
-                    border: 1px solid var(--gray-200);
-                    transition: var(--transition-normal);
-                    display: flex;
-                    align-items: flex-start;
-                    gap: var(--spacing-3);
+                    border-bottom: 1px solid var(--gray-100);
                 }
 
-                .comment-item:hover {
-                    background: var(--gray-100);
-                    border-color: var(--gray-300);
+                .comment-item:last-child {
+                    border-bottom: none;
                 }
 
                 .comment-link {
                     text-decoration: none;
                     color: inherit;
-                    display: block;
+                    display: flex;
+                    align-items: flex-start;
+                    gap: var(--spacing-3);
+                    padding: var(--spacing-3) var(--spacing-4);
+                    transition: var(--transition-fast);
+                }
+
+                .comment-item:hover {
+                    background: var(--gray-50);
                 }
 
                 .comment-link:hover {
@@ -260,6 +253,10 @@ class RecentCommentsCard extends BaseComponent {
                 }
 
                 .comment-item.disabled {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: var(--spacing-3);
+                    padding: var(--spacing-3) var(--spacing-4);
                     cursor: default;
                     opacity: 0.7;
                 }
@@ -335,9 +332,7 @@ class RecentCommentsCard extends BaseComponent {
                 }
 
                 .loading {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
+                    text-align: center;
                     padding: var(--spacing-8);
                     color: var(--gray-500);
                 }
@@ -346,91 +341,69 @@ class RecentCommentsCard extends BaseComponent {
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    padding: var(--spacing-8);
-                    color: var(--red-500);
-                    text-align: center;
+                    padding: var(--spacing-3) var(--spacing-4);
+                    color: var(--error-color);
+                    background: var(--gray-50);
+                    border-radius: var(--radius-lg);
                 }
 
                 .error-icon {
                     margin-right: var(--spacing-2);
                     font-size: 1.2em;
                 }
-
-                .loading-spinner {
-                    width: 20px;
-                    height: 20px;
-                    border: 2px solid var(--gray-200);
-                    border-top: 2px solid var(--primary-color);
-                    border-radius: 50%;
-                    animation: spin 1s linear infinite;
-                    margin-right: var(--spacing-2);
-                }
-
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
             </style>
 
             <div class="card">
                 <div class="card-header">
-                    <div class="icon">
+                    <h3 class="card-title">
                         ${Icons.comments}
-                    </div>
-                    <h3 class="card-title">最近评论</h3>
+                        最近评论
+                    </h3>
                 </div>
-                <div class="card-body">
-                    ${this.loading ? this.createLoadingHTML() : 
-                      this.error ? this.createErrorHTML() : `
-                        <div class="comment-list">
-                            ${this.comments.map((comment, index) => {
-                                const commentUrl = this.getNavigationUrl(comment);
-                                
-                                if (commentUrl) {
-                                    return `
+                ${this.loading ? `<div class="loading">${this.createLoadingHTML()}</div>` :
+                  this.error ? this.createErrorHTML() : `
+                    <ul class="comment-list">
+                        ${this.comments.map((comment) => {
+                            const commentUrl = this.getNavigationUrl(comment);
+                            const avatarHtml = `
+                                <div class="user-avatar">
+                                    ${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ?
+                                        `<img src="${comment.avatar}" alt="${this.escapeHtml(comment.author)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` :
+                                        ''
+                                    }
+                                    <span style="${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 'display: none;' : 'display: flex;'}">${this.escapeHtml(comment.author.charAt(0))}</span>
+                                </div>
+                            `;
+                            const contentHtml = `
+                                <div class="comment-content">
+                                    <div class="comment-header">
+                                        <span class="author">${this.escapeHtml(comment.author)}</span>
+                                        <span class="time">${this.escapeHtml(comment.time)}</span>
+                                    </div>
+                                    <div class="comment-text">${this.escapeHtml(this.truncateText(comment.content, 20))}</div>
+                                </div>
+                            `;
+
+                            if (commentUrl) {
+                                return `
+                                    <li class="comment-item">
                                         <a href="${commentUrl}" class="comment-link" target="_blank" title="查看评论">
-                                            <div class="comment-item">
-                                                <div class="user-avatar">
-                                                    ${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 
-                                                        `<img src="${comment.avatar}" alt="${this.escapeHtml(comment.author)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` : 
-                                                        ''
-                                                    }
-                                                    <span style="${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 'display: none;' : 'display: flex;'}">${this.escapeHtml(comment.author.charAt(0))}</span>
-                                                </div>
-                                                <div class="comment-content">
-                                                    <div class="comment-header">
-                                                        <span class="author">${this.escapeHtml(comment.author)}</span>
-                                                        <span class="time">${this.escapeHtml(comment.time)}</span>
-                                                    </div>
-                                                    <div class="comment-text">${this.escapeHtml(this.truncateText(comment.content, 20))}</div>
-                                                </div>
-                                            </div>
+                                            ${avatarHtml}
+                                            ${contentHtml}
                                         </a>
-                                    `;
-                                } else {
-                                    return `
-                                        <div class="comment-item disabled">
-                                            <div class="user-avatar">
-                                                ${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 
-                                                    `<img src="${comment.avatar}" alt="${this.escapeHtml(comment.author)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` : 
-                                                    ''
-                                                }
-                                                <span style="${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 'display: none;' : 'display: flex;'}">${this.escapeHtml(comment.author.charAt(0))}</span>
-                                            </div>
-                                            <div class="comment-content">
-                                                <div class="comment-header">
-                                                    <span class="author">${this.escapeHtml(comment.author)}</span>
-                                                    <span class="time">${this.escapeHtml(comment.time)}</span>
-                                                </div>
-                                                <div class="comment-text">${this.escapeHtml(this.truncateText(comment.content, 20))}</div>
-                                            </div>
-                                        </div>
-                                    `;
-                                }
-                            }).join('')}
-                        </div>
-                    `}
-                </div>
+                                    </li>
+                                `;
+                            }
+
+                            return `
+                                <li class="comment-item disabled">
+                                    ${avatarHtml}
+                                    ${contentHtml}
+                                </li>
+                            `;
+                        }).join('')}
+                    </ul>
+                `}
             </div>
         `;
     }

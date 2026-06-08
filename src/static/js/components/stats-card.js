@@ -14,26 +14,36 @@ class StatsCard extends BaseComponent {
 
         this.shadowRoot.innerHTML = `
             <style>
-                @import url('/static/css/common-components.css?v=20250609');
-                :host {
-                    display: block;
+                @import url('/static/css/common-components.css?v=20250610');
+
+                .card-title {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
                 }
+
+                .title-icon {
+                    width: 20px;
+                    height: 20px;
+                    color: var(--primary-color);
+                }
+
                 .stats-grid {
                     display: grid;
                     grid-template-columns: 1fr 1fr;
-                    gap: var(--spacing-4);
+                    gap: var(--spacing-3);
                 }
 
                 .stat-item {
                     text-align: center;
-                    padding: var(--spacing-4);
+                    padding: var(--spacing-3);
                     background: var(--gray-50);
                     border-radius: var(--radius-md);
                     border: 1px solid var(--gray-200);
                 }
 
                 .stat-number {
-                    font-size: var(--font-size-2xl);
+                    font-size: var(--font-size-xl);
                     font-weight: 700;
                     color: var(--primary-color);
                     display: block;
@@ -46,10 +56,6 @@ class StatsCard extends BaseComponent {
                     font-weight: 500;
                 }
 
-                .loading {
-                    opacity: 0.6;
-                }
-
                 @media (max-width: 768px) {
                     .stats-grid {
                         grid-template-columns: 1fr;
@@ -59,7 +65,10 @@ class StatsCard extends BaseComponent {
 
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">网站统计</h3>
+                    <h3 class="card-title">
+                        ${Icons.stats}
+                        网站统计
+                    </h3>
                 </div>
                 <div class="card-body">
                     <div class="stats-grid">
@@ -78,4 +87,4 @@ class StatsCard extends BaseComponent {
     }
 }
 
-customElements.define('stats-card', StatsCard); 
+customElements.define('stats-card', StatsCard);
