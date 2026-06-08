@@ -21,7 +21,7 @@ class AdminToolsCard extends BaseComponent {
         this.style.display = '';
         this.shadowRoot.innerHTML = `
             <style>
-                @import url('/static/css/common-components.css?v=20250609');
+                @import url('/static/css/common-components.css');
                 :host { display: block; margin-bottom: var(--card-margin, 24px); }
                 .card-wrap {
                     background: var(--white);

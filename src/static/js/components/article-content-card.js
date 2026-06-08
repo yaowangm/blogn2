@@ -544,7 +544,7 @@ class ArticleContentCard extends BaseComponent {
         if (!this.shadowRoot.querySelector('style')) {
             const style = document.createElement('style');
             style.textContent = `
-                @import url('/static/css/common-components.css?v=20250609');
+                @import url('/static/css/common-components.css');
                 @import url('/static/css/components.css');
                 .card { margin-bottom: 0; }
 

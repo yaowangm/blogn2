@@ -238,7 +238,7 @@ class BlogPostsListCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
-                @import url('/static/css/common-components.css?v=20250609');
+                @import url('/static/css/common-components.css');
 
                 .tabs { display: flex; border-bottom: 1px solid var(--gray-200); }
                 .tab {

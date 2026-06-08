@@ -123,11 +123,16 @@ class ArticleCommentsCard extends BaseComponent {
         if (!this.articleData) {
             this.shadowRoot.innerHTML = `
                 <div class="card article-comments-card">
-                    <div class="card-body">
-                        <div class="loading">加载中...</div>
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            ${typeof Icons !== 'undefined' ? Icons.comments : ''}
+                            评论
+                        </h3>
                     </div>
+                    <div class="loading">加载中...</div>
                 </div>
             `;
+            this.addStyles();
             return;
         }
 
@@ -136,11 +141,12 @@ class ArticleCommentsCard extends BaseComponent {
         this.shadowRoot.innerHTML = `
             <div class="card article-comments-card">
                 <div class="card-header">
-                    <h3>评论 (${comment_count || 0})</h3>
+                    <h3 class="card-title">
+                        ${typeof Icons !== 'undefined' ? Icons.comments : ''}
+                        评论 (${comment_count || 0})
+                    </h3>
                 </div>
-                <div class="card-body">
-                    ${this.renderComments(comments)}
-                </div>
+                ${this.renderComments(comments)}
                 ${this.renderPagination()}
             </div>
         `;
@@ -368,9 +374,9 @@ class ArticleCommentsCard extends BaseComponent {
         }
 
         return `
-            <div class="comments-list">
+            <ul class="comments-list">
                 ${comments.map(comment => this.renderComment(comment)).join('')}
-            </div>
+            </ul>
         `;
     }
 
@@ -405,7 +411,7 @@ class ArticleCommentsCard extends BaseComponent {
         }
 
         return `
-            <div class="comment-item" id="post${id}" data-comment-id="${id}">
+            <li class="comment-item" id="post${id}" data-comment-id="${id}">
                 <div class="comment-avatar">
                     ${blogId ? `
                         <a href="/blog/${blogId}" class="avatar-link" title="查看博客" target="_blank" rel="noopener noreferrer">
@@ -428,48 +434,46 @@ class ArticleCommentsCard extends BaseComponent {
                 </div>
 
                 <div class="comment-content-wrapper">
-                    <div class="comment-header">
-                        <div class="comment-user">
-                            ${blogId ? `
-                                <a href="/blog/${blogId}" class="user-link" title="查看博客" target="_blank" rel="noopener noreferrer">
+                    <div class="comment-main">
+                        <div class="comment-meta">
+                            <div class="comment-user">
+                                ${blogId ? `
+                                    <a href="/blog/${blogId}" class="user-link" title="查看博客" target="_blank" rel="noopener noreferrer">
+                                        <span class="user-name">${this.escapeHtml(userName)}</span>
+                                    </a>
+                                ` : `
                                     <span class="user-name">${this.escapeHtml(userName)}</span>
-                                </a>
-                            ` : `
-                                <span class="user-name">${this.escapeHtml(userName)}</span>
-                            `}
-                        </div>
-                        <div class="comment-actions">
-                            <div class="comment-time">
-                                ${this.formatDate(post_time)}
+                                `}
                             </div>
-                            ${canDelete ? `
-                                <button class="delete-comment-btn"
-                                        data-comment-id="${id}"
-                                        title="删除评论">
-                                    <i class="fas fa-trash"></i>
-                                    删除
-                                </button>
-                            ` : ''}
+                            <span class="comment-time">${this.formatDate(post_time)}</span>
                         </div>
+                        <div class="comment-text">${this.processTextWithLinks(content || '')}</div>
+                        ${reply_count > 0 ? `
+                            <div class="comment-replies">
+                                <span class="reply-count">${reply_count} 条回复</span>
+                            </div>
+                        ` : ''}
                     </div>
-
-                    <div class="comment-content">
-                        ${this.processTextWithLinks(content || '')}
-                    </div>
-
-                    ${reply_count > 0 ? `
-                        <div class="comment-replies">
-                            <span class="reply-count">${reply_count} 条回复</span>
+                    ${canDelete ? `
+                        <div class="comment-actions">
+                            <button type="button" class="btn btn-danger btn-sm delete-comment-btn"
+                                    data-comment-id="${id}"
+                                    title="删除评论">
+                                ${this.getDeleteBtnIcon()}<span>删除</span>
+                            </button>
                         </div>
                     ` : ''}
                 </div>
-            </div>
+            </li>
         `;
     }
 
-    /**
-     * HTML转义并处理换行
-     */
+    getDeleteBtnIcon() {
+        if (typeof Icons !== 'undefined') {
+            return Icons.delete.replace('<svg ', '<svg class="btn-icon" width="16" height="16" aria-hidden="true" ');
+        }
+        return `<svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/></svg>`;
+    }
 
     /**
      * 验证URL是否安全有效
@@ -495,6 +499,8 @@ class ArticleCommentsCard extends BaseComponent {
             return '';
         }
 
+        text = text.trimStart();
+
         // 通用的URL正则表达式，匹配任何 aaa://bbb 形式的链接
         const urlRegex = /([a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^\s<>"']+)/gi;
 
@@ -516,9 +522,13 @@ class ArticleCommentsCard extends BaseComponent {
     showError(message) {
         this.shadowRoot.innerHTML = `
             <div class="card article-comments-card">
-                <div class="card-body">
-                    <div class="error-message">${message}</div>
+                <div class="card-header">
+                    <h3 class="card-title">
+                        ${typeof Icons !== 'undefined' ? Icons.comments : ''}
+                        评论
+                    </h3>
                 </div>
+                <div class="error-message">${message}</div>
             </div>
         `;
         this.addStyles();
@@ -626,23 +636,33 @@ class ArticleCommentsCard extends BaseComponent {
         if (!this.shadowRoot.querySelector('style')) {
             const style = document.createElement('style');
             style.textContent = `
-                @import url('/static/css/common-components.css?v=20250609');
+                @import url('/static/css/common-components.css');
+
                 .card { margin-bottom: 0; }
-.card-header h3 {
-                    font-size: var(--font-size-base);
-                    font-weight: 600;
-                    color: var(--gray-900);
-                    margin: 0;
+
+                .card-title {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                }
+
+                .title-icon {
+                    width: 20px;
+                    height: 20px;
+                    color: var(--primary-color);
                 }
 
                 .comments-list {
-                    /* 移除高度限制和滚动，分页后一次显示所有评论 */
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
                 }
 
                 .comment-item {
                     display: flex;
+                    align-items: flex-start;
                     gap: var(--spacing-3);
-                    padding: var(--spacing-3);
+                    padding: var(--spacing-3) var(--spacing-4);
                     border-bottom: 1px solid var(--gray-100);
                     transition: background-color var(--transition-fast);
                 }
@@ -652,7 +672,7 @@ class ArticleCommentsCard extends BaseComponent {
                 }
 
                 .comment-item:hover {
-                    background-color: var(--gray-50);
+                    background: var(--gray-50);
                 }
 
                 /* 从 #post{id} 进入：仅边缘蓝色闪烁，不改变正文背景色，总时长 3s（6×0.5s） */
@@ -683,14 +703,14 @@ class ArticleCommentsCard extends BaseComponent {
                 }
 
                 .user-avatar {
-                    width: 48px;
-                    height: 48px;
+                    width: 40px;
+                    height: 40px;
                     border-radius: 50%;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     background: var(--gray-100);
-                    font-size: var(--font-size-base);
+                    font-size: var(--font-size-sm);
                     font-weight: 600;
                     color: var(--gray-600);
                     border: 2px solid var(--gray-200);
@@ -704,21 +724,34 @@ class ArticleCommentsCard extends BaseComponent {
                 }
 
                 .comment-content-wrapper {
+                    display: grid;
+                    grid-template-columns: minmax(0, 1fr) auto;
+                    align-items: start;
+                    column-gap: var(--spacing-2);
                     flex: 1;
                     min-width: 0;
                 }
 
-                .comment-header {
+                .comment-main {
+                    grid-column: 1;
+                    min-width: 0;
+                }
+
+                .comment-meta {
                     display: flex;
-                    justify-content: space-between;
                     align-items: center;
-                    margin-bottom: var(--spacing-3);
+                    flex-wrap: wrap;
+                    gap: var(--spacing-1) var(--spacing-2);
+                    margin: 0;
+                    padding: 0;
+                    line-height: 1.3;
                 }
 
                 .comment-user .user-name {
                     font-weight: 600;
-                    color: var(--primary-color);
+                    color: var(--gray-900);
                     font-size: var(--font-size-sm);
+                    line-height: 1.3;
                 }
 
                 .user-link {
@@ -733,53 +766,44 @@ class ArticleCommentsCard extends BaseComponent {
                 }
 
                 .comment-actions {
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-2);
+                    grid-column: 2;
+                    grid-row: 1;
+                    align-self: start;
+                    margin: 0;
+                    padding: 0;
                 }
 
                 .comment-time {
                     font-size: var(--font-size-xs);
                     color: var(--gray-500);
+                    line-height: 1.3;
+                    white-space: nowrap;
                 }
 
-                .delete-comment-btn {
-                    padding: var(--spacing-2) var(--spacing-3);
-                    font-size: var(--font-size-sm);
-                    border: 1px solid var(--red-300);
-                    color: var(--red-600);
-                    background-color: transparent;
-                    border-radius: var(--border-radius-md);
-                    cursor: pointer;
-                    transition: all var(--transition-fast);
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-2);
-                    font-weight: 500;
-                    min-height: 32px;
+                .btn.btn-sm {
+                    padding: calc(var(--spacing-2) * 1.2) calc(var(--spacing-3) * 1.2);
+                    gap: calc(var(--spacing-2) * 1.2);
+                    font-size: calc(var(--font-size-xs) * 1.2);
+                    line-height: 1.25;
                 }
 
-                .delete-comment-btn:hover {
-                    background-color: var(--red-50);
-                    border-color: var(--red-400);
-                    color: var(--red-700);
+                .btn .btn-icon {
+                    width: 16px;
+                    height: 16px;
                 }
 
-                .delete-comment-btn:active {
-                    background-color: var(--red-100);
-                    transform: translateY(1px);
-                }
-
-                .comment-content {
-                    line-height: 1.6;
+                .comment-text {
+                    line-height: 1.5;
                     color: var(--gray-700);
-                    margin-bottom: var(--spacing-3);
+                    font-size: var(--font-size-sm);
+                    margin: 5px 0 0;
+                    padding: 0;
                     word-wrap: break-word;
                     white-space: pre-line;
                     overflow-wrap: break-word;
                 }
 
-                .comment-content a {
+                .comment-text a {
                     word-break: break-all;
                     overflow-wrap: anywhere;
                     max-width: 100%;
@@ -789,6 +813,7 @@ class ArticleCommentsCard extends BaseComponent {
                 .comment-replies {
                     display: flex;
                     justify-content: flex-end;
+                    margin-top: var(--spacing-1);
                 }
 
                 .reply-count {
@@ -813,16 +838,23 @@ class ArticleCommentsCard extends BaseComponent {
                     font-style: italic;
                 }
 
+                .pagination-container {
+                    padding: var(--spacing-2) var(--spacing-4);
+                    border-top: 1px solid var(--gray-100);
+                    background: var(--gray-50);
+                }
+
                 .loading {
                     text-align: center;
                     color: var(--gray-500);
-                    padding: var(--spacing-8);
+                    padding: var(--spacing-3) var(--spacing-4);
                 }
 
                 .error-message {
                     text-align: center;
                     color: var(--error-color);
-                    padding: var(--spacing-8);
+                    padding: var(--spacing-3) var(--spacing-4);
+                    background: var(--gray-50);
                 }
             `;
             this.shadowRoot.appendChild(style);

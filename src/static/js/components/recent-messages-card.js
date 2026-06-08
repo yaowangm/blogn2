@@ -120,7 +120,7 @@ class RecentMessagesCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
-                @import url('/static/css/common-components.css?v=20250609');
+                @import url('/static/css/common-components.css');
                 .view-all-link {
                     font-size: var(--font-size-sm);
                     color: var(--primary-color);
