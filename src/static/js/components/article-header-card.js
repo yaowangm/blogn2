@@ -133,7 +133,6 @@ class ArticleHeaderCard extends BaseComponent {
                         <h1>${title || '无标题'}</h1>
                     </div>
                     
-                    ${this.renderArticleStats(hits, comment_count, itemsize)}
                     ${this.renderArticleMeta({
                         author,
                         project,
@@ -145,6 +144,7 @@ class ArticleHeaderCard extends BaseComponent {
                         showSetSiteIntroButton,
                         showSetIntroButton
                     })}
+                    ${this.renderArticleStats(hits, comment_count, itemsize)}
                 </div>
             </div>
         `;
@@ -673,7 +673,8 @@ class ArticleHeaderCard extends BaseComponent {
                     display: flex;
                     flex-wrap: wrap;
                     gap: var(--spacing-2);
-                    margin-bottom: var(--spacing-3);
+                    padding-top: var(--spacing-2);
+                    border-top: 1px solid var(--gray-100);
                 }
 
                 .stat-item {
@@ -714,8 +715,7 @@ class ArticleHeaderCard extends BaseComponent {
                     align-items: center;
                     justify-content: space-between;
                     gap: var(--spacing-2) var(--spacing-3);
-                    padding-top: var(--spacing-2);
-                    border-top: 1px solid var(--gray-100);
+                    margin-bottom: var(--spacing-2);
                 }
 
                 .meta-items-left {

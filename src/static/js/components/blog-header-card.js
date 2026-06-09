@@ -208,7 +208,8 @@ class BlogHeaderCard extends BaseComponent {
                     display: flex;
                     flex-wrap: wrap;
                     gap: var(--spacing-2);
-                    margin-bottom: var(--spacing-3);
+                    padding-top: var(--spacing-2);
+                    border-top: 1px solid var(--gray-100);
                 }
                 .stat-item {
                     display: inline-flex;
@@ -244,8 +245,7 @@ class BlogHeaderCard extends BaseComponent {
                     align-items: center;
                     justify-content: space-between;
                     gap: var(--spacing-2) var(--spacing-3);
-                    padding-top: var(--spacing-2);
-                    border-top: 1px solid var(--gray-100);
+                    margin-bottom: var(--spacing-2);
                 }
                 .meta-items-left {
                     display: flex;
@@ -391,12 +391,6 @@ class BlogHeaderCard extends BaseComponent {
                 </div>
             </div>
             <div class="card-body">
-                <div class="blog-stats">
-                    ${this.renderStatItem(icons.posts, '文章', this.blogData.recordcount || 0)}
-                    ${this.renderStatItem(icons.comments, '评论', this.blogData.commentcount || 0)}
-                    ${this.renderStatItem(icons.views, '访问', this.blogData.accesscount || 0)}
-                    ${this.renderStatItem(icons.history, '历史', this.getDaysSinceCreation(), '天')}
-                </div>
                 <div class="blog-meta">
                     <div class="meta-items-left">
                         <div class="meta-item">
@@ -412,6 +406,12 @@ class BlogHeaderCard extends BaseComponent {
                         ${this.renderEditButton()}
                         ${this.renderSubscriptionButton()}
                     </div>
+                </div>
+                <div class="blog-stats">
+                    ${this.renderStatItem(icons.posts, '文章', this.blogData.recordcount || 0)}
+                    ${this.renderStatItem(icons.comments, '评论', this.blogData.commentcount || 0)}
+                    ${this.renderStatItem(icons.views, '访问', this.blogData.accesscount || 0)}
+                    ${this.renderStatItem(icons.history, '历史', this.getDaysSinceCreation(), '天')}
                 </div>
             </div>
         `;
