@@ -25,9 +25,10 @@ class TestArticleContentCardJs:
         assert "plain-text-content" in content
         assert "markdown-content" in content
         assert "formatContent(content, created_at)" in content
+        assert "HtmlUtils.processRichTextLinks" in content
 
     def test_plain_text_escapes_and_linkifies_only(self):
         content = ARTICLE_CONTENT_CARD_JS.read_text(encoding="utf-8")
         assert "this.escapeHtml(content)" in content
-        assert "this.processTextWithLinks(p)" in content
+        assert "HtmlUtils.linkifyPlainTextToHtml(p)" in content
         assert "if (!this.usesMarkdownContent(createdAt))" in content

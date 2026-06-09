@@ -131,14 +131,20 @@ class TestComponentsEnhanced:
             ("访问 https://example.com 获取更多信息", ["https://example.com"]),
             ("多个链接: http://site1.com 和 https://site2.com", ["http://site1.com", "https://site2.com"]),
             ("没有链接的普通文本", []),
-            ("混合内容: 文本 https://link.com 更多文本", ["https://link.com"])
+            ("混合内容: 文本 https://link.com 更多文本", ["https://link.com"]),
+            (
+                "http://club.beelink.com.cn/index.asp?boardid=168），禁书挺多的",
+                ["http://club.beelink.com.cn/index.asp?boardid=168"],
+            ),
         ]
         
         for text, expected_links in test_cases:
-            # 模拟链接检测逻辑
             detected_links = []
             import re
-            url_pattern = r'https?://[^\s\u4e00-\u9fff]+'
+            url_pattern = (
+                r"[a-zA-Z][a-zA-Z0-9+.-]*://"
+                r"(?:[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]|%[0-9A-Fa-f]{2})+"
+            )
             matches = re.findall(url_pattern, text)
             detected_links = matches
             

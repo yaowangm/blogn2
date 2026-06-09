@@ -168,10 +168,7 @@ class ArticleContentCard extends BaseComponent {
             // 对解析后的HTML进行安全过滤
             const safeHtml = this.sanitizeHtml(html);
 
-            // 处理文本中的链接（包括ed2k等非标准协议），采用DOM遍历避免破坏HTML结构
-            const processedHtml = this.processTextWithLinks(safeHtml);
-
-            return processedHtml;
+            return HtmlUtils.processRichTextLinks(safeHtml);
         } catch (error) {
             this.logError('Markdown parsing failed', error);
             return this.formatContentPlainText(content);
@@ -189,7 +186,7 @@ class ArticleContentCard extends BaseComponent {
             return '<p class="no-content">暂无内容</p>';
         }
 
-        return paragraphs.map((p) => `<p>${this.processTextWithLinks(p)}</p>`).join('');
+        return paragraphs.map((p) => `<p>${HtmlUtils.linkifyPlainTextToHtml(p)}</p>`).join('');
     }
 
     /**
@@ -470,78 +467,6 @@ class ArticleContentCard extends BaseComponent {
             this.syncLightboxCardWidth();
             requestAnimationFrame(() => this.syncLightboxCardWidth());
         });
-    }
-
-    /**
-     * 处理文本中的链接，安全地转换为可点击的链接
-     */
-    processTextWithLinks(htmlOrText) {
-        if (!htmlOrText || typeof htmlOrText !== 'string') {
-            return '';
-        }
-        // 通用URL正则，匹配 aaa://...
-        const urlRegex = /([a-zA-Z][a-zA-Z0-9+.-]*:\/\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]+)/g;
-        // 用于测试的正则（无全局标志，避免 lastIndex 状态问题）
-        const urlTestRegex = /[a-zA-Z][a-zA-Z0-9+.-]*:\/\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]+/;
-
-        // 使用DOM解析，避免正则直接切分HTML导致结构损坏
-        const container = document.createElement('div');
-        container.innerHTML = htmlOrText;
-
-        const SKIP_TAGS = new Set(['A', 'CODE', 'PRE', 'SCRIPT', 'STYLE']);
-
-        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
-            acceptNode: (node) => {
-                const parent = node.parentNode;
-                if (!parent) return NodeFilter.FILTER_REJECT;
-                let el = parent;
-                while (el && el.nodeType === 1) {
-                    if (SKIP_TAGS.has(el.nodeName)) return NodeFilter.FILTER_REJECT;
-                    el = el.parentNode;
-                }
-                // 使用无全局标志的正则进行测试，避免 lastIndex 状态问题
-                return urlTestRegex.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
-            }
-        });
-
-        const nodes = [];
-        let n;
-        while ((n = walker.nextNode())) nodes.push(n);
-
-        for (const textNode of nodes) {
-            const text = textNode.nodeValue;
-            const parts = [];
-            let lastIndex = 0;
-            text.replace(urlRegex, (match, url, offset) => {
-                if (offset > lastIndex) parts.push(document.createTextNode(text.slice(lastIndex, offset)));
-                try {
-                    if (this.isValidUrl(url)) {
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.target = '_blank';
-                        a.rel = 'noopener noreferrer';
-                        a.className = 'auto-link';
-                        a.textContent = url;
-                        parts.push(a);
-                    } else {
-                        parts.push(document.createTextNode(url));
-                    }
-                } catch (_) {
-                    parts.push(document.createTextNode(url));
-                }
-                lastIndex = offset + match.length;
-                return match;
-            });
-            if (lastIndex < text.length) parts.push(document.createTextNode(text.slice(lastIndex)));
-
-            const parent = textNode.parentNode;
-            if (parent) {
-                for (const part of parts) parent.insertBefore(part, textNode);
-                parent.removeChild(textNode);
-            }
-        }
-
-        return container.innerHTML;
     }
 
     /**

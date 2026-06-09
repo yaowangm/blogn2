@@ -527,7 +527,7 @@ class ArticleCommentsCard extends BaseComponent {
                             </div>
                             <span class="comment-time">${this.formatDate(post_time)}</span>
                         </div>
-                        <div class="comment-text">${this.processTextWithLinks(content || '')}</div>
+                        <div class="comment-text">${HtmlUtils.linkifyPlainTextToHtml(content || '')}</div>
                         ${reply_count > 0 ? `
                             <div class="comment-replies">
                                 <span class="reply-count">${reply_count} 条回复</span>
@@ -569,31 +569,6 @@ class ArticleCommentsCard extends BaseComponent {
         } catch (error) {
             return false;
         }
-    }
-
-    /**
-     * 处理文本中的链接，安全地转换为可点击的链接
-     */
-    processTextWithLinks(text) {
-        if (!text || typeof text !== 'string') {
-            return '';
-        }
-
-        text = text.trimStart();
-
-        // 通用的URL正则表达式，匹配任何 aaa://bbb 形式的链接
-        const urlRegex = /([a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^\s<>"']+)/gi;
-
-        return text.replace(urlRegex, (url) => {
-            // 使用严格的URL验证
-            if (this.isValidUrl(url)) {
-                const safeUrl = this.escapeHtml(url);
-                const displayUrl = this.escapeHtml(url);
-                return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="auto-link">${displayUrl}</a>`;
-            }
-            // 如果URL不安全，只转义显示
-            return this.escapeHtml(url);
-        });
     }
 
     /**

@@ -274,8 +274,8 @@ class EditPostForm extends BaseComponent {
             
             // 对解析后的HTML进行安全过滤
             const safeHtml = this.sanitizeHtml(html);
-            
-            previewContent.innerHTML = safeHtml;
+
+            previewContent.innerHTML = HtmlUtils.processRichTextLinks(safeHtml);
         } catch (error) {
             console.error('Markdown parsing failed in preview', error);
             this.logError('Markdown parsing failed in preview', error);

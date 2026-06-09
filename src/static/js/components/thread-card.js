@@ -75,7 +75,7 @@ class ThreadCard extends BaseComponent {
                 // 安全处理所有文本字段，防止HTML注入和XSS攻击
                 const safeAuthor = this.escapeHtml(message.author);
                 const safeSubject = this.escapeHtml(message.subject);
-                const safeContent = this.escapeHtml(message.content);
+                const safeContent = HtmlUtils.linkifyPlainTextToHtml(message.content || '');
                 const safePostTime = this.escapeHtml(message.post_time);
                 
                 // 判断是否为主贴
@@ -355,6 +355,16 @@ class ThreadCard extends BaseComponent {
                     word-wrap: break-word;
                     overflow-wrap: break-word;
                     white-space: pre-wrap;
+                }
+
+                .message-content a {
+                    color: var(--primary-color);
+                    text-decoration: underline;
+                    word-break: break-all;
+                }
+
+                .message-content a:hover {
+                    color: var(--primary-hover);
                 }
 
                 .main-post-indicator {
