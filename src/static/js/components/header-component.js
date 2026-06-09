@@ -754,9 +754,6 @@ class HeaderComponent extends BaseComponent {
         // 动态加载token-manager脚本
         const script = document.createElement('script');
         script.src = '/static/js/services/token-manager.js';
-        script.onload = () => {
-            // TokenManager加载成功
-        };
         script.onerror = () => {
             console.error('Failed to load token-manager.js');
         };

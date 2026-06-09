@@ -57,13 +57,16 @@
         if (!el.shadowRoot) {
             return;
         }
+        const css = el.hasAttribute('data-sidebar-collapsible') ? COLLAPSE_HOST_CSS : '';
         let style = el.shadowRoot.getElementById(COLLAPSE_STYLE_ID);
         if (!style) {
             style = document.createElement('style');
             style.id = COLLAPSE_STYLE_ID;
             el.shadowRoot.appendChild(style);
+        } else if (style.textContent === css) {
+            return;
         }
-        style.textContent = el.hasAttribute('data-sidebar-collapsible') ? COLLAPSE_HOST_CSS : '';
+        style.textContent = css;
     }
 
     function hasCollapsibleHeader(el) {
@@ -141,6 +144,10 @@
         if (!hasCollapsibleHeader(el)) {
             return;
         }
+        if (el.hasAttribute('data-sidebar-collapsible') && el._sidebarCollapseBound) {
+            syncHeaderAria(el);
+            return;
+        }
         el.setAttribute('data-sidebar-collapsible', '');
         if (!el.hasAttribute('data-sidebar-expanded')) {
             el.setAttribute('data-sidebar-collapsed', '');
@@ -166,17 +173,25 @@
         if (el._sidebarRenderObserver) {
             return;
         }
+        const scheduleEnable = function () {
+            if (window.innerWidth > BREAKPOINT) {
+                return;
+            }
+            if (el._sidebarCollapseSchedule) {
+                return;
+            }
+            el._sidebarCollapseSchedule = requestAnimationFrame(function () {
+                el._sidebarCollapseSchedule = null;
+                enableCollapse(el);
+            });
+        };
         const attach = function () {
             if (!el.shadowRoot || el._sidebarRenderObserver) {
                 return;
             }
-            el._sidebarRenderObserver = new MutationObserver(function () {
-                if (window.innerWidth <= BREAKPOINT) {
-                    enableCollapse(el);
-                }
-            });
+            el._sidebarRenderObserver = new MutationObserver(scheduleEnable);
             el._sidebarRenderObserver.observe(el.shadowRoot, { childList: true, subtree: true });
-            enableCollapse(el);
+            scheduleEnable();
         };
 
         if (el.shadowRoot) {
@@ -194,24 +209,24 @@
         return tag && tag.includes('-') && !NO_COLLAPSE_TAGS.has(tag);
     }
 
-    function unwrapLegacyCards(sidebar) {
-        Array.from(sidebar.querySelectorAll(':scope > .sidebar-left-collapsible')).forEach(function (wrap) {
-            const content = wrap.querySelector('.sidebar-left-collapsible-content');
-            const card = content && content.firstElementChild;
-            if (card) {
-                sidebar.replaceChild(card, wrap);
-            } else {
-                wrap.remove();
-            }
-        });
-    }
-
     function observeSidebar(sidebar) {
         if (sidebar._sidebarListObserver) {
             return;
         }
-        sidebar._sidebarListObserver = new MutationObserver(update);
+        sidebar._sidebarListObserver = new MutationObserver(scheduleUpdate);
         sidebar._sidebarListObserver.observe(sidebar, { childList: true });
+    }
+
+    let updateScheduled = false;
+    function scheduleUpdate() {
+        if (updateScheduled) {
+            return;
+        }
+        updateScheduled = true;
+        requestAnimationFrame(function () {
+            updateScheduled = false;
+            update();
+        });
     }
 
     function applyMobile(sidebar) {
@@ -236,7 +251,6 @@
 
         document.querySelectorAll('.sidebar.sidebar-left').forEach(function (sidebar) {
             observeSidebar(sidebar);
-            unwrapLegacyCards(sidebar);
             if (singleColumn) {
                 applyMobile(sidebar);
             } else {
