@@ -4,6 +4,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional
 from src.models.project_item import ProjectItem
 from src.models.user import User
+from src.models.folder import Folder
 from src.constants import ArticleStatus
 
 class ProjectItemRepository:
@@ -142,8 +143,9 @@ class ProjectItemRepository:
         from src.models.user import User
         
         query = (
-            select(ProjectItem, User.name.label("author_name"))
+            select(ProjectItem, User.name.label("author_name"), Folder.name.label("folder_name"))
             .join(User, ProjectItem.userid == User.id)
+            .outerjoin(Folder, ProjectItem.folderid == Folder.id)
             .where(ProjectItem.projectid == project_id)
             .where(ProjectItem.status == 1)  # 只获取正常状态的文章
         )
@@ -174,7 +176,7 @@ class ProjectItemRepository:
         
         # 转换为字典格式
         posts = []
-        for project_item, author_name in result:
+        for project_item, author_name, folder_name in result:
             posts.append({
                 "id": project_item.id,
                 "name": project_item.name,
@@ -184,7 +186,9 @@ class ProjectItemRepository:
                 "commentcount": project_item.commentcount,
                 "userid": project_item.userid,
                 "author_name": author_name,
-                "attachment": project_item.attachment
+                "attachment": project_item.attachment,
+                "folderid": project_item.folderid,
+                "category": (folder_name.strip() if folder_name else "未分类"),
             })
         
         return posts

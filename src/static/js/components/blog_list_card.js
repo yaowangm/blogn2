@@ -135,6 +135,108 @@ class BlogListCard extends BaseComponent {
         }
     }
 
+    static get ICON_STROKE() {
+        return 'currentColor';
+    }
+
+    getMetaIcon(type) {
+        const s = BlogListCard.ICON_STROKE;
+        const svg = (paths) =>
+            `<svg class="meta-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${s}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+        switch (type) {
+            case 'category':
+                return svg('<path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 0 1 0 2.828l-7 7a2 2 0 0 1-2.828 0l-7-7A1.994 1.994 0 0 1 3 12V7a4 4 0 0 1 4-4z"/>');
+            case 'created':
+                return svg('<path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>');
+            case 'blog':
+                return svg('<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>');
+            default:
+                return svg('<circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/>');
+        }
+    }
+
+    getSmallAvatarPath(userId) {
+        if (!userId) {
+            return null;
+        }
+        const prefix = Math.floor(userId / 10000) + 1;
+        return `/avatar/${prefix}/s_${userId}.jpg`;
+    }
+
+    renderAuthorMetaItem(authorName, avatar, userId) {
+        const safeAuthor = this.escapeHtml(authorName || '未知作者');
+        const avatarPath = avatar || this.getSmallAvatarPath(userId);
+        const fallbackLetter = safeAuthor.charAt(0).toUpperCase();
+
+        const avatarHtml = `
+            <span class="author-avatar" aria-hidden="true">
+                ${avatarPath ? `
+                    <img src="${avatarPath}" alt=""
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                         onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
+                ` : ''}
+                <span class="author-avatar-fallback" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackLetter}</span>
+            </span>
+        `;
+
+        return `
+            <div class="meta-item meta-item-author">
+                ${avatarHtml}
+                <span class="author-name">${safeAuthor}</span>
+            </div>
+        `;
+    }
+
+    getPostCategoryName(post) {
+        if (!this.showCategoryInfo) {
+            return '';
+        }
+        const raw = typeof post.category === 'object' ? post.category?.name : post.category;
+        if (!raw) {
+            return '';
+        }
+        const name = String(raw).trim();
+        if (!name || name === '全部文章') {
+            return '';
+        }
+        return name;
+    }
+
+    renderPostMeta(post) {
+        const authorName = post.author || post.author_name || '未知作者';
+        const createDate = post.createtime
+            ? this.formatDate(post.createtime)
+            : this.escapeHtml(post.time || '未知时间');
+        const categoryName = this.getPostCategoryName(post);
+        const safeCategory = categoryName ? this.escapeHtml(categoryName) : '';
+        const safeBlogName = post.blog_name ? this.escapeHtml(post.blog_name) : '';
+        const showBlogSource = safeBlogName && !this.isBlogPage();
+
+        return `
+            <div class="article-meta">
+                <div class="meta-items-left">
+                    ${this.renderAuthorMetaItem(authorName, post.avatar, post.userid)}
+                    <div class="meta-item">
+                        ${this.getMetaIcon('created')}
+                        <span>发布于 ${createDate}</span>
+                    </div>
+                    ${showBlogSource ? `
+                        <div class="meta-item">
+                            ${this.getMetaIcon('blog')}
+                            <span>${safeBlogName}</span>
+                        </div>
+                    ` : ''}
+                    ${safeCategory ? `
+                        <div class="meta-item">
+                            ${this.getMetaIcon('category')}
+                            <span>${safeCategory}</span>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+
     updateContent(data) {
         this.posts = data.posts || data;
         this.totalPosts = typeof data.total === 'number' ? data.total : this.posts.length;
@@ -175,41 +277,17 @@ class BlogListCard extends BaseComponent {
             
             
             const postsHtml = this.posts.map(post => {
-                // 处理不同的数据格式
                 const title = post.title || post.name;
-                const author = post.author || post.author_name || '未知作者';
-                const time = post.time || post.createtime || '未知时间';
-                // 订阅文章使用 comment 字段，原创文章使用 excerpt 字段
                 const excerpt = post.comment || post.excerpt || '';
                 const image = post.image || (post.attachment ? `/upload/${post.attachment}` : null);
-                const avatar = post.avatar;
-                
-                // 安全处理所有文本字段，防止HTML注入和XSS攻击
                 const safeTitle = this.escapeHtml(title);
-                const safeAuthor = this.escapeHtml(author);
-                // 移除Markdown标记，显示纯文本摘要
                 const safeExcerpt = this.escapeHtml(this.stripMarkdown(excerpt));
-                const safeBlogName = post.blog_name ? this.escapeHtml(post.blog_name) : '';
-                const safeTime = this.escapeHtml(time || '未知时间');
-                
-                // 如果是订阅文章，显示博客名称
-                const blogInfo = safeBlogName ? `<span class="post-blog">来自: ${safeBlogName}</span>` : '';
-                
+
                 return `
                     <a href="/article/${post.id}" class="post-item" target="_blank">
-                        <div class="post-avatar">
-                            ${avatar ? 
-                                `<img src="${avatar}" alt="${safeAuthor}" onerror="this.style.display='none'">` :
-                                `<span>${safeAuthor ? safeAuthor.charAt(0) : '用'}</span>`
-                            }
-                        </div>
                         <div class="post-content">
                             <h4 class="post-title">${safeTitle}</h4>
-                            <div class="post-meta">
-                                <span class="post-author">${safeAuthor}</span>
-                                <span class="post-date">${safeTime.replace('T', ' ')}</span>
-                                ${blogInfo}
-                            </div>
+                            ${this.renderPostMeta(post)}
                             <p class="post-excerpt">${safeExcerpt}</p>
                         </div>
                         ${image ? `<div class="post-attachment-image"><img src="${image}" alt="${safeTitle}" onerror="this.style.display='none'"></div>` : ''}
@@ -359,8 +437,7 @@ class BlogListCard extends BaseComponent {
 
                 .post-item {
                     display: grid;
-                    grid-template-columns: 60px 1fr;
-                    column-gap: var(--spacing-3);
+                    grid-template-columns: 1fr;
                     row-gap: var(--spacing-3);
                     padding: var(--spacing-3);
                     border-radius: var(--radius-md);
@@ -383,48 +460,10 @@ class BlogListCard extends BaseComponent {
                     outline: none;
                 }
 
-                .post-avatar {
-                    grid-column: 1;
-                    grid-row: 1;
-                    width: 60px;
-                    height: 60px;
-                    border-radius: 50%;
-                    background: var(--accent-color);
-                    flex-shrink: 0;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: var(--white);
-                    font-weight: 600;
-                    font-size: var(--font-size-base);
-                    overflow: hidden;
-                    border: 2px solid var(--gray-200);
-                    position: relative;
-                    margin-top: 0;
-                }
-
-                .post-avatar img {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                    border-radius: 50%;
-                }
-
-                .post-avatar span {
-                    font-weight: 600;
-                    font-size: var(--font-size-xl);
-                    line-height: 1;
-                }
-
                 .post-content {
-                    grid-column: 2;
-                    grid-row: 1;
                     min-width: 0;
                     max-width: 100%;
                     overflow: hidden;
-                    /* 继承全局文本断行策略 */
-                    /* 若common-components.css未作用于Shadow DOM，可用工具类兜底 */
-                    /* 此处不重复具体规则，避免多层定义 */
                 }
 
                 .post-title {
@@ -437,31 +476,76 @@ class BlogListCard extends BaseComponent {
                     max-width: 100%;
                 }
 
-                .post-meta {
+                .meta-icon {
+                    display: block;
+                    width: 18px;
+                    height: 18px;
+                    flex-shrink: 0;
+                }
+
+                .article-meta {
                     display: flex;
+                    flex-wrap: wrap;
+                    align-items: center;
+                    gap: var(--spacing-2) var(--spacing-3);
+                    margin-bottom: var(--spacing-2);
+                    padding-top: var(--spacing-1);
+                }
+
+                .meta-items-left {
+                    display: flex;
+                    flex-wrap: wrap;
                     align-items: center;
                     gap: var(--spacing-3);
-                    margin-bottom: var(--spacing-1);
-                    font-size: var(--font-size-sm);
+                    min-width: 0;
+                }
+
+                .meta-item {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: var(--spacing-1);
                     color: var(--gray-500);
-                }
-
-                .post-author {
-                    font-weight: 500;
-                    color: var(--primary-color);
-                }
-
-                .post-date {
-                    color: var(--gray-500);
-                }
-
-                .post-blog {
-                    color: var(--accent-color);
-                    font-weight: 500;
                     font-size: var(--font-size-xs);
+                    white-space: nowrap;
+                }
+
+                .meta-item-author {
+                    gap: var(--spacing-2);
+                }
+
+                .author-avatar {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    flex-shrink: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
                     background: var(--gray-100);
-                    padding: var(--spacing-1) var(--spacing-2);
-                    border-radius: var(--radius-sm);
+                    border: 1px solid var(--gray-200);
+                    overflow: hidden;
+                }
+
+                .author-avatar img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    display: block;
+                }
+
+                .author-avatar-fallback {
+                    width: 100%;
+                    height: 100%;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: var(--font-size-xs);
+                    font-weight: 600;
+                    color: var(--gray-600);
+                }
+
+                .author-name {
+                    font-weight: 500;
+                    color: var(--gray-700);
                 }
 
                 .post-excerpt {
@@ -480,8 +564,6 @@ class BlogListCard extends BaseComponent {
                 }
 
                 .post-attachment-image {
-                    grid-column: 2;
-                    grid-row: 2;
                     border-radius: var(--radius-md);
                     overflow: hidden;
                     max-width: 100%;
@@ -570,12 +652,7 @@ class BlogListCard extends BaseComponent {
                     font-size: var(--font-size-xs);
                 }
 
-                /* 单栏：头像左、正文右；配图占满卡片宽度 */
                 @media (max-width: 1024px) {
-                    .post-attachment-image {
-                        grid-column: 1 / -1;
-                    }
-
                     .post-attachment-image img {
                         max-width: 100%;
                         width: 100%;
@@ -591,7 +668,6 @@ class BlogListCard extends BaseComponent {
                 <div class="card-body">
                     <div class="post-list">
                         <div class="post-item">
-                            <div class="post-avatar"><span>加</span></div>
                             <div class="post-content">
                                 <p class="post-excerpt">${this.loading ? '正在加载博文...' : '暂无博文'}</p>
                             </div>
