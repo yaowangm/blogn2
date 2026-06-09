@@ -113,7 +113,7 @@ class ArticleHeaderCard extends BaseComponent {
             return;
         }
 
-        const { title, author, project, category, hits, itemsize, created_at, updated_at, comment_count, itemtype } = this.articleData;
+        const { title, author, project, category, hits, itemsize, created_at, comment_count, itemtype } = this.articleData;
 
         // 检查是否显示工具栏
         const showToolbar = this.isAdmin || this.isAuthor;
@@ -139,8 +139,8 @@ class ArticleHeaderCard extends BaseComponent {
                         project,
                         category,
                         created_at,
-                        updated_at,
                         itemtype,
+                        isAdmin: this.isAdmin,
                         showToolbar,
                         showSetSiteIntroButton,
                         showSetIntroButton
@@ -518,11 +518,11 @@ class ArticleHeaderCard extends BaseComponent {
         `;
     }
 
-    renderArticleMeta({ author, project, category, created_at, updated_at, itemtype, showToolbar, showSetSiteIntroButton, showSetIntroButton }) {
+    renderArticleMeta({ author, project, category, created_at, itemtype, isAdmin, showToolbar, showSetSiteIntroButton, showSetIntroButton }) {
         const safeCategory = category?.name ? this.escapeHtml(category.name) : '';
         const createDate = this.formatDate(created_at);
-        const updateDate = this.formatDate(updated_at);
         const statusText = this.getStatusText(itemtype);
+        const showStatus = itemtype !== 0 || isAdmin;
 
         return `
             <div class="article-meta">
@@ -532,21 +532,17 @@ class ArticleHeaderCard extends BaseComponent {
                         ${this.getMetaIcon('created')}
                         <span>发布于 ${createDate}</span>
                     </div>
-                    ${updated_at && updated_at !== created_at ? `
-                        <div class="meta-item">
-                            ${this.getMetaIcon('updated')}
-                            <span>更新于 ${updateDate}</span>
-                        </div>
-                    ` : ''}
                     ${safeCategory ? `
                         <div class="meta-item">
                             ${this.getMetaIcon('category')}
                             <span>${safeCategory}</span>
                         </div>
                     ` : ''}
-                    <div class="meta-item">
-                        <span class="status-${itemtype}">${statusText}</span>
-                    </div>
+                    ${showStatus ? `
+                        <div class="meta-item">
+                            <span class="status-${itemtype}">${statusText}</span>
+                        </div>
+                    ` : ''}
                 </div>
                 ${showToolbar ? this.renderArticleToolbar(showSetSiteIntroButton, showSetIntroButton) : ''}
             </div>
