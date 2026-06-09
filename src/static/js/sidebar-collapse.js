@@ -1,128 +1,242 @@
 /**
- * 移动端左侧栏折叠：合并布局时（≤1024px）仅显示标题行，点击展开/收起内容。
+ * 单列布局（≤1024px）时，左侧栏卡片仅保留自身标题栏，点击标题展开/收起内容。
+ * 样式注入各卡片 Shadow DOM，不插入额外 DOM 包裹层。
  */
 (function () {
     const BREAKPOINT = 1024;
-    /** 左侧栏中始终不折叠的组件（任何情况下都完整显示） */
+    const COLLAPSE_STYLE_ID = 'sidebar-collapse-host-styles';
     const NO_COLLAPSE_TAGS = new Set(['blog-profile-card']);
-    const TITLE_MAP = {
-        'blog-profile-card': '博客信息',
-        'blog-navigation-card': '博客导航',
-        'recent-comments-card': '最近评论',
-        'recent-updates-card': '最近更新',
-        'friend-links-card': '外站链接',
-        'popular-blogs-card': '热门博客',
-        'recent-blogs-card': '最近博客',
-        'categories-card': '分类',
-        'blog-posts-list-card': '文章列表',
-        'blog-info-card': '博客信息',
-        'user-profile-card': '个人资料',
-        'admin-tools-card': '管理工具',
-        'about-card': '关于',
-        'subscriptions-list-card': '订阅列表',
-        'stats-card': '统计',
-        'messages-list-card': '消息列表',
-        'navigation-card': '导航',
-        'category-maintenance-card': '分类维护',
-        'edit-post-form': '编辑文章',
-        'create-post-form': '发表文章'
-    };
+    const COLLAPSE_HOST_CSS = `
+:host([data-sidebar-collapsible]) .card-header {
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    padding-right: calc(var(--spacing-4) + 1.25rem);
+    transition: background-color var(--transition-fast);
+}
+:host([data-sidebar-collapsible]) .card-header:hover {
+    background: var(--gray-100);
+}
+:host([data-sidebar-collapsible]) .card-header::after {
+    content: "";
+    position: absolute;
+    right: var(--spacing-4);
+    top: 50%;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-top: -0.15rem;
+    border-right: 2px solid var(--gray-400);
+    border-bottom: 2px solid var(--gray-400);
+    transform: translateY(-50%) rotate(45deg);
+    transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+:host([data-sidebar-collapsible]:not([data-sidebar-collapsed])) .card-header::after {
+    transform: translateY(-35%) rotate(-135deg);
+    border-color: var(--gray-500);
+}
+:host([data-sidebar-collapsible][data-sidebar-collapsed]) .card > :not(.card-header) {
+    display: none !important;
+}
+:host([data-sidebar-collapsible][data-sidebar-collapsed]) .card-header {
+    border-bottom-color: transparent;
+}
+:host([data-sidebar-collapsible][data-sidebar-collapsed]) .card:hover {
+    box-shadow: var(--shadow-sm);
+}
+:host([data-sidebar-collapsible]) .card-header:focus {
+    outline: none;
+}
+:host([data-sidebar-collapsible]) .card-header:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+}
+`;
 
-    function getTitle(el) {
-        const tag = (el && el.tagName && el.tagName.toLowerCase()) || '';
-        return TITLE_MAP[tag] || el.getAttribute('data-collapse-title') || '卡片';
+    function injectCollapseStyles(el) {
+        if (!el.shadowRoot) {
+            return;
+        }
+        let style = el.shadowRoot.getElementById(COLLAPSE_STYLE_ID);
+        if (!style) {
+            style = document.createElement('style');
+            style.id = COLLAPSE_STYLE_ID;
+            el.shadowRoot.appendChild(style);
+        }
+        style.textContent = el.hasAttribute('data-sidebar-collapsible') ? COLLAPSE_HOST_CSS : '';
     }
 
-    function isCollapsibleElement(el) {
-        if (!el || el.classList.contains('sidebar-left-collapsible')) return false;
-        return el.nodeType === Node.ELEMENT_NODE;
+    function hasCollapsibleHeader(el) {
+        return Boolean(el.shadowRoot && el.shadowRoot.querySelector('.card-header'));
     }
 
-    function createHeader(title) {
-        const header = document.createElement('div');
-        header.className = 'sidebar-left-collapsible-header';
+    function syncHeaderAria(el) {
+        const header = el.shadowRoot && el.shadowRoot.querySelector('.card-header');
+        if (!header) {
+            return;
+        }
+        if (!el.hasAttribute('data-sidebar-collapsible')) {
+            header.removeAttribute('role');
+            header.removeAttribute('aria-expanded');
+            header.removeAttribute('tabindex');
+            return;
+        }
+        const expanded = !el.hasAttribute('data-sidebar-collapsed');
         header.setAttribute('role', 'button');
+        header.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         header.setAttribute('tabindex', '0');
-        header.setAttribute('aria-expanded', 'false');
-        header.innerHTML = `
-            <span class="sidebar-left-collapsible-title">${escapeHtml(title)}</span>
-            <button type="button" class="sidebar-left-collapsible-toggle" aria-label="展开或收起">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-                    <polyline points="6,9 12,15 18,9"></polyline>
-                </svg>
-            </button>
-        `;
-        return header;
     }
 
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+    function toggleCollapse(el) {
+        if (el.hasAttribute('data-sidebar-collapsed')) {
+            el.removeAttribute('data-sidebar-collapsed');
+            el.setAttribute('data-sidebar-expanded', '');
+        } else {
+            el.setAttribute('data-sidebar-collapsed', '');
+            el.removeAttribute('data-sidebar-expanded');
+        }
+        syncHeaderAria(el);
     }
 
-    function wrapCard(sidebar, card) {
-        const title = getTitle(card);
-        const wrap = document.createElement('div');
-        wrap.className = 'sidebar-left-collapsible collapsed';
+    function bindCollapseInteraction(el) {
+        if (el._sidebarCollapseBound) {
+            return;
+        }
+        el._sidebarCollapseBound = true;
 
-        const header = createHeader(title);
-        const content = document.createElement('div');
-        content.className = 'sidebar-left-collapsible-content';
+        el.addEventListener('click', function (event) {
+            if (!el.hasAttribute('data-sidebar-collapsible')) {
+                return;
+            }
+            const header = event.composedPath().find((node) => (
+                node.classList && node.classList.contains('card-header')
+            ));
+            if (!header) {
+                return;
+            }
+            const interactive = event.target.closest('a, button');
+            if (interactive && interactive !== header) {
+                return;
+            }
+            toggleCollapse(el);
+        });
 
-        wrap.appendChild(header);
-        wrap.appendChild(content);
-        sidebar.replaceChild(wrap, card);
-        content.appendChild(card);
+        el.addEventListener('keydown', function (event) {
+            if (!el.hasAttribute('data-sidebar-collapsible')) {
+                return;
+            }
+            const header = el.shadowRoot && el.shadowRoot.querySelector('.card-header');
+            if (!header || !header.contains(event.target)) {
+                return;
+            }
+            if (event.key !== 'Enter' && event.key !== ' ') {
+                return;
+            }
+            event.preventDefault();
+            toggleCollapse(el);
+        });
+    }
 
-        const toggle = function () {
-            wrap.classList.toggle('collapsed');
-            header.setAttribute('aria-expanded', wrap.classList.contains('collapsed') ? 'false' : 'true');
+    function enableCollapse(el) {
+        if (!hasCollapsibleHeader(el)) {
+            return;
+        }
+        el.setAttribute('data-sidebar-collapsible', '');
+        if (!el.hasAttribute('data-sidebar-expanded')) {
+            el.setAttribute('data-sidebar-collapsed', '');
+        }
+        injectCollapseStyles(el);
+        bindCollapseInteraction(el);
+        syncHeaderAria(el);
+    }
+
+    function disableCollapse(el) {
+        el.removeAttribute('data-sidebar-collapsible');
+        el.removeAttribute('data-sidebar-collapsed');
+        el.removeAttribute('data-sidebar-expanded');
+        if (el._sidebarRenderObserver) {
+            el._sidebarRenderObserver.disconnect();
+            el._sidebarRenderObserver = null;
+        }
+        injectCollapseStyles(el);
+        syncHeaderAria(el);
+    }
+
+    function observeCardRender(el) {
+        if (el._sidebarRenderObserver) {
+            return;
+        }
+        const attach = function () {
+            if (!el.shadowRoot || el._sidebarRenderObserver) {
+                return;
+            }
+            el._sidebarRenderObserver = new MutationObserver(function () {
+                if (window.innerWidth <= BREAKPOINT) {
+                    enableCollapse(el);
+                }
+            });
+            el._sidebarRenderObserver.observe(el.shadowRoot, { childList: true, subtree: true });
+            enableCollapse(el);
         };
 
-        header.addEventListener('click', function () {
-            toggle();
-        });
-        header.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                toggle();
+        if (el.shadowRoot) {
+            attach();
+        } else {
+            requestAnimationFrame(attach);
+        }
+    }
+
+    function isSidebarCard(el) {
+        if (!el || el.nodeType !== Node.ELEMENT_NODE) {
+            return false;
+        }
+        const tag = el.tagName && el.tagName.toLowerCase();
+        return tag && tag.includes('-') && !NO_COLLAPSE_TAGS.has(tag);
+    }
+
+    function unwrapLegacyCards(sidebar) {
+        Array.from(sidebar.querySelectorAll(':scope > .sidebar-left-collapsible')).forEach(function (wrap) {
+            const content = wrap.querySelector('.sidebar-left-collapsible-content');
+            const card = content && content.firstElementChild;
+            if (card) {
+                sidebar.replaceChild(card, wrap);
+            } else {
+                wrap.remove();
             }
         });
     }
 
-    function unwrapCard(sidebar, wrap) {
-        const content = wrap.querySelector('.sidebar-left-collapsible-content');
-        const card = content && content.firstElementChild;
-        if (card) {
-            sidebar.replaceChild(card, wrap);
+    function observeSidebar(sidebar) {
+        if (sidebar._sidebarListObserver) {
+            return;
         }
+        sidebar._sidebarListObserver = new MutationObserver(update);
+        sidebar._sidebarListObserver.observe(sidebar, { childList: true });
     }
 
     function applyMobile(sidebar) {
-        const children = Array.from(sidebar.children);
-        children.forEach(function (el) {
-            if (!isCollapsibleElement(el)) return;
-            const tag = el.tagName && el.tagName.toLowerCase();
-            if (NO_COLLAPSE_TAGS.has(tag)) return;
-            wrapCard(sidebar, el);
+        Array.from(sidebar.children).forEach(function (el) {
+            if (isSidebarCard(el)) {
+                observeCardRender(el);
+            }
         });
     }
 
     function applyDesktop(sidebar) {
-        const wrappers = Array.from(sidebar.querySelectorAll(':scope > .sidebar-left-collapsible'));
-        wrappers.forEach(function (wrap) {
-            unwrapCard(sidebar, wrap);
+        Array.from(sidebar.children).forEach(function (el) {
+            if (isSidebarCard(el)) {
+                disableCollapse(el);
+            }
         });
     }
 
     function update() {
-        const width = window.innerWidth;
-        const singleColumn = width <= BREAKPOINT;
+        const singleColumn = window.innerWidth <= BREAKPOINT;
         document.body.classList.toggle('layout-single-column', singleColumn);
 
-        const sidebars = document.querySelectorAll('.sidebar.sidebar-left');
-        sidebars.forEach(function (sidebar) {
+        document.querySelectorAll('.sidebar.sidebar-left').forEach(function (sidebar) {
+            observeSidebar(sidebar);
+            unwrapLegacyCards(sidebar);
             if (singleColumn) {
                 applyMobile(sidebar);
             } else {
@@ -144,5 +258,7 @@
     }
     window.addEventListener('resize', onResize);
     window.addEventListener('load', update);
-    window.addEventListener('orientationchange', function () { setTimeout(update, 100); });
+    window.addEventListener('orientationchange', function () {
+        setTimeout(update, 100);
+    });
 })();
