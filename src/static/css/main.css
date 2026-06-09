@@ -42,8 +42,54 @@
     --red-800: #991b1b;
     --red-900: #7f1d1d;
     
-    /* 字体 */
-    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    /* 系统 UI 字体：西文用各平台默认无衬线，缺字回落 CJK 系统字体（无网络字体） */
+    --font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        "Helvetica Neue",
+        Arial,
+        "PingFang SC",
+        "PingFang TC",
+        "Hiragino Sans GB",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic UI",
+        "Yu Gothic",
+        "Meiryo",
+        "Microsoft YaHei UI",
+        "Microsoft YaHei",
+        "微软雅黑",
+        "Microsoft JhengHei",
+        "Apple SD Gothic Neo",
+        "Malgun Gothic",
+        "Noto Sans CJK SC",
+        "Noto Sans CJK TC",
+        "Noto Sans CJK JP",
+        "Noto Sans CJK KR",
+        "Noto Sans SC",
+        "Noto Sans TC",
+        "Noto Sans JP",
+        "Noto Sans KR",
+        "WenQuanYi Micro Hei",
+        "Source Han Sans SC",
+        "Source Han Sans CN",
+        sans-serif,
+        "Apple Color Emoji",
+        "Segoe UI Emoji",
+        "Segoe UI Symbol",
+        "Noto Color Emoji";
+    --font-family-mono:
+        ui-monospace,
+        SFMono-Regular,
+        "SF Mono",
+        Menlo,
+        Monaco,
+        Consolas,
+        "Liberation Mono",
+        "Courier New",
+        monospace;
     --font-size-xs: 0.75rem;
     --font-size-sm: 0.875rem;
     --font-size-base: 1rem;

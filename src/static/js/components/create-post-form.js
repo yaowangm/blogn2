@@ -585,7 +585,6 @@ class CreatePostForm extends BaseComponent {
                     --gray-900: #111827;
                     --error-color: #ef4444;
                     --success-color: #10b981;
-                    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                     --font-size-xs: 0.75rem;
                     --font-size-sm: 0.875rem;
                     --font-size-base: 1rem;
@@ -757,7 +756,6 @@ class CreatePostForm extends BaseComponent {
                     --gray-900: #111827;
                     --error-color: #ef4444;
                     --success-color: #10b981;
-                    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                     --font-size-xs: 0.75rem;
                     --font-size-sm: 0.875rem;
                     --font-size-base: 1rem;
@@ -964,7 +962,7 @@ class CreatePostForm extends BaseComponent {
                     padding: var(--spacing-4);
                     border: 1px solid var(--gray-300);
                     border-radius: var(--radius-md);
-                    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                    font-family: var(--font-family-mono);
                     font-size: var(--font-size-sm);
                     line-height: 1.5;
                     resize: vertical;
@@ -1010,7 +1008,7 @@ class CreatePostForm extends BaseComponent {
                     background: var(--gray-100);
                     padding: var(--spacing-1) var(--spacing-2);
                     border-radius: var(--radius-sm);
-                    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                    font-family: var(--font-family-mono);
                     font-size: var(--font-size-xs);
                 }
                 

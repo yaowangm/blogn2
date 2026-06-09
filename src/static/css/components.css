@@ -691,7 +691,7 @@ latest-posts-card {
     color: var(--gray-800);
     padding: 2px 4px;
     border-radius: var(--radius-sm);
-    font-family: 'Consolas', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+    font-family: var(--font-family-mono);
     font-size: 0.9em;
 }
 
@@ -704,7 +704,7 @@ latest-posts-card {
     overflow-x: auto;
     overflow-y: hidden;
     margin: var(--spacing-4) 0;
-    font-family: 'Consolas', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+    font-family: var(--font-family-mono);
     font-size: 0.9em;
     line-height: 1.5;
     white-space: pre;

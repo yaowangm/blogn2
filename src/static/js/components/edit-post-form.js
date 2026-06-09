@@ -1249,7 +1249,7 @@ class EditPostForm extends BaseComponent {
                     color: var(--gray-800);
                     padding: 2px 4px;
                     border-radius: var(--radius-sm);
-                    font-family: 'Consolas', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+                    font-family: var(--font-family-mono);
                     font-size: 0.9em;
                 }
 
@@ -1261,7 +1261,7 @@ class EditPostForm extends BaseComponent {
                     border-radius: var(--radius-md);
                     overflow-x: auto;
                     margin: var(--spacing-4) 0;
-                    font-family: 'Consolas', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+                    font-family: var(--font-family-mono);
                     font-size: 0.9em;
                     line-height: 1.5;
                 }
