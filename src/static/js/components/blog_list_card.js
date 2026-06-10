@@ -1,4 +1,12 @@
 class BlogListCard extends BaseComponent {
+    static get CATEGORY_MENU_PANEL_ID() {
+        return 'blogn-category-menu-panel';
+    }
+
+    static get CATEGORY_MENU_STYLE_ID() {
+        return 'blogn-category-menu-styles';
+    }
+
     constructor() {
         super();
         this.currentPage = 1;
@@ -9,6 +17,11 @@ class BlogListCard extends BaseComponent {
         this.currentFolderId = null;
         this.currentCategoryName = '全部文章';
         this.showCategoryInfo = false; // 控制是否显示分类信息
+        this.categories = [];
+        this.categoriesLoading = false;
+        this.categoryMenuOpen = false;
+        this.isOwner = false;
+        this.projectId = null;
     }
 
     /**
@@ -64,6 +77,11 @@ class BlogListCard extends BaseComponent {
         this.showCategoryInfo = this.shouldShowCategoryInfo();
         this.currentFolderId = FolderFilter.normalizeFolderId(this.getCurrentFolderId());
         this.currentCategoryName = FolderFilter.getCategoryLabel(this.currentFolderId);
+        if (this.showCategoryInfo) {
+            this.projectId = this.getProjectIdFromUrl();
+            this.setupCategoryMenuDismiss();
+            await Promise.all([this.checkOwnership(), this.loadCategories()]);
+        }
         await this.loadPageSizeConfig();
         // 从 URL 读取 page，直接加载对应页（如 /blog/12?page=24 加载第 24 页）
         const initialPage = typeof this.getCurrentPageFromUrl === 'function' ? this.getCurrentPageFromUrl() : 1;
@@ -73,6 +91,473 @@ class BlogListCard extends BaseComponent {
         this.addEventListeners();
     }
 
+    disconnectedCallback() {
+        if (this._boundDocumentClick) {
+            document.removeEventListener('click', this._boundDocumentClick);
+            this._boundDocumentClick = null;
+        }
+        if (this._boundDocumentKeydown) {
+            document.removeEventListener('keydown', this._boundDocumentKeydown);
+            this._boundDocumentKeydown = null;
+        }
+        if (this._boundCategoryMenuLayout) {
+            window.removeEventListener('resize', this._boundCategoryMenuLayout);
+            window.removeEventListener('scroll', this._boundCategoryMenuLayout, true);
+            this._boundCategoryMenuLayout = null;
+        }
+        this.removeCategoryMenuPortal();
+    }
+
+    setupCategoryMenuDismiss() {
+        if (this._boundDocumentClick) {
+            return;
+        }
+        this._boundDocumentClick = (event) => {
+            if (!this.categoryMenuOpen) {
+                return;
+            }
+            const path = event.composedPath();
+            if (path.includes(this)) {
+                return;
+            }
+            const panel = document.getElementById(BlogListCard.CATEGORY_MENU_PANEL_ID);
+            if (panel && path.includes(panel)) {
+                return;
+            }
+            this.closeCategoryMenu();
+        };
+        this._boundDocumentKeydown = (event) => {
+            if (event.key === 'Escape' && this.categoryMenuOpen) {
+                this.closeCategoryMenu();
+            }
+        };
+        document.addEventListener('click', this._boundDocumentClick);
+        document.addEventListener('keydown', this._boundDocumentKeydown);
+    }
+
+    async checkOwnership() {
+        if (typeof UserManager === 'undefined' || !UserManager.isLoggedIn() || !this.projectId) {
+            this.isOwner = false;
+            return;
+        }
+        try {
+            const blogData = await BaseComponent.getProject(this.projectId);
+            if (blogData) {
+                const currentUser = UserManager.getCurrentUser();
+                this.isOwner = currentUser.id === blogData.userid;
+            } else {
+                this.isOwner = false;
+            }
+        } catch (error) {
+            console.error('检查所有权失败:', error);
+            this.isOwner = false;
+        }
+    }
+
+    async loadCategories() {
+        if (!this.projectId) {
+            return;
+        }
+        this.categoriesLoading = true;
+        if (this.categoryMenuOpen) {
+            this.updateCategoryMenuPortal();
+        }
+        try {
+            const response = await fetch(`/api/projects/${this.projectId}/categories`);
+            if (response.ok) {
+                this.categories = await response.json();
+            } else {
+                this.categories = [];
+            }
+        } catch (error) {
+            console.error('Error loading categories:', error);
+            this.categories = [];
+        } finally {
+            this.categoriesLoading = false;
+            this.updatePagination();
+            if (this.categoryMenuOpen) {
+                this.updateCategoryMenuPortal();
+            }
+        }
+    }
+
+    ensureCategoryMenuPortalStyles() {
+        if (document.getElementById(BlogListCard.CATEGORY_MENU_STYLE_ID)) {
+            return;
+        }
+        const style = document.createElement('style');
+        style.id = BlogListCard.CATEGORY_MENU_STYLE_ID;
+        style.textContent = `
+            .blogn-category-menu-panel {
+                position: fixed;
+                z-index: 1000;
+                min-width: 14rem;
+                max-width: min(20rem, calc(100vw - 2rem));
+                max-height: min(20rem, calc(100vh - 6rem));
+                overflow-y: auto;
+                background: var(--white, #fff);
+                border: 1px solid var(--gray-200, #e5e7eb);
+                border-radius: var(--radius-md, 0.375rem);
+                box-shadow: var(--shadow-md, 0 4px 6px -1px rgb(0 0 0 / 0.1));
+                padding: var(--spacing-2, 0.5rem);
+                box-sizing: border-box;
+            }
+            .blogn-category-menu-panel .category-dropdown-loading {
+                padding: var(--spacing-3, 0.75rem);
+                text-align: center;
+                color: var(--gray-500, #6b7280);
+                font-size: var(--font-size-sm, 0.875rem);
+            }
+            .blogn-category-menu-panel .category-dropdown-header {
+                margin-bottom: var(--spacing-2, 0.5rem);
+            }
+            .blogn-category-menu-panel .category-dropdown-divider {
+                height: 1px;
+                margin: 0 0 var(--spacing-2, 0.5rem);
+                background: var(--gray-100, #f3f4f6);
+            }
+            .blogn-category-menu-panel .categories-list {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                flex-direction: column;
+                gap: calc(var(--spacing-1, 0.25rem) + 1px);
+            }
+            .blogn-category-menu-panel .category-link {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: var(--spacing-2, 0.5rem);
+                padding: var(--spacing-2, 0.5rem) var(--spacing-3, 0.75rem);
+                border: 1px solid transparent;
+                border-radius: var(--radius-md, 0.375rem);
+                color: var(--gray-700, #374151);
+                text-decoration: none;
+                font-size: var(--font-size-sm, 0.875rem);
+                line-height: 1.35;
+                transition:
+                    background-color var(--transition-fast, 150ms ease),
+                    border-color var(--transition-fast, 150ms ease),
+                    color var(--transition-fast, 150ms ease),
+                    box-shadow var(--transition-fast, 150ms ease);
+            }
+            .blogn-category-menu-panel .category-link:hover {
+                background: var(--gray-50, #f9fafb);
+                border-color: var(--gray-200, #e5e7eb);
+                color: var(--gray-900, #111827);
+            }
+            .blogn-category-menu-panel .category-link:focus {
+                outline: none;
+            }
+            .blogn-category-menu-panel .category-link:focus-visible {
+                outline: 2px solid var(--primary-color, #2563eb);
+                outline-offset: 1px;
+            }
+            .blogn-category-menu-panel .category-link.active {
+                background: #eff6ff;
+                border-color: #bfdbfe;
+                color: var(--primary-color, #2563eb);
+                box-shadow: var(--shadow-sm, 0 1px 2px 0 rgb(0 0 0 / 0.05));
+            }
+            .blogn-category-menu-panel .category-info {
+                display: flex;
+                align-items: center;
+                gap: var(--spacing-2, 0.5rem);
+                min-width: 0;
+                flex: 1;
+            }
+            .blogn-category-menu-panel .category-indicator {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                flex-shrink: 0;
+                opacity: 0.9;
+            }
+            .blogn-category-menu-panel .category-link.active .category-indicator {
+                box-shadow: 0 0 0 2px #eff6ff;
+            }
+            .blogn-category-menu-panel .category-name {
+                font-weight: 500;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .blogn-category-menu-panel .category-link.active .category-name {
+                font-weight: 600;
+                color: var(--primary-color, #2563eb);
+            }
+            .blogn-category-menu-panel .category-count {
+                flex-shrink: 0;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 1.75rem;
+                padding: 0.125rem 0.5rem;
+                font-size: var(--font-size-xs, 0.75rem);
+                font-weight: 600;
+                font-variant-numeric: tabular-nums;
+                color: var(--gray-500, #6b7280);
+                background: var(--gray-50, #f9fafb);
+                border: 1px solid var(--gray-200, #e5e7eb);
+                border-radius: var(--radius-full, 9999px);
+                line-height: 1.3;
+            }
+            .blogn-category-menu-panel .category-link:hover .category-count {
+                background: var(--white, #fff);
+                border-color: var(--gray-300, #d1d5db);
+                color: var(--gray-600, #4b5563);
+            }
+            .blogn-category-menu-panel .category-link.active .category-count {
+                background: var(--white, #fff);
+                border-color: #93c5fd;
+                color: var(--primary-color, #2563eb);
+            }
+            .blogn-category-menu-panel .category-maintain-link {
+                display: flex;
+                align-items: center;
+                gap: var(--spacing-2, 0.5rem);
+                padding: var(--spacing-2, 0.5rem) var(--spacing-3, 0.75rem);
+                border: 1px solid transparent;
+                border-radius: var(--radius-md, 0.375rem);
+                color: var(--gray-700, #374151);
+                text-decoration: none;
+                font-size: var(--font-size-sm, 0.875rem);
+                font-weight: 500;
+                transition:
+                    background-color var(--transition-fast, 150ms ease),
+                    border-color var(--transition-fast, 150ms ease),
+                    color var(--transition-fast, 150ms ease);
+            }
+            .blogn-category-menu-panel .category-maintain-link:hover {
+                background: var(--gray-50, #f9fafb);
+                border-color: var(--gray-200, #e5e7eb);
+                color: var(--gray-900, #111827);
+            }
+            .blogn-category-menu-panel .category-maintain-link:focus {
+                outline: none;
+            }
+            .blogn-category-menu-panel .category-maintain-link:focus-visible {
+                outline: 2px solid var(--primary-color, #2563eb);
+                outline-offset: 1px;
+            }
+            .blogn-category-menu-panel .maintain-icon {
+                flex-shrink: 0;
+                color: var(--gray-500, #6b7280);
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    removeCategoryMenuPortal() {
+        document.getElementById(BlogListCard.CATEGORY_MENU_PANEL_ID)?.remove();
+        if (this._boundCategoryMenuLayout) {
+            window.removeEventListener('resize', this._boundCategoryMenuLayout);
+            window.removeEventListener('scroll', this._boundCategoryMenuLayout, true);
+            this._boundCategoryMenuLayout = null;
+        }
+    }
+
+    positionCategoryMenuPanel() {
+        const trigger = this.shadowRoot?.querySelector('.category-picker-trigger');
+        const panel = document.getElementById(BlogListCard.CATEGORY_MENU_PANEL_ID);
+        if (!trigger || !panel) {
+            return;
+        }
+        const rect = trigger.getBoundingClientRect();
+        panel.style.top = `${Math.round(rect.bottom + 4)}px`;
+        panel.style.right = `${Math.round(window.innerWidth - rect.right)}px`;
+        panel.style.left = 'auto';
+        panel.style.minWidth = `${Math.max(Math.round(rect.width), 224)}px`;
+    }
+
+    bindCategoryMenuPortalEvents(panel) {
+        panel.querySelectorAll('.category-link').forEach((link) => {
+            link.addEventListener('click', (event) => {
+                event.preventDefault();
+                this.handleCategorySelect(
+                    link.getAttribute('data-folder-id'),
+                    link.getAttribute('data-folder-name')
+                );
+            });
+        });
+        panel.querySelectorAll('.category-maintain-link').forEach((link) => {
+            link.addEventListener('click', () => {
+                this.closeCategoryMenu();
+            });
+        });
+    }
+
+    updateCategoryMenuPortal() {
+        this.removeCategoryMenuPortal();
+        if (!this.categoryMenuOpen) {
+            return;
+        }
+
+        this.ensureCategoryMenuPortalStyles();
+
+        const panel = document.createElement('div');
+        panel.id = BlogListCard.CATEGORY_MENU_PANEL_ID;
+        panel.className = 'blogn-category-menu-panel';
+        panel.setAttribute('role', 'listbox');
+        panel.innerHTML = this.categoriesLoading
+            ? this.renderCategoryMenuLoading()
+            : this.renderCategoryMenuList();
+        document.body.appendChild(panel);
+
+        this.positionCategoryMenuPanel();
+        this.bindCategoryMenuPortalEvents(panel);
+
+        if (!this._boundCategoryMenuLayout) {
+            this._boundCategoryMenuLayout = () => {
+                if (this.categoryMenuOpen) {
+                    this.positionCategoryMenuPanel();
+                }
+            };
+            window.addEventListener('resize', this._boundCategoryMenuLayout);
+            window.addEventListener('scroll', this._boundCategoryMenuLayout, true);
+        }
+    }
+
+    isCategoryActive(folderId) {
+        const current = FolderFilter.normalizeFolderId(this.currentFolderId);
+        if (folderId === '' || folderId === null || folderId === undefined) {
+            return current === null;
+        }
+        return String(current) === String(folderId);
+    }
+
+    renderCategoryMenuItem({ folderId, folderName, count, color, countLabel }) {
+        const safeName = this.escapeHtml(folderName);
+        const safeColor = this.escapeHtml(color || '#94a3b8');
+        const activeClass = this.isCategoryActive(folderId) ? ' active' : '';
+        const countText = countLabel ?? this.escapeHtml(String(count ?? 0));
+
+        return `
+            <li class="category-item">
+                <a href="#"
+                   class="category-link${activeClass}"
+                   data-folder-id="${folderId}"
+                   data-folder-name="${safeName}"
+                   role="option"
+                   aria-selected="${activeClass ? 'true' : 'false'}">
+                    <span class="category-info">
+                        <span class="category-indicator" style="color: ${safeColor}; background-color: ${safeColor};" aria-hidden="true"></span>
+                        <span class="category-name">${safeName}</span>
+                    </span>
+                    <span class="category-count">${countText}</span>
+                </a>
+            </li>
+        `;
+    }
+
+    renderCategoryMenuList() {
+        const maintainLink = this.isOwner && this.projectId ? `
+            <div class="category-dropdown-header">
+                <a href="/blog/${this.projectId}/categories/maintenance"
+                   target="_blank"
+                   rel="noopener"
+                   class="category-maintain-link">
+                    <svg class="maintain-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    <span>维护分类</span>
+                </a>
+            </div>
+            <div class="category-dropdown-divider"></div>
+        ` : '';
+
+        const items = [
+            this.renderCategoryMenuItem({
+                folderId: '',
+                folderName: '全部文章',
+                color: '#64748b',
+                countLabel: '全部'
+            }),
+            ...this.categories.map((category) => this.renderCategoryMenuItem({
+                folderId: category.id,
+                folderName: category.name,
+                count: category.count,
+                color: category.color
+            }))
+        ].join('');
+
+        return `
+            ${maintainLink}
+            <ul class="categories-list">${items}</ul>
+        `;
+    }
+
+    renderCategoryMenuLoading() {
+        return `<div class="category-dropdown-loading">加载中...</div>`;
+    }
+
+    renderCategoryPicker() {
+        return `
+            <div class="pagination">
+                <div class="category-picker${this.categoryMenuOpen ? ' is-open' : ''}">
+                    <button type="button"
+                            class="category-picker-trigger"
+                            aria-expanded="${this.categoryMenuOpen ? 'true' : 'false'}"
+                            aria-haspopup="listbox">
+                        <span class="category-label">分类：</span>
+                        <span class="category-picker-name">${this.escapeHtml(this.currentCategoryName)}</span>
+                        <svg class="category-picker-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    toggleCategoryMenu() {
+        this.categoryMenuOpen = !this.categoryMenuOpen;
+        this.updatePagination();
+        this.updateCategoryMenuPortal();
+    }
+
+    closeCategoryMenu() {
+        if (!this.categoryMenuOpen) {
+            return;
+        }
+        this.categoryMenuOpen = false;
+        this.updatePagination();
+        this.removeCategoryMenuPortal();
+    }
+
+    handleCategorySelect(folderId, folderName) {
+        const url = FolderFilter.syncFolderIdToUrl(folderId);
+        url.searchParams.delete('page');
+        window.history.pushState({}, '', url);
+
+        this.currentFolderId = FolderFilter.normalizeFolderId(folderId);
+        this.currentCategoryName = FolderFilter.getCategoryLabel(folderId, null, folderName);
+        this.currentPage = 1;
+        this.closeCategoryMenu();
+
+        const host = this.getRootNode().host;
+        if (host && host !== this) {
+            host.currentFolderId = this.currentFolderId;
+            host.currentCategoryName = this.currentCategoryName;
+            host.currentPage = 1;
+        }
+
+        this.loadContent(1);
+    }
+
+    bindCategoryMenuEvents() {
+        const trigger = this.shadowRoot.querySelector('.category-picker-trigger');
+        if (trigger && !trigger._categoryMenuBound) {
+            trigger._categoryMenuBound = true;
+            trigger.addEventListener('click', (event) => {
+                event.stopPropagation();
+                this.toggleCategoryMenu();
+            });
+        }
+    }
+
     addEventListeners() {
         // 监听分类变化事件
         this.addEventListener('categoryChanged', (event) => {
@@ -80,7 +565,7 @@ class BlogListCard extends BaseComponent {
             this.currentFolderId = FolderFilter.normalizeFolderId(folderId);
             this.currentCategoryName = FolderFilter.getCategoryLabel(folderId, null, folderName);
             this.currentPage = 1;
-            this.updatePagination();
+            this.closeCategoryMenu();
             this.loadContent(1);
         });
         
@@ -319,14 +804,7 @@ class BlogListCard extends BaseComponent {
         }
 
         if (this.showCategoryInfo) {
-            innerHtml += `
-                <div class="pagination">
-                    <div class="category-info">
-                        <span class="category-label">分类：</span>
-                        <span class="category-name">${this.escapeHtml(this.currentCategoryName)}</span>
-                    </div>
-                </div>
-            `;
+            innerHtml += this.renderCategoryPicker();
         }
 
         if (!innerHtml) {
@@ -341,6 +819,9 @@ class BlogListCard extends BaseComponent {
         this.shadowRoot.querySelectorAll('.pagination-bar').forEach((placeholder) => {
             placeholder.innerHTML = html;
         });
+        if (this.showCategoryInfo) {
+            this.bindCategoryMenuEvents();
+        }
     }
 
     goToPage(page) {
@@ -581,23 +1062,68 @@ class BlogListCard extends BaseComponent {
                     transform: scale(1.02);
                 }
 
-                .category-info {
-                    display: flex;
+                .category-picker {
+                    position: relative;
+                }
+
+                .category-picker-trigger {
+                    display: inline-flex;
                     align-items: center;
                     gap: var(--spacing-2);
                     background: var(--gray-100);
                     padding: var(--spacing-1) var(--spacing-2);
+                    border: 1px solid var(--gray-200);
                     border-radius: var(--radius-md);
                     font-size: var(--font-size-sm);
                     color: var(--gray-700);
+                    cursor: pointer;
+                    transition:
+                        background-color var(--transition-fast),
+                        border-color var(--transition-fast),
+                        box-shadow var(--transition-fast);
+                }
+
+                .category-picker-trigger:hover {
+                    background: var(--white);
+                    border-color: var(--gray-300);
+                }
+
+                .category-picker-trigger:focus {
+                    outline: none;
+                }
+
+                .category-picker-trigger:focus-visible {
+                    outline: 2px solid var(--primary-color);
+                    outline-offset: 1px;
+                }
+
+                .category-picker.is-open .category-picker-trigger {
+                    background: var(--white);
+                    border-color: var(--primary-color);
+                    box-shadow: var(--shadow-sm);
                 }
 
                 .category-label {
                     font-weight: 500;
                 }
 
-                .category-name {
+                .category-picker-name {
                     font-weight: 600;
+                    color: var(--primary-color);
+                    max-width: 8rem;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
+                .category-picker-chevron {
+                    flex-shrink: 0;
+                    color: var(--gray-500);
+                    transition: transform var(--transition-fast);
+                }
+
+                .category-picker.is-open .category-picker-chevron {
+                    transform: rotate(180deg);
                     color: var(--primary-color);
                 }
 
