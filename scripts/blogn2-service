@@ -48,8 +48,8 @@ start() {
         return 1
     }
     
-    # 使用 nohup 启动应用，并在其内部重定向日志（依赖当前用户有权限运行服务）
-    nohup bash -c "cd \"$SERVICE_HOME\" && source \"/home/$SERVICE_USER/blogn2-env/bin/activate\" && python \"$SERVICE_SCRIPT\" >> \"$LOG_FILE\" 2>&1" &
+    # 日志重定向放在 nohup 外层，避免 nohup 默认创建空的 nohup.out
+    nohup bash -c "cd \"$SERVICE_HOME\" && source \"/home/$SERVICE_USER/blogn2-env/bin/activate\" && exec python \"$SERVICE_SCRIPT\"" >> "$LOG_FILE" 2>&1 &
     local bash_pid=$!
     
     # 等待一下让进程启动，然后找到Python进程的PID
