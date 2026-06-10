@@ -31,9 +31,10 @@
 
 #### article-content-card
 - 显示文章的完整内容
-- 支持段落格式化
+- **Markdown 渲染**：2026-03-28 及之后发表的文章使用 GFM Markdown；更早文章为纯文本 + 自动链接
+- **数学公式**：通过本地 KaTeX 渲染行内（`$...$`、`\(...\)`）与块级（`$$...$$`、`\[...\]`）公式
 - 自动检测并显示附件（图片或文件链接）
-- HTML安全转义
+- 经 `HtmlUtils.sanitizeHtml` 过滤后再注入 KaTeX 输出，详见 [MARKDOWN_KATEX.md](MARKDOWN_KATEX.md)
 
 #### article-comments-card
 - 显示文章的所有评论
@@ -141,7 +142,7 @@ Content-Type: application/json
 
 1. **用户认证**: 集成用户登录系统，获取真实用户ID
 2. **评论回复**: 支持评论的回复功能
-3. **富文本编辑**: 支持Markdown或富文本编辑器
+3. ~~**富文本编辑**~~: 已支持 Markdown 与 KaTeX 预览（发表/编辑页）；详见 [MARKDOWN_KATEX.md](MARKDOWN_KATEX.md)
 4. **图片预览**: 支持图片的缩略图预览和放大查看
 5. **分页加载**: 评论列表支持分页加载
 6. **实时更新**: 使用WebSocket实现评论的实时更新

@@ -1,5 +1,26 @@
 # `src/static/js/utils` 工具说明
 
+## Markdown 与 KaTeX：`markdown-utils.js`
+
+文章正文与编辑器预览的统一 Markdown 解析入口（依赖页面已加载本地 `marked`、`katex`、`html-utils.js`）。
+
+**加载顺序**（见 `article.html` / `create-post.html` / `edit-article.html`）：
+
+1. `/static/js/libs/katex/katex.min.js`
+2. `/static/js/libs/katex/mhchem.min.js`
+3. `/static/js/libs/marked.min.js`
+4. `/static/js/utils/html-utils.js`
+5. `/static/js/utils/markdown-utils.js`
+
+**API**
+
+| 方法 | 说明 |
+|------|------|
+| `MarkdownUtils.parseMarkdown(source)` | Markdown → HTML（含公式渲染） |
+| `MarkdownUtils.ensureKatexStyles(shadowRoot)` | 向 Shadow DOM 注入本地 `katex.min.css` |
+
+**第三方许可**：KaTeX（MIT，Copyright (c) 2013-2020 Khan Academy and other contributors）、marked（MIT）等详见 [doc/MARKDOWN_KATEX.md](../../../../doc/MARKDOWN_KATEX.md) 与 `src/static/js/libs/katex/LICENSE`。
+
 ## 统一样式确认框：`confirm-dialog.js`
 
 在任意页面（含 Web Components 的 Shadow DOM 内）弹出与后台管理确认框风格一致的模态框，替代原生 `confirm()`。
