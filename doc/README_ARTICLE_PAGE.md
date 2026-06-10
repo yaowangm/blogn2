@@ -8,12 +8,11 @@
 
 ### 1. 页面结构
 - **顶栏和底栏**: 使用现有的 `header-component` 和 `footer-component`
-- **左边栏**: 与博客页面完全一致，包含：
+- **左边栏**: 与博客页面侧边栏一致，包含：
   - 用户头像和博客名称 (`blog-profile-card`)
   - 博客导航 (`blog-navigation-card`)
-  - 分类列表 (`categories-card`)
-  - 最近评论 (`recent-comments-card`)
-  - 最近更新的博客 (`recent-updates-card`)
+  - 最近评论 (`recent-comments-card`，作者名左侧 24px 内联头像)
+  - 最近更新的博客 (`recent-updates-card`，博客名左侧 24px 内联头像)
   - 外站链接 (`friend-links-card`)
 
 - **右边栏**: 文章主体内容，包含：
@@ -162,7 +161,7 @@ Content-Type: application/json
 ## 问题修复
 
 ### 组件兼容性问题
-在开发过程中发现，现有的web components（如`blog-profile-card`、`categories-card`等）期望从URL中获取项目ID（如`/blog/123`），但文章页面的URL格式是`/article/123`。
+在开发过程中发现，现有的 web components（如 `blog-profile-card` 等）期望从 URL 中获取项目 ID（如 `/blog/123`），但文章页面的 URL 格式是 `/article/123`。
 
 ### 解决方案
 1. **扩展BaseComponent**: 在基类中添加了统一的方法：

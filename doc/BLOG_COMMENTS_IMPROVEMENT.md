@@ -33,27 +33,30 @@
 - 相对时间格式化（如"2小时前"）
 
 **交互体验改进：**
-- 可点击的评论项有hover效果
+- 可点击的评论项有 hover 效果
 - 不可点击的评论项显示为禁用状态
+- 标题行内联 **24×24** 作者头像（与 `blog-list-card` 一致）
 - 平滑的动画过渡效果
 - 加载状态指示器
 
 ### 3. 数据结构优化
 
-**API返回数据：**
+**API返回数据（全站 `/api/comments/recent`）：**
 ```json
 [
   {
     "id": 123,
-    "user_name": "真实用户名",
+    "author": "真实用户名",
     "content": "评论内容",
-    "post_time": "2024-01-15T10:30:00Z",
-    "project_item_name": "真实文章标题",
+    "time": "2小时前",
     "projectitemid": 456,
-    "userid": 789
+    "userid": 789,
+    "avatar": "/avatar/1/s_789.jpg"
   }
 ]
 ```
+
+**项目内评论（`/api/projects/{id}/comments/recent`）** 字段名与上表一致（`author`、`time`、`avatar` 等），由控制器格式化后供组件直接使用。
 
 **数据库关系：**
 ```
@@ -93,23 +96,22 @@ async def get_recent_comments_by_project(self, project_id: int, limit: int = 5) 
 
 ### 2. 前端组件改进
 
+**条目布局：** 头部行显示「小头像 + 作者名 + 时间」，正文一行截断评论内容（20 字）。头像逻辑与 `blog-list-card.renderAuthorMetaItem` 相同。
+
 ```javascript
-// 新增的点击处理功能
-setupEventListeners() {
-    this.shadowRoot.addEventListener('click', (event) => {
-        const commentItem = event.target.closest('.comment-item.clickable');
-        if (commentItem) {
-            const commentIndex = commentItem.getAttribute('data-comment-index');
-            if (commentIndex !== null) {
-                const index = parseInt(commentIndex);
-                if (!isNaN(index) && index >= 0 && index < this.comments.length) {
-                    this.handleCommentClick(this.comments[index]);
-                }
-            }
-        }
-    });
+renderAuthorMetaItem(authorName, avatar, userId) {
+    const avatarPath = avatar || this.getSmallAvatarPath(userId);
+    // 24×24 .author-avatar + .author-name
 }
+
+// 渲染示例
+<div class="comment-header">
+    ${this.renderAuthorMetaItem(comment.author, comment.avatar, comment.userid)}
+    <span class="time">${comment.time}</span>
+</div>
 ```
+
+有效 `projectitemid` 与评论 `id` 时，整行包裹为 `<a class="comment-link">` 跳转文章页。
 
 ### 3. URL生成和验证
 
@@ -153,7 +155,8 @@ curl "http://localhost:8000/blog/1"
 ### 3. 功能验证
 
 - ✅ 动态数据加载
-- ✅ 评论点击跳转
+- ✅ 评论点击跳转（`/article/{id}#post{id}`）
+- ✅ 作者内联头像与 fallback
 - ✅ 错误处理
 - ✅ 响应式设计
 - ✅ 无障碍访问
@@ -168,7 +171,7 @@ curl "http://localhost:8000/blog/1"
 
 ### 2. 前端性能优化
 
-- 事件委托减少事件监听器数量
+- 使用 `<a href>` 直链，无需额外点击委托
 - 懒加载和错误边界处理
 - CSS变量系统提高样式渲染效率
 
