@@ -356,12 +356,13 @@ friend-links-card {
 }
 
 .friend-links {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: var(--spacing-2);
 }
 
 .friend-link {
+    display: block;
     padding: var(--spacing-2) var(--spacing-3);
     background: var(--gray-50);
     border: 1px solid var(--gray-200);
@@ -369,8 +370,10 @@ friend-links-card {
     text-decoration: none;
     color: var(--gray-700);
     font-size: var(--font-size-sm);
-    text-align: center;
     transition: var(--transition-fast);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .friend-link:hover {
@@ -537,10 +540,6 @@ latest-posts-card {
     }
     
     .stats-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .friend-links {
         grid-template-columns: 1fr;
     }
     

@@ -131,12 +131,18 @@ class FriendLinksCard extends BaseComponent {
                     flex-shrink: 0;
                 }
                 .friend-links {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-                    gap: var(--spacing-2);
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
+                    display: flex;
+                    flex-direction: column;
+                    gap: calc(var(--spacing-1) + 1px);
                 }
 
                 .friend-link {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
                     padding: var(--spacing-2) var(--spacing-3);
                     background: var(--gray-50);
                     border: 1px solid var(--gray-200);
@@ -144,22 +150,50 @@ class FriendLinksCard extends BaseComponent {
                     text-decoration: none;
                     color: var(--gray-700);
                     font-size: var(--font-size-sm);
-                    text-align: center;
-                    transition: var(--transition-fast);
-                    white-space: nowrap;
+                    line-height: 1.35;
+                    transition:
+                        background-color var(--transition-fast),
+                        border-color var(--transition-fast),
+                        color var(--transition-fast),
+                        box-shadow var(--transition-fast);
+                    min-width: 0;
+                }
+
+                .friend-link-text {
+                    flex: 1;
+                    min-width: 0;
                     overflow: hidden;
                     text-overflow: ellipsis;
-                    min-height: 40px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
+                    white-space: nowrap;
+                }
+
+                .friend-link-icon {
+                    flex-shrink: 0;
+                    width: 14px;
+                    height: 14px;
+                    color: var(--gray-400);
+                    transition: color var(--transition-fast);
                 }
 
                 .friend-link:hover {
-                    background: var(--primary-color);
-                    color: var(--white);
-                    border-color: var(--primary-color);
-                    }
+                    background: var(--gray-50);
+                    border-color: var(--gray-300);
+                    color: var(--primary-color);
+                    box-shadow: var(--shadow-sm);
+                }
+
+                .friend-link:hover .friend-link-icon {
+                    color: var(--primary-color);
+                }
+
+                .friend-link:focus {
+                    outline: none;
+                }
+
+                .friend-link:focus-visible {
+                    outline: 2px solid var(--primary-color);
+                    outline-offset: 1px;
+                }
 
                 .loading {
                     text-align: center;
@@ -172,26 +206,6 @@ class FriendLinksCard extends BaseComponent {
                     padding: var(--spacing-4);
                     color: var(--gray-500);
                     font-style: italic;
-                }
-
-                /* 响应式设计 */
-                @media (max-width: 768px) {
-                    .friend-links {
-                        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-                        gap: var(--spacing-2);
-                    }
-
-                    .friend-link {
-                        padding: var(--spacing-2) var(--spacing-3);
-                        font-size: var(--font-size-sm);
-                        min-height: 36px;
-                    }
-                }
-
-                @media (max-width: 480px) {
-                    .friend-links {
-                        grid-template-columns: repeat(2, 1fr);
-                    }
                 }
 
             </style>
@@ -233,19 +247,29 @@ class FriendLinksCard extends BaseComponent {
 
     renderFriendLinks() {
         return `
-            <div class="friend-links">
-                ${this.friendLinks.map(link => {
-                    // 安全处理所有文本字段，防止HTML注入和XSS攻击
+            <ul class="friend-links">
+                ${this.friendLinks.map((link) => {
                     const safeSubject = this.escapeHtml(link.subject);
                     const safeLinkStr = this.escapeHtml(link.linkstr);
-                    
+
                     return `
-                        <a href="${safeLinkStr}" class="friend-link" target="_blank" rel="noopener noreferrer" title="${safeSubject}">
-                            ${safeSubject}
-                        </a>
+                        <li>
+                            <a href="${safeLinkStr}"
+                               class="friend-link"
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               title="${safeSubject}">
+                                <span class="friend-link-text">${safeSubject}</span>
+                                <svg class="friend-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                                </svg>
+                            </a>
+                        </li>
                     `;
                 }).join('')}
-            </div>
+            </ul>
         `;
     }
 
