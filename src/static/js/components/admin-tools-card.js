@@ -22,51 +22,48 @@ class AdminToolsCard extends BaseComponent {
         this.shadowRoot.innerHTML = `
             <style>
                 @import url('/static/css/common-components.css');
-                :host { display: block; margin-bottom: var(--card-margin, 24px); }
-                .card-wrap {
-                    background: var(--white);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    padding: var(--spacing-3) var(--spacing-4);
-                    border: 1px solid var(--gray-200);
+                :host { display: block; }
+                .card-title {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
                 }
-                .card-wrap:hover {
-                    box-shadow: var(--shadow-md);
+                .title-icon {
+                    width: 20px;
+                    height: 20px;
+                    color: var(--primary-color);
+                    flex-shrink: 0;
                 }
-                .card-header {
-                    margin-bottom: var(--spacing-3);
-                    padding-bottom: var(--spacing-2);
-                    border-bottom: 1px solid var(--gray-200);
+                .title-icon svg {
+                    width: 100%;
+                    height: 100%;
+                    display: block;
                 }
                 .hint {
                     font-size: var(--font-size-sm);
                     color: var(--gray-600);
-                    margin-bottom: var(--spacing-3);
+                    margin: 0 0 var(--spacing-3);
                     line-height: 1.5;
                 }
-                .btn-primary {
-                    padding: calc(var(--spacing-2) * 1.2) calc(var(--spacing-3) * 1.2);
-                    font-size: calc(var(--font-size-xs) * 1.2);
-                    line-height: 1.25;
+                .msg {
+                    margin-top: var(--spacing-3);
+                    font-size: var(--font-size-sm);
                 }
-                .btn-primary:hover:not(:disabled) {
-                    filter: brightness(0.95);
-                }
-                .btn-primary:disabled {
-                    opacity: 0.6;
-                    cursor: not-allowed;
-                }
-                .msg { margin-top: 12px; font-size: 14px; }
-                .msg.ok { color: #059669; }
-                .msg.err { color: #dc2626; }
+                .msg.ok { color: var(--success-color, #059669); }
+                .msg.err { color: var(--error-color); }
             </style>
-            <div class="card-wrap">
+            <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">管理工具</h2>
+                    <h2 class="card-title">
+                        <span class="title-icon">${Icons.settings}</span>
+                        管理工具
+                    </h2>
                 </div>
-                <p class="hint">根据每篇已发布文章的发表/编辑时间，批量重算并写回所有博客的「更新时间」字段（用于历史数据修复）。</p>
-                <button type="button" class="btn-primary" id="recalcBtn">重新计算博客的更新时间</button>
-                <div class="msg" id="recalcMsg" style="display:none;"></div>
+                <div class="card-body">
+                    <p class="hint">根据每篇已发布文章的发表/编辑时间，批量重算并写回所有博客的「更新时间」字段（用于历史数据修复）。</p>
+                    <button type="button" class="btn btn-primary btn-sm" id="recalcBtn">重新计算博客的更新时间</button>
+                    <div class="msg" id="recalcMsg" style="display:none;"></div>
+                </div>
             </div>
         `;
 

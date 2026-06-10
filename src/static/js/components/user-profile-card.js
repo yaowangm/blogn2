@@ -101,323 +101,238 @@ class UserProfileCard extends BaseComponent {
         });
     }
 
+    getCardStyles() {
+        return `
+            @import url('/static/css/common-components.css');
+            :host { display: block; }
+            .card-title {
+                display: flex;
+                align-items: center;
+                gap: var(--spacing-2);
+            }
+            .title-icon {
+                width: 20px;
+                height: 20px;
+                color: var(--primary-color);
+                flex-shrink: 0;
+            }
+            .title-icon svg {
+                width: 100%;
+                height: 100%;
+                display: block;
+            }
+            .detail-list {
+                margin: 0;
+                padding: 0;
+            }
+            .detail-row {
+                display: flex;
+                align-items: flex-start;
+                gap: var(--spacing-3);
+                padding: var(--spacing-2) 0;
+                border-bottom: 1px solid var(--gray-100);
+            }
+            .detail-row:last-child {
+                border-bottom: none;
+                padding-bottom: 0;
+            }
+            .detail-row:first-child {
+                padding-top: 0;
+            }
+            .detail-label {
+                min-width: 88px;
+                flex-shrink: 0;
+                font-weight: 500;
+                color: var(--gray-500);
+                font-size: var(--font-size-sm);
+            }
+            .detail-value {
+                flex: 1;
+                min-width: 0;
+                color: var(--gray-900);
+                font-size: var(--font-size-sm);
+                word-break: break-word;
+            }
+            .detail-value.state-admin {
+                color: var(--state-admin);
+                font-weight: 600;
+            }
+            .detail-value.state-user {
+                color: var(--state-user);
+                font-weight: 600;
+            }
+            .detail-value.state-frozen {
+                color: var(--state-frozen);
+                font-weight: 600;
+            }
+            .intro-link {
+                color: var(--primary-color);
+                text-decoration: none;
+                font-weight: 500;
+            }
+            .intro-link:hover {
+                color: var(--primary-hover);
+                text-decoration: underline;
+            }
+            .loading, .error {
+                text-align: center;
+                padding: var(--spacing-8);
+                color: var(--gray-500);
+            }
+            .error { color: var(--error-color); }
+            .modal-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+            }
+            .modal-overlay.show { display: flex; }
+            .modal-panel {
+                background: var(--white);
+                padding: var(--spacing-4);
+                border-radius: var(--radius-lg);
+                box-shadow: var(--shadow-xl);
+                border: 1px solid var(--gray-200);
+                max-width: 400px;
+                width: 90%;
+            }
+            .modal-title {
+                font-size: var(--font-size-base);
+                font-weight: 600;
+                margin: 0 0 var(--spacing-4);
+                color: var(--gray-900);
+            }
+            .modal-form {
+                display: flex;
+                flex-direction: column;
+                gap: var(--spacing-3);
+            }
+            .form-group {
+                display: flex;
+                flex-direction: column;
+                gap: var(--spacing-1);
+            }
+            .form-label {
+                font-weight: 500;
+                color: var(--gray-700);
+                font-size: var(--font-size-sm);
+            }
+            .form-input {
+                padding: var(--spacing-2) var(--spacing-3);
+                border: 1px solid var(--gray-300);
+                border-radius: var(--radius-md);
+                font-size: var(--font-size-sm);
+            }
+            .form-input:focus {
+                outline: none;
+                border-color: var(--primary-color);
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            }
+            .modal-actions {
+                display: flex;
+                gap: var(--spacing-2);
+                justify-content: flex-end;
+                margin-top: var(--spacing-2);
+            }
+            .btn svg {
+                width: 16px;
+                height: 16px;
+                flex-shrink: 0;
+            }
+        `;
+    }
+
     render() {
         if (!this.userData) {
             this.shadowRoot.innerHTML = `
-                <div class="loading">加载中...</div>
+                <style>${this.getCardStyles()}</style>
+                <div class="card"><div class="loading">加载中...</div></div>
             `;
             return;
         }
 
+        const safeName = this.escapeHtml(this.userData.name || '未设置');
+        const emailValue = this.userData.hasOwnProperty('email')
+            ? (this.userData.email ? this.escapeHtml(this.userData.email) : '未设置')
+            : '无权限查看';
+        const ipValue = this.userData.hasOwnProperty('iplog')
+            ? (this.userData.iplog ? this.escapeHtml(this.userData.iplog) : '未知')
+            : '无权限查看';
+        const stateClass = this.userData.state === 10 ? 'admin' : this.userData.state === 1 ? 'user' : 'frozen';
+        const introHtml = this.userData.intropiid
+            ? `<a href="/article/${this.userData.intropiid}" class="intro-link" target="_blank" rel="noopener noreferrer">查看自我介绍</a>`
+            : '未设置';
+
         this.shadowRoot.innerHTML = `
-            <style>
-                @import url('/static/css/common-components.css');
-                :host {
-                    display: block;
-                    background: var(--card-bg);
-                    border-radius: var(--card-radius);
-                    box-shadow: var(--card-shadow);
-                    padding: var(--card-padding);
-                    margin-bottom: var(--card-margin);
-                    border: 1px solid var(--card-border);
-                }
-                
-                .card-header {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    gap: var(--spacing-3);
-                    margin-bottom: var(--card-content-gap);
-                    padding-bottom: var(--spacing-3);
-                    border-bottom: 1px solid var(--card-header-border);
-                }
-                
-                .card-title {
-                    font-size: var(--card-title-size);
-                    font-weight: var(--card-title-weight);
-                    color: var(--card-title-color);
-                    margin: 0;
-                }
-                
-                .card-actions {
-                    display: flex;
-                    gap: var(--spacing-2);
-                }
-                
-                .btn {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: var(--spacing-2);
-                    padding: var(--spacing-2) var(--spacing-3);
-                    font-size: var(--font-size-sm);
-                    font-weight: 500;
-                    border-radius: var(--radius-md);
-                    border: 1px solid transparent;
-                    cursor: pointer;
-                    transition: all var(--transition-fast);
-                    text-decoration: none;
-                    line-height: 1;
-                }
-                
-                .btn-warning {
-                    background-color: var(--warning-color, #f59e0b);
-                    color: white;
-                    border-color: var(--warning-color, #f59e0b);
-                }
-                
-                .btn-warning:hover {
-                    background-color: var(--warning-hover, #d97706);
-                    border-color: var(--warning-hover, #d97706);
-                }
-                
-                .btn:disabled {
-                    opacity: 0.6;
-                    cursor: not-allowed;
-                }
-                
-                .profile-grid {
-                    display: grid;
-                    gap: var(--card-content-gap);
-                }
-                
-                .profile-item {
-                    display: flex;
-                    align-items: flex-start;
-                    gap: var(--spacing-3);
-                }
-                
-                .profile-label {
-                    min-width: 100px;
-                    font-weight: 500;
-                    color: var(--gray-600);
-                    font-size: var(--font-size-sm);
-                }
-                
-                .profile-value {
-                    flex: 1;
-                    color: var(--gray-900);
-                    font-size: var(--font-size-sm);
-                    word-break: break-word;
-                }
-                
-                .profile-value.state-admin {
-                    color: var(--state-admin);
-                    font-weight: 600;
-                }
-                
-                .profile-value.state-user {
-                    color: var(--state-user);
-                    font-weight: 600;
-                }
-                
-                .profile-value.state-frozen {
-                    color: var(--state-frozen);
-                    font-weight: 600;
-                }
-                
-                .profile-value.intro {
-                    font-style: italic;
-                    color: var(--gray-500);
-                    line-height: 1.5;
-                }
-                
-                .intro-link {
-                    color: var(--primary-color);
-                    text-decoration: none;
-                    font-weight: 500;
-                    transition: color var(--transition-fast);
-                }
-                
-                .intro-link:hover {
-                    color: var(--primary-hover);
-                    text-decoration: underline;
-                }
-                
-                .loading, .error {
-                    text-align: center;
-                    padding: var(--spacing-8);
-                    color: var(--loading-color);
-                }
-                
-                .error {
-                    color: var(--error-color);
-                }
-                
-                .reset-password-modal {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0, 0, 0, 0.5);
-                    display: none;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 1000;
-                }
-                
-                .reset-password-modal.show {
-                    display: flex;
-                }
-                
-                .reset-password-content {
-                    background: white;
-                    padding: var(--spacing-3) var(--spacing-4);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-xl);
-                    max-width: 400px;
-                    width: 90%;
-                }
-                
-                .reset-password-title {
-                    font-size: var(--font-size-base);
-                    font-weight: 600;
-                    margin-bottom: var(--spacing-4);
-                    color: var(--gray-900);
-                }
-                
-                .reset-password-form {
-                    display: flex;
-                    flex-direction: column;
-                    gap: var(--spacing-4);
-                }
-                
-                .form-group {
-                    display: flex;
-                    flex-direction: column;
-                    gap: var(--spacing-2);
-                }
-                
-                .form-label {
-                    font-weight: 500;
-                    color: var(--gray-700);
-                    font-size: var(--font-size-sm);
-                }
-                
-                .form-input {
-                    padding: var(--spacing-3);
-                    border: 1px solid var(--gray-300);
-                    border-radius: var(--radius-md);
-                    font-size: var(--font-size-sm);
-                    transition: border-color var(--transition-fast);
-                }
-                
-                .form-input:focus {
-                    outline: none;
-                    border-color: var(--primary-color);
-                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-                }
-                
-                .reset-password-actions {
-                    display: flex;
-                    gap: var(--spacing-3);
-                    justify-content: flex-end;
-                    margin-top: var(--spacing-4);
-                }
-                
-                .btn-secondary {
-                    background-color: var(--gray-100);
-                    color: var(--gray-700);
-                    border-color: var(--gray-300);
-                }
-                
-                .btn-secondary:hover {
-                    background-color: var(--gray-200);
-                    border-color: var(--gray-400);
-                }
-                
-                .btn-danger {
-                    background-color: var(--error-color, #ef4444);
-                    color: white;
-                    border-color: var(--error-color, #ef4444);
-                }
-                
-                .btn-danger:hover {
-                    background-color: var(--error-hover, #dc2626);
-                    border-color: var(--error-hover, #dc2626);
-                }
-            </style>
-            
-            <div class="card-header">
-                <h2 class="card-title">个人资料</h2>
-                ${this.canResetPassword() || this.canUpdateEmail() ? `
-                    <div class="card-actions">
-                        ${this.canUpdateEmail() ? `
-                            <button class="btn btn-warning" id="updateEmailBtn">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                                    <polyline points="22,6 12,13 2,6"></polyline>
-                                </svg>
-                                修改邮箱
-                            </button>
-                        ` : ''}
-                        ${this.canResetPassword() ? `
-                            <button class="btn btn-danger" id="resetPasswordBtn">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M1 4v6h6"></path>
-                                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
-                                </svg>
-                                重置密码
-                            </button>
-                        ` : ''}
-                    </div>
-                ` : ''}
-            </div>
-
-            <div class="profile-grid">
-                <div class="profile-item">
-                    <span class="profile-label">用户姓名</span>
-                    <span class="profile-value">${this.escapeHtml(this.userData.name || '未设置')}</span>
+            <style>${this.getCardStyles()}</style>
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span class="title-icon">${Icons.user}</span>
+                        个人资料
+                    </h2>
+                    ${this.canResetPassword() || this.canUpdateEmail() ? `
+                        <div class="btn-toolbar">
+                            ${this.canUpdateEmail() ? `
+                                <button type="button" class="btn btn-secondary btn-sm" id="updateEmailBtn">
+                                    ${Icons.subscription}
+                                    修改邮箱
+                                </button>
+                            ` : ''}
+                            ${this.canResetPassword() ? `
+                                <button type="button" class="btn btn-danger btn-sm" id="resetPasswordBtn">
+                                    ${Icons.settings}
+                                    重置密码
+                                </button>
+                            ` : ''}
+                        </div>
+                    ` : ''}
                 </div>
-
-                <div class="profile-item">
-                    <span class="profile-label">电子邮件</span>
-                    <span class="profile-value">${this.userData.hasOwnProperty('email') ? (this.userData.email ? this.escapeHtml(this.userData.email) : '未设置') : '无权限查看'}</span>
-                </div>
-
-                <div class="profile-item">
-                    <span class="profile-label">身份</span>
-                    <span class="profile-value state-${this.userData.state === 10 ? 'admin' : this.userData.state === 1 ? 'user' : 'frozen'}">
-                        ${this.getStateText(this.userData.state)}
-                    </span>
-                </div>
-
-                <div class="profile-item">
-                    <span class="profile-label">注册时间</span>
-                    <span class="profile-value">${this.formatDateTime(this.userData.regtime)}</span>
-                </div>
-
-                <div class="profile-item">
-                    <span class="profile-label">最后登录IP</span>
-                    <span class="profile-value">${this.userData.hasOwnProperty('iplog') ? (this.userData.iplog ? this.escapeHtml(this.userData.iplog) : '未知') : '无权限查看'}</span>
-                </div>
-
-                <div class="profile-item">
-                    <span class="profile-label">积分</span>
-                    <span class="profile-value">${this.userData.point || 0}</span>
-                </div>
-
-                <div class="profile-item">
-                    <span class="profile-label">最后更新</span>
-                    <span class="profile-value">${this.formatDateTime(this.userData.lastupdate)}</span>
-                </div>
-
-                <div class="profile-item">
-                    <span class="profile-label">自我介绍</span>
-                    <span class="profile-value intro">
-                        ${this.userData.intropiid ? 
-                            `<a href="/article/${this.userData.intropiid}" class="intro-link" target="_blank" rel="noopener noreferrer">查看自我介绍</a>` : 
-                            '未设置'
-                        }
-                    </span>
+                <div class="card-body">
+                    <dl class="detail-list">
+                        <div class="detail-row">
+                            <dt class="detail-label">用户姓名</dt>
+                            <dd class="detail-value">${safeName}</dd>
+                        </div>
+                        <div class="detail-row">
+                            <dt class="detail-label">电子邮件</dt>
+                            <dd class="detail-value">${emailValue}</dd>
+                        </div>
+                        <div class="detail-row">
+                            <dt class="detail-label">身份</dt>
+                            <dd class="detail-value state-${stateClass}">${this.getStateText(this.userData.state)}</dd>
+                        </div>
+                        <div class="detail-row">
+                            <dt class="detail-label">注册时间</dt>
+                            <dd class="detail-value">${this.formatDateTime(this.userData.regtime)}</dd>
+                        </div>
+                        <div class="detail-row">
+                            <dt class="detail-label">最后登录IP</dt>
+                            <dd class="detail-value">${ipValue}</dd>
+                        </div>
+                        <div class="detail-row">
+                            <dt class="detail-label">积分</dt>
+                            <dd class="detail-value">${this.userData.point || 0}</dd>
+                        </div>
+                        <div class="detail-row">
+                            <dt class="detail-label">最后更新</dt>
+                            <dd class="detail-value">${this.formatDateTime(this.userData.lastupdate)}</dd>
+                        </div>
+                        <div class="detail-row">
+                            <dt class="detail-label">自我介绍</dt>
+                            <dd class="detail-value">${introHtml}</dd>
+                        </div>
+                    </dl>
                 </div>
             </div>
             
-            <!-- 重置密码模态框 -->
-            <div class="reset-password-modal" id="resetPasswordModal">
-                <div class="reset-password-content">
-                    <h3 class="reset-password-title">重置密码</h3>
-                    <form class="reset-password-form" id="resetPasswordForm">
+            <div class="modal-overlay" id="resetPasswordModal">
+                <div class="modal-panel">
+                    <h3 class="modal-title">重置密码</h3>
+                    <form class="modal-form" id="resetPasswordForm">
                         <div class="form-group">
                             <label class="form-label" for="newPassword">新密码</label>
                             <input type="password" id="newPassword" class="form-input" required minlength="6" placeholder="请输入新密码">
@@ -426,19 +341,18 @@ class UserProfileCard extends BaseComponent {
                             <label class="form-label" for="confirmPassword">确认密码</label>
                             <input type="password" id="confirmPassword" class="form-input" required minlength="6" placeholder="请再次输入新密码">
                         </div>
-                        <div class="reset-password-actions">
-                            <button type="button" class="btn btn-secondary" id="cancelResetBtn">取消</button>
-                            <button type="submit" class="btn btn-danger" id="confirmResetBtn">确认重置</button>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary btn-sm" id="cancelResetBtn">取消</button>
+                            <button type="submit" class="btn btn-danger btn-sm" id="confirmResetBtn">确认重置</button>
                         </div>
                     </form>
                 </div>
             </div>
-            
-            <!-- 修改邮箱模态框 -->
-            <div class="reset-password-modal" id="updateEmailModal">
-                <div class="reset-password-content">
-                    <h3 class="reset-password-title">修改邮箱</h3>
-                    <form class="reset-password-form" id="updateEmailForm">
+
+            <div class="modal-overlay" id="updateEmailModal">
+                <div class="modal-panel">
+                    <h3 class="modal-title">修改邮箱</h3>
+                    <form class="modal-form" id="updateEmailForm">
                         <div class="form-group">
                             <label class="form-label" for="currentEmail">当前邮箱</label>
                             <input type="email" id="currentEmail" class="form-input" readonly value="${this.userData.hasOwnProperty('email') ? (this.userData.email || '未设置') : '无权限查看'}">
@@ -447,9 +361,9 @@ class UserProfileCard extends BaseComponent {
                             <label class="form-label" for="newEmail">新邮箱</label>
                             <input type="email" id="newEmail" class="form-input" required placeholder="请输入新邮箱地址">
                         </div>
-                        <div class="reset-password-actions">
-                            <button type="button" class="btn btn-secondary" id="cancelUpdateEmailBtn">取消</button>
-                            <button type="submit" class="btn btn-warning" id="confirmUpdateEmailBtn">确认修改</button>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary btn-sm" id="cancelUpdateEmailBtn">取消</button>
+                            <button type="submit" class="btn btn-primary btn-sm" id="confirmUpdateEmailBtn">确认修改</button>
                         </div>
                     </form>
                 </div>
@@ -1006,7 +920,8 @@ class UserProfileCard extends BaseComponent {
 
     showError(message) {
         this.shadowRoot.innerHTML = `
-            <div class="error">${this.escapeHtml(message)}</div>
+            <style>${this.getCardStyles()}</style>
+            <div class="card"><div class="error">${this.escapeHtml(message)}</div></div>
         `;
     }
 }

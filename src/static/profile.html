@@ -14,80 +14,6 @@
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/components.css">
-    <style>
-        /* 确保侧边栏有正确的间距 */
-        .sidebar {
-            display: flex !important;
-            flex-direction: column !important;
-            gap: 24px !important;
-        }
-
-        /* 组件样式 */
-        user-profile-card, blog-info-card, admin-tools-card {
-            display: block;
-            background: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-            padding: 24px;
-            margin-bottom: 24px;
-            border: 1px solid #e5e7eb;
-        }
-
-        /* 卡片内部样式 */
-        .card-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .card-title {
-            font-size: 20px;
-            font-weight: 600;
-            color: #111827;
-            margin: 0;
-        }
-
-        .profile-grid, .info-grid {
-            display: grid;
-            gap: 16px;
-        }
-
-        .profile-item, .info-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-        }
-
-        .profile-label, .info-label {
-            min-width: 100px;
-            font-weight: 500;
-            color: #374151;
-            font-size: 14px;
-        }
-
-        .profile-value, .info-value {
-            flex: 1;
-            color: #111827;
-            font-size: 14px;
-            word-break: break-word;
-        }
-
-        .loading, .error {
-            text-align: center;
-            padding: 32px;
-        }
-
-        .loading {
-            color: #6b7280;
-        }
-
-        .error {
-            color: #dc2626;
-        }
-    </style>
 </head>
 <body>
     <!-- 顶栏组件 -->
@@ -129,9 +55,9 @@
     <script src="/static/js/utils/confirm-dialog.js"></script>
 
     <!-- Web Components -->
-        <script src="/static/js/utils/html-utils.js"></script>
+    <script src="/static/js/utils/html-utils.js"></script>
     <script src="/static/js/utils/password-validation.js"></script>
-<script src="/static/js/components/base-component.js"></script>
+    <script src="/static/js/components/base-component.js"></script>
     <script src="/static/js/components/header-component.js"></script>
     <script src="/static/js/components/footer-component.js"></script>
     <script src="/static/js/components/blog-profile-card.js"></script>
