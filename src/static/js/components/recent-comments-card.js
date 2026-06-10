@@ -182,6 +182,38 @@ class RecentCommentsCard extends BaseComponent {
      * 生成的URL格式：/article/{articleId}#post{commentId}
      * 这样可以直接跳转到文章页面并定位到对应评论
      */
+    getSmallAvatarPath(userId) {
+        if (!userId) {
+            return null;
+        }
+        const prefix = Math.floor(userId / 10000) + 1;
+        return `/avatar/${prefix}/s_${userId}.jpg`;
+    }
+
+    renderAuthorMetaItem(authorName, avatar, userId) {
+        const safeAuthor = this.escapeHtml(authorName || '匿名用户');
+        const avatarPath = avatar || this.getSmallAvatarPath(userId);
+        const fallbackLetter = safeAuthor.charAt(0).toUpperCase();
+
+        const avatarHtml = `
+            <span class="author-avatar" aria-hidden="true">
+                ${avatarPath ? `
+                    <img src="${avatarPath}" alt=""
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                         onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
+                ` : ''}
+                <span class="author-avatar-fallback" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackLetter}</span>
+            </span>
+        `;
+
+        return `
+            <div class="meta-item meta-item-author">
+                ${avatarHtml}
+                <span class="author-name">${safeAuthor}</span>
+            </div>
+        `;
+    }
+
     getNavigationUrl(comment) {
         // 验证projectitemid和comment id是否存在且有效
         if (!comment.projectitemid || comment.projectitemid === undefined || comment.projectitemid === null) {
@@ -237,9 +269,7 @@ class RecentCommentsCard extends BaseComponent {
                 .comment-link {
                     text-decoration: none;
                     color: inherit;
-                    display: flex;
-                    align-items: flex-start;
-                    gap: var(--spacing-3);
+                    display: block;
                     padding: var(--spacing-3) var(--spacing-4);
                     transition: var(--transition-fast);
                 }
@@ -253,68 +283,67 @@ class RecentCommentsCard extends BaseComponent {
                 }
 
                 .comment-item.disabled {
-                    display: flex;
-                    align-items: flex-start;
-                    gap: var(--spacing-3);
+                    display: block;
                     padding: var(--spacing-3) var(--spacing-4);
                     cursor: default;
                     opacity: 0.7;
-                }
-
-                .user-avatar {
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 50%;
-                    flex-shrink: 0;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: var(--gray-100);
-                    font-size: var(--font-size-base);
-                    font-weight: 600;
-                    color: var(--gray-600);
-                    border: 2px solid var(--gray-200);
-                    overflow: hidden;
-                    position: relative;
-                }
-
-                .user-avatar img {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                }
-
-                .user-avatar span {
-                    width: 100%;
-                    height: 100%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: var(--primary-color);
-                    color: white;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                }
-
-                .comment-content {
-                    flex: 1;
-                    min-width: 0;
                 }
 
                 .comment-header {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
+                    gap: var(--spacing-2);
                     margin-bottom: var(--spacing-1);
                 }
 
-                .author {
+                .meta-item {
+                    display: flex;
+                    align-items: center;
+                    min-width: 0;
+                }
+
+                .meta-item-author {
+                    gap: var(--spacing-2);
+                }
+
+                .author-avatar {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    flex-shrink: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: var(--gray-100);
+                    border: 1px solid var(--gray-200);
+                    overflow: hidden;
+                }
+
+                .author-avatar img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    display: block;
+                }
+
+                .author-avatar-fallback {
+                    width: 100%;
+                    height: 100%;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: var(--font-size-xs);
+                    font-weight: 600;
+                    color: var(--gray-600);
+                }
+
+                .author-name {
                     font-weight: 700;
                     color: var(--gray-900);
                     font-size: var(--font-size-sm);
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
                 }
 
                 .time {
@@ -366,30 +395,18 @@ class RecentCommentsCard extends BaseComponent {
                     <ul class="comment-list">
                         ${this.comments.map((comment) => {
                             const commentUrl = this.getNavigationUrl(comment);
-                            const avatarHtml = `
-                                <div class="user-avatar">
-                                    ${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ?
-                                        `<img src="${comment.avatar}" alt="${this.escapeHtml(comment.author)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` :
-                                        ''
-                                    }
-                                    <span style="${comment.avatar && comment.avatar !== 'null' && comment.avatar !== null && comment.avatar !== '' ? 'display: none;' : 'display: flex;'}">${this.escapeHtml(comment.author.charAt(0))}</span>
-                                </div>
-                            `;
                             const contentHtml = `
-                                <div class="comment-content">
-                                    <div class="comment-header">
-                                        <span class="author">${this.escapeHtml(comment.author)}</span>
-                                        <span class="time">${this.escapeHtml(comment.time)}</span>
-                                    </div>
-                                    <div class="comment-text">${this.escapeHtml(this.truncateText(comment.content, 20))}</div>
+                                <div class="comment-header">
+                                    ${this.renderAuthorMetaItem(comment.author, comment.avatar, comment.userid)}
+                                    <span class="time">${this.escapeHtml(comment.time)}</span>
                                 </div>
+                                <div class="comment-text">${this.escapeHtml(this.truncateText(comment.content, 20))}</div>
                             `;
 
                             if (commentUrl) {
                                 return `
                                     <li class="comment-item">
                                         <a href="${commentUrl}" class="comment-link" target="_blank" title="查看评论">
-                                            ${avatarHtml}
                                             ${contentHtml}
                                         </a>
                                     </li>
@@ -398,7 +415,6 @@ class RecentCommentsCard extends BaseComponent {
 
                             return `
                                 <li class="comment-item disabled">
-                                    ${avatarHtml}
                                     ${contentHtml}
                                 </li>
                             `;
