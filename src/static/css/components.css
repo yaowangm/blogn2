@@ -778,6 +778,34 @@ latest-posts-card {
     margin: var(--spacing-4) 0;
 }
 
+/* KaTeX 数学公式（字体见 /static/js/libs/katex/） */
+.markdown-content .katex,
+.markdown-content .katex-display,
+.markdown-content .katex *,
+.card-body .katex,
+.card-body .katex-display,
+.card-body .katex * {
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+}
+
+.markdown-content .katex-display {
+    display: block;
+    margin: var(--spacing-4) 0;
+    text-align: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+}
+
+.markdown-content .math-fallback {
+    font-family: var(--font-family-mono);
+    color: var(--gray-700);
+    background-color: var(--gray-50);
+    padding: var(--spacing-1) var(--spacing-2);
+    border-radius: var(--radius-sm);
+}
+
 .markdown-content hr {
     border: none;
     height: 1px;

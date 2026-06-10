@@ -115,6 +115,9 @@ class ArticleContentCard extends BaseComponent {
 
         // 在设置 innerHTML 之后添加样式
         this.addStyles();
+        if (contentModeClass === 'markdown-content') {
+            MarkdownUtils.ensureKatexStyles(this.shadowRoot);
+        }
 
         // 设置图片模态框事件监听器
         this.setupImageModalEvents();
@@ -148,27 +151,14 @@ class ArticleContentCard extends BaseComponent {
         }
 
         try {
-            // 检查marked.js是否可用
-            const markedParser = typeof marked !== 'undefined' ? marked : window.marked;
-            if (!markedParser) {
-                console.warn('marked.js not available, using plain text formatting');
+            if (typeof MarkdownUtils === 'undefined') {
+                console.warn('MarkdownUtils not available, using plain text formatting');
                 return this.formatContentPlainText(content);
             }
 
-            // 配置marked.js选项（与预览功能保持一致）
-            const options = {
-                breaks: true,  // 支持换行符
-                gfm: true,     // 启用GitHub风格的Markdown
-                pedantic: false
-            };
+            const html = MarkdownUtils.parseMarkdown(content);
 
-            // 使用marked.js解析Markdown
-            const html = markedParser.parse(content, options);
-
-            // 对解析后的HTML进行安全过滤
-            const safeHtml = this.sanitizeHtml(html);
-
-            return HtmlUtils.processRichTextLinks(safeHtml);
+            return HtmlUtils.processRichTextLinks(html);
         } catch (error) {
             this.logError('Markdown parsing failed', error);
             return this.formatContentPlainText(content);
@@ -511,10 +501,26 @@ class ArticleContentCard extends BaseComponent {
                     word-break: break-word;   /* 在必要时对长单词/连续字符串进行断行 */
                     max-width: 100%;
                 }
-                /* 对所有后代启用任意位置换行，兜底避免极端长串文本导致变形 */
-                .article-content * {
+                /* 对所有后代启用任意位置换行，兜底避免极端长串文本导致变形（排除 KaTeX） */
+                .article-content *:not(.katex):not(.katex-display):not(.math-pending) {
                     overflow-wrap: anywhere;
                     word-break: break-word;
+                }
+
+                .article-content .katex,
+                .article-content .katex-display,
+                .article-content .katex * {
+                    overflow-wrap: normal !important;
+                    word-break: normal !important;
+                }
+
+                .article-content .katex-display {
+                    display: block;
+                    margin: var(--spacing-4) 0;
+                    text-align: center;
+                    overflow-x: auto;
+                    overflow-y: hidden;
+                    max-width: 100%;
                 }
 
                 .article-content a {

@@ -33,6 +33,8 @@ class TestArticleContentCardJs:
         assert "markdown-content" in content
         assert "formatContent(content, created_at)" in content
         assert "HtmlUtils.processRichTextLinks" in content
+        assert "MarkdownUtils.parseMarkdown" in content
+        assert "MarkdownUtils.ensureKatexStyles" in content
 
     def test_plain_text_escapes_and_linkifies_only(self):
         content = ARTICLE_CONTENT_CARD_JS.read_text(encoding="utf-8")

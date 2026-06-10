@@ -252,30 +252,17 @@ class EditPostForm extends BaseComponent {
             return;
         }
         
-        // 检查marked.js是否可用
-        if (typeof marked === 'undefined' && typeof window.marked === 'undefined') {
-            console.error('marked.js is not available');
-            previewContent.innerHTML = '<p style="color: red;">错误：Markdown解析库未加载，请刷新页面重试</p>';
+        if (typeof MarkdownUtils === 'undefined') {
+            console.error('MarkdownUtils is not available');
+            previewContent.innerHTML = '<p style="color: red;">错误：Markdown 解析库未加载，请刷新页面重试</p>';
             return;
         }
         
         try {
-            // 使用marked.js解析Markdown，优先使用全局的marked对象
-            const markedParser = typeof marked !== 'undefined' ? marked : window.marked;
-            
-            // 配置marked.js选项
-            const options = {
-                breaks: true,  // 支持换行符
-                gfm: true,     // 启用GitHub风格的Markdown
-                pedantic: false
-            };
-            
-            const html = markedParser.parse(content, options);
-            
-            // 对解析后的HTML进行安全过滤
-            const safeHtml = this.sanitizeHtml(html);
+            MarkdownUtils.ensureKatexStyles(this.shadowRoot);
+            const html = MarkdownUtils.parseMarkdown(content);
 
-            previewContent.innerHTML = HtmlUtils.processRichTextLinks(safeHtml);
+            previewContent.innerHTML = HtmlUtils.processRichTextLinks(html);
         } catch (error) {
             console.error('Markdown parsing failed in preview', error);
             this.logError('Markdown parsing failed in preview', error);
@@ -1599,6 +1586,10 @@ class EditPostForm extends BaseComponent {
                 </div>
             </div>
         `;
+
+        if (typeof MarkdownUtils !== 'undefined') {
+            MarkdownUtils.ensureKatexStyles(this.shadowRoot);
+        }
         
         // 立即绑定事件监听器（因为innerHTML会清除之前的事件）
         // 使用setTimeout确保DOM更新完成后再绑定事件

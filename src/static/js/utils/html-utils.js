@@ -54,6 +54,9 @@ class HtmlUtils {
         
         // 预编译正则表达式（避免重复编译）
         const patterns = {
+            // 数学公式（块级与行内）
+            displayMath: /\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]/g,
+            inlineMath: /\\\(.+?\\\)|(?<!\$)\$(?!\$)[^\$\n]+?\$(?!\$)/g,
             // 代码块（优先处理，避免处理代码块内的Markdown）
             codeBlocks: /```[\s\S]*?```|~~~[\s\S]*?~~~/g,
             // 行首标记（标题、引用、列表、水平线）
@@ -72,7 +75,9 @@ class HtmlUtils {
         // 分步处理，减少字符串操作次数
         let result = text;
         
-        // 1. 移除代码块（避免处理代码块内的Markdown语法）
+        // 1. 移除数学公式与代码块
+        result = result.replace(patterns.displayMath, '');
+        result = result.replace(patterns.inlineMath, '');
         result = result.replace(patterns.codeBlocks, '');
         
         // 2. 处理行首标记
@@ -428,7 +433,7 @@ class HtmlUtils {
                 // 复制安全的属性
                 for (const attr of node.attributes) {
                     const attrName = attr.name.toLowerCase();
-                    if (['href', 'src', 'alt', 'title', 'class', 'id'].includes(attrName)) {
+                    if (['href', 'src', 'alt', 'title', 'class', 'id', 'data-math-idx'].includes(attrName)) {
                         if (attrName === 'href') {
                             const href = attr.value;
                             if (this.isValidUrl(href)) {
