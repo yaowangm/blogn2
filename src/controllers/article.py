@@ -688,20 +688,14 @@ async def delete_article(
         article.itemtype = ArticleStatus.DELETED
         session.add(article)
 
-        # 更新project表：减少recordcount，更新updatetime
-        from src.repositories.project_repository import ProjectRepository
-        project_repo = ProjectRepository(session)
-        await project_repo.decrement_record_count(article.projectid)
-
-        # 更新users表：减少10积分
+        from src.services.stats_service import StatsService
         from src.repositories.user_repository import UserRepository
+
+        stats_service = StatsService(session)
+        await stats_service.handle_article_deletion(article)
+
         user_repo = UserRepository(session)
         await user_repo.decrement_point(article.userid, 10)
-
-        # 更新全局项目项数量统计
-        from src.services.global_stats_service import GlobalStatsService
-        stats_service = GlobalStatsService(session)
-        await stats_service.update_project_item_count(increment=False)
 
         # 软删除时不删除向量化数据，保留用于搜索
 
@@ -776,29 +770,25 @@ async def permanently_delete_article(
         if article.attachment:
             await delete_article_images(article.attachment, article_id, session)
 
-        # 删除该文章下所有评论，避免仅删除 projectitem 后在 post 表残留孤儿数据
         post_repo = PostRepository(session)
-        await post_repo.delete_all_posts_for_project_item(article_id)
+        from src.services.stats_service import StatsService
+        from src.repositories.user_repository import UserRepository
 
-        # 从projectitem表中删除记录
-        await project_item_repo.delete(article_id)
+        stats_service = StatsService(session)
 
-        # 如果文章不是已删除状态，需要更新相关统计信息
+        # 删除该文章下所有评论，并同步博客/分类评论统计
+        removed_comment_count = await post_repo.delete_all_posts_for_project_item(article_id)
+        if removed_comment_count > 0:
+            await stats_service.handle_article_comments_bulk_removal(
+                article, removed_comment_count
+            )
+
+        # 从 projectitem 表删除；软删过的文章统计已在软删时扣减
+        await project_item_repo.delete(article_id, update_stats=not was_deleted)
+
         if not was_deleted:
-            # 更新project表：减少recordcount，更新updatetime
-            from src.repositories.project_repository import ProjectRepository
-            project_repo = ProjectRepository(session)
-            await project_repo.decrement_record_count(article.projectid)
-
-            # 更新users表：减少10积分
-            from src.repositories.user_repository import UserRepository
             user_repo = UserRepository(session)
             await user_repo.decrement_point(article.userid, 10)
-
-            # 更新全局项目项数量统计
-            from src.services.global_stats_service import GlobalStatsService
-            stats_service = GlobalStatsService(session)
-            await stats_service.update_project_item_count(increment=False)
 
         # 提交事务
         await session.commit()

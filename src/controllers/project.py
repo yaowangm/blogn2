@@ -556,9 +556,6 @@ async def create_post(
                 )
                 await attachment_repo.create(attachment)
         
-        # 更新项目的记录数和更新时间
-        await project_repo.increment_record_count(project_id)
-        
         # 更新用户积分（每发表一篇文章获得10积分，每日最多10分）
         user_repo = UserRepository(session)
         point_added = await user_repo.increment_point(current_user["id"], 10, "article_create")
@@ -566,11 +563,6 @@ async def create_post(
         # 如果达到每日积分限制，记录日志但不影响文章创建
         if not point_added:
             logger.info("用户 %s 今日积分已达上限，未获得积分奖励", current_user["id"])
-        
-        # 更新全局项目项数量统计
-        from src.services.global_stats_service import GlobalStatsService
-        stats_service = GlobalStatsService(session)
-        await stats_service.update_project_item_count(increment=True)
         
         # 在主事务提交前进行向量化处理
         try:

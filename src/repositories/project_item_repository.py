@@ -289,29 +289,28 @@ class ProjectItemRepository:
             return project_item
         return None
 
-    async def delete(self, project_item_id: int) -> bool:
+    async def delete(self, project_item_id: int, update_stats: bool = True) -> bool:
         """
         删除项目项
-        
+
         Args:
             project_item_id: 项目项ID
-            
+            update_stats: 是否更新文章数等统计（软删后硬删时应为 False）
+
         Returns:
             bool: 删除是否成功
         """
         project_item = await self.get_by_id(project_item_id)
         if project_item:
-            # 更新统计信息
-            try:
-                from src.services.stats_service import StatsService
-                stats_service = StatsService(self.session)
-                await stats_service.handle_article_deletion(project_item)
-            except Exception as e:
-                # 统计更新失败不影响文章删除，静默处理
-                pass
-            
+            if update_stats:
+                try:
+                    from src.services.stats_service import StatsService
+                    stats_service = StatsService(self.session)
+                    await stats_service.handle_article_deletion(project_item)
+                except Exception:
+                    pass
+
             await self.session.delete(project_item)
-            await self.session.commit()
             return True
         return False
     

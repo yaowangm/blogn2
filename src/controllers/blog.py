@@ -273,12 +273,8 @@ async def create_message(
         )
         
         try:
-            # 创建留言（包含向量化处理）
+            # 创建留言（跟贴时 post_repo.create 内已通过 StatsService 更新 replycount）
             await post_repo.create(message)
-            
-            # 如果是跟贴，更新主贴的统计信息
-            if thread_id:
-                await post_repo._update_main_post_stats(thread_id, message.id, user_id)
             
             # 提交事务
             await session.commit()
