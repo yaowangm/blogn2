@@ -25,7 +25,7 @@ from src.repositories.user_repository import UserRepository
 from src.constants import ArticleStatus
 from src.utils.file_utils import promote_temp_relative_path
 from src.utils.time_utils import TimeUtils
-from src.utils.text_utils import truncate_excerpt
+from src.utils.text_utils import plain_text_excerpt, truncate_excerpt
 from src.config.app import validate_app_config
 
 logger = logging.getLogger(__name__)
@@ -148,10 +148,12 @@ async def get_project_posts(
             if post["userid"]:
                 avatar_path = blog_service._check_avatar_exists(post["userid"])
             
+            plain_excerpt = plain_text_excerpt(post["comment"])
             posts_data.append({
                 "id": post["id"],
                 "name": post["name"],
-                "comment": truncate_excerpt(post["comment"]),
+                "comment": plain_excerpt,
+                "excerpt": plain_excerpt,
                 "createtime": post["createtime"],
                 "accesscount": post["accesscount"],
                 "commentcount": post["commentcount"],
@@ -565,20 +567,7 @@ async def create_post(
         if not point_added:
             logger.info("用户 %s 今日积分已达上限，未获得积分奖励", current_user["id"])
         
-        # 在主事务提交前进行向量化处理
-        try:
-            from src.services.vectorization_update_service import get_vectorization_update_service
-            vectorization_service = get_vectorization_update_service(session)
-            
-            # 创建向量
-            await vectorization_service.update_article_vectors(
-                created_post.id, created_post.name, created_post.comment
-            )
-            
-        except Exception as e:
-            logger.error("向量化创建失败: %s", e)
-        
-        # 提交事务（所有操作在同一个事务中）
+        # 提交事务
         await session.commit()
 
         await invalidate_project_post_list_caches(project_id, project.userid)
@@ -591,6 +580,12 @@ async def create_post(
         except Exception as e:
             # 广播失败不影响文章创建，静默处理
             pass
+
+        from src.utils.vectorization_tasks import schedule_article_vectorization
+
+        schedule_article_vectorization(
+            created_post.id, created_post.name, created_post.comment
+        )
         
         return {
             "id": created_post.id,

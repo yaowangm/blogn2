@@ -7,7 +7,7 @@ class RecentBlogsCard extends BaseComponent {
 
     connectedCallback() {
         this.render();
-        this.loadData();
+        BaseComponent.observeWhenVisible(this, () => this.loadData());
     }
 
     async loadData() {

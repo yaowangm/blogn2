@@ -9,6 +9,7 @@ from src.repositories.glovar_repository import GlovarRepository
 from src.services.base_service import BaseService
 from src.utils.time_utils import TimeUtils
 from src.utils.avatar_utils import check_avatar_exists
+from src.utils.text_utils import plain_text_excerpt
 
 class BlogService(BaseService):
     """博客业务逻辑服务类
@@ -357,10 +358,8 @@ class BlogService(BaseService):
                 if len(title) > 50:
                     title = title[:50] + "..."
                 
-                # 处理博文摘要
-                excerpt = post["comment"] or ""
-                if len(excerpt) > 100:
-                    excerpt = excerpt[:100] + "..."
+                # 处理博文摘要（服务端剥离 Markdown，前端无需重复处理）
+                excerpt = plain_text_excerpt(post["comment"], max_length=100)
                 
                 # 处理附件图片路径
                 image_path = None

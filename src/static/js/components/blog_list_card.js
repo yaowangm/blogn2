@@ -774,10 +774,12 @@ class BlogListCard extends BaseComponent {
             
             const postsHtml = this.posts.map(post => {
                 const title = post.title || post.name;
-                const excerpt = post.comment || post.excerpt || '';
+                const excerpt = post.excerpt || post.comment || '';
                 const image = post.image || (post.attachment ? `/upload/${post.attachment}` : null);
                 const safeTitle = this.escapeHtml(title);
-                const safeExcerpt = this.escapeHtml(this.stripMarkdown(excerpt));
+                const safeExcerpt = this.escapeHtml(
+                    post.excerpt ? excerpt : this.stripMarkdown(excerpt)
+                );
 
                 return `
                     <a href="/article/${post.id}" class="post-item" target="_blank">

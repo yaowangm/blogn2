@@ -116,6 +116,15 @@ class CommentHandler:
             if article.projectid:
                 await invalidate_project_recent_comments_cache(article.projectid)
 
+            from src.utils.vectorization_tasks import schedule_comment_vectorization
+
+            schedule_comment_vectorization(
+                comment.id,
+                comment.subject or "",
+                comment.content,
+                comment.projectitemid,
+            )
+
             return {
                 "success": True,
                 "message": "评论创建成功",

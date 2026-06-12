@@ -5,7 +5,7 @@ from src.models.subscription import Subscription
 from src.models.project_item import ProjectItem
 from src.models.project import Project
 from src.models.user import User
-from src.utils.text_utils import POST_LIST_EXCERPT_MAX_LENGTH, truncate_excerpt
+from src.utils.text_utils import POST_LIST_EXCERPT_MAX_LENGTH, plain_text_excerpt
 from src.utils.avatar_utils import check_avatar_exists
 
 class SubscriptionRepository:
@@ -68,10 +68,12 @@ class SubscriptionRepository:
                     avatar_cache[row.userid] = check_avatar_exists(row.userid)
                 avatar_path = avatar_cache[row.userid]
             
+            plain_excerpt = plain_text_excerpt(row.comment)
             posts.append({
                 "id": row.id,
                 "name": row.name,
-                "comment": truncate_excerpt(row.comment),
+                "comment": plain_excerpt,
+                "excerpt": plain_excerpt,
                 "createtime": row.createtime,
                 "accesscount": row.accesscount,
                 "commentcount": row.commentcount,

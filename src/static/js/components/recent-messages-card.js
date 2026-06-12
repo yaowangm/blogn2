@@ -7,7 +7,7 @@ class RecentMessagesCard extends BaseComponent {
 
     connectedCallback() {
         this.render();
-        this.loadContent();
+        BaseComponent.observeWhenVisible(this, () => this.loadContent());
     }
 
     async loadContent() {

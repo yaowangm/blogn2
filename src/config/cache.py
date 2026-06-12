@@ -219,19 +219,28 @@ class CacheKeyGenerator:
         return CacheKeyGenerator._build_key("metadata", "site")
     
     @staticmethod
-    def article_detail(article_id: int, page: int = 1, per_page: int = 10) -> str:
+    def article_detail(
+        article_id: int,
+        page: int = 1,
+        per_page: int = 10,
+        include_comments: bool = False,
+    ) -> str:
         """
-        文章详情缓存键（含评论分页）
+        文章详情缓存键（含评论分页；默认不含评论以减小缓存体积）
         
         Args:
             article_id: 文章ID
             page: 评论页码
             per_page: 每页评论数
+            include_comments: 是否嵌入评论列表
             
         Returns:
             str: 文章详情缓存键
         """
-        return CacheKeyGenerator._build_key("article", "detail", article_id, page, per_page)
+        comments_flag = "with_comments" if include_comments else "no_comments"
+        return CacheKeyGenerator._build_key(
+            "article", "detail", article_id, comments_flag, page, per_page
+        )
     
     @staticmethod
     def article_comments(article_id: int, page: int = 1, limit: int = 20) -> str:

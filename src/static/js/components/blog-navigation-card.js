@@ -35,10 +35,7 @@ class BlogNavigationCard extends BaseComponent {
                 return;
             }
             if (projectData.userid) {
-                const userResponse = await fetch(`/api/users/${projectData.userid}`);
-                if (userResponse.ok) {
-                    this.userData = await userResponse.json();
-                }
+                this.userData = await BaseComponent.getUser(projectData.userid);
             }
         } catch (error) {
             console.error('Error loading user data:', error);

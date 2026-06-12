@@ -63,6 +63,7 @@ async def get_article_detail(
     response: Response,
     page: int = 1,
     per_page: int = 10,
+    include_comments: bool = False,
     session: AsyncSession = Depends(get_async_session),
     current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
@@ -156,23 +157,41 @@ async def get_article_detail(
             folder_repo = FolderRepository(session)
             return await folder_repo.get_by_id(article.folderid)
 
-        (
-            author_result,
-            project,
-            category,
-            comments_data,
-            attachments,
-        ) = await asyncio.gather(
-            fetch_author(),
-            fetch_project(),
-            fetch_category(),
-            post_repo.get_by_project_item_id_paginated(article_id, page, per_page),
-            attachment_repo.get_by_project_item_id(article_id),
-        )
+        if include_comments:
+            (
+                author_result,
+                project,
+                category,
+                comments_data,
+                attachments,
+            ) = await asyncio.gather(
+                fetch_author(),
+                fetch_project(),
+                fetch_category(),
+                post_repo.get_by_project_item_id_paginated(article_id, page, per_page),
+                attachment_repo.get_by_project_item_id(article_id),
+            )
+            comments = comments_data["comments"]
+            pagination = comments_data["pagination"]
+        else:
+            author_result, project, category, attachments = await asyncio.gather(
+                fetch_author(),
+                fetch_project(),
+                fetch_category(),
+                attachment_repo.get_by_project_item_id(article_id),
+            )
+            comment_total = article.commentcount or 0
+            comments = []
+            pagination = {
+                "page": page,
+                "per_page": per_page,
+                "total": comment_total,
+                "total_pages": (
+                    (comment_total + per_page - 1) // per_page if per_page else 0
+                ),
+            }
 
         author, author_avatar = author_result
-        comments = comments_data["comments"]
-        pagination = comments_data["pagination"]
 
         return {
             "id": article.id,
@@ -595,23 +614,8 @@ async def update_article(
         await clear_article_detail_cache(article_id)
         await clear_article_comments_cache(article_id)
 
-        # 异步更新向量化索引
-        try:
-            from src.services.vectorization_update_service import get_vectorization_update_service
-            vectorization_service = get_vectorization_update_service(session)
-
-            # 获取更新后的文章内容
-            updated_title = article_data.get("name", updated_article.name)
-            updated_content = article_data.get("comment", updated_article.comment)
-
-            # 异步更新向量
-            await vectorization_service.update_article_vectors(
-                article_id, updated_title, updated_content
-            )
-
-        except Exception as e:
-            # 向量化更新失败不影响文章更新成功
-            logger.error("向量化更新失败: %s", e)
+        updated_title = article_data.get("name", updated_article.name)
+        updated_content = article_data.get("comment", updated_article.comment)
 
         if updated_article.projectid:
             project_repo = ProjectRepository(session)
@@ -620,6 +624,10 @@ async def update_article(
             await invalidate_project_post_list_caches(
                 updated_article.projectid, updated_article.userid
             )
+
+        from src.utils.vectorization_tasks import schedule_article_vectorization
+
+        schedule_article_vectorization(article_id, updated_title, updated_content)
 
         return {"message": "文章更新成功"}
 

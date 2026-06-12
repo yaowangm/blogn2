@@ -281,6 +281,15 @@ async def create_message(
             
             # 清除留言相关缓存
             await clear_blog_messages_cache()
+
+            from src.utils.vectorization_tasks import schedule_comment_vectorization
+
+            schedule_comment_vectorization(
+                message.id,
+                message.subject or "",
+                message.content,
+                message.projectitemid,
+            )
             
             return {
                 "success": True,

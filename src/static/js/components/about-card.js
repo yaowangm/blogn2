@@ -5,7 +5,7 @@ class AboutCard extends BaseComponent {
 
     connectedCallback() {
         this.render();
-        this.loadAboutContent();
+        BaseComponent.observeWhenVisible(this, () => this.loadAboutContent());
     }
 
     /**

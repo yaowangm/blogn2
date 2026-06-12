@@ -473,7 +473,8 @@ def cache_article_detail(ttl: int = None):
                           CacheKeyGenerator.article_detail(
                               kwargs.get('article_id', 0),
                               kwargs.get('page', 1),
-                              kwargs.get('per_page', 10)
+                              kwargs.get('per_page', 10),
+                              kwargs.get('include_comments', False),
                           ))
 
 

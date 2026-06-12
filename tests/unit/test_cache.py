@@ -87,11 +87,15 @@ class TestCacheManager:
         blog_detail_key = CacheKeyGenerator.blog_detail(456)
         assert blog_detail_key == "blog:detail:456"
         
-        # 测试文章详情缓存键（含评论分页，默认 page=1, per_page=10）
+        # 测试文章详情缓存键（含评论分页，默认不含嵌入评论）
         article_detail_key = CacheKeyGenerator.article_detail(123)
-        assert article_detail_key == "article:detail:123:1:10"
+        assert article_detail_key == "article:detail:123:no_comments:1:10"
         article_detail_key_p2 = CacheKeyGenerator.article_detail(123, page=2, per_page=10)
-        assert article_detail_key_p2 == "article:detail:123:2:10"
+        assert article_detail_key_p2 == "article:detail:123:no_comments:2:10"
+        article_detail_with_comments = CacheKeyGenerator.article_detail(
+            123, include_comments=True
+        )
+        assert article_detail_with_comments == "article:detail:123:with_comments:1:10"
         
         # 测试元数据缓存键
         metadata_key = CacheKeyGenerator.metadata()

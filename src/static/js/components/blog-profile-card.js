@@ -128,10 +128,7 @@ class BlogProfileCard extends BaseComponent {
             }
             this.projectData = projectData;
             if (projectData.userid) {
-                const userResponse = await fetch(`/api/users/${projectData.userid}`);
-                if (userResponse.ok) {
-                    this.userData = await userResponse.json();
-                }
+                this.userData = await BaseComponent.getUser(projectData.userid);
             }
         } catch (error) {
             console.error('Error loading blog profile data:', error);
