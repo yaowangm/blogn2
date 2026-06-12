@@ -103,9 +103,22 @@ class ProjectItemRepository:
     async def get_latest_posts(self, limit: int = 5, exclude: Optional[int] = None, blogid: Optional[int] = None, offset: int = 0) -> List[dict]:
         """获取最新的博文记录，包含博客名称（支持分页）"""
         from src.models.project import Project
-        
+        from src.utils.text_utils import POST_LIST_EXCERPT_MAX_LENGTH
+
+        comment_excerpt = func.substr(ProjectItem.comment, 1, POST_LIST_EXCERPT_MAX_LENGTH).label("comment")
+
         query = (
-            select(ProjectItem, User.name.label("author_name"), Project.name.label("blog_name"))
+            select(
+                ProjectItem.id,
+                ProjectItem.name,
+                comment_excerpt,
+                ProjectItem.attachment,
+                ProjectItem.createtime,
+                ProjectItem.userid,
+                ProjectItem.projectid,
+                User.name.label("author_name"),
+                Project.name.label("blog_name"),
+            )
             .join(User, ProjectItem.userid == User.id)
             .join(Project, ProjectItem.projectid == Project.id)
             .where(ProjectItem.status == 1)  # 只获取正常状态的博文
@@ -122,28 +135,43 @@ class ProjectItemRepository:
         
         result = await self.session.exec(query)
         posts = []
-        
-        for project_item, author_name, blog_name in result:
+
+        for row in result:
             posts.append({
-                "id": project_item.id,
-                "name": project_item.name,
-                "comment": project_item.comment,
-                "attachment": project_item.attachment,
-                "author_name": author_name,
-                "blog_name": blog_name,
-                "blog_id": project_item.projectid,
-                "createtime": project_item.createtime,
-                "userid": project_item.userid
+                "id": row.id,
+                "name": row.name,
+                "comment": row.comment,
+                "attachment": row.attachment,
+                "author_name": row.author_name,
+                "blog_name": row.blog_name,
+                "blog_id": row.projectid,
+                "createtime": row.createtime,
+                "userid": row.userid
             })
-        
+
         return posts
 
     async def get_by_project_id_and_folder(self, project_id: int, folder_id: Optional[int] = None, limit: int = None, offset: int = 0, include_deleted: bool = False) -> List[dict]:
         """根据项目ID和文件夹ID获取项目项，包含用户信息"""
         from src.models.user import User
-        
+        from src.utils.text_utils import POST_LIST_EXCERPT_MAX_LENGTH
+
+        comment_excerpt = func.substr(ProjectItem.comment, 1, POST_LIST_EXCERPT_MAX_LENGTH).label("comment")
+
         query = (
-            select(ProjectItem, User.name.label("author_name"), Folder.name.label("folder_name"))
+            select(
+                ProjectItem.id,
+                ProjectItem.name,
+                comment_excerpt,
+                ProjectItem.createtime,
+                ProjectItem.accesscount,
+                ProjectItem.commentcount,
+                ProjectItem.userid,
+                ProjectItem.attachment,
+                ProjectItem.folderid,
+                User.name.label("author_name"),
+                Folder.name.label("folder_name"),
+            )
             .join(User, ProjectItem.userid == User.id)
             .outerjoin(Folder, ProjectItem.folderid == Folder.id)
             .where(ProjectItem.projectid == project_id)
@@ -173,24 +201,24 @@ class ProjectItemRepository:
         query = query.order_by(ProjectItem.createtime.desc())
         
         result = await self.session.exec(query)
-        
-        # 转换为字典格式
+
         posts = []
-        for project_item, author_name, folder_name in result:
+        for row in result:
+            folder_name = row.folder_name
             posts.append({
-                "id": project_item.id,
-                "name": project_item.name,
-                "comment": project_item.comment,
-                "createtime": project_item.createtime,
-                "accesscount": project_item.accesscount,
-                "commentcount": project_item.commentcount,
-                "userid": project_item.userid,
-                "author_name": author_name,
-                "attachment": project_item.attachment,
-                "folderid": project_item.folderid,
+                "id": row.id,
+                "name": row.name,
+                "comment": row.comment,
+                "createtime": row.createtime,
+                "accesscount": row.accesscount,
+                "commentcount": row.commentcount,
+                "userid": row.userid,
+                "author_name": row.author_name,
+                "attachment": row.attachment,
+                "folderid": row.folderid,
                 "category": (folder_name.strip() if folder_name else "未分类"),
             })
-        
+
         return posts
 
     async def count_by_project_id_and_folder(self, project_id: int, folder_id: Optional[int] = None) -> int:

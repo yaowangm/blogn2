@@ -66,18 +66,30 @@ class TestProjectItemRepository:
     @pytest.mark.unit
     async def test_get_latest_posts_success(self, project_item_repository, mock_session, sample_project_item):
         """测试获取最新博文成功"""
+        mock_row = MagicMock()
+        mock_row.id = sample_project_item.id
+        mock_row.name = sample_project_item.name
+        mock_row.comment = sample_project_item.comment
+        mock_row.attachment = sample_project_item.attachment
+        mock_row.createtime = sample_project_item.createtime
+        mock_row.userid = sample_project_item.userid
+        mock_row.projectid = 456
+        mock_row.author_name = "测试作者"
+        mock_row.blog_name = "测试博客"
+
         mock_result = MagicMock()
-        mock_result.__iter__.return_value = [(sample_project_item, "测试作者", "测试博客")]
+        mock_result.__iter__.return_value = [mock_row]
         mock_session.exec.return_value = mock_result
-        
+
         result = await project_item_repository.get_latest_posts(5, None, None, 0)
-        
+
         assert len(result) == 1
         assert result[0]["id"] == 1
         assert result[0]["name"] == "测试项目项"
         assert result[0]["comment"] == "测试内容"
         assert result[0]["author_name"] == "测试作者"
         assert result[0]["blog_name"] == "测试博客"
+        assert result[0]["blog_id"] == 456
         mock_session.exec.assert_called_once()
     
     @pytest.mark.unit

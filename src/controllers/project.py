@@ -25,6 +25,7 @@ from src.repositories.user_repository import UserRepository
 from src.constants import ArticleStatus
 from src.utils.file_utils import promote_temp_relative_path
 from src.utils.time_utils import TimeUtils
+from src.utils.text_utils import truncate_excerpt
 from src.config.app import validate_app_config
 
 logger = logging.getLogger(__name__)
@@ -150,7 +151,7 @@ async def get_project_posts(
             posts_data.append({
                 "id": post["id"],
                 "name": post["name"],
-                "comment": post["comment"],
+                "comment": truncate_excerpt(post["comment"]),
                 "createtime": post["createtime"],
                 "accesscount": post["accesscount"],
                 "commentcount": post["commentcount"],
