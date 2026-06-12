@@ -349,20 +349,7 @@ class HeaderComponent extends BaseComponent {
                     ${this.isLoggedIn ? `
                         <div class="user-menu" id="userMenu">
                             <div class="user-avatar">
-                                ${(() => {
-                                    // 按照最新评论卡片的方式：同时渲染头像和用户名首字母
-                                    const hasAvatar = this.userInfo && this.userInfo.avatar_url && this.userInfo.avatar_url !== 'null' && this.userInfo.avatar_url !== '';
-                                    const firstChar = this.userName && this.userName.length > 0 ? this.userName.charAt(0).toUpperCase() : 'U';
-                                    
-                                    if (hasAvatar) {
-                                        // 有头像URL，显示头像，失败时显示用户名首字母
-                                        return `<img src="${this.escapeHtml(this.userInfo.avatar_url)}" alt="Avatar" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                        <div class="avatar-placeholder" style="display: none;">${this.escapeHtml(firstChar)}</div>`;
-                                    } else {
-                                        // 没有头像URL，直接显示用户名首字母
-                                        return `<div class="avatar-placeholder">${this.escapeHtml(firstChar)}</div>`;
-                                    }
-                                })()}
+                                ${this.renderUserAvatarHtml()}
                             </div>
                             <span class="user-name">${this.escapeHtml(this.userName)}</span>
                             <div class="dropdown-arrow">▼</div>
@@ -697,6 +684,38 @@ class HeaderComponent extends BaseComponent {
             // 跳转到首页
             window.location.href = '/';
         }
+    }
+
+    getSmallAvatarPath(userId) {
+        if (!userId) {
+            return null;
+        }
+        const prefix = Math.floor(userId / 10000) + 1;
+        return `/avatar/${prefix}/s_${userId}.jpg`;
+    }
+
+    getUserAvatarPath() {
+        const avatarUrl = this.userInfo?.avatar_url;
+        if (avatarUrl && avatarUrl !== 'null' && avatarUrl !== '') {
+            return avatarUrl;
+        }
+        return this.getSmallAvatarPath(this.userInfo?.id);
+    }
+
+    renderUserAvatarHtml() {
+        const firstChar = this.userName && this.userName.length > 0
+            ? this.userName.charAt(0).toUpperCase()
+            : 'U';
+        const avatarPath = this.getUserAvatarPath();
+
+        if (avatarPath) {
+            return `<img src="${this.escapeHtml(avatarPath)}" alt=""
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                         onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
+                    <div class="avatar-placeholder" style="display: none;">${this.escapeHtml(firstChar)}</div>`;
+        }
+
+        return `<div class="avatar-placeholder">${this.escapeHtml(firstChar)}</div>`;
     }
 
     // 默认图标方法，当图标库不可用时使用
