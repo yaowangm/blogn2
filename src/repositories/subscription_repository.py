@@ -6,6 +6,7 @@ from src.models.project_item import ProjectItem
 from src.models.project import Project
 from src.models.user import User
 from src.utils.text_utils import POST_LIST_EXCERPT_MAX_LENGTH, truncate_excerpt
+from src.utils.avatar_utils import check_avatar_exists
 
 class SubscriptionRepository:
     """订阅数据访问层
@@ -58,18 +59,14 @@ class SubscriptionRepository:
         
         result = await self.session.exec(query)
         posts = []
-        
+        avatar_cache: Dict[int, str | None] = {}
+
         for row in result:
             avatar_path = None
             if row.userid:
-                import os
-                from src.config.app import validate_app_config
-                config = validate_app_config()
-                avatar_dir = config["avatar_dir"]
-                prefix = (row.userid // 10000) + 1
-                real_path = os.path.join(avatar_dir, str(prefix), f"s_{row.userid}.jpg")
-                if os.path.exists(real_path):
-                    avatar_path = f"/avatar/{prefix}/s_{row.userid}.jpg"
+                if row.userid not in avatar_cache:
+                    avatar_cache[row.userid] = check_avatar_exists(row.userid)
+                avatar_path = avatar_cache[row.userid]
             
             posts.append({
                 "id": row.id,
@@ -117,6 +114,26 @@ class SubscriptionRepository:
         result = await self.session.exec(statement)
         return result.first() or 0
     
+    async def get_existing_broadcast_project_ids(self, article_id: int, project_ids: List[int]) -> set[int]:
+        """批量查询已广播过的订阅者项目ID"""
+        if not project_ids:
+            return set()
+        statement = select(Subscription.projectid).where(
+            Subscription.piid == article_id,
+            Subscription.projectid.in_(project_ids),
+        )
+        result = await self.session.exec(statement)
+        return set(result.all())
+
+    async def create_broadcasts_bulk(self, broadcasts: List[Subscription]) -> int:
+        """批量创建广播记录（单次 commit）"""
+        if not broadcasts:
+            return 0
+        for broadcast in broadcasts:
+            self.session.add(broadcast)
+        await self.session.commit()
+        return len(broadcasts)
+
     async def create_broadcast(self, broadcast: Subscription) -> Subscription:
         """创建广播记录"""
         self.session.add(broadcast)

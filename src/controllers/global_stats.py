@@ -13,6 +13,7 @@ from src.services.global_stats_service import GlobalStatsService
 from src.utils.auth_dependencies import get_current_user
 from src.utils.permission_decorators import require_auth
 from src.utils.error_handlers import handle_api_errors
+from src.utils.cache import cache_global_stats
 
 
 # 创建全局统计API路由器
@@ -21,6 +22,7 @@ router = APIRouter(prefix="/stats", tags=["全局统计"])
 
 @router.get("/global", response_model=Dict[str, Any])
 @handle_api_errors("获取全局统计失败")
+@cache_global_stats()
 async def get_global_stats(
     session: AsyncSession = Depends(get_async_session)
 ):

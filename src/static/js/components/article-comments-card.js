@@ -48,76 +48,46 @@ class ArticleCommentsCard extends BaseComponent {
      */
     async loadArticleData() {
         try {
-            // 获取认证头
             const headers = UserManager.createHeaders();
 
-            const response = await fetch(`/api/articles/${this.articleId}?page=${this.currentPage}&per_page=${this.perPage}`, {
-                headers: headers
-            });
+            const response = await fetch(
+                `/api/articles/${this.articleId}/comments?page=${this.currentPage}&limit=${this.perPage}`,
+                { headers }
+            );
             if (response.ok) {
-                this.articleData = await response.json();
+                const data = await response.json();
+                this.articleData = {
+                    comments: data.comments || [],
+                    comment_count: data.comment_count ?? data.pagination?.total ?? 0,
+                };
 
-                // 保存分页信息
-                if (this.articleData.comments_pagination) {
-                    this.pagination = this.articleData.comments_pagination;
+                if (data.pagination) {
+                    this.pagination = data.pagination;
                 }
 
-                // 如果有评论，获取每个评论的用户信息
-                if (this.articleData.comments && this.articleData.comments.length > 0) {
-                    await this.loadCommentUsers();
-                }
+                this.buildUserMapFromComments(this.articleData.comments);
             } else if (response.status === 404) {
-                // 文章不存在，跳转到错误页面
                 window.location.href = '/static/error.html';
                 return;
             } else {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
         } catch (error) {
-            this.logError('Failed to load article data', error);
-            // 加载失败，跳转到错误页面
+            this.logError('Failed to load article comments', error);
             window.location.href = '/static/error.html';
         }
     }
 
-    /**
-     * 加载评论用户信息
-     */
-    async loadCommentUsers() {
-        if (!this.articleData.comments) return;
-
-        try {
-            // 获取所有不重复的用户ID
-            const userIds = [...new Set(this.articleData.comments
-                .map(comment => comment.user_id)
-                .filter(id => id))];
-
-            // 批量获取用户信息
-            const userPromises = userIds.map(async (userId) => {
-                try {
-                    const userResponse = await fetch(`/api/users/${userId}`);
-                    if (userResponse.ok) {
-                        return await userResponse.json();
-                    }
-                } catch (error) {
-                    console.warn(`Failed to load user ${userId}:`, error);
-                }
-                return null;
-            });
-
-            const users = await Promise.all(userPromises);
-
-            // 创建用户ID到用户信息的映射
-            this.userMap = {};
-            users.forEach(user => {
-                if (user) {
-                    this.userMap[user.id] = user;
-                }
-            });
-        } catch (error) {
-            console.warn('Failed to load comment users:', error);
-            this.userMap = {};
-        }
+    buildUserMapFromComments(comments) {
+        this.userMap = {};
+        (comments || []).forEach((comment) => {
+            if (!comment.user_id) return;
+            this.userMap[comment.user_id] = {
+                id: comment.user_id,
+                name: comment.author_name || `用户${comment.user_id}`,
+                avatar: comment.author_avatar,
+            };
+        });
     }
 
     /**
@@ -464,28 +434,23 @@ class ArticleCommentsCard extends BaseComponent {
      * 渲染单个评论
      */
     renderComment(comment) {
-        const { id, content, user_id, post_time, reply_count } = comment;
+        const { id, content, user_id, post_time, reply_count, author_name, author_avatar } = comment;
 
-        // 获取用户名和博客ID，如果没有则显示用户ID或匿名
-        let userName = '匿名';
+        let userName = author_name || '匿名';
         let blogId = null;
-        let userAvatar = null;
+        let userAvatar = author_avatar || null;
 
-        // 检查当前用户是否有删除权限
         const canDelete = this.canDeleteComment(comment);
 
         if (user_id) {
             if (this.userMap && this.userMap[user_id]) {
                 const user = this.userMap[user_id];
-                userName = user.name || `用户${user_id}`;
+                userName = user.name || userName;
                 blogId = user.projectid || null;
-
-                // 构建头像路径
-                if (user.id) {
-                    const prefix = Math.floor(user.id / 10000) + 1;
-                    userAvatar = `/avatar/${prefix}/${user.id}.jpg`;
+                if (!userAvatar && user.avatar) {
+                    userAvatar = user.avatar;
                 }
-            } else {
+            } else if (!author_name) {
                 userName = `用户${user_id}`;
             }
         }

@@ -16,6 +16,12 @@ class BaseComponent extends HTMLElement {
     static _projectPromises = {};
     static _articleCache = {};
     static _articlePromises = {};
+    static _metadataCache = null;
+    static _metadataPromise = null;
+    static _userCache = {};
+    static _userPromises = {};
+    static _appConfigCache = null;
+    static _appConfigPromise = null;
 
     constructor() {
         super();
@@ -28,18 +34,96 @@ class BaseComponent extends HTMLElement {
      * 所有组件共享的元数据加载逻辑
      */
     async loadMetadata() {
-        try {
-            const response = await fetch('/api/metadata/');
-            if (response.ok) {
-                this.metadata = await response.json();
-            } else {
-                this.logError('Failed to load metadata', response.status);
-                this.metadata = this.getDefaultMetadata();
+        this.metadata = await BaseComponent.getMetadata();
+    }
+
+    static async getMetadata() {
+        if (BaseComponent._metadataCache) return BaseComponent._metadataCache;
+        if (BaseComponent._metadataPromise) return BaseComponent._metadataPromise;
+        BaseComponent._metadataPromise = (async () => {
+            try {
+                const response = await fetch('/api/metadata/');
+                if (response.ok) {
+                    BaseComponent._metadataCache = await response.json();
+                    return BaseComponent._metadataCache;
+                }
+            } catch (error) {
+                console.error('Error loading metadata:', error);
             }
-        } catch (error) {
-            this.logError('Error loading metadata', error);
-            this.metadata = this.getDefaultMetadata();
+            const fallback = {
+                site_name: 'BlogN',
+                logo_url: '/static/images/logo.svg',
+                user_count: 0,
+                post_count: 0,
+            };
+            BaseComponent._metadataCache = fallback;
+            return fallback;
+        })();
+        try {
+            return await BaseComponent._metadataPromise;
+        } finally {
+            BaseComponent._metadataPromise = null;
         }
+    }
+
+    static async getUser(userId) {
+        if (!userId) return null;
+        if (BaseComponent._userCache[userId]) return BaseComponent._userCache[userId];
+        if (BaseComponent._userPromises[userId]) return BaseComponent._userPromises[userId];
+        BaseComponent._userPromises[userId] = (async () => {
+            try {
+                const response = await fetch(`/api/users/${userId}`);
+                if (!response.ok) return null;
+                const data = await response.json();
+                BaseComponent._userCache[userId] = data;
+                return data;
+            } catch (error) {
+                console.warn(`Failed to load user ${userId}:`, error);
+                return null;
+            } finally {
+                delete BaseComponent._userPromises[userId];
+            }
+        })();
+        return BaseComponent._userPromises[userId];
+    }
+
+    static async getAppConfig() {
+        if (BaseComponent._appConfigCache) return BaseComponent._appConfigCache;
+        if (BaseComponent._appConfigPromise) return BaseComponent._appConfigPromise;
+        BaseComponent._appConfigPromise = (async () => {
+            try {
+                const response = await fetch('/api/config/app');
+                if (response.ok) {
+                    BaseComponent._appConfigCache = await response.json();
+                    return BaseComponent._appConfigCache;
+                }
+            } catch (error) {
+                console.warn('Failed to load app config:', error);
+            }
+            const fallback = { blog_posts_page_size: 10, max_attachments_per_article: 5 };
+            BaseComponent._appConfigCache = fallback;
+            return fallback;
+        })();
+        try {
+            return await BaseComponent._appConfigPromise;
+        } finally {
+            BaseComponent._appConfigPromise = null;
+        }
+    }
+
+    static observeWhenVisible(element, callback, rootMargin = '120px') {
+        if (!element || typeof callback !== 'function') return;
+        if (!('IntersectionObserver' in window)) {
+            callback();
+            return;
+        }
+        const observer = new IntersectionObserver((entries) => {
+            if (entries.some((entry) => entry.isIntersecting)) {
+                observer.disconnect();
+                callback();
+            }
+        }, { rootMargin });
+        observer.observe(element);
     }
 
     /**

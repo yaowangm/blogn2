@@ -174,7 +174,23 @@ class TestArticleControllerSimple:
         mock_comment.replycount = 0
         mock_post_repo = AsyncMock()
         mock_post_repo_class.return_value = mock_post_repo
-        mock_post_repo.get_by_project_item_id.return_value = [mock_comment]
+        mock_post_repo.get_by_project_item_id_paginated = AsyncMock(return_value={
+            "comments": [{
+                "id": 1,
+                "content": "测试评论",
+                "user_id": 1,
+                "post_time": datetime.now(),
+                "reply_count": 0,
+            }],
+            "pagination": {
+                "current_page": 1,
+                "per_page": 20,
+                "total": 1,
+                "total_pages": 1,
+                "has_prev": False,
+                "has_next": False,
+            },
+        })
         
         # 导入控制器函数
         from src.controllers.article import get_article_comments
@@ -189,9 +205,10 @@ class TestArticleControllerSimple:
         
         # 验证结果
         assert result is not None
-        assert len(result) == 1
-        assert result[0]["id"] == 1
-        assert result[0]["content"] == "测试评论"
+        assert len(result["comments"]) == 1
+        assert result["comments"][0]["id"] == 1
+        assert result["comments"][0]["content"] == "测试评论"
+        assert result["comment_count"] == 1
         
         # 验证缓存被调用（如果缓存装饰器正常工作）
         # mock_cache.assert_called_once()  # 注释掉，因为装饰器可能不会在测试中被调用

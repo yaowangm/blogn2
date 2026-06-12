@@ -377,9 +377,15 @@ def cache_blog_list(ttl: int = None, enable_cache: bool = True):
 
 
 def cache_blog_recent_list(ttl: int = None):
-    """最新博客列表缓存装饰器"""
+    """最新博文列表缓存装饰器（/blogs/posts/latest）"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
                           f"blog:recent:list:{kwargs.get('page', 1)}:{kwargs.get('page_size', 10)}:{kwargs.get('exclude', 'none')}:{kwargs.get('blogid', 'none')}")
+
+
+def cache_blogs_joined_recent(ttl: int = None):
+    """最新加入博客列表缓存装饰器（/blogs/recent）"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
+                          CacheKeyGenerator.blogs_joined_recent(kwargs.get('limit', 10)))
 
 
 def cache_blog_popular_list(ttl: int = None):
@@ -441,7 +447,18 @@ def cache_blog_message_thread(ttl: int = None):
 def cache_search_results(ttl: int = None):
     """搜索结果缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
-                          CacheKeyGenerator.search_results(kwargs.get('query', ''), kwargs.get('page', 1)))
+                          CacheKeyGenerator.search_results(
+                              kwargs.get('q') or kwargs.get('query', ''),
+                              kwargs.get('page', 1),
+                              kwargs.get('type', kwargs.get('search_type', 'all')),
+                              kwargs.get('sort', 'relevance'),
+                              kwargs.get('limit', 10),
+                          ))
+
+
+def cache_global_stats(ttl: int = 60):
+    """全局统计缓存装饰器（短 TTL）"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: "stats:global")
 
 
 def cache_metadata(ttl: int = None):
@@ -492,6 +509,7 @@ def cache_project_posts(ttl: int = None):
                               kwargs.get('limit', 10),
                               kwargs.get('type', 'original'),
                               kwargs.get('folderid'),
+                              kwargs.get('include_deleted', False),
                           ))
 
 
@@ -534,24 +552,26 @@ def cache_user_projects(ttl: int = None):
 # RSS相关缓存装饰器
 def cache_site_rss(ttl: int = None):
     """站点RSS缓存装饰器"""
-    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: CacheKeyGenerator.site_rss())
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
+                          CacheKeyGenerator.site_rss(kwargs.get('limit', 20)))
 
 
 def cache_blog_rss(ttl: int = None):
     """博客RSS缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
-                          CacheKeyGenerator.blog_rss(kwargs.get('project_id', 0)))
+                          CacheKeyGenerator.blog_rss(kwargs.get('project_id', 0), kwargs.get('limit', 20)))
 
 
 def cache_site_rss_full(ttl: int = None):
     """完整站点RSS缓存装饰器"""
-    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: CacheKeyGenerator.site_rss_full())
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
+                          CacheKeyGenerator.site_rss_full(kwargs.get('limit', 20)))
 
 
 def cache_blog_rss_full(ttl: int = None):
     """完整博客RSS缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
-                          CacheKeyGenerator.blog_rss_full(kwargs.get('project_id', 0)))
+                          CacheKeyGenerator.blog_rss_full(kwargs.get('project_id', 0), kwargs.get('limit', 20)))
 
 
 # 友情链接相关缓存装饰器

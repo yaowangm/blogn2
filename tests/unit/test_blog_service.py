@@ -102,6 +102,7 @@ class TestBlogService:
         """测试检查头像存在成功"""
         # 设置测试环境变量，确保使用测试期望的路径
         monkeypatch.setenv("AVATAR_DIR", "../pic/blogn_img/userlogo")
+        monkeypatch.setattr('src.utils.avatar_utils._avatar_dir', None)
         
         mock_exists.return_value = True
         
@@ -120,6 +121,7 @@ class TestBlogService:
         """测试检查头像不存在"""
         # 设置测试环境变量，确保使用测试期望的路径
         monkeypatch.setenv("AVATAR_DIR", "../pic/blogn_img/userlogo")
+        monkeypatch.setattr('src.utils.avatar_utils._avatar_dir', None)
         
         mock_exists.return_value = False
         

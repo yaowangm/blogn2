@@ -17,8 +17,10 @@ class FriendLinksCard extends BaseComponent {
     async connectedCallback() {
         this.projectId = this.getProjectIdFromUrl();
         this.render();
-        await Promise.all([this.checkOwnership(), this.loadData()]);
-        this.render();
+        BaseComponent.observeWhenVisible(this, async () => {
+            await Promise.all([this.checkOwnership(), this.loadData()]);
+            this.render();
+        });
     }
 
     getProjectIdFromUrl() {

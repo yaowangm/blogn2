@@ -27,6 +27,8 @@ import numpy as np
 from sqlalchemy import text
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from src.utils.text_utils import truncate_excerpt
+
 logger = logging.getLogger(__name__)
 
 # 默认相似度阈值 55%，仅用于兜底（0/缺失时）及关键词回退时的返回值
@@ -829,7 +831,7 @@ class HierarchicalSearchService:
         return {
             "id": item[0],
             "title": item[1],
-            "content": item[2],
+            "content": truncate_excerpt(item[2] if isinstance(item[2], str) else str(item[2] or "")),
             "author": item[3],
             "created_at": item[4].isoformat() if item[4] else None,
             "relevance_score": self._row_relevance(item),
@@ -849,7 +851,7 @@ class HierarchicalSearchService:
         return {
             "id": item[0],
             "title": item[1],
-            "content": item[2],
+            "content": truncate_excerpt(item[2] if isinstance(item[2], str) else str(item[2] or "")),
             "author": item[3],
             "created_at": item[4].isoformat() if item[4] else None,
             "relevance_score": self._row_relevance(item),
@@ -875,7 +877,7 @@ class HierarchicalSearchService:
         return {
             "id": item[0],
             "title": item[1],
-            "content": item[2],
+            "content": truncate_excerpt(item[2] if isinstance(item[2], str) else str(item[2] or "")),
             "author": item[3],
             "created_at": item[4].isoformat() if item[4] else None,
             "relevance_score": self._row_relevance(item),

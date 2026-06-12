@@ -12,6 +12,7 @@ class HeaderComponent extends BaseComponent {
 
 
     async connectedCallback() {
+        this.renderSkeleton();
         await this.loadMetadata();
         await this.checkAuthStatus();
         this.render();
@@ -23,6 +24,23 @@ class HeaderComponent extends BaseComponent {
         
         // 动态加载token-manager服务
         this.loadTokenManager();
+    }
+
+    renderSkeleton() {
+        this.shadowRoot.innerHTML = `
+            <style>
+                :host { display: block; background: var(--white); border-bottom: 1px solid var(--gray-200); box-shadow: var(--shadow-sm); position: sticky; top: 0; z-index: 100; }
+                .header-container { max-width: 1200px; margin: 0 auto; padding: 0 var(--spacing-4); display: flex; align-items: center; justify-content: space-between; height: 64px; }
+                .skeleton-block { background: var(--gray-200); border-radius: var(--radius-md); animation: pulse 1.2s ease-in-out infinite; }
+                .skeleton-logo { width: 120px; height: 28px; }
+                .skeleton-actions { width: 180px; height: 32px; }
+                @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+            </style>
+            <div class="header-container">
+                <div class="skeleton-block skeleton-logo"></div>
+                <div class="skeleton-block skeleton-actions"></div>
+            </div>
+        `;
     }
 
     render() {

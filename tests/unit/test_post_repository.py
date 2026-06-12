@@ -146,9 +146,9 @@ class TestPostRepository:
 
     @pytest.mark.unit
     async def test_get_recent_messages_success(self, post_repository, mock_session, sample_message_post):
-        """测试获取最新留言成功"""
+        """测试获取最新留言成功（单条 JOIN 查询，含作者与最后回复用户名）"""
         mock_result = MagicMock()
-        mock_result.all.return_value = [sample_message_post]
+        mock_result.all.return_value = [(sample_message_post, "测试用户", "回复用户")]
         mock_session.exec.return_value = mock_result
 
         result = await post_repository.get_recent_messages(5)
@@ -158,6 +158,8 @@ class TestPostRepository:
         assert result[0]["subject"] == "测试留言标题"
         assert result[0]["userid"] == 123
         assert result[0]["replycount"] == 3
+        assert result[0]["author_name"] == "测试用户"
+        assert result[0]["last_reply_author"] == "回复用户"
 
     @pytest.mark.unit
     async def test_get_recent_messages_no_last_reply(self, post_repository, mock_session):
@@ -175,36 +177,26 @@ class TestPostRepository:
         )
 
         mock_result = MagicMock()
-        mock_result.all.return_value = [post]
+        mock_result.all.return_value = [(post, "测试用户", None)]
         mock_session.exec.return_value = mock_result
 
         result = await post_repository.get_recent_messages(5)
 
         assert len(result) == 1
         assert result[0]["replycount"] == 0
+        assert result[0]["last_reply_author"] == "匿名用户"
 
     @pytest.mark.unit
     async def test_get_recent_messages_last_reply_exception(self, post_repository, mock_session, sample_message_post):
-        """测试获取最新留言时最后回复查询异常"""
-        # 模拟用户查询结果（作者）
-        mock_user_result = MagicMock()
-        mock_user_result.first.return_value = "测试用户"
-
-        # 模拟最后回复用户查询结果（异常情况）
-        mock_last_reply_result = MagicMock()
-        mock_last_reply_result.first.side_effect = Exception("数据库查询异常")
-
-        # 模拟评论查询结果
+        """测试获取最新留言时最后回复用户未关联（JOIN 无匹配）"""
         mock_result = MagicMock()
-        mock_result.all.return_value = [sample_message_post]
-
-        # 设置exec的返回值，第一次调用返回留言，第二次调用返回作者用户名，第三次调用返回最后回复用户名（异常）
-        mock_session.exec.side_effect = [mock_result, mock_user_result, mock_last_reply_result]
+        mock_result.all.return_value = [(sample_message_post, "测试用户", None)]
+        mock_session.exec.return_value = mock_result
 
         result = await post_repository.get_recent_messages(5)
 
         assert len(result) == 1
-        assert result[0]["last_reply_author"] == "未知用户"  # 异常时返回"未知用户"
+        assert result[0]["last_reply_author"] == "未知用户"
 
     @pytest.mark.unit
     async def test_get_recent_messages_empty(self, post_repository, mock_session):
@@ -233,7 +225,7 @@ class TestPostRepository:
         )
 
         mock_result = MagicMock()
-        mock_result.all.return_value = [post]
+        mock_result.all.return_value = [(post, "测试用户", None)]
         mock_session.exec.return_value = mock_result
 
         result = await post_repository.get_recent_messages(5)

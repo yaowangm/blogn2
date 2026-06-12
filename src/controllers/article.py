@@ -11,6 +11,7 @@
 所有接口都支持缓存以提高性能。
 """
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Body, Response
@@ -106,9 +107,7 @@ async def get_article_detail(
         if should_count:
             counted_ok = False
             try:
-                await project_item_repo.increment_access_count(article_id)
-                if article.projectid:
-                    await project_repo.increment_access_count(article.projectid)
+                await project_item_repo.increment_access_count(article_id, article.projectid)
                 counted_ok = True
             except Exception:
                 logger.warning(
@@ -134,35 +133,46 @@ async def get_article_detail(
         else:
             hits_display = article.accesscount or 0
 
-        # 获取作者信息
-        author = None
-        author_avatar = None
-        if article.userid:
-            author = await user_repo.get_by_id(article.userid)
-            if author:
-                from src.utils.dependencies import get_blog_service
-                blog_service = await get_blog_service(session)
-                author_avatar = blog_service._check_avatar_exists(author.id)
+        # 并行获取作者、项目、分类、评论、附件
+        async def fetch_author():
+            if not article.userid:
+                return None, None
+            author_obj = await user_repo.get_by_id(article.userid)
+            if not author_obj:
+                return None, None
+            from src.utils.dependencies import get_blog_service
+            blog_service = await get_blog_service(session)
+            return author_obj, blog_service._check_avatar_exists(author_obj.id)
 
-        # 获取项目信息
-        project = None
-        if article.projectid:
-            project = await project_repo.get_by_id(article.projectid)
+        async def fetch_project():
+            if not article.projectid:
+                return None
+            return await project_repo.get_by_id(article.projectid)
 
-        # 获取分类信息
-        category = None
-        if article.folderid:
+        async def fetch_category():
+            if not article.folderid:
+                return None
             from src.repositories.folder_repository import FolderRepository
             folder_repo = FolderRepository(session)
-            category = await folder_repo.get_by_id(article.folderid)
+            return await folder_repo.get_by_id(article.folderid)
 
-        # 获取文章评论（分页）
-        comments_data = await post_repo.get_by_project_item_id_paginated(article_id, page, per_page)
+        (
+            author_result,
+            project,
+            category,
+            comments_data,
+            attachments,
+        ) = await asyncio.gather(
+            fetch_author(),
+            fetch_project(),
+            fetch_category(),
+            post_repo.get_by_project_item_id_paginated(article_id, page, per_page),
+            attachment_repo.get_by_project_item_id(article_id),
+        )
+
+        author, author_avatar = author_result
         comments = comments_data["comments"]
         pagination = comments_data["pagination"]
-
-        # 获取文章附件图片
-        attachments = await attachment_repo.get_by_project_item_id(article_id)
 
         return {
             "id": article.id,
@@ -197,15 +207,7 @@ async def get_article_detail(
             "created_at": article.createtime,
             "updated_at": article.updatetime,
             "comment_count": article.commentcount or 0,
-            "comments": [
-                {
-                    "id": comment.id,
-                    "content": comment.content,
-                    "user_id": comment.userid,
-                    "post_time": comment.posttime,
-                    "reply_count": comment.replycount or 0
-                } for comment in comments
-            ] if comments else [],
+            "comments": comments if comments else [],
             "comments_pagination": pagination
         }
 
@@ -332,7 +334,7 @@ async def delete_article_comment(
         raise HTTPException(status_code=500, detail=f"删除评论失败: {str(e)}")
 
 
-@router.get("/articles/{article_id}/comments", response_model=List[Dict[str, Any]])
+@router.get("/articles/{article_id}/comments", response_model=Dict[str, Any])
 @cache_article_comments(ttl=900)  # 缓存15分钟
 async def get_article_comments(
     article_id: int,
@@ -343,19 +345,8 @@ async def get_article_comments(
     """
     获取指定文章的评论列表（分页）
 
-    Args:
-        article_id: 文章ID
-        page: 页码，默认1
-        limit: 每页数量，默认20
-        session: 数据库会话
-
     Returns:
-        List[Dict[str, Any]]: 评论列表，每个评论包含：
-        - id: 评论ID
-        - content: 评论内容
-        - user_id: 用户ID
-        - post_time: 评论时间
-        - reply_count: 回复数量
+        Dict[str, Any]: comments、pagination、comment_count
     """
     post_repo = PostRepository(session)
     project_item_repo = ProjectItemRepository(session)
@@ -366,23 +357,13 @@ async def get_article_comments(
         if not article:
             raise HTTPException(status_code=404, detail="文章不存在")
 
-        # 获取评论列表
-        comments = await post_repo.get_by_project_item_id(article_id)
-
-        # 简单的分页处理
-        start = (page - 1) * limit
-        end = start + limit
-        paginated_comments = comments[start:end]
-
-        return [
-            {
-                "id": comment.id,
-                "content": comment.content,
-                "user_id": comment.userid,
-                "post_time": comment.posttime,
-                "reply_count": comment.replycount or 0
-            } for comment in paginated_comments
-        ]
+        comments_data = await post_repo.get_by_project_item_id_paginated(article_id, page, limit)
+        pagination = comments_data["pagination"]
+        return {
+            "comments": comments_data["comments"],
+            "pagination": pagination,
+            "comment_count": pagination.get("total", 0),
+        }
 
     except HTTPException:
         raise

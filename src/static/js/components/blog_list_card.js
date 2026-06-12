@@ -77,17 +77,23 @@ class BlogListCard extends BaseComponent {
         this.showCategoryInfo = this.shouldShowCategoryInfo();
         this.currentFolderId = FolderFilter.normalizeFolderId(this.getCurrentFolderId());
         this.currentCategoryName = FolderFilter.getCategoryLabel(this.currentFolderId);
+        const initialPage = typeof this.getCurrentPageFromUrl === 'function' ? this.getCurrentPageFromUrl() : 1;
+        this.currentPage = initialPage;
+        this._shellRendered = false;
+
+        const bootTasks = [this.loadPageSizeConfig()];
         if (this.showCategoryInfo) {
             this.projectId = this.getProjectIdFromUrl();
             this.setupCategoryMenuDismiss();
-            await Promise.all([this.checkOwnership(), this.loadCategories()]);
+            bootTasks.push(this.checkOwnership(), this.loadCategories());
         }
-        await this.loadPageSizeConfig();
-        // 从 URL 读取 page，直接加载对应页（如 /blog/12?page=24 加载第 24 页）
-        const initialPage = typeof this.getCurrentPageFromUrl === 'function' ? this.getCurrentPageFromUrl() : 1;
-        this.currentPage = initialPage;
+
         this.render();
+        this._shellRendered = true;
         this.loadContent(initialPage);
+        Promise.all(bootTasks).catch((error) => {
+            console.warn('博客列表初始化任务失败:', error);
+        });
         this.addEventListeners();
     }
 
@@ -580,7 +586,12 @@ class BlogListCard extends BaseComponent {
         try {
             this.currentPage = page;
             this.loading = true;
-            this.render();
+            if (!this._shellRendered) {
+                this.render();
+                this._shellRendered = true;
+            } else {
+                this.showListLoading();
+            }
             
             // 检测是否在博客页面
             const isBlogPage = this.isBlogPage();
@@ -775,7 +786,7 @@ class BlogListCard extends BaseComponent {
                             ${this.renderPostMeta(post)}
                             <p class="post-excerpt">${safeExcerpt}</p>
                         </div>
-                        ${image ? `<div class="post-attachment-image"><img src="${image}" alt="${safeTitle}" onerror="this.style.display='none'"></div>` : ''}
+                        ${image ? `<div class="post-attachment-image"><img src="${image}" alt="${safeTitle}" loading="lazy" onerror="this.style.display='none'"></div>` : ''}
                     </a>
                 `;
             }).join('');
@@ -1205,13 +1216,26 @@ class BlogListCard extends BaseComponent {
         `;
     }
 
+    showListLoading() {
+        const cardBody = this.shadowRoot.querySelector('.card-body');
+        if (cardBody) {
+            cardBody.innerHTML = `
+                <div class="post-list">
+                    <div class="post-item">
+                        <div class="post-content">
+                            <p class="post-excerpt">正在加载博文...</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        this.updatePagination();
+    }
+
     async loadPageSizeConfig() {
         try {
-            const response = await fetch('/api/config/app');
-            if (response.ok) {
-                const config = await response.json();
-                this.pageSize = config.blog_posts_page_size || 10;
-            }
+            const config = await BaseComponent.getAppConfig();
+            this.pageSize = config.blog_posts_page_size || 10;
         } catch (error) {
             console.warn('⚠️ 加载应用配置失败，使用默认pagesize=10:', error);
         }

@@ -241,59 +241,79 @@ class ProjectItemRepository:
     async def get_recent_articles(self, limit: int = 20) -> List[dict]:
         """获取最新发布的文章列表（用于RSS）"""
         from src.models.project import Project
-        
-        # 先尝试不限制任何条件，看看能获取到什么数据
+
+        comment_excerpt = func.substr(ProjectItem.comment, 1, 200).label("comment_excerpt")
         query = (
-            select(ProjectItem, User.name.label("author_name"), Project.name.label("project_name"))
+            select(
+                ProjectItem.id,
+                ProjectItem.name,
+                comment_excerpt,
+                ProjectItem.createtime,
+                ProjectItem.userid,
+                ProjectItem.projectid,
+                ProjectItem.attachment,
+                User.name.label("author_name"),
+                Project.name.label("project_name"),
+            )
             .join(User, ProjectItem.userid == User.id)
             .join(Project, ProjectItem.projectid == Project.id)
             .order_by(ProjectItem.createtime.desc())
             .limit(limit)
         )
-        
+
         result = await self.session.exec(query)
-        
-        # 转换为字典格式
+
         articles = []
-        for project_item, author_name, project_name in result:
+        for row in result:
             articles.append({
-                "id": project_item.id,
-                "name": project_item.name,
-                "comment": project_item.comment,
-                "createtime": project_item.createtime,
-                "userid": project_item.userid,
-                "projectid": project_item.projectid,
-                "author_name": author_name,
-                "project_name": project_name
+                "id": row.id,
+                "name": row.name,
+                "comment": row.comment_excerpt or "",
+                "createtime": row.createtime,
+                "userid": row.userid,
+                "projectid": row.projectid,
+                "attachment": row.attachment,
+                "author_name": row.author_name,
+                "project_name": row.project_name,
             })
-        
+
         return articles
-    
+
     async def get_articles_by_project(self, project_id: int, limit: int = 20) -> List[dict]:
         """获取指定博客下的最新文章列表（用于RSS）"""
+        comment_excerpt = func.substr(ProjectItem.comment, 1, 200).label("comment_excerpt")
         query = (
-            select(ProjectItem, User.name.label("author_name"))
+            select(
+                ProjectItem.id,
+                ProjectItem.name,
+                comment_excerpt,
+                ProjectItem.createtime,
+                ProjectItem.userid,
+                ProjectItem.projectid,
+                ProjectItem.attachment,
+                User.name.label("author_name"),
+            )
             .join(User, ProjectItem.userid == User.id)
             .where(ProjectItem.projectid == project_id)
             .order_by(ProjectItem.createtime.desc())
             .limit(limit)
         )
-        
+
         result = await self.session.exec(query)
-        
-        # 转换为字典格式
+
         articles = []
-        for project_item, author_name in result:
+        for row in result:
             articles.append({
-                "id": project_item.id,
-                "name": project_item.name,
-                "comment": project_item.comment,
-                "createtime": project_item.createtime,
-                "userid": project_item.userid,
-                "projectid": project_item.projectid,
-                "author_name": author_name
+                "id": row.id,
+                "name": row.name,
+                "comment": row.comment_excerpt or "",
+                "createtime": row.createtime,
+                "userid": row.userid,
+                "projectid": row.projectid,
+                "attachment": row.attachment,
+                "author_name": row.author_name,
             })
-        
+
         return articles
     
     async def update(self, project_item_id: int, **kwargs) -> Optional[ProjectItem]:
@@ -391,24 +411,26 @@ class ProjectItemRepository:
             return True
         return False
     
-    async def increment_access_count(self, project_item_id: int) -> bool:
-        """
-        增加文章访问次数
-        
-        Args:
-            project_item_id: 文章ID
-            
-        Returns:
-            bool: 更新是否成功
-        """
+    async def increment_access_count(self, project_item_id: int, project_id: int | None = None) -> bool:
+        """增加文章访问次数，可选同时增加所属博客访问次数（单次 commit）"""
         try:
             project_item = await self.get_by_id(project_item_id)
-            if project_item:
-                project_item.accesscount = (project_item.accesscount or 0) + 1
-                self.session.add(project_item)
-                await self.session.commit()
-                return True
-            else:
+            if not project_item:
                 return False
-        except Exception as e:
+
+            project_item.accesscount = (project_item.accesscount or 0) + 1
+            self.session.add(project_item)
+
+            pid = project_id or project_item.projectid
+            if pid:
+                from src.repositories.project_repository import ProjectRepository
+                project_repo = ProjectRepository(self.session)
+                project = await project_repo.get_by_id(pid)
+                if project:
+                    project.accesscount = (project.accesscount or 0) + 1
+                    self.session.add(project)
+
+            await self.session.commit()
+            return True
+        except Exception:
             return False

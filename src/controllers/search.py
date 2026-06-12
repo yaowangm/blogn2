@@ -12,9 +12,71 @@ from src.database import get_async_session
 from src.utils.auth_dependencies import get_optional_current_user
 from src.services.model_cache import get_cached_model
 from src.services.search_service import HierarchicalSearchService, DEFAULT_THRESHOLD
+from src.utils.cache import cache_search_results
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+@cache_search_results()
+async def _execute_search(
+    q: str,
+    type: str,
+    sort: str,
+    page: int,
+    limit: int,
+    session: AsyncSession,
+    vectorization_service,
+) -> Dict[str, Any]:
+    """执行搜索并返回响应体（可缓存）"""
+    search_service = HierarchicalSearchService(vectorization_service, session)
+    search_method = "bert"
+    model_error = False
+
+    try:
+        results = await search_service.search(
+            query=q,
+            search_type=type,
+            sort_by=sort,
+            page=page,
+            limit=limit,
+        )
+
+        if results.get("total", 0) == 0 and results.get("items", []) == []:
+            search_method = "bert_no_results"
+
+    except Exception as e:
+        search_method = "bert_search_error"
+        results = {
+            "items": [],
+            "total": 0,
+            "has_more": False,
+            "search_time": 0.0,
+            "error": str(e),
+        }
+
+    th = results.get("dynamic_threshold", DEFAULT_THRESHOLD)
+    for it in results.get("items", []):
+        try:
+            cur = float(it.get("relevance_score") or 0)
+        except (TypeError, ValueError):
+            cur = 0
+        it["relevance_score"] = th if cur <= 0 else cur
+
+    return {
+        "query": q,
+        "type": type,
+        "sort": sort,
+        "page": page,
+        "limit": limit,
+        "total": results.get("total", 0),
+        "results": results.get("items", []),
+        "has_more": results.get("has_more", False),
+        "search_time": results.get("search_time", 0),
+        "search_method": search_method,
+        "dynamic_threshold": th,
+    }
+
 
 @router.get("/search")
 async def search_content(
@@ -37,9 +99,15 @@ async def search_content(
     - 多种排序方式
     """
     try:
-        # 优先使用 lifespan 中初始化的同一模型实例（Docker 下避免与请求时 get_cached_model 不一致）
-        search_method = "bert"  # 默认使用BERT搜索
-        model_error = False  # 标记模型是否出错
+        if not q or not q.strip():
+            raise HTTPException(status_code=400, detail="搜索关键词不能为空")
+
+        if type not in ['all', 'articles', 'comments']:
+            raise HTTPException(status_code=400, detail="搜索类型必须是 all, articles 或 comments")
+
+        if sort not in ['relevance', 'date', 'popularity']:
+            raise HTTPException(status_code=400, detail="排序方式必须是 relevance, date 或 popularity")
+
         vectorization_service = getattr(request.app.state, "model_cache", None)
         if vectorization_service is None:
             try:
@@ -47,10 +115,6 @@ async def search_content(
             except RuntimeError:
                 vectorization_service = None
         if vectorization_service is None:
-            # 模型缓存未初始化，返回错误而不是创建新实例
-            search_method = "bert_model_error"  # 模型加载失败
-            model_error = True
-            # 不创建新的BERTVectorizationService实例，直接返回错误
             return {
                 "query": q,
                 "type": type,
@@ -65,68 +129,15 @@ async def search_content(
                 "error": "BERT模型未初始化，请稍后重试"
             }
 
-        search_service = HierarchicalSearchService(vectorization_service, session)
-
-        # 参数验证
-        if not q or not q.strip():
-            raise HTTPException(status_code=400, detail="搜索关键词不能为空")
-        
-        if type not in ['all', 'articles', 'comments']:
-            raise HTTPException(status_code=400, detail="搜索类型必须是 all, articles 或 comments")
-        
-        if sort not in ['relevance', 'date', 'popularity']:
-            raise HTTPException(status_code=400, detail="排序方式必须是 relevance, date 或 popularity")
-        
-        # 执行搜索
-        try:
-            results = await search_service.search(
-                query=q.strip(),
-                search_type=type,
-                sort_by=sort,
-                page=page,
-                limit=limit
-            )
-            
-            # 检查搜索结果，判断是否因为模型错误导致返回零向量
-            if results.get("total", 0) == 0 and results.get("items", []) == []:
-                if model_error:
-                    search_method = "bert_model_error"  # 模型出错导致零向量
-                else:
-                    search_method = "bert_no_results"  # 模型正常但没有匹配结果
-                    
-        except Exception as e:
-            # 搜索过程中出现异常，说明模型有问题
-            search_method = "bert_search_error"
-            results = {
-                "items": [],
-                "total": 0,
-                "has_more": False,
-                "search_time": 0.0,
-                "error": str(e)
-            }
-        
-        th = results.get("dynamic_threshold", DEFAULT_THRESHOLD)
-        for it in results.get("items", []):
-            try:
-                cur = float(it.get("relevance_score") or 0)
-            except (TypeError, ValueError):
-                cur = 0
-            # 仅当分数缺失或≤0 时用阈值兜底，避免前端显示 0%
-            it["relevance_score"] = th if cur <= 0 else cur
-        resp = {
-            "query": q,
-            "type": type,
-            "sort": sort,
-            "page": page,
-            "limit": limit,
-            "total": results.get("total", 0),
-            "results": results.get("items", []),
-            "has_more": results.get("has_more", False),
-            "search_time": results.get("search_time", 0),
-            "search_method": search_method,
-            "dynamic_threshold": th
-        }
-        return resp
+        return await _execute_search(
+            q=q.strip(),
+            type=type,
+            sort=sort,
+            page=page,
+            limit=limit,
+            session=session,
+            vectorization_service=vectorization_service,
+        )
         
     except HTTPException:
         raise

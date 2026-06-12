@@ -372,16 +372,17 @@ class TestArticleCommentsWithRealDB:
         
         assert response.status_code == 200
         data = response.json()
-        assert isinstance(data, list)
-        assert len(data) == 2
+        assert isinstance(data, dict)
+        comments = data["comments"]
+        assert len(comments) == 2
         
         # 验证评论数据
-        comment_ids = [comment["id"] for comment in data]
+        comment_ids = [comment["id"] for comment in comments]
         assert comment1.id in comment_ids
         assert comment2.id in comment_ids
         
         # 验证评论内容
-        for comment in data:
+        for comment in comments:
             assert "content" in comment
             assert "user_id" in comment
             assert "post_time" in comment
@@ -466,7 +467,7 @@ class TestArticleCommentsWithRealDB:
         response = test_client.get(f"/api/articles/{article.id}/comments?page=1&limit=3")
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 3
+        assert len(data["comments"]) == 3
 
     @pytest.mark.integration
     def test_get_article_comments_pagination_second_page(self, test_client, real_sync_session_with_commit, test_data_tracker):
@@ -538,4 +539,4 @@ class TestArticleCommentsWithRealDB:
         response = test_client.get(f"/api/articles/{article.id}/comments?page=2&limit=3")
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 2  # 剩余2条评论
+        assert len(data["comments"]) == 2  # 剩余2条评论

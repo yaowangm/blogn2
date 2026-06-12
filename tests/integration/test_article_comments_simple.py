@@ -169,13 +169,14 @@ class TestArticleCommentsSimple:
         
         assert response.status_code == 200
         data = response.json()
-        assert isinstance(data, list)
-        assert len(data) == 1
+        assert isinstance(data, dict)
+        assert len(data["comments"]) == 1
         
         # 验证评论数据
-        comment_data = data[0]
+        comment_data = data["comments"][0]
         assert comment_data["content"] == "测试评论内容"
         assert comment_data["user_id"] == user.id
         assert "post_time" in comment_data
         assert "reply_count" in comment_data
+        assert data["comment_count"] == 1
 

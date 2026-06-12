@@ -166,8 +166,12 @@ class TestCommentsAndGuestbookComplete:
         # 5. 测试获取评论列表
         response = test_client.get(f"/api/articles/{article.id}/comments")
         assert response.status_code == 200
-        comments_data = response.json()
-        assert isinstance(comments_data, list)
+        data = response.json()
+        assert isinstance(data, dict)
+        assert "comments" in data
+        assert "pagination" in data
+        assert "comment_count" in data
+        comments_data = data["comments"]
         assert len(comments_data) == 1
         
         comment_data = comments_data[0]

@@ -43,22 +43,15 @@ class BlogHeaderCard extends BaseComponent {
             }
             this.blogData = blogData;
 
-            if (blogData.userid) {
-                try {
-                    const userResponse = await fetch(`/api/users/${blogData.userid}`);
-                    if (userResponse.ok) {
-                        this.userData = await userResponse.json();
-                    }
-                } catch (error) {
-                    console.error('Error loading blog owner data:', error);
-                }
-            }
-            
-            // 检查是否为当前用户的博客
+            const userPromise = blogData.userid
+                ? BaseComponent.getUser(blogData.userid)
+                : Promise.resolve(null);
+            await Promise.all([
+                userPromise.then((userData) => { this.userData = userData; }),
+                this.loadSubscriptionStatus(),
+            ]);
+
             this.checkIfCurrentUserBlog();
-            
-            // 检查订阅状态
-            await this.loadSubscriptionStatus();
             
         } catch (error) {
             console.error('Error loading blog data:', error);

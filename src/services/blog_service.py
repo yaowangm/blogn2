@@ -8,6 +8,7 @@ from src.repositories.post_repository import PostRepository
 from src.repositories.glovar_repository import GlovarRepository
 from src.services.base_service import BaseService
 from src.utils.time_utils import TimeUtils
+from src.utils.avatar_utils import check_avatar_exists
 
 class BlogService(BaseService):
     """博客业务逻辑服务类
@@ -21,37 +22,8 @@ class BlogService(BaseService):
         self.project_repo = project_repo
         self.post_repo = post_repo
         self.glovar_repo = glovar_repo
-        self._avatar_dir: str | None = None
-    
     def _check_avatar_exists(self, userid: int) -> str | None:
-        """检查用户头像文件是否存在
-        
-        Args:
-            userid: 用户ID
-            
-        Returns:
-            str | None: 如果头像存在返回路径，否则返回None
-        """
-        if not userid:
-            return None
-
-        avatar_dir = self._get_avatar_dir()
-        
-        prefix = (userid // 10000) + 1
-        avatar_path = f"/avatar/{prefix}/s_{userid}.jpg"
-        real_path = os.path.join(avatar_dir, str(prefix), f"s_{userid}.jpg")
-        
-        # 检查文件是否存在
-        if os.path.exists(real_path):
-            return avatar_path
-        else:
-            return None
-
-    def _get_avatar_dir(self) -> str:
-        if self._avatar_dir is None:
-            from src.config.app import validate_app_config
-            self._avatar_dir = validate_app_config()["avatar_dir"]
-        return self._avatar_dir
+        return check_avatar_exists(userid)
     
     async def get_recent_blogs(self, limit: int = 10) -> List[Dict[str, Any]]:
         """获取最新加入的博客（按创建时间倒序）"""

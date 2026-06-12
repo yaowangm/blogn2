@@ -595,7 +595,7 @@ async def create_post(
         return {
             "id": created_post.id,
             "name": created_post.name,
-            "comment": created_post.comment,
+            "comment": truncate_excerpt(created_post.comment),
             "itemtype": created_post.itemtype,
             "itemsize": created_post.itemsize,
             "attachment": created_post.attachment,
