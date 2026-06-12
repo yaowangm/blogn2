@@ -105,8 +105,14 @@ class RecentBlogsCard extends BaseComponent {
                     transition: var(--transition-fast);
                 }
 
-                .blog-item:hover {
-                    background: var(--gray-50);
+                .blog-item:hover,
+                .blog-item:focus-within {
+                    background: var(--interactive-hover-bg);
+                }
+
+                .blog-item:hover .blog-name,
+                .blog-item:focus-within .blog-name {
+                    color: var(--interactive-hover-text);
                 }
 
                 .blog-meta-row {
@@ -147,8 +153,9 @@ class RecentBlogsCard extends BaseComponent {
                 }
 
                 .blog-name {
-                    font-weight: 600;
-                    color: var(--gray-900);
+                    font-weight: 400;
+                    color: var(--gray-800);
+                    transition: color var(--transition-fast);
                     font-size: var(--font-size-sm);
                     min-width: 0;
                     overflow: hidden;

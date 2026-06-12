@@ -55,9 +55,9 @@ header-component {
 }
 
 .header-container {
-    max-width: 1200px;
+    max-width: var(--layout-max-width, 1200px);
     margin: 0 auto;
-    padding: 0 var(--spacing-4);
+    padding: 0 var(--layout-gutter, var(--spacing-4));
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -149,9 +149,9 @@ footer-component {
 }
 
 .footer-container {
-    max-width: 1200px;
+    max-width: var(--layout-max-width, 1200px);
     margin: 0 auto;
-    padding: 0 var(--spacing-4);
+    padding: 0 var(--layout-gutter, var(--spacing-4));
     text-align: center;
 }
 
@@ -531,10 +531,6 @@ latest-posts-card {
 
 /* 响应式调整 */
 @media (max-width: 768px) {
-    .header-container {
-        padding: 0 var(--spacing-3);
-    }
-    
     .header-nav {
         gap: var(--spacing-2);
     }
@@ -555,10 +551,6 @@ latest-posts-card {
 }
 
 @media (max-width: 480px) {
-    .header-container {
-        padding: 0 var(--spacing-2);
-    }
-    
     .logo-text {
         font-size: var(--font-size-lg);
     }

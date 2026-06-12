@@ -177,15 +177,16 @@ class FriendLinksCard extends BaseComponent {
                     transition: color var(--transition-fast);
                 }
 
-                .friend-link:hover {
-                    background: var(--gray-50);
-                    border-color: var(--gray-300);
-                    color: var(--primary-color);
-                    box-shadow: var(--shadow-sm);
+                .friend-link:hover,
+                .friend-link:focus-visible {
+                    background: var(--interactive-hover-bg);
+                    border-color: var(--interactive-hover-border);
+                    color: var(--interactive-hover-text);
                 }
 
-                .friend-link:hover .friend-link-icon {
-                    color: var(--primary-color);
+                .friend-link:hover .friend-link-icon,
+                .friend-link:focus-visible .friend-link-icon {
+                    color: var(--interactive-hover-text);
                 }
 
                 .friend-link:focus {

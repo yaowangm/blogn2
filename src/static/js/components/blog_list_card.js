@@ -944,10 +944,16 @@ class BlogListCard extends BaseComponent {
                     overflow: hidden;
                 }
 
-                .post-item:hover {
-                    background: var(--white);
-                    box-shadow: var(--shadow-sm);
-                    border-color: var(--gray-300);
+                .post-item:hover,
+                .post-item:focus-visible {
+                    background: var(--interactive-hover-bg);
+                    border-color: var(--interactive-hover-border);
+                    box-shadow: none;
+                }
+
+                .post-item:hover .post-title,
+                .post-item:focus-visible .post-title {
+                    color: var(--interactive-hover-text);
                 }
 
                 .post-item:focus {
@@ -968,6 +974,7 @@ class BlogListCard extends BaseComponent {
                     line-height: 1.4;
                     overflow: hidden;
                     max-width: 100%;
+                    transition: color var(--transition-fast);
                 }
 
                 .meta-icon {

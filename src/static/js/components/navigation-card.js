@@ -111,9 +111,10 @@ class NavigationCard extends BaseComponent {
                     font-size: var(--font-size-sm);
                 }
 
-                .nav-link:hover {
-                    background: var(--gray-50);
-                    color: var(--primary-color);
+                .nav-link:hover,
+                .nav-link:focus-visible {
+                    background: var(--interactive-hover-bg);
+                    color: var(--interactive-hover-text);
                 }
 
                 .nav-link:focus {

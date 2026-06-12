@@ -274,8 +274,14 @@ class RecentCommentsCard extends BaseComponent {
                     transition: var(--transition-fast);
                 }
 
-                .comment-item:hover {
-                    background: var(--gray-50);
+                .comment-item:hover,
+                .comment-item:focus-within {
+                    background: var(--interactive-hover-bg);
+                }
+
+                .comment-item:hover .author-name,
+                .comment-item:focus-within .author-name {
+                    color: var(--interactive-hover-text);
                 }
 
                 .comment-link:hover {
@@ -338,8 +344,9 @@ class RecentCommentsCard extends BaseComponent {
                 }
 
                 .author-name {
-                    font-weight: 700;
-                    color: var(--gray-900);
+                    font-weight: 400;
+                    color: var(--gray-800);
+                    transition: color var(--transition-fast);
                     font-size: var(--font-size-sm);
                     overflow: hidden;
                     text-overflow: ellipsis;

@@ -30,7 +30,8 @@ class HeaderComponent extends BaseComponent {
         this.shadowRoot.innerHTML = `
             <style>
                 :host { display: block; background: var(--white); border-bottom: 1px solid var(--gray-200); box-shadow: var(--shadow-sm); position: sticky; top: 0; z-index: 100; }
-                .header-container { max-width: 1200px; margin: 0 auto; padding: 0 var(--spacing-4); display: flex; align-items: center; justify-content: space-between; height: 64px; }
+                :host, :host * { box-sizing: border-box; }
+                .header-container { box-sizing: border-box; width: 100%; max-width: var(--layout-max-width, 1200px); margin: 0 auto; padding: 0 var(--layout-gutter, var(--spacing-4)); display: flex; align-items: center; justify-content: space-between; height: 64px; }
                 .skeleton-block { background: var(--gray-200); border-radius: var(--radius-md); animation: pulse 1.2s ease-in-out infinite; }
                 .skeleton-logo { width: 120px; height: 28px; }
                 .skeleton-actions { width: 180px; height: 32px; }
@@ -51,7 +52,7 @@ class HeaderComponent extends BaseComponent {
         const hasIcons = typeof Icons !== 'undefined';
         const searchIcon = hasIcons ? Icons.search : this.getDefaultSearchIcon();
         const userHomeIcon = hasIcons ? Icons.userHome : this.getDefaultUserHomeIcon();
-        const blogIcon = hasIcons ? Icons.userHome : this.getDefaultHomeIcon();
+        const blogIcon = hasIcons ? Icons.blog : this.getDefaultHomeIcon();
         const settingsIcon = hasIcons && Icons.settings ? Icons.settings : this.getDefaultSettingsIcon();
         const logoutIcon = hasIcons ? Icons.logout : this.getDefaultLogoutIcon();
 
@@ -67,10 +68,17 @@ class HeaderComponent extends BaseComponent {
                     z-index: 100;
                 }
 
+                :host,
+                :host * {
+                    box-sizing: border-box;
+                }
+
                 .header-container {
-                    max-width: 1200px;
+                    box-sizing: border-box;
+                    width: 100%;
+                    max-width: var(--layout-max-width, 1200px);
                     margin: 0 auto;
-                    padding: 0 var(--spacing-4);
+                    padding: 0 var(--layout-gutter, var(--spacing-4));
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
@@ -310,24 +318,16 @@ class HeaderComponent extends BaseComponent {
                 }
 
                 @media (max-width: 768px) {
-                    .header-container {
-                        padding: 0 var(--spacing-3);
-                    }
-                    
                     .header-actions {
                         gap: var(--spacing-2);
                     }
                 }
 
                 @media (max-width: 480px) {
-                    .header-container {
-                        padding: 0 var(--spacing-2);
-                    }
-                    
                     .logo-text {
                         font-size: var(--font-size-lg);
                     }
-                    
+
                     .header-actions {
                         gap: var(--spacing-2);
                     }

@@ -1,23 +1,39 @@
 /* 通用组件样式 */
 
+:host,
+:host * {
+    box-sizing: border-box;
+}
+
 /* 卡片基础样式（紧凑风格，与 blog-profile-card 一致） */
 .card {
     background: var(--white);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--gray-200);
+    border-radius: var(--card-radius, var(--radius-lg));
+    box-shadow: var(--card-shadow, var(--shadow-sm));
+    border: 1px solid var(--card-border, var(--gray-200));
     overflow: hidden;
     margin-bottom: var(--card-margin);
 }
 
 .card:hover {
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--card-shadow-hover, var(--shadow-md));
+}
+
+/* 侧栏列表行：统一过渡 */
+.nav-link,
+.blog-link,
+.comment-link,
+.friend-link {
+    transition:
+        background-color var(--transition-fast),
+        color var(--transition-fast),
+        border-color var(--transition-fast);
 }
 
 .card-header {
     padding: var(--spacing-3) var(--spacing-4);
-    background: var(--gray-50);
-    border-bottom: 1px solid var(--gray-200);
+    background: var(--card-header-bg, var(--gray-50));
+    border-bottom: 1px solid var(--card-header-border, var(--gray-200));
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -89,14 +105,14 @@
 
 /* 自动链接样式 */
 .auto-link {
-    color: #0066cc; /* 蓝色字体 */
+    color: var(--primary-color);
     text-decoration: none;
     word-break: break-all; /* 链接文本优先强断行，避免溢出 */
 }
 
 .auto-link:hover {
     text-decoration: underline !important;
-    color: #0052a3 !important; /* 悬停时更深的蓝色 */
+    color: var(--primary-hover) !important;
 }
 
 /* 用户头像样式 */

@@ -26,10 +26,17 @@ class FooterComponent extends BaseComponent {
                     border-top: 1px solid var(--gray-200);
                 }
 
+                :host,
+                :host * {
+                    box-sizing: border-box;
+                }
+
                 .footer-container {
-                    max-width: 1200px;
+                    box-sizing: border-box;
+                    width: 100%;
+                    max-width: var(--layout-max-width, 1200px);
                     margin: 0 auto;
-                    padding: 0 var(--spacing-4);
+                    padding: 0 var(--layout-gutter, var(--spacing-4));
                     text-align: center;
                 }
 
@@ -78,17 +85,6 @@ class FooterComponent extends BaseComponent {
                     color: var(--gray-500);
                 }
 
-                @media (max-width: 768px) {
-                    .footer-container {
-                        padding: 0 var(--spacing-3);
-                    }
-                }
-
-                @media (max-width: 480px) {
-                    .footer-container {
-                        padding: 0 var(--spacing-2);
-                    }
-                }
             </style>
 
             <div class="footer-container">

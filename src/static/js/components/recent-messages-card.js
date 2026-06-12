@@ -151,10 +151,15 @@ class RecentMessagesCard extends BaseComponent {
                     transition: var(--transition-normal);
                 }
 
-                .message-item.clickable:hover {
-                    background: var(--gray-100);
-                    border-color: var(--gray-300);
-                    box-shadow: var(--shadow-sm);
+                .message-item.clickable:hover,
+                .message-item.clickable:focus-visible {
+                    background: var(--interactive-hover-bg);
+                    border-color: var(--interactive-hover-border);
+                }
+
+                .message-item.clickable:hover .message-author,
+                .message-item.clickable:focus-visible .message-author {
+                    color: var(--interactive-hover-text);
                 }
 
                 .message-item.disabled {
@@ -203,8 +208,9 @@ class RecentMessagesCard extends BaseComponent {
                 }
 
                 .message-author {
-                    font-weight: 500;
-                    color: var(--gray-900);
+                    font-weight: 400;
+                    color: var(--gray-800);
+                    transition: color var(--transition-fast);
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
