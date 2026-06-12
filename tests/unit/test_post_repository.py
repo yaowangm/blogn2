@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from sqlmodel import select, func
 from src.repositories.post_repository import PostRepository
 from src.models.post import Post
@@ -97,6 +97,31 @@ class TestPostRepository:
         assert len(result) == 2
         assert result[0]["id"] == 1
         assert result[1]["id"] == 2
+
+    @pytest.mark.unit
+    async def test_get_by_project_item_id_paginated_includes_author(
+        self, post_repository, mock_session, sample_post
+    ):
+        """分页评论含 author_name 与 author_avatar"""
+        mock_count = MagicMock()
+        mock_count.first.return_value = 1
+        mock_rows = MagicMock()
+        mock_rows.all.return_value = [(sample_post, "测试用户")]
+        mock_session.exec.side_effect = [mock_count, mock_rows]
+
+        with patch(
+            "src.repositories.post_repository.check_avatar_exists",
+            return_value="/avatar/1/s_123.jpg",
+        ):
+            result = await post_repository.get_by_project_item_id_paginated(
+                456, page=1, per_page=10
+            )
+
+        assert len(result["comments"]) == 1
+        assert result["comments"][0]["author_name"] == "测试用户"
+        assert result["comments"][0]["author_avatar"] == "/avatar/1/s_123.jpg"
+        assert result["pagination"]["total"] == 1
+        assert result["pagination"]["has_next"] is False
 
     @pytest.mark.unit
     async def test_count_comments_success(self, post_repository, mock_session):

@@ -179,6 +179,8 @@ class TestArticleControllerSimple:
                 "id": 1,
                 "content": "测试评论",
                 "user_id": 1,
+                "author_name": "测试用户",
+                "author_avatar": "/avatar/1/s_1.jpg",
                 "post_time": datetime.now(),
                 "reply_count": 0,
             }],
@@ -208,6 +210,7 @@ class TestArticleControllerSimple:
         assert len(result["comments"]) == 1
         assert result["comments"][0]["id"] == 1
         assert result["comments"][0]["content"] == "测试评论"
+        assert result["comments"][0]["author_name"] == "测试用户"
         assert result["comment_count"] == 1
         
         # 验证缓存被调用（如果缓存装饰器正常工作）

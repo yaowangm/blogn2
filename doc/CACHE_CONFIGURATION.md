@@ -2,114 +2,106 @@
 
 ## 环境变量配置
 
-缓存系统现在支持通过环境变量 `CACHE_DEFAULT_TTL` 来配置默认缓存时间，而不是硬编码。
+缓存系统通过环境变量 `CACHE_DEFAULT_TTL` 等配置 TTL 与开关，而不是在代码里硬编码。
 
 ### 配置方式
 
 在 `.env` 文件中添加以下配置：
 
 ```bash
-# 默认缓存TTL（秒）
+# 默认缓存 TTL（秒）
 CACHE_DEFAULT_TTL=900
+
+# 是否启用 Redis 缓存（生产环境建议 true）
+CACHE_ENABLE_CACHE=true
 ```
 
-### TTL处理机制
+### TTL 处理机制
 
-系统使用现有的缓存机制来处理TTL：
+1. **默认 TTL**：装饰器未传 `ttl` 时使用 `cache_settings.default_ttl`
+2. **自定义 TTL**：装饰器可传入 `ttl=` 覆盖默认值
+3. **环境变量**：`CACHE_DEFAULT_TTL` 控制默认 TTL
 
-1. **默认TTL**: 如果装饰器调用时不传入 `ttl` 参数，系统会自动使用 `cache_settings.default_ttl`
-2. **自定义TTL**: 可以在装饰器调用时传入具体的 `ttl` 值来覆盖默认设置
-3. **环境变量配置**: `cache_settings.default_ttl` 可以通过环境变量 `CACHE_DEFAULT_TTL` 进行配置
+### 当前 API 缓存配置
 
-### 实际TTL示例
+#### 项目相关 API
+- `/projects/{project_id}` — 项目详情
+- `/projects/{project_id}/posts` — 文章列表（键含 `page`、`page_size`、`type`、`folder_id`、`include_deleted`）
+- `/projects/{project_id}/comments/recent` — 最近评论
+- `/projects/{project_id}/categories` — 分类列表
+- `/projects/{project_id}/external-links` — 外部链接
+- `/projects/{project_id}/rss` — 项目 RSS
+- `/projects/{project_id}/stats` — 统计信息
+- `/projects/user/{user_id}` — 用户项目列表
 
-假设 `CACHE_DEFAULT_TTL=900`（15分钟）：
+#### 博客目录 API
+- `/blogs/recent` — 最新加入博客（`cache_blogs_joined_recent`，键含 `limit`）
+- `/blogs/posts/latest` — 最新博文分页（`cache_blog_recent_list`，键含 `page`、`page_size`、`exclude`、`blogid`）
+- `/blogs/popular` — 热门博客
+- `/comments/recent` — 全站最近评论（`@cache_blog_comments()`）
+- `/metadata/` — 站点元数据
 
-- **使用默认TTL**: `@cache_project_detail()` → 使用900秒
-- **自定义TTL**: `@cache_project_detail(ttl=1800)` → 使用1800秒（30分钟）
+#### 文章相关 API
+- `/articles/{article_id}` — 文章详情（键含评论分页 `page`、`per_page`）
+- `/articles/{article_id}/comments` — 评论列表（键含 `page`、`limit`）
+- `/articles/{article_id}/attachments` — 附件列表
 
-### 当前API缓存配置
+#### 搜索 API
+- `/search` — 搜索结果（`@cache_search_results()`，键含 `q`、`page`、`type`、`sort`、`limit`）
 
-#### 项目相关API
-- `/projects/{project_id}` - 长缓存（项目详情）
-- `/projects/{project_id}/posts` - 中等缓存（文章列表）
-- `/projects/{project_id}/comments/recent` - 短缓存（最近评论）
-- `/projects/{project_id}/categories` - 长缓存（分类列表）
-- `/projects/{project_id}/external-links` - 长缓存（外部链接）
-- `/projects/{project_id}/rss` - 中等缓存（RSS订阅）
-- `/projects/{project_id}/stats` - 短缓存（统计信息）
-- `/projects/user/{user_id}` - 长缓存（用户项目）
+#### 统计 API
+- `/global-stats` — 全局统计（`@cache_global_stats()`，TTL 60 秒，键 `stats:global`）
 
-#### RSS相关API
-- `/rss/site` - 中等缓存（全站RSS）
-- `/rss/blog/{project_id}` - 中等缓存（博客RSS）
-- `/rss/site/full` - 中等缓存（完整全站RSS）
-- `/rss/blog/{project_id}/full` - 中等缓存（完整博客RSS）
+#### RSS 相关 API
+- `/rss/site`、`/rss/blog/{project_id}` 及对应 `/full` 端点
 
-#### 友情链接API
-- `/projects/{project_id}/friend-links` - 长缓存（项目友情链接）
-- `/friend-links` - 长缓存（所有友情链接）
+RSS 在 service 层缓存 **XML 字符串**（`build_*_rss_xml` 返回 `str`），再包装为 `Response`；避免对 `StarletteResponse` 直接缓存导致缓存永不命中。
 
 ### 缓存键生成
 
-系统使用统一的 `CacheKeyGenerator` 类来生成缓存键，确保键的一致性和唯一性：
+系统使用 `CacheKeyGenerator`（`src/config/cache.py`）生成键，经 `_ensure_cache_prefix` 加上 `CACHE_CACHE_PREFIX`（默认 `blogn2`）。
 
-#### 项目相关缓存键
-- `project:detail:{project_id}` - 项目详情
-- `project:posts:{project_id}:{page}:{page_size}:{post_type}` - 项目文章列表
-- `project:comments:{project_id}:recent` - 项目评论
-- `project:categories:{project_id}` - 项目分类
-- `project:external_links:{project_id}` - 项目外部链接
-- `project:rss:{project_id}` - 项目RSS
-- `project:stats:{project_id}` - 项目统计
-- `user:projects:{user_id}` - 用户项目
+#### 项目相关
+- `project:detail:{project_id}`
+- `project:posts:{project_id}:{page}:{page_size}:{post_type}:{folder_id|all}:{active|deleted}`
+- `project:comments:{project_id}:recent`
+- `project:categories:{project_id}`
+- `project:rss:{project_id}:{limit}`
+- `project:stats:{project_id}`
 
-#### RSS相关缓存键
-- `rss:site` - 站点RSS
-- `rss:blog:{project_id}` - 博客RSS
-- `rss:site:full` - 完整站点RSS
-- `rss:blog:{project_id}:full` - 完整博客RSS
+#### 博客 / 文章
+- `blog:recent:joined:{limit}` — `/blogs/recent`
+- `blog:recent:list:{page}:{page_size}:{exclude}:{blogid}` — `/blogs/posts/latest`
+- `article:detail:{article_id}:{page}:{per_page}`
+- `article:comments:{article_id}:{page}:{limit}`
 
-#### 友情链接相关缓存键
-- `friend_links:project:{project_id}` - 项目友情链接
-- `friend_links:all` - 所有友情链接
+#### RSS
+- `rss:site:{limit}` / `rss:site:full:{limit}`
+- `rss:blog:{project_id}:{limit}` / `rss:blog:{project_id}:full:{limit}`
 
-### 自定义TTL
+#### 搜索 / 统计 / 元数据
+- `search:{query}:{page}:{type}:{sort}:{limit}`
+- `stats:global`
+- `metadata:site`
 
-如果需要为特定API设置自定义TTL，可以在装饰器中传入参数：
+### 自定义 TTL 示例
 
 ```python
-@cache_project_detail(ttl=1800)  # 自定义30分钟缓存
+@cache_project_detail(ttl=1800)
 async def get_project(project_id: int):
-    # ...
+    ...
 ```
 
 ### 配置建议
 
-#### 开发环境
-```bash
-CACHE_DEFAULT_TTL=300  # 5分钟，便于调试
-```
-
-#### 生产环境
-```bash
-CACHE_DEFAULT_TTL=900  # 15分钟，平衡性能和实时性
-```
-
-#### 高并发环境
-```bash
-CACHE_DEFAULT_TTL=1800  # 30分钟，减少数据库压力
-```
-
-### 监控和调优
-
-1. **监控缓存命中率**: 通过Redis监控工具查看缓存使用情况
-2. **调整TTL**: 根据实际访问模式调整 `CACHE_DEFAULT_TTL`
-3. **分析性能**: 观察数据库查询减少和响应时间改善
+| 环境 | `CACHE_DEFAULT_TTL` | `CACHE_ENABLE_CACHE` |
+|------|---------------------|----------------------|
+| 开发 | 300（5 分钟） | 按需 |
+| 生产 | 900（15 分钟） | **true** |
+| 高并发 | 1800（30 分钟） | **true** |
 
 ### 注意事项
 
-- 修改 `CACHE_DEFAULT_TTL` 后需要重启应用才能生效
-- 缓存时间过短可能导致频繁的数据库查询
-- 缓存时间过长可能导致数据更新不及时
-- 建议在生产环境中根据实际负载进行调优
+- 修改缓存相关环境变量后需重启应用
+- `CACHE_ENABLE_CACHE=false` 时所有 `@cache_*` 装饰器跳过读写
+- 缓存键必须包含所有影响响应的查询参数，避免不同请求互相覆盖

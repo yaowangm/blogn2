@@ -5,6 +5,7 @@
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, patch, MagicMock
+from starlette.responses import Response as StarletteResponse
 from src.utils.cache import (
     cache_manager,
     _ensure_cache_prefix,
@@ -95,6 +96,19 @@ class TestCacheManager:
         # 测试元数据缓存键
         metadata_key = CacheKeyGenerator.metadata()
         assert metadata_key == "metadata:site"
+
+        search_key = CacheKeyGenerator.search_results("hello", page=2, search_type="articles", sort="date", limit=20)
+        assert "search" in search_key
+        assert "hello" in search_key
+
+        posts_key = CacheKeyGenerator.project_posts(1, 2, 10, "original", folder_id=3, include_deleted=True)
+        assert "deleted" in posts_key
+
+        rss_key = CacheKeyGenerator.site_rss(limit=5)
+        assert rss_key.endswith(":5") or ":5" in rss_key
+
+        joined_key = CacheKeyGenerator.blogs_joined_recent(limit=8)
+        assert "joined" in joined_key or "8" in joined_key
 
     def test_ensure_cache_prefix_adds_prefix_when_missing(self):
         """_ensure_cache_prefix：无前缀的 key 会加上 cache_prefix"""
@@ -216,6 +230,38 @@ class TestCacheDecorator:
         result3 = await get_user_profile(user_id=456)
         assert result3["user_id"] == 456
         assert result3["call_count"] == 3  # 新的结果
+
+    @pytest.mark.asyncio
+    async def test_cache_decorator_stores_string_not_response(self):
+        """RSS 等场景：str 结果应写入缓存，StarletteResponse 应跳过"""
+        call_count = 0
+
+        @cache_decorator(ttl=60, enable_cache=True, key_builder=lambda **kw: "test:rss:xml")
+        async def build_xml():
+            nonlocal call_count
+            call_count += 1
+            return "<rss></rss>"
+
+        @cache_decorator(ttl=60, enable_cache=True, key_builder=lambda **kw: "test:rss:response")
+        async def build_response():
+            nonlocal call_count
+            call_count += 1
+            return StarletteResponse(content=b"<rss></rss>", media_type="application/xml")
+
+        with patch("src.utils.cache._is_testing_environment", return_value=False):
+            with patch.object(cache_settings, "enable_cache", True):
+                with patch.object(cache_manager, "get", new_callable=AsyncMock, return_value=None):
+                    with patch.object(cache_manager, "set", new_callable=AsyncMock, return_value=True) as mock_set:
+                        with patch.object(cache_manager, "initialize", new_callable=AsyncMock):
+                            xml = await build_xml()
+                            assert xml == "<rss></rss>"
+                            mock_set.assert_called_once()
+                            assert mock_set.call_args[0][1] == "<rss></rss>"
+
+                            mock_set.reset_mock()
+                            resp = await build_response()
+                            assert isinstance(resp, StarletteResponse)
+                            mock_set.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_cache_disabled(self):

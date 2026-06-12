@@ -385,8 +385,15 @@ class TestArticleCommentsWithRealDB:
         for comment in comments:
             assert "content" in comment
             assert "user_id" in comment
+            assert "author_name" in comment
+            assert "author_avatar" in comment
             assert "post_time" in comment
             assert "reply_count" in comment
+
+        assert data["comment_count"] == 2
+        assert data["pagination"]["total"] == 2
+        matching = [c for c in comments if c["id"] == comment1.id][0]
+        assert matching["author_name"].strip() == "testuser_comment_5"
 
     @pytest.mark.integration
     def test_get_article_comments_nonexistent_article(self, test_client):
