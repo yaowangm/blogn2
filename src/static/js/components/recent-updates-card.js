@@ -202,9 +202,13 @@ class RecentUpdatesCard extends BaseComponent {
                 }
 
                 .meta-item {
-                    display: flex;
+                    display: inline-flex;
                     align-items: center;
+                    gap: var(--spacing-1);
                     min-width: 0;
+                    color: var(--gray-500);
+                    font-size: var(--font-size-xs);
+                    white-space: nowrap;
                 }
 
                 .meta-item-author {
@@ -242,10 +246,9 @@ class RecentUpdatesCard extends BaseComponent {
                 }
 
                 .author-name {
-                    font-weight: 400;
-                    color: var(--gray-800);
+                    font-weight: 500;
+                    color: var(--gray-700);
                     transition: color var(--transition-fast);
-                    font-size: var(--font-size-sm);
                     overflow: hidden;
                     text-overflow: ellipsis;
                     white-space: nowrap;
@@ -257,11 +260,14 @@ class RecentUpdatesCard extends BaseComponent {
                 }
 
                 .latest-post {
-                    color: var(--gray-800);
-                    font-size: var(--font-size-base);
+                    color: var(--gray-600);
+                    font-size: var(--font-size-sm);
                     font-weight: 400;
-                    line-height: 1.5;
+                    line-height: 1.6;
                     margin: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
                 }
 
                 .loading {
