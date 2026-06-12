@@ -98,29 +98,38 @@ class ArticleCommentsCard extends BaseComponent {
         return `/avatar/${prefix}/s_${userId}.jpg`;
     }
 
-    renderUserAvatarHtml(userName, userAvatar, userId) {
-        const safeName = this.escapeHtml(userName || '匿名');
-        const avatarUrl = userAvatar || this.getSmallAvatarPath(userId);
-        const fallbackLetter = (userName || '?').charAt(0).toUpperCase();
+    renderAuthorMetaItem(userName, userAvatar, userId, blogId) {
+        const safeAuthor = this.escapeHtml(userName || '匿名用户');
+        const avatarPath = userId ? (userAvatar || this.getSmallAvatarPath(userId)) : null;
+        const fallbackLetter = userId ? safeAuthor.charAt(0).toUpperCase() : '?';
 
-        if (!userId) {
-            return `
-                <div class="user-avatar">
-                    <span class="avatar-fallback">?</span>
-                </div>
-            `;
-        }
-
-        return `
-            <div class="user-avatar">
-                ${avatarUrl ? `
-                    <img src="${avatarUrl}" alt="${safeName}"
+        const avatarHtml = `
+            <span class="author-avatar" aria-hidden="true">
+                ${avatarPath ? `
+                    <img src="${avatarPath}" alt=""
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
                          onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
                 ` : ''}
-                <span class="avatar-fallback" style="display: ${avatarUrl ? 'none' : 'flex'};">${fallbackLetter}</span>
+                <span class="author-avatar-fallback" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackLetter}</span>
+            </span>
+        `;
+
+        const metaHtml = `
+            <div class="meta-item meta-item-author">
+                ${avatarHtml}
+                <span class="author-name">${safeAuthor}</span>
             </div>
         `;
+
+        if (blogId) {
+            return `
+                <a href="/blog/${blogId}" class="author-link" title="查看博客" target="_blank" rel="noopener noreferrer">
+                    ${metaHtml}
+                </a>
+            `;
+        }
+
+        return metaHtml;
     }
 
     /**
@@ -488,30 +497,12 @@ class ArticleCommentsCard extends BaseComponent {
             }
         }
 
-        const avatarHtml = this.renderUserAvatarHtml(userName, userAvatar, user_id);
-
         return `
             <li class="comment-item" id="post${id}" data-comment-id="${id}">
-                <div class="comment-avatar">
-                    ${blogId ? `
-                        <a href="/blog/${blogId}" class="avatar-link" title="查看博客" target="_blank" rel="noopener noreferrer">
-                            ${avatarHtml}
-                        </a>
-                    ` : avatarHtml}
-                </div>
-
                 <div class="comment-content-wrapper">
                     <div class="comment-main">
-                        <div class="comment-meta">
-                            <div class="comment-user">
-                                ${blogId ? `
-                                    <a href="/blog/${blogId}" class="user-link" title="查看博客" target="_blank" rel="noopener noreferrer">
-                                        <span class="user-name">${this.escapeHtml(userName)}</span>
-                                    </a>
-                                ` : `
-                                    <span class="user-name">${this.escapeHtml(userName)}</span>
-                                `}
-                            </div>
+                        <div class="comment-header">
+                            ${this.renderAuthorMetaItem(userName, userAvatar, user_id, blogId)}
                             <span class="comment-time">${this.formatDate(post_time)}</span>
                         </div>
                         <div class="comment-text">${HtmlUtils.linkifyPlainTextToHtml(content || '')}</div>
@@ -701,9 +692,6 @@ class ArticleCommentsCard extends BaseComponent {
                 }
 
                 .comment-item {
-                    display: flex;
-                    align-items: flex-start;
-                    gap: var(--spacing-3);
                     padding: var(--spacing-3) var(--spacing-4);
                     border-bottom: 1px solid var(--gray-100);
                     transition: background-color var(--transition-fast);
@@ -714,8 +702,14 @@ class ArticleCommentsCard extends BaseComponent {
                     border-bottom: none;
                 }
 
-                .comment-item:hover {
-                    background: var(--gray-50);
+                .comment-item:hover,
+                .comment-item:focus-within {
+                    background: var(--interactive-hover-bg);
+                }
+
+                .comment-item:hover .author-name,
+                .comment-item:focus-within .author-name {
+                    color: var(--interactive-hover-text);
                 }
 
                 /* 从 #post{id} 进入：内嵌蓝框闪烁，避免被卡片裁切，总时长 3s（6×0.5s） */
@@ -735,45 +729,72 @@ class ArticleCommentsCard extends BaseComponent {
                     }
                 }
 
-                .comment-avatar {
-                    flex-shrink: 0;
+                .comment-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: var(--spacing-2);
+                    margin-bottom: var(--spacing-1);
                 }
 
-                .avatar-link {
+                .meta-item {
+                    display: flex;
+                    align-items: center;
+                    min-width: 0;
+                }
+
+                .meta-item-author {
+                    gap: var(--spacing-2);
+                }
+
+                .author-link {
                     text-decoration: none;
                     color: inherit;
-                    display: block;
+                    min-width: 0;
                 }
 
-                .user-avatar {
-                    width: 40px;
-                    height: 40px;
+                .author-link:hover {
+                    text-decoration: none;
+                }
+
+                .author-avatar {
+                    width: 24px;
+                    height: 24px;
                     border-radius: 50%;
+                    flex-shrink: 0;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     background: var(--gray-100);
-                    font-size: var(--font-size-sm);
-                    font-weight: 600;
-                    color: var(--gray-600);
-                    border: 2px solid var(--gray-200);
+                    border: 1px solid var(--gray-200);
                     overflow: hidden;
                 }
 
-                .user-avatar img {
+                .author-avatar img {
                     width: 100%;
                     height: 100%;
                     object-fit: cover;
                     display: block;
                 }
 
-                .avatar-fallback {
+                .author-avatar-fallback {
                     width: 100%;
                     height: 100%;
-                    display: flex;
                     align-items: center;
                     justify-content: center;
+                    font-size: var(--font-size-xs);
+                    font-weight: 600;
                     color: var(--gray-600);
+                }
+
+                .author-name {
+                    font-weight: 400;
+                    color: var(--gray-800);
+                    transition: color var(--transition-fast);
+                    font-size: var(--font-size-sm);
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
                 }
 
                 .comment-content-wrapper {
@@ -788,34 +809,6 @@ class ArticleCommentsCard extends BaseComponent {
                 .comment-main {
                     grid-column: 1;
                     min-width: 0;
-                }
-
-                .comment-meta {
-                    display: flex;
-                    align-items: center;
-                    flex-wrap: wrap;
-                    gap: var(--spacing-1) var(--spacing-2);
-                    margin: 0;
-                    padding: 0;
-                    line-height: 1.3;
-                }
-
-                .comment-user .user-name {
-                    font-weight: 600;
-                    color: var(--gray-900);
-                    font-size: var(--font-size-sm);
-                    line-height: 1.3;
-                }
-
-                .user-link {
-                    text-decoration: none;
-                    color: inherit;
-                    transition: color var(--transition-fast);
-                }
-
-                .user-link:hover .user-name {
-                    color: var(--primary-hover);
-                    text-decoration: underline;
                 }
 
                 .comment-actions {
@@ -846,9 +839,10 @@ class ArticleCommentsCard extends BaseComponent {
                 }
 
                 .comment-text {
-                    line-height: calc(1.5em + 2px);
-                    color: var(--gray-700);
-                    font-size: var(--font-size-sm);
+                    line-height: 1.5;
+                    color: var(--gray-800);
+                    font-size: var(--font-size-base);
+                    font-weight: 400;
                     margin: 5px 0 0;
                     padding: 0;
                     word-wrap: break-word;

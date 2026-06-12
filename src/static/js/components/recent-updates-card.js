@@ -257,10 +257,10 @@ class RecentUpdatesCard extends BaseComponent {
                 }
 
                 .latest-post {
-                    color: var(--gray-900);
-                    font-size: var(--font-size-sm);
-                    font-weight: 600;
-                    line-height: 1.4;
+                    color: var(--gray-800);
+                    font-size: var(--font-size-base);
+                    font-weight: 400;
+                    line-height: 1.5;
                     margin: 0;
                 }
 

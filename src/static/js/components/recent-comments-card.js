@@ -359,8 +359,9 @@ class RecentCommentsCard extends BaseComponent {
                 }
 
                 .comment-text {
-                    font-size: var(--font-size-sm);
-                    color: var(--gray-700);
+                    font-size: var(--font-size-base);
+                    font-weight: 400;
+                    color: var(--gray-800);
                     line-height: 1.5;
                     margin: 0;
                     overflow: hidden;
