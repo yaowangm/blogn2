@@ -90,6 +90,39 @@ class ArticleCommentsCard extends BaseComponent {
         });
     }
 
+    getSmallAvatarPath(userId) {
+        if (!userId) {
+            return null;
+        }
+        const prefix = Math.floor(userId / 10000) + 1;
+        return `/avatar/${prefix}/s_${userId}.jpg`;
+    }
+
+    renderUserAvatarHtml(userName, userAvatar, userId) {
+        const safeName = this.escapeHtml(userName || '匿名');
+        const avatarUrl = userAvatar || this.getSmallAvatarPath(userId);
+        const fallbackLetter = (userName || '?').charAt(0).toUpperCase();
+
+        if (!userId) {
+            return `
+                <div class="user-avatar">
+                    <span class="avatar-fallback">?</span>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="user-avatar">
+                ${avatarUrl ? `
+                    <img src="${avatarUrl}" alt="${safeName}"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                         onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
+                ` : ''}
+                <span class="avatar-fallback" style="display: ${avatarUrl ? 'none' : 'flex'};">${fallbackLetter}</span>
+            </div>
+        `;
+    }
+
     /**
      * 渲染组件
      */
@@ -455,27 +488,16 @@ class ArticleCommentsCard extends BaseComponent {
             }
         }
 
+        const avatarHtml = this.renderUserAvatarHtml(userName, userAvatar, user_id);
+
         return `
             <li class="comment-item" id="post${id}" data-comment-id="${id}">
                 <div class="comment-avatar">
                     ${blogId ? `
                         <a href="/blog/${blogId}" class="avatar-link" title="查看博客" target="_blank" rel="noopener noreferrer">
-                            <div class="user-avatar">
-                                ${userAvatar ?
-                                    `<img src="${userAvatar}" alt="${this.escapeHtml(userName)}"
-                                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-                                          onload="this.style.display='block'; this.nextElementSibling.style.display='none';"
-                                          style="display: block;">` :
-                                    ''
-                                }
-                                <span style="display: ${userAvatar ? 'none' : 'flex'}; color: var(--gray-600);">${userName.charAt(0).toUpperCase()}</span>
-                            </div>
+                            ${avatarHtml}
                         </a>
-                    ` : `
-                        <div class="user-avatar">
-                            <span style="color: var(--gray-600);">?</span>
-                        </div>
-                    `}
+                    ` : avatarHtml}
                 </div>
 
                 <div class="comment-content-wrapper">
@@ -742,6 +764,16 @@ class ArticleCommentsCard extends BaseComponent {
                     width: 100%;
                     height: 100%;
                     object-fit: cover;
+                    display: block;
+                }
+
+                .avatar-fallback {
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: var(--gray-600);
                 }
 
                 .comment-content-wrapper {
