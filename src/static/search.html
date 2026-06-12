@@ -10,9 +10,9 @@
     <link rel="stylesheet" href="/static/css/components.css">
     <style>
         .search-container {
-            max-width: 1200px;
+            max-width: var(--layout-max-width);
             margin: 0 auto;
-            padding: var(--spacing-6) var(--spacing-4);
+            padding: var(--spacing-6) var(--layout-gutter);
         }
 
         .search-header {
@@ -155,17 +155,19 @@
 
         .result-item {
             background: var(--white);
-            border: 1px solid var(--gray-200);
-            border-radius: var(--radius-lg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--card-radius);
             margin-bottom: var(--spacing-4);
             transition: var(--transition-fast);
             overflow: hidden;
+            box-shadow: var(--card-shadow);
         }
 
         .result-item:hover {
-            border-color: var(--primary-color);
-            box-shadow: var(--shadow-md);
-            transform: translateY(-2px);
+            border-color: var(--interactive-hover-border);
+            background: var(--interactive-hover-bg);
+            box-shadow: var(--card-shadow-hover);
+            transform: translateY(-1px);
         }
 
         .result-link {

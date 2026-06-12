@@ -705,16 +705,16 @@ class BlogHeaderCard extends BaseComponent {
                     cursor: pointer;
                 }
                 .modal-footer .btn-primary {
-                    background: #2563eb;
-                    border-color: #2563eb;
+                    background: var(--primary-color);
+                    border-color: var(--primary-color);
                     color: #fff;
                 }
                 .modal-footer .btn-secondary:hover {
                     background: #f9fafb;
                 }
                 .modal-footer .btn-primary:hover {
-                    background: #1d4ed8;
-                    border-color: #1d4ed8;
+                    background: var(--primary-hover);
+                    border-color: var(--primary-hover);
                 }
             </style>
         `;

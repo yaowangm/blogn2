@@ -75,9 +75,9 @@
     text-align: left;
     font-weight: 600;
     color: var(--gray-700);
-    border-bottom: 1px solid var(--gray-200);
+    border-bottom: 1px solid var(--card-header-border);
     font-size: var(--font-size-xs);
-    background: var(--gray-50);
+    background: var(--card-header-bg);
 }
 
 .data-table td {
@@ -89,7 +89,7 @@
 }
 
 .data-table tbody tr:hover {
-    background: var(--gray-50);
+    background: var(--interactive-hover-bg);
 }
 
 .data-table tbody tr:last-child td {
@@ -145,15 +145,19 @@
     justify-content: space-between;
     gap: var(--spacing-3);
     padding: var(--spacing-3);
-    border: 1px solid var(--gray-200);
+    border: 1px solid var(--card-border);
     border-radius: var(--radius-md);
     background: var(--gray-50);
-    transition: background var(--transition-fast), box-shadow var(--transition-fast);
+    transition:
+        background-color var(--transition-fast),
+        border-color var(--transition-fast),
+        box-shadow var(--transition-fast);
 }
 
 .link-row:hover {
-    background: var(--white);
-    box-shadow: var(--shadow-sm);
+    background: var(--interactive-hover-bg);
+    border-color: var(--interactive-hover-border);
+    box-shadow: var(--card-shadow);
 }
 
 .link-row-info {
@@ -266,8 +270,8 @@
     max-height: 90vh;
     overflow-y: auto;
     background: var(--white);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--gray-200);
+    border-radius: var(--card-radius);
+    border: 1px solid var(--card-border);
     box-shadow: var(--shadow-xl);
 }
 
@@ -277,8 +281,8 @@
     justify-content: space-between;
     gap: var(--spacing-3);
     padding: var(--spacing-3) var(--spacing-4);
-    border-bottom: 1px solid var(--gray-200);
-    background: var(--gray-50);
+    border-bottom: 1px solid var(--card-header-border);
+    background: var(--card-header-bg);
 }
 
 .modal-title {
@@ -350,7 +354,7 @@
 .form-input:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 3px var(--primary-color-10);
 }
 
 .btn svg {

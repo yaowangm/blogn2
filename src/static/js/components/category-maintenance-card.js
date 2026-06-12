@@ -198,7 +198,7 @@ class CategoryMaintenanceCard extends BaseComponent {
                 .form-group input:focus {
                     outline: none;
                     border-color: var(--primary-color);
-                    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+                    box-shadow: 0 0 0 2px var(--primary-color-10);
                 }
 
                 .form-actions {

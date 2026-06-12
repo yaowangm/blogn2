@@ -566,7 +566,7 @@ class ThreadCard extends BaseComponent {
                 }
 
                 .post-content a:hover {
-                    color: var(--primary-hover, #1d4ed8);
+                    color: var(--primary-hover, #1f5fbf);
                 }
 
                 .reply-list {

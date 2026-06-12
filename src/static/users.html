@@ -15,9 +15,10 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: var(--layout-max-width);
             margin: 0 auto;
-            padding: 0 var(--spacing-4);
+            padding: 0 var(--layout-gutter);
+            box-sizing: border-box;
         }
 
         .page-header {
@@ -60,7 +61,7 @@
         .search-input:focus {
             outline: none;
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            box-shadow: 0 0 0 3px var(--primary-color-10);
         }
 
         .search-button,
@@ -98,9 +99,9 @@
 
         .table-container {
             background: var(--white);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--gray-200);
+            border-radius: var(--card-radius);
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--card-border);
             overflow: hidden;
         }
 
@@ -117,7 +118,7 @@
         }
 
         .table th {
-            background: var(--gray-50);
+            background: var(--card-header-bg);
             font-weight: 600;
             color: var(--gray-900);
             font-size: var(--font-size-sm);
@@ -131,7 +132,7 @@
         }
 
         .table tbody tr:hover {
-            background: var(--gray-50);
+            background: var(--interactive-hover-bg);
         }
 
         .user-id {
@@ -245,27 +246,27 @@
         .action-button {
             padding: 6px 12px;
             border: none;
-            border-radius: 4px;
-            font-size: 14px;
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-sm);
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: var(--transition-fast);
             margin: 0 2px;
         }
 
         .freeze-button {
-            background-color: #ef4444;
-            color: white;
+            background-color: var(--error-color);
+            color: var(--white);
         }
 
         .freeze-button:hover {
-            background-color: #dc2626;
+            background-color: var(--red-600);
             transform: translateY(-1px);
         }
 
         .restore-button {
-            background-color: #10b981;
-            color: white;
+            background-color: var(--success-color);
+            color: var(--white);
         }
 
         .restore-button:hover {
@@ -280,12 +281,12 @@
         }
 
         .reset-password-button {
-            background-color: #3b82f6;
-            color: white;
+            background-color: var(--primary-color);
+            color: var(--white);
         }
 
         .reset-password-button:hover {
-            background-color: #2563eb;
+            background-color: var(--primary-hover);
             transform: translateY(-1px);
         }
 
@@ -301,8 +302,9 @@
         .modal-overlay.show { display: flex; }
         .reset-password-modal {
             background: var(--white);
-            border-radius: var(--radius-lg);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            border-radius: var(--card-radius);
+            box-shadow: var(--shadow-xl);
+            border: 1px solid var(--card-border);
             padding: var(--spacing-6);
             max-width: 420px;
             width: 90%;
@@ -458,16 +460,14 @@
 
     <footer-component></footer-component>
 
-        <script src="/static/js/utils/html-utils.js"></script>
-<script src="/static/js/components/base-component.js"></script>
-    <script src="/static/js/components/header-component.js"></script>
-    <script src="/static/js/components/footer-component.js"></script>
     <script src="/static/js/components/icons.js"></script>
-
-    <!-- 用户管理工具 -->
     <script src="/static/js/utils/user-manager.js"></script>
+    <script src="/static/js/utils/html-utils.js"></script>
     <script src="/static/js/utils/confirm-dialog.js"></script>
     <script src="/static/js/utils/password-validation.js"></script>
+    <script src="/static/js/components/base-component.js"></script>
+    <script src="/static/js/components/header-component.js"></script>
+    <script src="/static/js/components/footer-component.js"></script>
     <script src="/static/js/components/navigation-card.js"></script>
     <script>
         /**
@@ -957,7 +957,7 @@
                 } else if (type === 'error') {
                     messageDiv.style.backgroundColor = '#ef4444';
                 } else {
-                    messageDiv.style.backgroundColor = '#3b82f6';
+                    messageDiv.style.backgroundColor = 'var(--primary-color)';
                 }
 
                 // 添加到页面

@@ -229,7 +229,7 @@ class UserProfileCard extends BaseComponent {
             .form-input:focus {
                 outline: none;
                 border-color: var(--primary-color);
-                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                box-shadow: 0 0 0 3px var(--primary-color-10);
             }
             .modal-actions {
                 display: flex;

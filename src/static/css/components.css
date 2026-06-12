@@ -2,9 +2,9 @@
 
 /* 卡片通用样式变量 */
 :root {
-    /* 卡片基础样式 */
+    /* 卡片基础样式（继承 main.css 全站主题变量） */
     --card-bg: var(--white);
-    --card-border: var(--gray-200);
+    --card-border: rgba(15, 23, 42, 0.11);
     --card-shadow: var(--shadow-sm);
     --card-shadow-hover: var(--shadow-md);
     --card-radius: var(--radius-lg);
@@ -12,8 +12,8 @@
     --card-margin: var(--card-gap);
     
     /* 卡片头部样式 */
-    --card-header-bg: var(--gray-50);
-    --card-header-border: var(--gray-200);
+    --card-header-bg: #f8fafd;
+    --card-header-border: #d5dde9;
     --card-header-padding: var(--spacing-3) var(--spacing-4);
     
     /* 卡片标题样式 */
@@ -46,8 +46,8 @@
 /* 顶栏组件样式 */
 header-component {
     display: block;
-    background: var(--white);
-    border-bottom: 1px solid var(--gray-200);
+    background: rgba(255, 255, 255, 0.92);
+    border-bottom: 1px solid var(--card-header-border);
     box-shadow: var(--shadow-sm);
     position: sticky;
     top: 0;
@@ -141,11 +141,11 @@ header-component {
 /* 底栏组件样式 */
 footer-component {
     display: block;
-    background: var(--white);
+    background: rgba(255, 255, 255, 0.9);
     color: var(--gray-600);
     padding: var(--spacing-5) 0;
     margin-top: auto;
-    border-top: 1px solid var(--gray-200);
+    border-top: 1px solid var(--card-header-border);
 }
 
 .footer-container {

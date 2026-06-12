@@ -257,13 +257,13 @@ class BlogListCard extends BaseComponent {
                 outline: none;
             }
             .blogn-category-menu-panel .category-link:focus-visible {
-                outline: 2px solid var(--primary-color, #2563eb);
+                outline: 2px solid var(--primary-color, #2f6fd6);
                 outline-offset: 1px;
             }
             .blogn-category-menu-panel .category-link.active {
                 background: #eff6ff;
                 border-color: #bfdbfe;
-                color: var(--primary-color, #2563eb);
+                color: var(--primary-color, #2f6fd6);
                 box-shadow: var(--shadow-sm, 0 1px 2px 0 rgb(0 0 0 / 0.05));
             }
             .blogn-category-menu-panel .category-info {
@@ -291,7 +291,7 @@ class BlogListCard extends BaseComponent {
             }
             .blogn-category-menu-panel .category-link.active .category-name {
                 font-weight: 600;
-                color: var(--primary-color, #2563eb);
+                color: var(--primary-color, #2f6fd6);
             }
             .blogn-category-menu-panel .category-count {
                 flex-shrink: 0;
@@ -317,7 +317,7 @@ class BlogListCard extends BaseComponent {
             .blogn-category-menu-panel .category-link.active .category-count {
                 background: var(--white, #fff);
                 border-color: #93c5fd;
-                color: var(--primary-color, #2563eb);
+                color: var(--primary-color, #2f6fd6);
             }
             .blogn-category-menu-panel .category-maintain-link {
                 display: flex;
@@ -344,7 +344,7 @@ class BlogListCard extends BaseComponent {
                 outline: none;
             }
             .blogn-category-menu-panel .category-maintain-link:focus-visible {
-                outline: 2px solid var(--primary-color, #2563eb);
+                outline: 2px solid var(--primary-color, #2f6fd6);
                 outline-offset: 1px;
             }
             .blogn-category-menu-panel .maintain-icon {

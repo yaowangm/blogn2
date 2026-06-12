@@ -555,51 +555,11 @@ class CreatePostForm extends BaseComponent {
                     font-family: var(--font-family);
                 }
                 
-                /* 基础样式变量 */
-                :root {
-                    --primary-color: #3b82f6;
-                    --primary-hover: #2563eb;
-                    --white: #ffffff;
-                    --gray-50: #f9fafb;
-                    --gray-100: #f3f4f6;
-                    --gray-200: #e5e7eb;
-                    --gray-300: #d1d5db;
-                    --gray-400: #9ca3af;
-                    --gray-500: #6b7280;
-                    --gray-600: #4b5563;
-                    --gray-700: #374151;
-                    --gray-800: #1f2937;
-                    --gray-900: #111827;
-                    --error-color: #ef4444;
-                    --success-color: #10b981;
-                    --font-size-xs: 0.75rem;
-                    --font-size-sm: 0.875rem;
-                    --font-size-base: 1rem;
-                    --font-size-lg: 1.125rem;
-                    --font-size-xl: 1.25rem;
-                    --spacing-1: 0.25rem;
-                    --spacing-2: 0.5rem;
-                    --spacing-3: 0.75rem;
-                    --spacing-4: 1rem;
-                    --spacing-5: 1.25rem;
-                    --spacing-6: 1.5rem;
-                    --spacing-8: 2rem;
-                    --radius-sm: 0.25rem;
-                    --radius-md: 0.375rem;
-                    --radius-lg: 0.5rem;
-                    --radius-full: 9999px;
-                    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-                    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-                    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-                    --transition-fast: all 0.15s ease;
-                    --transition-normal: all 0.3s ease;
-                }
-                
                 .card {
                     background: var(--white);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    border: 1px solid var(--gray-200);
+                    border-radius: var(--card-radius, var(--radius-lg));
+                    box-shadow: var(--card-shadow, var(--shadow-sm));
+                    border: 1px solid var(--card-border, var(--gray-200));
                     overflow: hidden;
                     text-align: center;
                     padding: var(--spacing-8);
@@ -726,51 +686,11 @@ class CreatePostForm extends BaseComponent {
                     font-family: var(--font-family);
                 }
                 
-                /* 基础样式变量 */
-                :root {
-                    --primary-color: #3b82f6;
-                    --primary-hover: #2563eb;
-                    --white: #ffffff;
-                    --gray-50: #f9fafb;
-                    --gray-100: #f3f4f6;
-                    --gray-200: #e5e7eb;
-                    --gray-300: #d1d5db;
-                    --gray-400: #9ca3af;
-                    --gray-500: #6b7280;
-                    --gray-600: #4b5563;
-                    --gray-700: #374151;
-                    --gray-800: #1f2937;
-                    --gray-900: #111827;
-                    --error-color: #ef4444;
-                    --success-color: #10b981;
-                    --font-size-xs: 0.75rem;
-                    --font-size-sm: 0.875rem;
-                    --font-size-base: 1rem;
-                    --font-size-lg: 1.125rem;
-                    --font-size-xl: 1.25rem;
-                    --spacing-1: 0.25rem;
-                    --spacing-2: 0.5rem;
-                    --spacing-3: 0.75rem;
-                    --spacing-4: 1rem;
-                    --spacing-5: 1.25rem;
-                    --spacing-6: 1.5rem;
-                    --spacing-8: 2rem;
-                    --radius-sm: 0.25rem;
-                    --radius-md: 0.375rem;
-                    --radius-lg: 0.5rem;
-                    --radius-full: 9999px;
-                    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-                    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-                    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-                    --transition-fast: all 0.15s ease;
-                    --transition-normal: all 0.3s ease;
-                }
-                
                 .card {
                     background: var(--white);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    border: 1px solid var(--gray-200);
+                    border-radius: var(--card-radius, var(--radius-lg));
+                    box-shadow: var(--card-shadow, var(--shadow-sm));
+                    border: 1px solid var(--card-border, var(--gray-200));
                     overflow: hidden;
                 }
                 
@@ -830,7 +750,7 @@ class CreatePostForm extends BaseComponent {
                 .form-select:focus {
                     outline: none;
                     border-color: var(--primary-color);
-                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                    box-shadow: 0 0 0 3px var(--primary-color-10);
                 }
                 
                 .form-textarea {
@@ -1064,7 +984,7 @@ class CreatePostForm extends BaseComponent {
                 
                 .image-upload-container.dragover {
                     border-color: var(--primary-color);
-                    background: rgba(59, 130, 246, 0.05);
+                    background: var(--primary-color-10);
                 }
                 
                 .image-upload-icon {

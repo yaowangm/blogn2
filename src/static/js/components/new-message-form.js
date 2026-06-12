@@ -270,12 +270,12 @@ class NewMessageForm extends BaseComponent {
                 }
 
                 .btn-primary {
-                    background: #2563eb;
+                    background: var(--primary-color);
                     color: #ffffff;
                 }
 
                 .btn-primary:hover:not(:disabled) {
-                    background: #1d4ed8;
+                    background: var(--primary-hover);
                     transform: translateY(-1px);
                     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
                 }

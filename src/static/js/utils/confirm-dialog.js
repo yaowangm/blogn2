@@ -97,9 +97,9 @@
                 border-color: var(--gray-400, #9ca3af);
             }
             .blogn-confirm-dialog-footer .blogn-cd-btn-primary {
-                background-color: var(--primary-color, #2563eb);
+                background-color: var(--primary-color, #2f6fd6);
                 color: #ffffff;
-                border: 1px solid var(--primary-color, #2563eb);
+                border: 1px solid var(--primary-color, #2f6fd6);
                 padding: var(--spacing-2, 8px) var(--spacing-6, 24px);
                 min-width: 7.5rem;
                 border-radius: var(--radius-md, 6px);
@@ -109,8 +109,8 @@
                 transition: background-color 0.15s ease, border-color 0.15s ease;
             }
             .blogn-confirm-dialog-footer .blogn-cd-btn-primary:hover:not(:disabled) {
-                background-color: var(--primary-hover, #1d4ed8);
-                border-color: var(--primary-hover, #1d4ed8);
+                background-color: var(--primary-hover, #1f5fbf);
+                border-color: var(--primary-hover, #1f5fbf);
             }
             .blogn-confirm-dialog-footer .blogn-cd-btn-primary.blogn-cd-danger {
                 background-color: #dc2626;
