@@ -168,8 +168,14 @@ class RecentUpdatesCard extends BaseComponent {
                     transition: var(--transition-normal);
                 }
 
-                .update-item:hover {
-                    background: var(--gray-50);
+                .update-item:hover,
+                .update-item:focus-within {
+                    background: var(--interactive-hover-bg);
+                }
+
+                .update-item:hover .author-name,
+                .update-item:focus-within .author-name {
+                    color: var(--interactive-hover-text);
                 }
 
                 .update-link {
@@ -236,8 +242,9 @@ class RecentUpdatesCard extends BaseComponent {
                 }
 
                 .author-name {
-                    font-weight: 700;
-                    color: var(--gray-900);
+                    font-weight: 400;
+                    color: var(--gray-800);
+                    transition: color var(--transition-fast);
                     font-size: var(--font-size-sm);
                     overflow: hidden;
                     text-overflow: ellipsis;
@@ -250,12 +257,10 @@ class RecentUpdatesCard extends BaseComponent {
                 }
 
                 .latest-post {
-                    color: var(--gray-700);
+                    color: var(--gray-900);
                     font-size: var(--font-size-sm);
+                    font-weight: 600;
                     line-height: 1.4;
-                    background: var(--gray-50);
-                    padding: 0;
-                    border-radius: var(--radius-md);
                     margin: 0;
                 }
 
