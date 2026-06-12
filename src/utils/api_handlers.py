@@ -101,8 +101,13 @@ class APIHandler:
         
         @app.get("/health")
         async def health_check():
-            """健康检查端点"""
-            return {"status": "healthy", "service": "BlogN2 API"}
+            """健康检查端点（含缓存可用性，不因 Redis 不可用而失败）"""
+            return {
+                "status": "healthy",
+                "service": "BlogN2 API",
+                "cache_enabled": cache_settings.enable_cache,
+                "cache_available": cache_manager.is_available(),
+            }
         
         @app.get("/api/cache/status")
         async def cache_status():

@@ -186,6 +186,11 @@ class CacheKeyGenerator:
             str: 博客评论缓存键
         """
         return CacheKeyGenerator._build_key("blog", "comments", blog_id)
+
+    @staticmethod
+    def site_recent_comments(limit: int = 5) -> str:
+        """全站最近评论缓存键（/comments/recent）"""
+        return CacheKeyGenerator._build_key("blog", "comments", "recent", limit)
     
     @staticmethod
     def user_blogs(user_id: int, page: int = 1) -> str:
@@ -297,17 +302,18 @@ class CacheKeyGenerator:
         )
     
     @staticmethod
-    def project_comments(project_id: int) -> str:
+    def project_comments(project_id: int, limit: int = 5) -> str:
         """
-        项目评论缓存键
+        项目最近评论缓存键
         
         Args:
             project_id: 项目ID
+            limit: 返回数量限制
             
         Returns:
             str: 项目评论缓存键
         """
-        return CacheKeyGenerator._build_key("project", "comments", project_id, "recent")
+        return CacheKeyGenerator._build_key("project", "comments", project_id, "recent", limit)
     
     @staticmethod
     def project_categories(project_id: int) -> str:

@@ -1,5 +1,15 @@
 # 缓存配置说明
 
+## Redis 为可选加速器
+
+BlogN2 **不依赖 Redis**。以下任一情况均与「无缓存」行为一致：直连数据库/API，端点正常响应，不报错。
+
+- `CACHE_ENABLE_CACHE=false`（开发默认）
+- Redis 未启动或连接失败
+- 缓存读写异常（装饰器会记录日志并回退执行原函数）
+
+启用缓存（`CACHE_ENABLE_CACHE=true`）且 Redis 可用时，热路径 API 由 Redis 加速。健康检查 `/health` 与 `/api/cache/status` 会报告 `cache_available`，**不会**因 Redis 不可用而导致健康检查失败。
+
 ## 环境变量配置
 
 缓存系统通过环境变量 `CACHE_DEFAULT_TTL` 等配置 TTL 与开关，而不是在代码里硬编码。
@@ -38,7 +48,7 @@ CACHE_ENABLE_CACHE=true
 - `/blogs/recent` — 最新加入博客（`cache_blogs_joined_recent`，键含 `limit`）
 - `/blogs/posts/latest` — 最新博文分页（`cache_blog_recent_list`，键含 `page`、`page_size`、`exclude`、`blogid`）
 - `/blogs/popular` — 热门博客
-- `/comments/recent` — 全站最近评论（`@cache_blog_comments()`）
+- `/comments/recent` — 全站最近评论（`@cache_blog_comments()`，键含 `limit`）
 - `/metadata/` — 站点元数据
 
 #### 文章相关 API
@@ -64,7 +74,8 @@ RSS 在 service 层缓存 **XML 字符串**（`build_*_rss_xml` 返回 `str`）�
 #### 项目相关
 - `project:detail:{project_id}`
 - `project:posts:{project_id}:{page}:{page_size}:{post_type}:{folder_id|all}:{active|deleted}`
-- `project:comments:{project_id}:recent`
+- `project:comments:{project_id}:recent:{limit}`
+- `blog:comments:recent:{limit}` — 全站最近评论
 - `project:categories:{project_id}`
 - `project:rss:{project_id}:{limit}`
 - `project:stats:{project_id}`
@@ -103,5 +114,5 @@ async def get_project(project_id: int):
 ### 注意事项
 
 - 修改缓存相关环境变量后需重启应用
-- `CACHE_ENABLE_CACHE=false` 时所有 `@cache_*` 装饰器跳过读写
+- `CACHE_ENABLE_CACHE=false` 或 Redis 不可用时，所有 `@cache_*` 装饰器跳过读写并直接执行原函数
 - 缓存键必须包含所有影响响应的查询参数，避免不同请求互相覆盖

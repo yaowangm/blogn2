@@ -252,6 +252,8 @@ def cache_decorator(
 
             try:
                 await cache_manager.initialize()
+                if not cache_manager.is_available():
+                    return await func(*args, **kwargs)
 
                 # 生成缓存键
                 if key_builder:
@@ -401,9 +403,9 @@ def cache_blog_detail(ttl: int = None):
 
 
 def cache_blog_comments(ttl: int = None):
-    """博客评论缓存装饰器"""
+    """全站最近评论缓存装饰器（/comments/recent）"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
-                          CacheKeyGenerator.blog_comments(kwargs.get('blog_id', 0)))
+                          CacheKeyGenerator.site_recent_comments(kwargs.get('limit', 5)))
 
 
 def _blog_messages_recent_cache_key(*args, **kwargs) -> str:
@@ -515,9 +517,12 @@ def cache_project_posts(ttl: int = None):
 
 
 def cache_project_comments(ttl: int = None):
-    """项目评论缓存装饰器"""
+    """项目最近评论缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
-                          CacheKeyGenerator.project_comments(kwargs.get('project_id', 0)))
+                          CacheKeyGenerator.project_comments(
+                              kwargs.get('project_id', 0),
+                              kwargs.get('limit', 5),
+                          ))
 
 
 def cache_project_categories(ttl: int = None):
@@ -711,6 +716,23 @@ async def invalidate_project_post_list_caches(
             logger.warning("清除缓存模式失败 %s: %s", pattern, e)
 
 
+async def invalidate_site_recent_comments_cache() -> None:
+    """评论增减后：失效全站最近评论缓存。"""
+    if not cache_settings.enable_cache:
+        return
+    try:
+        await cache_manager.initialize()
+    except Exception as e:
+        logger.warning("缓存未初始化，跳过全站最近评论缓存失效: %s", e)
+        return
+    if not cache_manager.is_available():
+        return
+    try:
+        await cache_manager.clear_pattern("blog:comments:recent:*")
+    except Exception as e:
+        logger.warning("清除缓存模式失败 blog:comments:recent:*: %s", e)
+
+
 async def invalidate_project_recent_comments_cache(project_id: int) -> None:
     """评论增减后：博客「最近评论」及依赖评论计数的 project 详情/统计缓存。"""
     if not cache_settings.enable_cache:
@@ -731,6 +753,7 @@ async def invalidate_project_recent_comments_cache(project_id: int) -> None:
             await cache_manager.clear_pattern(pattern)
         except Exception as e:
             logger.warning("清除缓存模式失败 %s: %s", pattern, e)
+    await invalidate_site_recent_comments_cache()
 
 
 async def invalidate_project_categories_cache(project_id: int) -> None:

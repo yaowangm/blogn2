@@ -28,12 +28,24 @@ class TestCacheManager:
         cache_manager._initialized = False
         cache_manager._backend = None
         
-        # 测试初始化
+        # 测试初始化（Redis 可用时应成功；不可用时跳过断言）
         await cache_manager.initialize()
         
-        # 验证初始化成功
-        assert cache_manager._initialized == True
-        assert cache_manager._backend is not None
+        if cache_manager._initialized:
+            assert cache_manager._backend is not None
+        if not cache_settings.enable_cache:
+            assert cache_manager.is_available() is False
+
+    @pytest.mark.asyncio
+    async def test_cache_manager_init_failure_does_not_raise(self):
+        """Redis 连接失败时 initialize 不抛异常，is_available 为 False"""
+        cache_manager._initialized = False
+        cache_manager._backend = None
+        with patch.object(cache_settings, "enable_cache", True):
+            with patch("src.utils.cache.redis.from_url", side_effect=ConnectionError("redis down")):
+                await cache_manager.initialize()
+        assert cache_manager._initialized is False
+        assert cache_manager.is_available() is False
 
     @pytest.mark.asyncio
     async def test_cache_set_get_delete(self):
@@ -113,6 +125,12 @@ class TestCacheManager:
 
         joined_key = CacheKeyGenerator.blogs_joined_recent(limit=8)
         assert "joined" in joined_key or "8" in joined_key
+
+        site_comments_key = CacheKeyGenerator.site_recent_comments(limit=10)
+        assert site_comments_key == "blog:comments:recent:10"
+
+        project_comments_key = CacheKeyGenerator.project_comments(42, limit=15)
+        assert project_comments_key == "project:comments:42:recent:15"
 
     def test_ensure_cache_prefix_adds_prefix_when_missing(self):
         """_ensure_cache_prefix：无前缀的 key 会加上 cache_prefix"""
@@ -286,6 +304,65 @@ class TestCacheDecorator:
         assert result1["call_count"] == 1
         assert result2["call_count"] == 2
         assert result3["call_count"] == 3
+
+    @pytest.mark.asyncio
+    async def test_cache_decorator_runs_when_global_cache_disabled(self):
+        """CACHE_ENABLE_CACHE=false 时装饰器应直接执行函数"""
+        call_count = 0
+
+        @cache_decorator(ttl=60, enable_cache=True)
+        async def test_function():
+            nonlocal call_count
+            call_count += 1
+            return {"call_count": call_count}
+
+        with patch("src.utils.cache._is_testing_environment", return_value=False):
+            with patch.object(cache_settings, "enable_cache", False):
+                r1 = await test_function()
+                r2 = await test_function()
+        assert r1["call_count"] == 1
+        assert r2["call_count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_cache_decorator_runs_when_redis_unavailable(self):
+        """Redis 不可用时 get 返回 None，函数仍应执行且可返回结果"""
+        call_count = 0
+
+        @cache_decorator(ttl=60, enable_cache=True, key_builder=lambda **kw: "test:unavailable")
+        async def test_function():
+            nonlocal call_count
+            call_count += 1
+            return {"ok": True, "call_count": call_count}
+
+        with patch("src.utils.cache._is_testing_environment", return_value=False):
+            with patch.object(cache_settings, "enable_cache", True):
+                with patch.object(cache_manager, "is_available", return_value=False):
+                    with patch.object(cache_manager, "initialize", new_callable=AsyncMock):
+                        r1 = await test_function()
+                        r2 = await test_function()
+        assert r1 == {"ok": True, "call_count": 1}
+        assert r2 == {"ok": True, "call_count": 2}
+
+    @pytest.mark.asyncio
+    async def test_cache_decorator_skips_in_testing_environment(self):
+        """测试环境下应跳过缓存逻辑"""
+        call_count = 0
+
+        @cache_decorator(ttl=60, enable_cache=True)
+        async def test_function():
+            nonlocal call_count
+            call_count += 1
+            return call_count
+
+        with patch.object(cache_settings, "enable_cache", True):
+            assert await test_function() == 1
+            assert await test_function() == 2
+
+    @pytest.mark.asyncio
+    async def test_cache_manager_get_returns_none_when_unavailable(self):
+        """缓存不可用时 get 返回 None，不抛异常"""
+        with patch.object(cache_manager, "is_available", return_value=False):
+            assert await cache_manager.get("any:key") is None
 
 
 class TestCacheStats:
