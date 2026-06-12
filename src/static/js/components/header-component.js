@@ -501,7 +501,8 @@ class HeaderComponent extends BaseComponent {
         if (!customElements.get('login-modal')) {
             // 如果组件未定义，动态加载脚本
             const script = document.createElement('script');
-            script.src = '/static/js/components/login-modal.js';
+            script.src = (window.BlognStatic && window.BlognStatic.url('/static/js/components/login-modal.js'))
+                || '/static/js/components/login-modal.js';
             script.onload = () => {
                 // 脚本加载完成后创建模态框
                 this.createLoginModal();
@@ -746,14 +747,15 @@ class HeaderComponent extends BaseComponent {
         }
 
         // 检查是否已经有token-manager脚本
-        const existingScript = document.querySelector('script[src="/static/js/services/token-manager.js"]');
+        const existingScript = document.querySelector('script[src*="token-manager.js"]');
         if (existingScript) {
             return;
         }
 
         // 动态加载token-manager脚本
         const script = document.createElement('script');
-        script.src = '/static/js/services/token-manager.js';
+        const tokenManagerJs = '/static/js/services/token-manager.js';
+        script.src = (window.BlognStatic && window.BlognStatic.url(tokenManagerJs)) || tokenManagerJs;
         script.onerror = () => {
             console.error('Failed to load token-manager.js');
         };

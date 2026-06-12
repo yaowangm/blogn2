@@ -48,7 +48,8 @@ class MarkdownUtils {
         }
         const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = '/static/js/libs/katex/katex.min.css';
+        const katexCss = '/static/js/libs/katex/katex.min.css';
+        link.href = (window.BlognStatic && window.BlognStatic.url(katexCss)) || katexCss;
         link.setAttribute('data-katex-styles', '1');
         shadowRoot.prepend(link);
     }

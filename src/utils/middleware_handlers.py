@@ -16,6 +16,7 @@ from src.config.app import (
     get_cors_allow_headers,
     get_cors_allow_credentials,
 )
+from src.utils.static_assets import apply_static_cache_headers
 
 
 class MiddlewareHandler:
@@ -61,6 +62,17 @@ class MiddlewareHandler:
             # 重置密码页包含敏感 token，避免 Referer 传播
             if request.url.path.startswith("/reset-password"):
                 response.headers["Referrer-Policy"] = "no-referrer"
+
+            path = request.url.path
+            if path.startswith("/static/"):
+                apply_static_cache_headers(
+                    response,
+                    path,
+                    request.url.query,
+                )
+            elif "text/html" in response.headers.get("content-type", ""):
+                response.headers["Cache-Control"] = "no-cache, must-revalidate"
+                response.headers["Pragma"] = "no-cache"
 
             return response
 
