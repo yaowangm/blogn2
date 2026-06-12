@@ -20,16 +20,50 @@ class PopularBlogsCard extends BaseComponent {
         } catch (error) {
             this.logError('Error loading popular blogs', error);
             this.blogs = [
-                { name: '技术前沿', followers: '1.2k', avatar: '技', rank: 1 },
-                { name: '生活美学', followers: '856', avatar: '生', rank: 2 },
-                { name: '编程之道', followers: '743', avatar: '编', rank: 3 },
-                { name: '摄影艺术', followers: '621', avatar: '摄', rank: 4 },
-                { name: '读书会', followers: '589', avatar: '读', rank: 5 }
+                { id: 1, name: '技术前沿', join_date: '1周前', followers: '1.2k', avatar: null, userid: 1, rank: 1 },
+                { id: 2, name: '生活美学', join_date: '2周前', followers: '856', avatar: null, userid: 2, rank: 2 },
+                { id: 3, name: '编程之道', join_date: '3周前', followers: '743', avatar: null, userid: 3, rank: 3 },
+                { id: 4, name: '摄影艺术', join_date: '1月前', followers: '621', avatar: null, userid: 4, rank: 4 },
+                { id: 5, name: '读书会', join_date: '1月前', followers: '589', avatar: null, userid: 5, rank: 5 }
             ];
         } finally {
             this.loading = false;
             this.render();
         }
+    }
+
+    getSmallAvatarPath(userId) {
+        if (!userId) {
+            return null;
+        }
+        const prefix = Math.floor(userId / 10000) + 1;
+        return `/avatar/${prefix}/s_${userId}.jpg`;
+    }
+
+    renderBlogMetaItem(blog) {
+        const safeName = this.escapeHtml(blog.name);
+        const safeJoinDate = this.escapeHtml(blog.join_date || '');
+        const avatarPath = blog.avatar || this.getSmallAvatarPath(blog.userid);
+        const fallbackLetter = safeName ? safeName.charAt(0).toUpperCase() : '博';
+
+        const avatarHtml = `
+            <span class="blog-avatar" aria-hidden="true">
+                ${avatarPath ? `
+                    <img src="${avatarPath}" alt=""
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                         onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
+                ` : ''}
+                <span class="blog-avatar-fallback" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackLetter}</span>
+            </span>
+        `;
+
+        return `
+            <div class="blog-meta-row">
+                ${avatarHtml}
+                <span class="blog-name">${safeName}</span>
+                <span class="blog-date">${safeJoinDate}</span>
+            </div>
+        `;
     }
 
     render() {
@@ -66,7 +100,7 @@ class PopularBlogsCard extends BaseComponent {
                 .blog-link {
                     display: flex;
                     align-items: center;
-                    gap: var(--spacing-3);
+                    gap: var(--spacing-2);
                     padding: var(--spacing-3) var(--spacing-4);
                     text-decoration: none;
                     color: inherit;
@@ -77,19 +111,24 @@ class PopularBlogsCard extends BaseComponent {
                     background: var(--gray-50);
                 }
 
+                .blog-meta-row {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                    min-width: 0;
+                    flex: 1;
+                }
+
                 .blog-avatar {
-                    width: 40px;
-                    height: 40px;
+                    width: 24px;
+                    height: 24px;
                     border-radius: 50%;
                     flex-shrink: 0;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     background: var(--gray-100);
-                    font-size: var(--font-size-base);
-                    font-weight: 600;
-                    color: var(--gray-600);
-                    border: 2px solid var(--gray-200);
+                    border: 1px solid var(--gray-200);
                     overflow: hidden;
                 }
 
@@ -97,27 +136,34 @@ class PopularBlogsCard extends BaseComponent {
                     width: 100%;
                     height: 100%;
                     object-fit: cover;
+                    display: block;
                 }
 
-                .blog-info {
-                    flex: 1;
-                    min-width: 0;
+                .blog-avatar-fallback {
+                    width: 100%;
+                    height: 100%;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: var(--font-size-xs);
+                    font-weight: 600;
+                    color: var(--gray-600);
                 }
 
                 .blog-name {
                     font-weight: 600;
                     color: var(--gray-900);
                     font-size: var(--font-size-sm);
-                    margin: 0 0 var(--spacing-1) 0;
-                    white-space: nowrap;
+                    min-width: 0;
                     overflow: hidden;
                     text-overflow: ellipsis;
+                    white-space: nowrap;
                 }
 
-                .blog-meta {
+                .blog-date {
+                    flex-shrink: 0;
                     font-size: var(--font-size-xs);
                     color: var(--gray-500);
-                    margin: 0;
+                    white-space: nowrap;
                 }
 
                 .blog-rank {
@@ -144,24 +190,12 @@ class PopularBlogsCard extends BaseComponent {
                 ${this.loading ? `<div class="loading">${this.createLoadingHTML()}</div>` : `
                     <ul class="blog-list">
                         ${this.blogs.map(blog => {
-                            const safeName = this.escapeHtml(blog.name);
-                            const safeFollowers = this.escapeHtml(blog.followers);
                             const safeRank = this.escapeHtml(blog.rank);
-
                             return `
                                 <li class="blog-item">
                                     <a href="/blog/${blog.id}" class="blog-link" target="_blank" rel="noopener noreferrer">
-                                        <div class="blog-avatar">
-                                            ${blog.avatar ?
-                                                `<img src="${blog.avatar}" alt="${safeName}">` :
-                                                `<span>${safeName ? safeName.charAt(0) : '博'}</span>`
-                                            }
-                                        </div>
-                                        <div class="blog-info">
-                                            <div class="blog-name">${safeName}</div>
-                                            <div class="blog-meta">${safeFollowers} 关注者</div>
-                                        </div>
-                                        <div class="blog-rank">#${safeRank}</div>
+                                        ${this.renderBlogMetaItem(blog)}
+                                        <span class="blog-rank">#${safeRank}</span>
                                     </a>
                                 </li>
                             `;

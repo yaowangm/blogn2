@@ -84,6 +84,12 @@ class BlogService(BaseService):
             # 格式化访问量
             access_count = project["accesscount"]
             access_str = TimeUtils.format_access_count(access_count)
+
+            createtime = project.get("createtime")
+            if createtime:
+                join_date = TimeUtils.format_relative_time(createtime)
+            else:
+                join_date = "未知日期"
             
             # 检查用户头像是否存在
             userid = project["userid"]
@@ -93,6 +99,7 @@ class BlogService(BaseService):
                 "id": project["id"],
                 "name": project["name"],
                 "followers": access_str,  # 这里显示的是访问量，但保持字段名兼容
+                "join_date": join_date,
                 "avatar": avatar_path,
                 "rank": i + 1,
                 "author": project["author_name"],

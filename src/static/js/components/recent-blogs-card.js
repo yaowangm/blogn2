@@ -20,16 +20,50 @@ class RecentBlogsCard extends BaseComponent {
         } catch (error) {
             this.logError('Error loading recent blogs', error);
             this.blogs = [
-                { name: '技术探索者', join_date: '2天前', avatar: '技' },
-                { name: '生活随笔', join_date: '3天前', avatar: '生' },
-                { name: '编程日记', join_date: '5天前', avatar: '编' },
-                { name: '摄影分享', join_date: '1周前', avatar: '摄' },
-                { name: '读书笔记', join_date: '1周前', avatar: '读' }
+                { id: 1, name: '技术探索者', join_date: '2天前', avatar: null, userid: 1 },
+                { id: 2, name: '生活随笔', join_date: '3天前', avatar: null, userid: 2 },
+                { id: 3, name: '编程日记', join_date: '5天前', avatar: null, userid: 3 },
+                { id: 4, name: '摄影分享', join_date: '1周前', avatar: null, userid: 4 },
+                { id: 5, name: '读书笔记', join_date: '1周前', avatar: null, userid: 5 }
             ];
         } finally {
             this.loading = false;
             this.render();
         }
+    }
+
+    getSmallAvatarPath(userId) {
+        if (!userId) {
+            return null;
+        }
+        const prefix = Math.floor(userId / 10000) + 1;
+        return `/avatar/${prefix}/s_${userId}.jpg`;
+    }
+
+    renderBlogMetaItem(blog) {
+        const safeName = this.escapeHtml(blog.name);
+        const safeJoinDate = this.escapeHtml(blog.join_date);
+        const avatarPath = blog.avatar || this.getSmallAvatarPath(blog.userid);
+        const fallbackLetter = safeName ? safeName.charAt(0).toUpperCase() : '博';
+
+        const avatarHtml = `
+            <span class="blog-avatar" aria-hidden="true">
+                ${avatarPath ? `
+                    <img src="${avatarPath}" alt=""
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                         onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
+                ` : ''}
+                <span class="blog-avatar-fallback" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackLetter}</span>
+            </span>
+        `;
+
+        return `
+            <div class="blog-meta-row">
+                ${avatarHtml}
+                <span class="blog-name">${safeName}</span>
+                <span class="blog-date">${safeJoinDate}</span>
+            </div>
+        `;
     }
 
     render() {
@@ -64,9 +98,7 @@ class RecentBlogsCard extends BaseComponent {
                 }
 
                 .blog-link {
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-3);
+                    display: block;
                     padding: var(--spacing-3) var(--spacing-4);
                     text-decoration: none;
                     color: inherit;
@@ -77,19 +109,23 @@ class RecentBlogsCard extends BaseComponent {
                     background: var(--gray-50);
                 }
 
+                .blog-meta-row {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                    min-width: 0;
+                }
+
                 .blog-avatar {
-                    width: 40px;
-                    height: 40px;
+                    width: 24px;
+                    height: 24px;
                     border-radius: 50%;
                     flex-shrink: 0;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     background: var(--gray-100);
-                    font-size: var(--font-size-base);
-                    font-weight: 600;
-                    color: var(--gray-600);
-                    border: 2px solid var(--gray-200);
+                    border: 1px solid var(--gray-200);
                     overflow: hidden;
                 }
 
@@ -97,27 +133,34 @@ class RecentBlogsCard extends BaseComponent {
                     width: 100%;
                     height: 100%;
                     object-fit: cover;
+                    display: block;
                 }
 
-                .blog-info {
-                    flex: 1;
-                    min-width: 0;
+                .blog-avatar-fallback {
+                    width: 100%;
+                    height: 100%;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: var(--font-size-xs);
+                    font-weight: 600;
+                    color: var(--gray-600);
                 }
 
                 .blog-name {
                     font-weight: 600;
                     color: var(--gray-900);
                     font-size: var(--font-size-sm);
-                    margin: 0 0 var(--spacing-1) 0;
-                    white-space: nowrap;
+                    min-width: 0;
                     overflow: hidden;
                     text-overflow: ellipsis;
+                    white-space: nowrap;
                 }
 
-                .blog-meta {
+                .blog-date {
+                    flex-shrink: 0;
                     font-size: var(--font-size-xs);
                     color: var(--gray-500);
-                    margin: 0;
+                    white-space: nowrap;
                 }
 
                 .loading {
@@ -136,27 +179,13 @@ class RecentBlogsCard extends BaseComponent {
                 </div>
                 ${this.loading ? `<div class="loading">${this.createLoadingHTML()}</div>` : `
                     <ul class="blog-list">
-                        ${this.blogs.map(blog => {
-                            const safeName = this.escapeHtml(blog.name);
-                            const safeJoinDate = this.escapeHtml(blog.join_date);
-
-                            return `
-                                <li class="blog-item">
-                                    <a href="/blog/${blog.id}" class="blog-link" target="_blank" rel="noopener noreferrer">
-                                        <div class="blog-avatar">
-                                            ${blog.avatar ?
-                                                `<img src="${blog.avatar}" alt="${safeName}">` :
-                                                `<span>${safeName ? safeName.charAt(0) : '博'}</span>`
-                                            }
-                                        </div>
-                                        <div class="blog-info">
-                                            <div class="blog-name">${safeName}</div>
-                                            <div class="blog-meta">${safeJoinDate}</div>
-                                        </div>
-                                    </a>
-                                </li>
-                            `;
-                        }).join('')}
+                        ${this.blogs.map(blog => `
+                            <li class="blog-item">
+                                <a href="/blog/${blog.id}" class="blog-link" target="_blank" rel="noopener noreferrer">
+                                    ${this.renderBlogMetaItem(blog)}
+                                </a>
+                            </li>
+                        `).join('')}
                     </ul>
                 `}
             </div>
