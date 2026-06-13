@@ -156,6 +156,120 @@ class RecentUpdatesCard extends BaseComponent {
                     color: var(--primary-color);
                 }
 
+                .updates-list {
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
+                }
+
+                .update-item {
+                    border-bottom: 1px solid var(--gray-100);
+                    padding: var(--spacing-3) var(--spacing-4);
+                    transition: var(--transition-normal);
+                }
+
+                .update-item:hover,
+                .update-item:focus-within {
+                    background: var(--interactive-hover-bg);
+                }
+
+                .update-item:hover .author-name,
+                .update-item:focus-within .author-name {
+                    color: var(--interactive-hover-text);
+                }
+
+                .update-link {
+                    text-decoration: none;
+                    color: inherit;
+                    display: block;
+                    width: 100%;
+                }
+
+                .update-link:hover {
+                    text-decoration: none;
+                }
+
+                .update-item:last-child {
+                    border-bottom: none;
+                }
+
+                .update-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: var(--spacing-2);
+                    margin-bottom: var(--spacing-1);
+                }
+
+                .meta-item {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: var(--spacing-1);
+                    min-width: 0;
+                    color: var(--gray-500);
+                    font-size: var(--font-size-xs);
+                    white-space: nowrap;
+                }
+
+                .meta-item-author {
+                    gap: var(--spacing-2);
+                }
+
+                .author-avatar {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    flex-shrink: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: var(--gray-100);
+                    border: 1px solid var(--gray-200);
+                    overflow: hidden;
+                }
+
+                .author-avatar img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    display: block;
+                }
+
+                .author-avatar-fallback {
+                    width: 100%;
+                    height: 100%;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: var(--font-size-xs);
+                    font-weight: 600;
+                    color: var(--gray-600);
+                }
+
+                .author-name {
+                    font-weight: 500;
+                    color: var(--gray-700);
+                    transition: color var(--transition-fast);
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
+                .update-time {
+                    font-size: var(--font-size-xs);
+                    color: var(--gray-500);
+                }
+
+                .latest-post {
+                    color: var(--gray-600);
+                    font-size: var(--font-size-sm);
+                    font-weight: 400;
+                    line-height: 1.6;
+                    margin: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
                 .loading {
                     text-align: center;
                     padding: var(--spacing-8);
@@ -204,44 +318,36 @@ class RecentUpdatesCard extends BaseComponent {
 
     renderUpdates() {
         return `
-            <div class="card-body">
-                <div class="post-list">
-                    ${this.recentUpdates.map((update) => {
-                        const safeTime = this.escapeHtml(update.time);
-                        const safeTitle = this.escapeHtml(update.title);
-                        const authorMeta = this.renderAuthorMetaItem(update.blog_name, update.avatar, update.userid);
-                        const contentHtml = `
-                            <div class="article-meta">
-                                <div class="meta-items-left">
-                                    ${authorMeta}
-                                </div>
-                                <div class="meta-item">
-                                    <span>${safeTime}</span>
-                                </div>
-                            </div>
-                            <p class="post-excerpt post-excerpt--single-line">${this.truncateText(safeTitle, 40)}</p>
-                        `;
+            <ul class="updates-list">
+                ${this.recentUpdates.map((update) => {
+                    const safeTime = this.escapeHtml(update.time);
+                    const safeTitle = this.escapeHtml(update.title);
+                    const authorMeta = this.renderAuthorMetaItem(update.blog_name, update.avatar, update.userid);
+                    const contentHtml = `
+                        <div class="update-header">
+                            ${authorMeta}
+                            <span class="update-time">${safeTime}</span>
+                        </div>
+                        <div class="latest-post">${this.truncateText(safeTitle, 40)}</div>
+                    `;
 
-                        if (update.id) {
-                            return `
-                                <a href="/article/${update.id}" class="post-item" target="_blank" title="查看文章">
-                                    <div class="post-content">
-                                        ${contentHtml}
-                                    </div>
-                                </a>
-                            `;
-                        }
-
+                    if (update.id) {
                         return `
-                            <div class="post-item post-item-block disabled">
-                                <div class="post-content">
+                            <li class="update-item">
+                                <a href="/article/${update.id}" class="update-link" target="_blank" title="查看文章">
                                     ${contentHtml}
-                                </div>
-                            </div>
+                                </a>
+                            </li>
                         `;
-                    }).join('')}
-                </div>
-            </div>
+                    }
+
+                    return `
+                        <li class="update-item disabled">
+                            ${contentHtml}
+                        </li>
+                    `;
+                }).join('')}
+            </ul>
         `;
     }
 

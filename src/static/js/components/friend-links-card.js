@@ -132,23 +132,33 @@ class FriendLinksCard extends BaseComponent {
                 .manage-button {
                     flex-shrink: 0;
                 }
-                .friend-link-icon {
-                    flex-shrink: 0;
-                    width: 14px;
-                    height: 14px;
-                    color: var(--gray-400);
-                    transition: color var(--transition-fast);
+                .friend-links {
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
+                    display: flex;
+                    flex-direction: column;
+                    gap: calc(var(--spacing-1) + 1px);
                 }
 
-                .post-item.friend-link-item {
+                .friend-link {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-2);
-                }
-
-                .post-item.friend-link-item:hover .friend-link-icon,
-                .post-item.friend-link-item:focus-visible .friend-link-icon {
-                    color: var(--interactive-hover-text);
+                    padding: var(--spacing-2) var(--spacing-3);
+                    background: var(--gray-50);
+                    border: 1px solid var(--gray-200);
+                    border-radius: var(--radius-md);
+                    text-decoration: none;
+                    color: var(--gray-700);
+                    font-size: var(--font-size-sm);
+                    line-height: 1.35;
+                    transition:
+                        background-color var(--transition-fast),
+                        border-color var(--transition-fast),
+                        color var(--transition-fast),
+                        box-shadow var(--transition-fast);
+                    min-width: 0;
                 }
 
                 .friend-link-text {
@@ -157,8 +167,35 @@ class FriendLinksCard extends BaseComponent {
                     overflow: hidden;
                     text-overflow: ellipsis;
                     white-space: nowrap;
-                    font-size: var(--font-size-sm);
-                    line-height: 1.35;
+                }
+
+                .friend-link-icon {
+                    flex-shrink: 0;
+                    width: 14px;
+                    height: 14px;
+                    color: var(--gray-400);
+                    transition: color var(--transition-fast);
+                }
+
+                .friend-link:hover,
+                .friend-link:focus-visible {
+                    background: var(--interactive-hover-bg);
+                    border-color: var(--interactive-hover-border);
+                    color: var(--interactive-hover-text);
+                }
+
+                .friend-link:hover .friend-link-icon,
+                .friend-link:focus-visible .friend-link-icon {
+                    color: var(--interactive-hover-text);
+                }
+
+                .friend-link:focus {
+                    outline: none;
+                }
+
+                .friend-link:focus-visible {
+                    outline: 2px solid var(--primary-color);
+                    outline-offset: 1px;
                 }
 
                 .loading {
@@ -210,27 +247,29 @@ class FriendLinksCard extends BaseComponent {
 
     renderFriendLinks() {
         return `
-            <div class="post-list">
+            <ul class="friend-links">
                 ${this.friendLinks.map((link) => {
                     const safeSubject = this.escapeHtml(link.subject);
                     const safeLinkStr = this.escapeHtml(link.linkstr);
 
                     return `
-                        <a href="${safeLinkStr}"
-                           class="post-item friend-link-item"
-                           target="_blank"
-                           rel="noopener noreferrer"
-                           title="${safeSubject}">
-                            <span class="friend-link-text author-name">${safeSubject}</span>
-                            <svg class="friend-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                                <polyline points="15 3 21 3 21 9"></polyline>
-                                <line x1="10" y1="14" x2="21" y2="3"></line>
-                            </svg>
-                        </a>
+                        <li>
+                            <a href="${safeLinkStr}"
+                               class="friend-link"
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               title="${safeSubject}">
+                                <span class="friend-link-text">${safeSubject}</span>
+                                <svg class="friend-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                                </svg>
+                            </a>
+                        </li>
                     `;
                 }).join('')}
-            </div>
+            </ul>
         `;
     }
 
