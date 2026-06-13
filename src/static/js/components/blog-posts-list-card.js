@@ -269,7 +269,8 @@ class BlogPostsListCard extends BaseComponent {
                 .tab {
                     flex: 1;
                     min-width: 0;
-                    padding: var(--spacing-2) var(--spacing-3);
+                    min-height: var(--btn-height, 36px);
+                    padding: 0 var(--spacing-3);
                     text-align: center;
                     background: transparent;
                     border: 1.5px solid transparent;
@@ -326,37 +327,12 @@ class BlogPostsListCard extends BaseComponent {
                 
                 /* 发表文章：重要操作，使用主色按钮 */
                 .create-post-button {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: var(--spacing-2);
-                    width: calc(100% - var(--spacing-8));
                     margin: var(--spacing-3) var(--spacing-4) var(--spacing-2);
-                    padding: var(--spacing-2) var(--spacing-4);
-                    border: 1px solid var(--primary-color);
-                    border-radius: var(--radius-md);
-                    background: var(--primary-color);
-                    color: var(--white);
-                    font-size: var(--font-size-sm);
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                }
-                
-                .create-post-button:hover {
-                    background: var(--primary-hover);
-                    border-color: var(--primary-hover);
                 }
 
-                .create-post-button:focus { outline: none; }
-                .create-post-button:focus-visible {
-                    outline: 2px solid var(--primary-color);
-                    outline-offset: 2px;
-                }
-                
                 .create-post-icon {
-                    width: 20px;
-                    height: 20px;
+                    width: 18px;
+                    height: 18px;
                     fill: currentColor;
                 }
             </style>
@@ -390,10 +366,8 @@ class BlogPostsListCard extends BaseComponent {
 
     renderCreatePostButton() {
         return `
-            <button class="create-post-button" onclick="this.getRootNode().host.navigateToCreatePost()">
-                <svg class="create-post-icon" viewBox="0 0 24 24">
-                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                </svg>
+            <button type="button" class="btn btn-primary btn-block create-post-button" onclick="this.getRootNode().host.navigateToCreatePost()">
+                ${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.add) : `<svg class="create-post-icon" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`}
                 发表博客文章
             </button>
         `;

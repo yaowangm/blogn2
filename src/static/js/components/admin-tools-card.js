@@ -61,7 +61,7 @@ class AdminToolsCard extends BaseComponent {
                 </div>
                 <div class="card-body">
                     <p class="hint">根据每篇已发布文章的发表/编辑时间，批量重算并写回所有博客的「更新时间」字段（用于历史数据修复）。</p>
-                    <button type="button" class="btn btn-primary btn-sm" id="recalcBtn">重新计算博客的更新时间</button>
+                    <button type="button" class="btn btn-primary btn-sm btn-icon-only" id="recalcBtn" title="重新计算博客的更新时间" aria-label="重新计算博客的更新时间">${Icons.asBtnIcon(Icons.refresh)}</button>
                     <div class="msg" id="recalcMsg" style="display:none;"></div>
                 </div>
             </div>

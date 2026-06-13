@@ -58,6 +58,8 @@ class HeaderComponent extends BaseComponent {
 
         this.shadowRoot.innerHTML = `
             <style>
+                @import url('/static/css/common-components.css');
+
                 :host {
                     display: block;
                     background: var(--white);
@@ -66,11 +68,6 @@ class HeaderComponent extends BaseComponent {
                     position: sticky;
                     top: 0;
                     z-index: 100;
-                }
-
-                :host,
-                :host * {
-                    box-sizing: border-box;
                 }
 
                 .header-container {
@@ -246,75 +243,6 @@ class HeaderComponent extends BaseComponent {
                     font-weight: 600;
                     font-size: var(--font-size-sm);
                     border-radius: 50%;
-                }
-
-                .search-button {
-                    background: transparent;
-                    border: none;
-                    color: var(--gray-600);
-                    padding: var(--spacing-2);
-                    border-radius: var(--radius-md);
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                }
-
-                .search-button:hover {
-                    background: var(--gray-100);
-                    color: var(--gray-800);
-                }
-
-                .btn {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: var(--spacing-2);
-                    padding: var(--spacing-2) var(--spacing-3);
-                    font-size: var(--font-size-sm);
-                    font-weight: 500;
-                    border-radius: var(--radius-md);
-                    border: 1px solid var(--gray-300);
-                    background-color: var(--white);
-                    color: var(--gray-700);
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                    text-decoration: none;
-                    line-height: 1.25;
-                }
-
-                .btn:hover {
-                    background-color: var(--gray-50);
-                    border-color: var(--gray-400);
-                    color: var(--gray-900);
-                }
-
-                .btn:focus { outline: none; }
-                .btn:focus-visible {
-                    outline: 2px solid var(--primary-color);
-                    outline-offset: 2px;
-                }
-
-                .btn-primary {
-                    background-color: var(--primary-color);
-                    color: var(--white);
-                    border-color: var(--primary-color);
-                }
-
-                .btn-primary:hover {
-                    background-color: var(--primary-hover);
-                    border-color: var(--primary-hover);
-                    color: var(--white);
-                }
-
-                .btn-ghost {
-                    background-color: transparent;
-                    color: var(--gray-600);
-                    border-color: transparent;
-                }
-
-                .btn-ghost:hover {
-                    background-color: var(--gray-100);
-                    color: var(--gray-800);
-                    border-color: transparent;
                 }
 
                 @media (max-width: 768px) {

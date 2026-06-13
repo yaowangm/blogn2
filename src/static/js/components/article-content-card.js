@@ -803,8 +803,10 @@ class ArticleContentCard extends BaseComponent {
                     flex-shrink: 0;
                     position: relative;
                     box-sizing: border-box;
-                    width: 2rem;
-                    height: 2rem;
+                    width: var(--btn-height);
+                    height: var(--btn-height);
+                    min-width: var(--btn-height);
+                    min-height: var(--btn-height);
                     margin: 0;
                     padding: 0;
                     border: none;

@@ -216,22 +216,29 @@ class EditPostForm extends BaseComponent {
         
         const editor = this.shadowRoot.querySelector('.content-editor');
         const preview = this.shadowRoot.querySelector('.content-preview');
-        const previewText = this.shadowRoot.querySelector('.preview-text');
-        const editText = this.shadowRoot.querySelector('.edit-text');
+        const previewIcon = this.shadowRoot.querySelector('.preview-icon');
+        const editIcon = this.shadowRoot.querySelector('.edit-icon');
+        const toggleBtn = this.shadowRoot.querySelector('#previewToggleBtn');
         
         if (this.previewMode) {
-            // 切换到预览模式
             editor.style.display = 'none';
             preview.style.display = 'block';
-            previewText.style.display = 'none';
-            editText.style.display = 'inline';
+            if (previewIcon) previewIcon.style.display = 'none';
+            if (editIcon) editIcon.style.display = 'inline-flex';
+            if (toggleBtn) {
+                toggleBtn.title = '返回编辑';
+                toggleBtn.setAttribute('aria-label', '返回编辑');
+            }
             this.updatePreview();
         } else {
-            // 切换到编辑模式
             editor.style.display = 'block';
             preview.style.display = 'none';
-            previewText.style.display = 'inline';
-            editText.style.display = 'none';
+            if (previewIcon) previewIcon.style.display = 'inline-flex';
+            if (editIcon) editIcon.style.display = 'none';
+            if (toggleBtn) {
+                toggleBtn.title = '预览';
+                toggleBtn.setAttribute('aria-label', '预览');
+            }
         }
     }
 
@@ -824,32 +831,6 @@ class EditPostForm extends BaseComponent {
                     margin-bottom: var(--spacing-6);
                     line-height: 1.6;
                 }
-                
-                .btn {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: var(--spacing-3) var(--spacing-6);
-                    font-size: var(--font-size-sm);
-                    font-weight: 500;
-                    border-radius: var(--radius-md);
-                    border: 1px solid transparent;
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                    text-decoration: none;
-                    line-height: 1;
-                }
-                
-                .btn-primary {
-                    background-color: var(--primary-color);
-                    color: var(--white);
-                    border-color: var(--primary-color);
-                }
-                
-                .btn-primary:hover {
-                    background-color: var(--primary-hover);
-                    border-color: var(--primary-hover);
-                }
             </style>
 
             <div class="card">
@@ -925,6 +906,9 @@ class EditPostForm extends BaseComponent {
                     display: block;
                     font-family: var(--font-family);
                 }
+
+                @import url('/static/css/common-components.css');
+                @import url('/static/css/form-components.css');
                 
                 /* 卡片样式 */
                 .card {
@@ -1018,49 +1002,6 @@ class EditPostForm extends BaseComponent {
                     margin-top: var(--spacing-1);
                 }
 
-                /* 按钮样式 */
-                .btn {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: var(--spacing-3) var(--spacing-6);
-                    font-size: var(--font-size-sm);
-                    font-weight: 500;
-                    border-radius: var(--radius-md);
-                    border: 1px solid transparent;
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                    text-decoration: none;
-                    line-height: 1;
-                }
-
-                .btn-primary {
-                    background-color: var(--primary-color);
-                    color: var(--white);
-                    border-color: var(--primary-color);
-                }
-
-                .btn-primary:hover:not(:disabled) {
-                    background-color: var(--primary-hover);
-                    border-color: var(--primary-hover);
-                }
-
-                .btn-secondary {
-                    background-color: var(--white);
-                    color: var(--gray-700);
-                    border-color: var(--gray-300);
-                }
-
-                .btn-secondary:hover:not(:disabled) {
-                    background-color: var(--gray-50);
-                    border-color: var(--gray-400);
-                }
-
-                .btn:disabled {
-                    opacity: 0.6;
-                    cursor: not-allowed;
-                }
-
                 /* 消息样式 */
                 .error-message,
                 .success-message {
@@ -1117,25 +1058,6 @@ class EditPostForm extends BaseComponent {
                 .preview-toggle {
                     display: flex;
                     align-items: center;
-                }
-
-                .btn-preview {
-                    display: inline-flex;
-                    align-items: center;
-                    padding: var(--spacing-2) var(--spacing-3);
-                    font-size: var(--font-size-xs);
-                    font-weight: 500;
-                    color: var(--primary-color);
-                    background-color: var(--white);
-                    border: 1px solid var(--primary-color);
-                    border-radius: var(--radius-sm);
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                }
-
-                .btn-preview:hover {
-                    background-color: var(--primary-color);
-                    color: var(--white);
                 }
 
                 .content-container {
@@ -1355,31 +1277,6 @@ class EditPostForm extends BaseComponent {
                     color: var(--gray-500);
                 }
 
-                .btn-remove-image {
-                    position: absolute !important;
-                    top: 8px !important;
-                    right: 8px !important;
-                    width: 24px !important;
-                    height: 24px !important;
-                    border: none !important;
-                    background: #dc2626 !important;
-                    color: white !important;
-                    border-radius: 50% !important;
-                    cursor: pointer !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    transition: all 0.2s ease !important;
-                    z-index: 10 !important;
-                    font-size: 12px !important;
-                    font-weight: bold !important;
-                }
-
-                .btn-remove-image:hover {
-                    background: #b91c1c !important;
-                    transform: scale(1.1) !important;
-                }
-
                 .main-image-preview {
                     position: relative;
                     display: flex;
@@ -1454,17 +1351,6 @@ class EditPostForm extends BaseComponent {
                     color: var(--gray-500);
                     display: block;
                 }
-
-                .image-item .btn-remove-image {
-                    position: absolute;
-                    top: var(--spacing-1);
-                    right: var(--spacing-1);
-                    width: 20px;
-                    height: 20px;
-                    font-size: 12px;
-                    padding: 0;
-                    z-index: 10;
-                }
                 
             </style>
 
@@ -1501,9 +1387,9 @@ class EditPostForm extends BaseComponent {
                             <div class="form-label-container">
                                 <label class="form-label required" for="comment">文章内容</label>
                                 <div class="preview-toggle">
-                                    <button type="button" class="btn-preview" onclick="this.getRootNode().host.togglePreview()">
-                                        <span class="preview-text">预览</span>
-                                        <span class="edit-text" style="display: none;">编辑</span>
+                                    <button type="button" class="btn-preview btn-icon-only" id="previewToggleBtn" title="预览" aria-label="预览" onclick="this.getRootNode().host.togglePreview()">
+                                        <span class="preview-icon">${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.preview) : '预览'}</span>
+                                        <span class="edit-icon" style="display: none;">${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.edit) : '编辑'}</span>
                                     </button>
                                 </div>
                             </div>
@@ -1570,8 +1456,8 @@ class EditPostForm extends BaseComponent {
                         </div>
 
                         <div class="form-actions">
-                            <button type="button" class="btn btn-secondary" onclick="this.getRootNode().host.handleCancel()">
-                                取消
+                            <button type="button" class="btn btn-secondary btn-icon-only" title="取消" aria-label="取消" onclick="this.getRootNode().host.handleCancel()">
+                                ${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.close) : '取消'}
                             </button>
                             <button type="submit" class="btn btn-primary" ${!this.canSubmit() ? 'disabled' : ''}>
                                 ${!this.canSubmit() ? `

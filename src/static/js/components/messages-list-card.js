@@ -121,16 +121,12 @@ class MessagesListCard extends BaseComponent {
     renderDeleteButton(messageId) {
         return `
             <button type="button"
-                    class="delete-button"
+                    class="btn btn-danger btn-sm btn-icon-only btn-delete-reveal"
                     data-message-id="${messageId}"
                     data-is-main="true"
+                    title="删除留言"
                     aria-label="删除留言">
-                <svg class="delete-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <polyline points="3,6 5,6 21,6"></polyline>
-                    <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
-                    <line x1="10" y1="11" x2="10" y2="17"></line>
-                    <line x1="14" y1="11" x2="14" y2="17"></line>
-                </svg>
+                ${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.delete) : `<svg class="delete-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3,6 5,6 21,6"></polyline><path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`}
             </button>
         `;
     }
@@ -221,7 +217,7 @@ class MessagesListCard extends BaseComponent {
     }
 
     attachDeleteListeners() {
-        this.shadowRoot.querySelectorAll('.delete-button').forEach((button) => {
+        this.shadowRoot.querySelectorAll('.btn-delete-reveal').forEach((button) => {
             button.addEventListener('click', async (event) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -536,43 +532,10 @@ class MessagesListCard extends BaseComponent {
                     color: var(--primary-color);
                 }
 
-                .delete-button {
+                .thread-row .btn-delete-reveal {
                     position: absolute;
                     top: var(--spacing-2);
                     right: var(--spacing-2);
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 2rem;
-                    height: 2rem;
-                    padding: 0;
-                    background: var(--white);
-                    color: var(--gray-400);
-                    border: 1px solid var(--gray-200);
-                    border-radius: var(--radius-md);
-                    cursor: pointer;
-                    opacity: 0;
-                    transition:
-                        opacity var(--transition-fast),
-                        color var(--transition-fast),
-                        border-color var(--transition-fast),
-                        background-color var(--transition-fast);
-                }
-
-                .thread-row:hover .delete-button,
-                .delete-button:focus-visible {
-                    opacity: 1;
-                }
-
-                .delete-button:hover {
-                    color: #dc2626;
-                    border-color: #fecaca;
-                    background: #fef2f2;
-                }
-
-                .delete-icon {
-                    width: 16px;
-                    height: 16px;
                 }
 
                 .loading-state,
@@ -621,8 +584,9 @@ class MessagesListCard extends BaseComponent {
                         justify-self: start;
                     }
 
-                    .delete-button {
+                    .btn-delete-reveal {
                         opacity: 1;
+                        pointer-events: auto;
                     }
                 }
             </style>

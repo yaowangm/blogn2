@@ -521,10 +521,11 @@ class ArticleCommentsCard extends BaseComponent {
                     </div>
                     ${canDelete ? `
                         <div class="comment-actions">
-                            <button type="button" class="btn btn-danger btn-sm delete-comment-btn"
+                            <button type="button" class="btn btn-danger btn-sm btn-icon-only delete-comment-btn"
                                     data-comment-id="${id}"
-                                    title="删除评论">
-                                ${this.getDeleteBtnIcon()}<span>删除</span>
+                                    title="删除评论"
+                                    aria-label="删除评论">
+                                ${this.getDeleteBtnIcon()}
                             </button>
                         </div>
                     ` : ''}
@@ -535,9 +536,9 @@ class ArticleCommentsCard extends BaseComponent {
 
     getDeleteBtnIcon() {
         if (typeof Icons !== 'undefined') {
-            return Icons.delete.replace('<svg ', '<svg class="btn-icon" width="16" height="16" aria-hidden="true" ');
+            return Icons.asBtnIcon(Icons.delete);
         }
-        return `<svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/></svg>`;
+        return `<svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/></svg>`;
     }
 
     /**
@@ -844,15 +845,25 @@ class ArticleCommentsCard extends BaseComponent {
                 }
 
                 .btn.btn-sm {
-                    padding: calc(var(--spacing-2) * 1.2) calc(var(--spacing-3) * 1.2);
-                    gap: calc(var(--spacing-2) * 1.2);
-                    font-size: calc(var(--font-size-xs) * 1.2);
+                    min-height: 36px;
+                    padding: 0 12px;
+                    gap: 6px;
+                    font-size: var(--font-size-sm);
                     line-height: 1.25;
                 }
 
+                .btn.btn-sm.btn-icon-only {
+                    width: 36px;
+                    height: 36px;
+                    min-width: 36px;
+                    min-height: 36px;
+                    padding: 0;
+                    gap: 0;
+                }
+
                 .btn .btn-icon {
-                    width: 16px;
-                    height: 16px;
+                    width: 18px;
+                    height: 18px;
                 }
 
                 .comment-text {

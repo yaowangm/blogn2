@@ -243,45 +243,6 @@ class SubscriptionsListCard extends BaseComponent {
                     min-width: fit-content;
                 }
                 
-                .btn {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: var(--spacing-2) var(--spacing-4);
-                    font-size: var(--font-size-sm);
-                    font-weight: 500;
-                    border-radius: var(--radius-md);
-                    border: 1px solid transparent;
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                    text-decoration: none;
-                    line-height: 1;
-                    flex-shrink: 0;
-                    white-space: nowrap;
-                }
-                
-                .btn-primary {
-                    background-color: var(--primary-color);
-                    color: var(--white);
-                    border-color: var(--primary-color);
-                }
-                
-                .btn-primary:hover {
-                    background-color: var(--primary-hover);
-                    border-color: var(--primary-hover);
-                }
-                
-                .btn-danger {
-                    background-color: var(--error-color);
-                    color: var(--white);
-                    border-color: var(--error-color);
-                }
-                
-                .btn-danger:hover {
-                    background-color: #dc2626;
-                    border-color: #dc2626;
-                }
-                
                 .blog-actions .btn {
                     pointer-events: auto;
                 }
@@ -410,8 +371,8 @@ class SubscriptionsListCard extends BaseComponent {
             new Date(blog.subscribed_at).toLocaleDateString('zh-CN') : '未知时间';
         
         const unsubscribeButton = this.isOwner ? 
-            `<button class="btn btn-danger" onclick="event.stopPropagation(); this.getRootNode().host.unsubscribeFromBlog(${blog.relation_id}, ${blog.project_id}, '${this.escapeHtml(blog.project_name)}')">
-                取消订阅
+            `<button class="btn btn-danger btn-icon-only" title="取消订阅" aria-label="取消订阅" onclick="event.stopPropagation(); this.getRootNode().host.unsubscribeFromBlog(${blog.relation_id}, ${blog.project_id}, '${this.escapeHtml(blog.project_name)}')">
+                ${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.unsubscribe) : '取消订阅'}
             </button>` : '';
 
         return `

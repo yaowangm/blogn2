@@ -183,10 +183,10 @@ class FriendLinksManager {
     
     renderLinksItems() {
         const editIcon = typeof Icons !== 'undefined'
-            ? Icons.edit.replace('<svg ', '<svg width="16" height="16" aria-hidden="true" ')
+            ? Icons.asBtnIcon(Icons.edit)
             : '';
         const deleteIcon = typeof Icons !== 'undefined'
-            ? Icons.delete.replace('<svg ', '<svg width="16" height="16" aria-hidden="true" ')
+            ? Icons.asBtnIcon(Icons.delete)
             : '';
 
         return this.friendLinks.map(link => `
@@ -200,13 +200,11 @@ class FriendLinksManager {
                     </div>
                 </div>
                 <div class="link-row-actions">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="friendLinksManager.editLink(${link.id})">
+                    <button type="button" class="btn btn-secondary btn-sm btn-icon-only" title="编辑" aria-label="编辑" onclick="friendLinksManager.editLink(${link.id})">
                         ${editIcon}
-                        编辑
                     </button>
-                    <button type="button" class="btn btn-danger btn-sm" onclick="friendLinksManager.deleteLink(${link.id})">
+                    <button type="button" class="btn btn-danger btn-sm btn-icon-only" title="删除" aria-label="删除" onclick="friendLinksManager.deleteLink(${link.id})">
                         ${deleteIcon}
-                        删除
                     </button>
                 </div>
             </div>
@@ -323,7 +321,7 @@ class FriendLinksManager {
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="this.closest('.modal-root').remove()">取消</button>
+                    <button type="button" class="btn btn-secondary btn-sm btn-icon-only" title="取消" aria-label="取消" onclick="this.closest('.modal-root').remove()">${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.close) : '取消'}</button>
                     <button type="button" class="btn btn-primary btn-sm" onclick="window.friendLinksManager.handleModalSubmit()">${buttonText}</button>
                 </div>
             </div>

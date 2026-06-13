@@ -123,21 +123,6 @@ header-component {
     font-size: var(--font-size-sm);
 }
 
-.search-button {
-    background: transparent;
-    border: none;
-    color: var(--gray-600);
-    padding: var(--spacing-2);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: var(--transition-fast);
-}
-
-.search-button:hover {
-    background: var(--gray-100);
-    color: var(--gray-800);
-}
-
 /* 底栏组件样式 */
 footer-component {
     display: block;

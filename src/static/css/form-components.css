@@ -69,7 +69,9 @@
     align-items: center;
     justify-content: center;
     gap: var(--spacing-2);
-    padding: var(--spacing-2) var(--spacing-4);
+    min-height: var(--btn-height, 36px);
+    padding: 0 var(--spacing-4);
+    box-sizing: border-box;
     font-size: var(--font-size-sm);
     font-weight: 500;
     border-radius: var(--radius-md);
@@ -189,7 +191,10 @@
 .btn-preview {
     display: inline-flex;
     align-items: center;
-    padding: var(--spacing-2) var(--spacing-3);
+    justify-content: center;
+    min-height: var(--btn-height, 36px);
+    padding: 0 var(--spacing-3);
+    box-sizing: border-box;
     font-size: var(--font-size-xs);
     font-weight: 500;
     color: var(--primary-color);
@@ -203,6 +208,14 @@
 .btn-preview:hover {
     background-color: var(--primary-color);
     color: var(--white);
+}
+
+.btn-preview.btn-icon-only {
+    width: var(--btn-height, 36px);
+    height: var(--btn-height, 36px);
+    min-width: var(--btn-height, 36px);
+    min-height: var(--btn-height, 36px);
+    padding: 0;
 }
 
 .content-container {
@@ -429,21 +442,21 @@
     width: 24px !important;
     height: 24px !important;
     border: none !important;
-    background: #dc2626 !important;
-    color: white !important;
+    background: var(--error-color, #dc2626) !important;
+    color: var(--white) !important;
     border-radius: 50% !important;
     cursor: pointer !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    transition: all 0.2s ease !important;
+    transition: all var(--transition-fast) !important;
     z-index: 10 !important;
     font-size: 12px !important;
     font-weight: bold !important;
 }
 
 .btn-remove-image:hover {
-    background: #b91c1c !important;
+    background: var(--red-700, #b91c1c) !important;
     transform: scale(1.1) !important;
 }
 

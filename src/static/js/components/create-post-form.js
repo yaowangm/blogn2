@@ -105,22 +105,29 @@ class CreatePostForm extends BaseComponent {
         
         const editor = this.shadowRoot.querySelector('.content-editor');
         const preview = this.shadowRoot.querySelector('.content-preview');
-        const previewText = this.shadowRoot.querySelector('.preview-text');
-        const editText = this.shadowRoot.querySelector('.edit-text');
+        const previewIcon = this.shadowRoot.querySelector('.preview-icon');
+        const editIcon = this.shadowRoot.querySelector('.edit-icon');
+        const toggleBtn = this.shadowRoot.querySelector('#previewToggleBtn');
         
         if (this.previewMode) {
-            // 切换到预览模式
             editor.style.display = 'none';
             preview.style.display = 'block';
-            previewText.style.display = 'none';
-            editText.style.display = 'inline';
+            if (previewIcon) previewIcon.style.display = 'none';
+            if (editIcon) editIcon.style.display = 'inline-flex';
+            if (toggleBtn) {
+                toggleBtn.title = '返回编辑';
+                toggleBtn.setAttribute('aria-label', '返回编辑');
+            }
             this.updatePreview();
         } else {
-            // 切换到编辑模式
             editor.style.display = 'block';
             preview.style.display = 'none';
-            previewText.style.display = 'inline';
-            editText.style.display = 'none';
+            if (previewIcon) previewIcon.style.display = 'inline-flex';
+            if (editIcon) editIcon.style.display = 'none';
+            if (toggleBtn) {
+                toggleBtn.title = '预览';
+                toggleBtn.setAttribute('aria-label', '预览');
+            }
         }
     }
 
@@ -554,6 +561,8 @@ class CreatePostForm extends BaseComponent {
                     display: block;
                     font-family: var(--font-family);
                 }
+
+                @import url('/static/css/common-components.css');
                 
                 .card {
                     background: var(--white);
@@ -583,32 +592,6 @@ class CreatePostForm extends BaseComponent {
                     color: var(--gray-600);
                     margin-bottom: var(--spacing-6);
                     line-height: 1.6;
-                }
-                
-                .btn {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: var(--spacing-3) var(--spacing-6);
-                    font-size: var(--font-size-sm);
-                    font-weight: 500;
-                    border-radius: var(--radius-md);
-                    border: 1px solid transparent;
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                    text-decoration: none;
-                    line-height: 1;
-                }
-                
-                .btn-primary {
-                    background-color: var(--primary-color);
-                    color: var(--white);
-                    border-color: var(--primary-color);
-                }
-                
-                .btn-primary:hover {
-                    background-color: var(--primary-hover);
-                    border-color: var(--primary-hover);
                 }
             </style>
 
@@ -685,6 +668,9 @@ class CreatePostForm extends BaseComponent {
                     display: block;
                     font-family: var(--font-family);
                 }
+
+                @import url('/static/css/common-components.css');
+                @import url('/static/css/form-components.css');
                 
                 .card {
                     background: var(--white);
@@ -769,48 +755,6 @@ class CreatePostForm extends BaseComponent {
                     margin-top: var(--spacing-1);
                 }
                 
-                .btn {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: var(--spacing-3) var(--spacing-6);
-                    font-size: var(--font-size-sm);
-                    font-weight: 500;
-                    border-radius: var(--radius-md);
-                    border: 1px solid transparent;
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                    text-decoration: none;
-                    line-height: 1;
-                }
-                
-                .btn-primary {
-                    background-color: var(--primary-color);
-                    color: var(--white);
-                    border-color: var(--primary-color);
-                }
-                
-                .btn-primary:hover {
-                    background-color: var(--primary-hover);
-                    border-color: var(--primary-hover);
-                }
-                
-                .btn-secondary {
-                    background-color: var(--white);
-                    color: var(--gray-700);
-                    border-color: var(--gray-300);
-                }
-                
-                .btn-secondary:hover {
-                    background-color: var(--gray-50);
-                    border-color: var(--gray-400);
-                }
-                
-                .btn:disabled {
-                    opacity: 0.5;
-                    cursor: not-allowed;
-                }
-                
                 .error-message,
                 .success-message {
                     padding: var(--spacing-3) var(--spacing-4);
@@ -842,21 +786,6 @@ class CreatePostForm extends BaseComponent {
                 .preview-toggle {
                     display: flex;
                     gap: var(--spacing-2);
-                }
-                
-                .btn-preview {
-                    padding: var(--spacing-2) var(--spacing-3);
-                    font-size: var(--font-size-xs);
-                    background: var(--gray-100);
-                    color: var(--gray-700);
-                    border: 1px solid var(--gray-300);
-                    border-radius: var(--radius-sm);
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                }
-                
-                .btn-preview:hover {
-                    background: var(--gray-200);
                 }
                 
                 .content-container {
@@ -1096,9 +1025,9 @@ class CreatePostForm extends BaseComponent {
                             <div class="form-label-container">
                                 <label class="form-label required" for="comment">文章内容</label>
                                 <div class="preview-toggle">
-                                    <button type="button" class="btn-preview" onclick="this.getRootNode().host.togglePreview()">
-                                        <span class="preview-text">预览</span>
-                                        <span class="edit-text" style="display: none;">编辑</span>
+                                    <button type="button" class="btn-preview btn-icon-only" id="previewToggleBtn" title="预览" aria-label="预览" onclick="this.getRootNode().host.togglePreview()">
+                                        <span class="preview-icon">${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.preview) : '预览'}</span>
+                                        <span class="edit-icon" style="display: none;">${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.edit) : '编辑'}</span>
                                     </button>
                                 </div>
                             </div>
@@ -1165,8 +1094,8 @@ class CreatePostForm extends BaseComponent {
                         </div>
 
                         <div class="form-actions">
-                            <button type="button" class="btn btn-secondary" onclick="this.getRootNode().host.handleCancel()">
-                                取消
+                            <button type="button" class="btn btn-secondary btn-icon-only" title="取消" aria-label="取消" onclick="this.getRootNode().host.handleCancel()">
+                                ${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.close) : '取消'}
                             </button>
                             <button type="submit" class="btn btn-primary" ${!this.canSubmit() ? 'disabled' : ''}>
                                 ${!this.canSubmit() ? `

@@ -237,9 +237,10 @@ class UserProfileCard extends BaseComponent {
                 justify-content: flex-end;
                 margin-top: var(--spacing-2);
             }
-            .btn svg {
-                width: 16px;
-                height: 16px;
+            .btn svg,
+            .btn .btn-icon {
+                width: 18px;
+                height: 18px;
                 flex-shrink: 0;
             }
         `;
@@ -277,15 +278,13 @@ class UserProfileCard extends BaseComponent {
                     ${this.canResetPassword() || this.canUpdateEmail() ? `
                         <div class="btn-toolbar">
                             ${this.canUpdateEmail() ? `
-                                <button type="button" class="btn btn-secondary btn-sm" id="updateEmailBtn">
-                                    ${Icons.subscription}
-                                    修改邮箱
+                                <button type="button" class="btn btn-secondary btn-sm btn-icon-only" id="updateEmailBtn" title="修改邮箱" aria-label="修改邮箱">
+                                    ${Icons.asBtnIcon(Icons.email)}
                                 </button>
                             ` : ''}
                             ${this.canResetPassword() ? `
-                                <button type="button" class="btn btn-danger btn-sm" id="resetPasswordBtn">
-                                    ${Icons.settings}
-                                    重置密码
+                                <button type="button" class="btn btn-danger btn-sm btn-icon-only" id="resetPasswordBtn" title="重置密码" aria-label="重置密码">
+                                    ${Icons.asBtnIcon(Icons.key)}
                                 </button>
                             ` : ''}
                         </div>
@@ -342,7 +341,7 @@ class UserProfileCard extends BaseComponent {
                             <input type="password" id="confirmPassword" class="form-input" required minlength="6" placeholder="请再次输入新密码">
                         </div>
                         <div class="modal-actions">
-                            <button type="button" class="btn btn-secondary btn-sm" id="cancelResetBtn">取消</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-icon-only" id="cancelResetBtn" title="取消" aria-label="取消">${Icons.asBtnIcon(Icons.close)}</button>
                             <button type="submit" class="btn btn-danger btn-sm" id="confirmResetBtn">确认重置</button>
                         </div>
                     </form>
@@ -362,7 +361,7 @@ class UserProfileCard extends BaseComponent {
                             <input type="email" id="newEmail" class="form-input" required placeholder="请输入新邮箱地址">
                         </div>
                         <div class="modal-actions">
-                            <button type="button" class="btn btn-secondary btn-sm" id="cancelUpdateEmailBtn">取消</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-icon-only" id="cancelUpdateEmailBtn" title="取消" aria-label="取消">${Icons.asBtnIcon(Icons.close)}</button>
                             <button type="submit" class="btn btn-primary btn-sm" id="confirmUpdateEmailBtn">确认修改</button>
                         </div>
                     </form>

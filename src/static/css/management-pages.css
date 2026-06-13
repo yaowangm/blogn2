@@ -293,19 +293,8 @@
 }
 
 .modal-close {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    border: none;
-    border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--gray-500);
     font-size: 1.25rem;
     line-height: 1;
-    cursor: pointer;
 }
 
 .modal-close:hover {

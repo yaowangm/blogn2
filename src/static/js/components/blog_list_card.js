@@ -320,10 +320,14 @@ class BlogListCard extends BaseComponent {
                 color: var(--primary-color, #2f6fd6);
             }
             .blogn-category-menu-panel .category-maintain-link {
-                display: flex;
+                display: inline-flex;
                 align-items: center;
-                gap: var(--spacing-2, 0.5rem);
-                padding: var(--spacing-2, 0.5rem) var(--spacing-3, 0.75rem);
+                justify-content: center;
+                width: 36px;
+                height: 36px;
+                min-width: 36px;
+                min-height: 36px;
+                padding: 0;
                 border: 1px solid transparent;
                 border-radius: var(--radius-md, 0.375rem);
                 color: var(--gray-700, #374151);
@@ -342,6 +346,10 @@ class BlogListCard extends BaseComponent {
             }
             .blogn-category-menu-panel .category-maintain-link:focus {
                 outline: none;
+            }
+            .blogn-category-menu-panel .category-maintain-link .maintain-icon {
+                width: 18px;
+                height: 18px;
             }
             .blogn-category-menu-panel .category-maintain-link:focus-visible {
                 outline: 2px solid var(--primary-color, #2f6fd6);
@@ -463,12 +471,13 @@ class BlogListCard extends BaseComponent {
                 <a href="/blog/${this.projectId}/categories/maintenance"
                    target="_blank"
                    rel="noopener"
-                   class="category-maintain-link">
+                   class="category-maintain-link"
+                   title="维护分类"
+                   aria-label="维护分类">
                     <svg class="maintain-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                     </svg>
-                    <span>维护分类</span>
                 </a>
             </div>
             <div class="category-dropdown-divider"></div>

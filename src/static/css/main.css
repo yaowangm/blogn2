@@ -148,6 +148,10 @@
     --card-header-bg: #f8fafd;
     --card-header-border: #d5dde9;
 
+    /* 按钮尺寸 */
+    --btn-height: 36px;
+    --btn-icon-size: 18px;
+
     /* 列表行悬浮 */
     --interactive-hover-bg: #e8f0fc;
     --interactive-hover-text: var(--primary-color);
@@ -252,7 +256,9 @@ body {
     align-items: center;
     justify-content: center;
     gap: var(--spacing-2);
-    padding: var(--spacing-2) var(--spacing-3);
+    min-height: var(--btn-height);
+    padding: 0 var(--spacing-3);
+    box-sizing: border-box;
     font-size: var(--font-size-sm);
     font-weight: 500;
     border-radius: var(--radius-md);
@@ -278,9 +284,40 @@ body {
 }
 
 .btn .btn-icon {
-    width: 1em;
-    height: 1em;
+    width: var(--btn-icon-size);
+    height: var(--btn-icon-size);
     flex-shrink: 0;
+}
+
+.btn-icon-only {
+    width: var(--btn-height);
+    height: var(--btn-height);
+    min-width: var(--btn-height);
+    min-height: var(--btn-height);
+    padding: 0;
+    gap: 0;
+}
+
+.btn-icon-only .btn-icon,
+.btn-icon-only > svg {
+    width: var(--btn-icon-size);
+    height: var(--btn-icon-size);
+}
+
+.btn-sm {
+    min-height: var(--btn-height);
+    padding: 0 var(--spacing-3);
+    gap: var(--spacing-2);
+    font-size: var(--font-size-sm);
+}
+
+.btn.btn-sm.btn-icon-only {
+    width: var(--btn-height);
+    height: var(--btn-height);
+    min-width: var(--btn-height);
+    min-height: var(--btn-height);
+    padding: 0;
+    gap: 0;
 }
 
 .btn-primary {
@@ -328,6 +365,61 @@ body {
     background-color: var(--red-50);
     border-color: var(--error-color);
     color: var(--red-700);
+}
+
+.btn-success {
+    background-color: var(--success-color);
+    color: var(--white);
+    border-color: var(--success-color);
+}
+
+.btn-success:hover:not(:disabled) {
+    background-color: var(--green-700);
+    border-color: var(--green-700);
+    color: var(--white);
+}
+
+.btn-block {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.btn-close,
+.modal-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--btn-height);
+    height: var(--btn-height);
+    min-width: var(--btn-height);
+    min-height: var(--btn-height);
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--gray-500);
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.btn-close:hover,
+.modal-close:hover {
+    background: var(--gray-100);
+    color: var(--gray-700);
+}
+
+.btn-delete-reveal {
+    opacity: 0;
+    pointer-events: none;
+}
+
+:hover .btn-delete-reveal,
+.btn-delete-reveal:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 /* 链接样式 */

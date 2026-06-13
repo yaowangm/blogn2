@@ -209,8 +209,9 @@ class NavigationCard extends BaseComponent {
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
-                    min-width: 2rem;
-                    height: 2rem;
+                    min-width: var(--btn-height, 36px);
+                    height: var(--btn-height, 36px);
+                    min-height: var(--btn-height, 36px);
                     padding: 0 0.5rem;
                     border: 1px solid var(--gray-300);
                     border-radius: var(--radius-sm);

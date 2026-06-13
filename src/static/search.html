@@ -61,29 +61,7 @@
         }
 
         .search-button {
-            padding: var(--spacing-4) var(--spacing-6);
-            background: var(--primary-color);
-            color: var(--white);
-            border: none;
-            border-radius: var(--radius-lg);
-            font-size: var(--font-size-lg);
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition-fast);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-2);
-        }
-
-        .search-button:hover {
-            background: var(--primary-hover);
-            transform: translateY(-1px);
-        }
-
-        .search-button:disabled {
-            background: var(--gray-400);
-            cursor: not-allowed;
-            transform: none;
+            min-width: 7.5rem;
         }
 
         .search-filters {
@@ -341,7 +319,7 @@
                         placeholder="输入关键词进行智能搜索..."
                         autocomplete="off"
                     >
-                    <button type="submit" class="search-button" id="searchButton">
+                    <button type="submit" class="btn btn-primary btn-sm search-button" id="searchButton">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="11" cy="11" r="8"></circle>
                             <path d="m21 21-4.35-4.35"></path>

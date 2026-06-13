@@ -134,16 +134,12 @@ class ThreadCard extends BaseComponent {
     renderDeleteButton(messageId, isMainPost) {
         return `
             <button type="button"
-                    class="delete-button"
+                    class="btn btn-danger btn-sm btn-icon-only btn-delete-reveal"
                     data-message-id="${messageId}"
                     data-is-main="${isMainPost ? 'true' : 'false'}"
+                    title="${isMainPost ? '删除主题' : '删除回复'}"
                     aria-label="${isMainPost ? '删除主题' : '删除回复'}">
-                <svg class="delete-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <polyline points="3,6 5,6 21,6"></polyline>
-                    <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
-                    <line x1="10" y1="11" x2="10" y2="17"></line>
-                    <line x1="14" y1="11" x2="14" y2="17"></line>
-                </svg>
+                ${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.delete) : `<svg class="delete-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3,6 5,6 21,6"></polyline><path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`}
             </button>
         `;
     }
@@ -270,7 +266,7 @@ class ThreadCard extends BaseComponent {
     }
 
     attachDeleteListeners() {
-        this.shadowRoot.querySelectorAll('.delete-button').forEach((button) => {
+        this.shadowRoot.querySelectorAll('.btn-delete-reveal').forEach((button) => {
             button.addEventListener('click', async (event) => {
                 event.stopPropagation();
                 const messageId = button.getAttribute('data-message-id');
@@ -606,44 +602,8 @@ class ThreadCard extends BaseComponent {
                     border-bottom-left-radius: 0;
                 }
 
-                .delete-button {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 2rem;
-                    height: 2rem;
-                    padding: 0;
-                    background: var(--white);
-                    color: var(--gray-400);
-                    border: 1px solid var(--gray-200);
-                    border-radius: var(--radius-md);
-                    cursor: pointer;
-                    opacity: 0;
-                    transition:
-                        opacity var(--transition-fast),
-                        color var(--transition-fast),
-                        border-color var(--transition-fast),
-                        background-color var(--transition-fast);
-                }
-
                 .post-card-has-admin .post-card-top {
-                    min-height: 2rem;
-                }
-
-                .post-card:hover .delete-button,
-                .delete-button:focus-visible {
-                    opacity: 1;
-                }
-
-                .delete-button:hover {
-                    color: #dc2626;
-                    border-color: #fecaca;
-                    background: #fef2f2;
-                }
-
-                .delete-icon {
-                    width: 16px;
-                    height: 16px;
+                    min-height: var(--btn-height, 36px);
                 }
 
                 .loading-state,
@@ -688,8 +648,9 @@ class ThreadCard extends BaseComponent {
                         margin-left: var(--spacing-2);
                     }
 
-                    .delete-button {
+                    .btn-delete-reveal {
                         opacity: 1;
+                        pointer-events: auto;
                     }
                 }
             </style>

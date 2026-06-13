@@ -255,16 +255,6 @@ class BlogHeaderCard extends BaseComponent {
                     font-size: var(--font-size-xs);
                     white-space: nowrap;
                 }
-                .btn.btn-sm {
-                    padding: calc(var(--spacing-2) * 1.2) calc(var(--spacing-3) * 1.2);
-                    gap: calc(var(--spacing-2) * 1.2);
-                    font-size: calc(var(--font-size-xs) * 1.2);
-                    line-height: 1.25;
-                }
-                .btn .btn-icon {
-                    width: 16px;
-                    height: 16px;
-                }
                 :host([data-layout-single-column]) .blog-meta {
                     flex-direction: column;
                     align-items: stretch;
@@ -316,19 +306,19 @@ class BlogHeaderCard extends BaseComponent {
     }
 
     getBtnIcon(type) {
+        if (typeof Icons !== 'undefined') {
+            const iconMap = { edit: Icons.edit, subscription: Icons.subscription };
+            if (iconMap[type]) {
+                return Icons.asBtnIcon(iconMap[type]);
+            }
+        }
         const s = 'currentColor';
         const wrap = (paths) =>
-            `<svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${s}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+            `<svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${s}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
         if (type === 'edit') {
-            if (typeof Icons !== 'undefined') {
-                return Icons.edit.replace('<svg ', '<svg class="btn-icon" width="16" height="16" aria-hidden="true" ');
-            }
             return wrap('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>');
         }
-        if (typeof Icons !== 'undefined') {
-            return Icons.subscription.replace('<svg ', '<svg class="btn-icon" width="16" height="16" aria-hidden="true" ');
-        }
-        return wrap('<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>');
+        return wrap('<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>');
     }
 
     getAvatarPath(userId) {
@@ -433,7 +423,7 @@ class BlogHeaderCard extends BaseComponent {
             return '';
         }
 
-        return `<button type="button" class="btn btn-secondary btn-sm" onclick="this.getRootNode().host.showEditModal()">${this.getBtnIcon('edit')}<span>修改博客信息</span></button>`;
+        return `<button type="button" class="btn btn-secondary btn-sm btn-icon-only" title="修改博客信息" aria-label="修改博客信息" onclick="this.getRootNode().host.showEditModal()">${this.getBtnIcon('edit')}</button>`;
     }
 
     /**
@@ -463,8 +453,11 @@ class BlogHeaderCard extends BaseComponent {
 
         const isSubscribed = this.subscriptionStatus.is_subscribed;
         const buttonText = isSubscribed ? '取消订阅' : '订阅';
-        const buttonClass = isSubscribed ? 'btn btn-danger btn-sm' : 'btn btn-primary btn-sm';
-        return `<button type="button" class="${buttonClass}" onclick="this.getRootNode().host.handleSubscription()">${this.getBtnIcon('subscription')}<span>${buttonText}</span></button>`;
+        const buttonClass = isSubscribed ? 'btn btn-danger btn-sm btn-icon-only' : 'btn btn-primary btn-sm btn-icon-only';
+        const btnIcon = isSubscribed && typeof Icons !== 'undefined'
+            ? Icons.asBtnIcon(Icons.unsubscribe)
+            : this.getBtnIcon('subscription');
+        return `<button type="button" class="${buttonClass}" title="${buttonText}" aria-label="${buttonText}" onclick="this.getRootNode().host.handleSubscription()">${btnIcon}</button>`;
     }
 
     /**
@@ -498,11 +491,14 @@ class BlogHeaderCard extends BaseComponent {
 
         const isSubscribed = this.subscriptionStatus.is_subscribed;
         const buttonText = isSubscribed ? '取消订阅' : '订阅';
-        const buttonClass = isSubscribed ? 'btn btn-danger' : 'btn btn-primary';
+        const buttonClass = isSubscribed ? 'btn btn-danger btn-icon-only' : 'btn btn-primary btn-icon-only';
+        const btnIcon = isSubscribed && typeof Icons !== 'undefined'
+            ? Icons.asBtnIcon(Icons.unsubscribe)
+            : this.getBtnIcon('subscription');
         return `
             <div class="subscription-section">
-                <button type="button" class="${buttonClass}" onclick="this.getRootNode().host.handleSubscription()">
-                    ${this.getBtnIcon('subscription')}<span>${buttonText}</span>
+                <button type="button" class="${buttonClass}" title="${buttonText}" aria-label="${buttonText}" onclick="this.getRootNode().host.handleSubscription()">
+                    ${btnIcon}
                 </button>
             </div>
         `;
@@ -611,7 +607,7 @@ class BlogHeaderCard extends BaseComponent {
                         </form>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="this.closest('.edit-blog-modal').remove(); window.blogHeaderComponent = null;">取消</button>
+                        <button type="button" class="btn btn-secondary btn-icon-only" title="取消" aria-label="取消" onclick="this.closest('.edit-blog-modal').remove(); window.blogHeaderComponent = null;">${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.close) : '取消'}</button>
                         <button type="button" class="btn btn-primary" onclick="window.blogHeaderComponent.saveBlogInfo()">保存</button>
                     </div>
                 </div>
@@ -656,13 +652,6 @@ class BlogHeaderCard extends BaseComponent {
                     font-size: 18px;
                     font-weight: 600;
                 }
-                .modal-close {
-                    background: none;
-                    border: none;
-                    font-size: 24px;
-                    cursor: pointer;
-                    color: #6b7280;
-                }
                 .modal-body {
                     padding: 20px;
                 }
@@ -694,27 +683,6 @@ class BlogHeaderCard extends BaseComponent {
                     gap: 10px;
                     padding: 16px 20px;
                     border-top: 1px solid #e5e7eb;
-                }
-                .modal-footer .btn {
-                    padding: 8px 16px;
-                    font-size: 14px;
-                    border-radius: 6px;
-                    border: 1px solid #d1d5db;
-                    background: #fff;
-                    color: #374151;
-                    cursor: pointer;
-                }
-                .modal-footer .btn-primary {
-                    background: var(--primary-color);
-                    border-color: var(--primary-color);
-                    color: #fff;
-                }
-                .modal-footer .btn-secondary:hover {
-                    background: #f9fafb;
-                }
-                .modal-footer .btn-primary:hover {
-                    background: var(--primary-hover);
-                    border-color: var(--primary-hover);
                 }
             </style>
         `;

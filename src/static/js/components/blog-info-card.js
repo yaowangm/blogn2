@@ -407,7 +407,7 @@ class BlogInfoCard extends BaseComponent {
                             <div class="error-message" id="blogDescriptionError"></div>
                         </div>
                         <div class="modal-actions">
-                            <button type="button" class="btn btn-secondary btn-sm" id="cancelCreateBtn">取消</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-icon-only" id="cancelCreateBtn" title="取消" aria-label="取消">${Icons.asBtnIcon(Icons.close)}</button>
                             <button type="submit" class="btn btn-primary btn-sm" id="confirmCreateBtn">创建博客</button>
                         </div>
                     </form>

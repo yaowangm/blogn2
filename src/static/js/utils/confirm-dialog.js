@@ -11,6 +11,7 @@
         const s = document.createElement('style');
         s.id = STYLE_ID;
         s.textContent = `
+            @import url('/static/css/common-components.css');
             .blogn-confirm-dialog-overlay {
                 position: fixed;
                 inset: 0;
@@ -80,49 +81,8 @@
                 padding-top: var(--spacing-4, 16px);
                 border-top: 1px solid var(--gray-200, #e5e7eb);
             }
-            .blogn-confirm-dialog-footer .blogn-cd-btn-secondary {
-                background-color: var(--gray-100, #f3f4f6);
-                color: var(--gray-700, #374151);
-                border: 1px solid var(--gray-300, #d1d5db);
-                padding: var(--spacing-2, 8px) var(--spacing-6, 24px);
+            .blogn-confirm-dialog-footer .btn {
                 min-width: 7.5rem;
-                border-radius: var(--radius-md, 6px);
-                font-size: var(--font-size-base, 14px);
-                font-weight: 500;
-                cursor: pointer;
-                transition: background-color 0.15s ease, border-color 0.15s ease;
-            }
-            .blogn-confirm-dialog-footer .blogn-cd-btn-secondary:hover {
-                background-color: var(--gray-200, #e5e7eb);
-                border-color: var(--gray-400, #9ca3af);
-            }
-            .blogn-confirm-dialog-footer .blogn-cd-btn-primary {
-                background-color: var(--primary-color, #2f6fd6);
-                color: #ffffff;
-                border: 1px solid var(--primary-color, #2f6fd6);
-                padding: var(--spacing-2, 8px) var(--spacing-6, 24px);
-                min-width: 7.5rem;
-                border-radius: var(--radius-md, 6px);
-                font-size: var(--font-size-base, 14px);
-                font-weight: 500;
-                cursor: pointer;
-                transition: background-color 0.15s ease, border-color 0.15s ease;
-            }
-            .blogn-confirm-dialog-footer .blogn-cd-btn-primary:hover:not(:disabled) {
-                background-color: var(--primary-hover, #1f5fbf);
-                border-color: var(--primary-hover, #1f5fbf);
-            }
-            .blogn-confirm-dialog-footer .blogn-cd-btn-primary.blogn-cd-danger {
-                background-color: #dc2626;
-                border-color: #dc2626;
-            }
-            .blogn-confirm-dialog-footer .blogn-cd-btn-primary.blogn-cd-danger:hover:not(:disabled) {
-                background-color: #b91c1c;
-                border-color: #b91c1c;
-            }
-            .blogn-confirm-dialog-footer .blogn-cd-btn-primary:disabled {
-                opacity: 0.6;
-                cursor: not-allowed;
             }
         `;
         document.head.appendChild(s);
@@ -186,8 +146,8 @@
                     </div>
                     <div class="blogn-confirm-dialog-body">${bodyHtml}</div>
                     <div class="blogn-confirm-dialog-footer">
-                        <button type="button" class="blogn-cd-btn-secondary" data-blogncd="cancel">${escapeHtml(cancelText)}</button>
-                        <button type="button" class="blogn-cd-btn-primary ${danger ? 'blogn-cd-danger' : ''}" data-blogncd="confirm">${escapeHtml(confirmText)}</button>
+                        <button type="button" class="btn btn-secondary btn-sm" data-blogncd="cancel">${escapeHtml(cancelText)}</button>
+                        <button type="button" class="btn ${danger ? 'btn-danger' : 'btn-primary'} btn-sm" data-blogncd="confirm">${escapeHtml(confirmText)}</button>
                     </div>
                 </div>
             `;

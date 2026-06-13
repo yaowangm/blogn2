@@ -22,8 +22,7 @@
                         <span id="pageTitleText">管理友情链接</span>
                     </h1>
                     <div class="btn-toolbar">
-                        <button type="button" class="btn btn-primary btn-sm" id="addLinkBtn">
-                            新建链接
+                        <button type="button" class="btn btn-primary btn-sm btn-icon-only" id="addLinkBtn" title="新建链接" aria-label="新建链接">
                         </button>
                     </div>
                 </div>
@@ -53,7 +52,7 @@
         document.getElementById('friendLinksTitleIcon').innerHTML = Icons.friendLinks;
         const addBtn = document.getElementById('addLinkBtn');
         if (addBtn && typeof Icons !== 'undefined') {
-            addBtn.insertAdjacentHTML('afterbegin', Icons.add.replace('<svg ', '<svg width="16" height="16" aria-hidden="true" '));
+            addBtn.innerHTML = Icons.asBtnIcon(Icons.add);
         }
     </script>
 </body>
