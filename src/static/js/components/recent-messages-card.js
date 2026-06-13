@@ -3,6 +3,7 @@ class RecentMessagesCard extends BaseComponent {
         super();
         this.messages = [];
         this.loading = true;
+        this.error = false;
     }
 
     connectedCallback() {
@@ -12,123 +13,144 @@ class RecentMessagesCard extends BaseComponent {
 
     async loadContent() {
         try {
+            this.loading = true;
+            this.error = false;
+            this.render();
+
             const response = await fetch('/api/blogs/messages/recent');
             if (!response.ok) {
                 throw new Error('Failed to fetch recent messages');
             }
-            const data = await response.json();
-            this.updateContent(data);
+            this.messages = await response.json();
         } catch (error) {
             this.logError('Error loading recent messages', error);
-            this.showError();
+            this.messages = [];
+            this.error = true;
+        } finally {
+            this.loading = false;
+            this.render();
         }
     }
 
-    updateContent(messages) {
-        const cardBody = this.shadowRoot.querySelector('.card-body');
-        
-        if (cardBody) {
-            if (messages.length === 0) {
-                cardBody.innerHTML = `
-                    <div class="post-list">
-                        <div class="post-item post-item-block">
-                            <div class="post-content">
-                                <p class="post-excerpt">暂无留言</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-            
-            const messagesHtml = messages.map(message => {
-                // 安全处理所有文本字段，防止HTML注入和XSS攻击
-                const safeAuthor = this.escapeHtml(message.author);
-                const safeSubject = this.escapeHtml(message.subject);
-                const safeReplyInfo = message.reply_info ? this.escapeHtml(message.reply_info) : '';
-                const safeTime = this.escapeHtml(message.time);
-                
-                // 检查是否有有效的留言ID
-                const messageId = message.id;
-                const hasValidId = messageId && messageId !== null && messageId !== undefined;
-                
-                const avatarHtml = message.avatar
-                    ? `<span class="author-avatar"><img src="${message.avatar}" alt=""></span>`
-                    : `<span class="author-avatar"><span class="author-avatar-fallback">${safeAuthor.charAt(0).toUpperCase()}</span></span>`;
+    getSmallAvatarPath(userId) {
+        if (!userId) {
+            return null;
+        }
+        const prefix = Math.floor(userId / 10000) + 1;
+        return `/avatar/${prefix}/s_${userId}.jpg`;
+    }
 
-                const contentHtml = `
-                    <div class="article-meta">
-                        <div class="meta-items-left">
-                            <div class="meta-item meta-item-author">
-                                ${avatarHtml}
-                                <span class="author-name">${safeAuthor}</span>
-                            </div>
-                        </div>
-                        <div class="meta-item">
-                            <span>${safeTime}</span>
-                        </div>
-                    </div>
-                    <p class="post-title">${safeSubject}</p>
-                    ${safeReplyInfo ? `<p class="post-excerpt">${safeReplyInfo}</p>` : ''}
-                `;
-                
-                if (hasValidId) {
-                    return `
-                        <div class="post-item clickable" data-message-id="${messageId}" title="点击查看留言详情">
-                            <div class="post-content">
-                                ${contentHtml}
-                            </div>
-                        </div>
-                    `;
-                }
+    renderAuthorMetaItem(authorName, avatar, userId) {
+        const safeAuthor = this.escapeHtml(authorName || '匿名用户');
+        const isAnonymous = this.isAnonymousUser(userId);
+        const avatarPath = !isAnonymous ? (avatar || this.getSmallAvatarPath(userId)) : null;
+        const fallbackContent = this.getAuthorAvatarFallbackContent(authorName, userId);
+        const fallbackClass = isAnonymous
+            ? 'author-avatar-fallback author-avatar-fallback--default-user'
+            : 'author-avatar-fallback';
 
-                return `
-                    <div class="post-item post-item-block disabled">
-                        <div class="post-content">
-                            ${contentHtml}
-                        </div>
+        const avatarHtml = `
+            <span class="author-avatar" aria-hidden="true">
+                ${avatarPath ? `
+                    <img src="${avatarPath}" alt=""
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                         onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
+                ` : ''}
+                <span class="${fallbackClass}" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackContent}</span>
+            </span>
+        `;
+
+        return `
+            <div class="meta-item meta-item-author">
+                ${avatarHtml}
+                <span class="author-name">${safeAuthor}</span>
+            </div>
+        `;
+    }
+
+    renderMessageMeta(message) {
+        const safeTime = this.escapeHtml(message.time || '');
+        return `
+            <div class="article-meta">
+                <div class="meta-items-left">
+                    ${this.renderAuthorMetaItem(message.author, message.avatar, message.userid)}
+                    <div class="meta-item">
+                        <span>${safeTime}</span>
                     </div>
-                `;
-            }).join('');
-            
-            cardBody.innerHTML = `
+                </div>
+            </div>
+        `;
+    }
+
+    renderMessageItem(message) {
+        const safeSubject = this.escapeHtml(message.subject || '无标题');
+        const safeReplyInfo = message.reply_info ? this.escapeHtml(message.reply_info) : '';
+        const messageId = message.id;
+        const hasValidId = messageId !== null && messageId !== undefined;
+
+        const contentHtml = `
+            ${this.renderMessageMeta(message)}
+            <p class="post-title">${safeSubject}</p>
+            ${safeReplyInfo ? `<p class="post-excerpt post-excerpt--single-line">${safeReplyInfo}</p>` : ''}
+        `;
+
+        if (hasValidId) {
+            return `
+                <a href="/thread/${messageId}" class="post-item" target="_blank" rel="noopener noreferrer" title="查看留言">
+                    <div class="post-content">
+                        ${contentHtml}
+                    </div>
+                </a>
+            `;
+        }
+
+        return `
+            <div class="post-item post-item-block disabled">
+                <div class="post-content">
+                    ${contentHtml}
+                </div>
+            </div>
+        `;
+    }
+
+    renderMessages() {
+        if (this.messages.length === 0) {
+            return `
                 <div class="post-list">
-                    ${messagesHtml}
+                    <div class="post-item post-item-block">
+                        <div class="post-content">
+                            <p class="post-excerpt">暂无留言</p>
+                        </div>
+                    </div>
                 </div>
             `;
-            
-            // 添加点击事件监听器
-            this.attachClickListeners();
         }
-    }
 
-    showError() {
-        const cardBody = this.shadowRoot.querySelector('.card-body');
-        
-        if (cardBody) {
-            cardBody.innerHTML = this.createErrorHTML('加载失败，请稍后重试');
-        }
-    }
-
-    /**
-     * 添加点击事件监听器
-     */
-    attachClickListeners() {
-        const messageItems = this.shadowRoot.querySelectorAll('.post-item[data-message-id]');
-        messageItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                const messageId = item.getAttribute('data-message-id');
-                if (messageId) {
-                    window.open(`/thread/${messageId}`, '_blank');
-                }
-            });
-        });
+        return `
+            <div class="post-list">
+                ${this.messages.map((message) => this.renderMessageItem(message)).join('')}
+            </div>
+        `;
     }
 
     render() {
         this.shadowRoot.innerHTML = `
             <style>
                 @import url('/static/css/common-components.css');
+
+                .card-title {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                }
+
+                .title-icon {
+                    width: 20px;
+                    height: 20px;
+                    color: var(--primary-color);
+                    flex-shrink: 0;
+                }
+
                 .view-all-link {
                     font-size: var(--font-size-sm);
                     color: var(--primary-color);
@@ -142,28 +164,33 @@ class RecentMessagesCard extends BaseComponent {
                     text-decoration: underline;
                 }
 
-                .post-item.clickable {
-                    cursor: pointer;
+                .loading {
+                    text-align: center;
+                    padding: var(--spacing-8);
+                    color: var(--gray-500);
+                }
+
+                .post-title {
+                    font-weight: 400;
                 }
             </style>
 
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">最近留言</h3>
-                    <a href="/messages" class="view-all-link" target="_blank">查看全部</a>
+                    <h3 class="card-title">
+                        <span class="title-icon">${typeof Icons !== 'undefined' ? Icons.message : ''}</span>
+                        最近留言
+                    </h3>
+                    <a href="/messages" class="view-all-link" target="_blank" rel="noopener noreferrer">查看全部</a>
                 </div>
                 <div class="card-body">
-                    <div class="post-list">
-                        <div class="post-item post-item-block">
-                            <div class="post-content">
-                                <p class="post-excerpt">正在加载留言...</p>
-                            </div>
-                        </div>
-                    </div>
+                    ${this.loading ? `<div class="loading">${this.createLoadingHTML()}</div>` :
+                      this.error ? this.createErrorHTML('加载失败，请稍后重试') :
+                      this.renderMessages()}
                 </div>
             </div>
         `;
     }
 }
 
-customElements.define('recent-messages-card', RecentMessagesCard); 
+customElements.define('recent-messages-card', RecentMessagesCard);
