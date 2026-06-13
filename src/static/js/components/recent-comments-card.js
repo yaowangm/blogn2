@@ -192,9 +192,12 @@ class RecentCommentsCard extends BaseComponent {
 
     renderAuthorMetaItem(authorName, avatar, userId, blogId) {
         const safeAuthor = this.escapeHtml(authorName || '匿名用户');
-        const isAnonymous = !userId || userId === 0;
+        const isAnonymous = this.isAnonymousUser(userId);
         const avatarPath = !isAnonymous ? (avatar || this.getSmallAvatarPath(userId)) : null;
-        const fallbackLetter = isAnonymous ? '?' : safeAuthor.charAt(0).toUpperCase();
+        const fallbackContent = this.getAuthorAvatarFallbackContent(authorName, userId);
+        const fallbackClass = isAnonymous
+            ? 'author-avatar-fallback author-avatar-fallback--default-user'
+            : 'author-avatar-fallback';
         const canLinkBlog = !isAnonymous && blogId;
 
         const avatarHtml = `
@@ -204,7 +207,7 @@ class RecentCommentsCard extends BaseComponent {
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
                          onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
                 ` : ''}
-                <span class="author-avatar-fallback" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackLetter}</span>
+                <span class="${fallbackClass}" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackContent}</span>
             </span>
         `;
         const nameHtml = `<span class="author-name">${safeAuthor}</span>`;

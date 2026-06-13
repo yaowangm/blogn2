@@ -515,6 +515,16 @@ a.post-item:focus-visible .author-name,
     color: var(--gray-600);
 }
 
+.author-avatar-fallback--default-user {
+    color: var(--gray-500);
+}
+
+.author-avatar-fallback--default-user .author-avatar-icon {
+    width: 14px;
+    height: 14px;
+    display: block;
+}
+
 .author-name {
     font-weight: 500;
     color: var(--gray-700);

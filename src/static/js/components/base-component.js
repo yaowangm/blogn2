@@ -521,6 +521,28 @@ class BaseComponent extends HTMLElement {
         return HtmlUtils.stripMarkdown(text);
     }
 
+    isAnonymousUser(userId) {
+        return !userId || userId === 0;
+    }
+
+    getDefaultUserAvatarIconHtml() {
+        if (typeof Icons !== 'undefined' && Icons.user) {
+            return Icons.user.replace(
+                /<svg[^>]*>/,
+                '<svg class="author-avatar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">'
+            );
+        }
+        return '用';
+    }
+
+    getAuthorAvatarFallbackContent(authorName, userId) {
+        if (this.isAnonymousUser(userId)) {
+            return this.getDefaultUserAvatarIconHtml();
+        }
+        const name = authorName || '用户';
+        return this.escapeHtml(name).charAt(0).toUpperCase();
+    }
+
     /**
      * 与 `sidebar-collapse` 同步整页单列模式：`document.body` 含 `layout-single-column` 时
      * 在宿主上设置 `data-layout-single-column`，供 Shadow 内 `:host([...])` 使用（`:host-context` 在 Shadow 中不可靠）。
