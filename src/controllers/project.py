@@ -218,7 +218,8 @@ async def get_project_recent_comments(
             "time": comment["post_time"],    # 改为time以匹配现有组件
             "projectitemid": comment["projectitemid"],
             "userid": comment["userid"],
-            "avatar": avatar_path
+            "avatar": avatar_path,
+            "blog_id": comment.get("author_blog_id"),
         })
     
     return comments_data

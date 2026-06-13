@@ -58,7 +58,7 @@ class TestPostRepository:
     async def test_get_recent_comments_success(self, post_repository, mock_session, sample_post):
         """测试获取最新评论成功（单条 JOIN 查询，含用户名）"""
         mock_result = MagicMock()
-        mock_result.all.return_value = [(sample_post, "测试用户")]
+        mock_result.all.return_value = [(sample_post, "测试用户", 42)]
         mock_session.exec.return_value = mock_result
 
         result = await post_repository.get_recent_comments(5)
@@ -69,6 +69,7 @@ class TestPostRepository:
         assert result[0]["author_name"] == "测试用户"
         assert result[0]["projectitemid"] == 456
         assert result[0]["userid"] == 123
+        assert result[0]["author_blog_id"] == 42
         mock_session.exec.assert_called_once()
 
     @pytest.mark.unit
@@ -89,7 +90,7 @@ class TestPostRepository:
         post2 = Post(id=2, content="评论2", userid=2, projectitemid=1, posttime="2023-01-01 09:00:00", status=1)
 
         mock_result = MagicMock()
-        mock_result.all.return_value = [(post1, "用户1"), (post2, "用户2")]
+        mock_result.all.return_value = [(post1, "用户1", 10), (post2, "用户2", 20)]
         mock_session.exec.return_value = mock_result
 
         result = await post_repository.get_recent_comments(5)
@@ -106,7 +107,7 @@ class TestPostRepository:
         mock_count = MagicMock()
         mock_count.first.return_value = 1
         mock_rows = MagicMock()
-        mock_rows.all.return_value = [(sample_post, "测试用户")]
+        mock_rows.all.return_value = [(sample_post, "测试用户", 99)]
         mock_session.exec.side_effect = [mock_count, mock_rows]
 
         with patch(
@@ -120,6 +121,7 @@ class TestPostRepository:
         assert len(result["comments"]) == 1
         assert result["comments"][0]["author_name"] == "测试用户"
         assert result["comments"][0]["author_avatar"] == "/avatar/1/s_123.jpg"
+        assert result["comments"][0]["author_blog_id"] == 99
         assert result["pagination"]["total"] == 1
         assert result["pagination"]["has_next"] is False
 

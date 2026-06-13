@@ -49,7 +49,7 @@ class PostRepository:
         total = count_result.first()
 
         statement = (
-            select(Post, User.name.label("author_name"))
+            select(Post, User.name.label("author_name"), User.projectid.label("author_blog_id"))
             .outerjoin(User, Post.userid == User.id)
             .where(Post.projectitemid == project_item_id)
             .order_by(Post.posttime.desc())
@@ -61,7 +61,7 @@ class PostRepository:
 
         avatar_cache: Dict[int, str | None] = {}
         comments = []
-        for post, author_name in rows:
+        for post, author_name, author_blog_id in rows:
             avatar = None
             if post.userid:
                 if post.userid not in avatar_cache:
@@ -73,6 +73,7 @@ class PostRepository:
                 "user_id": post.userid,
                 "author_name": author_name or "匿名用户",
                 "author_avatar": avatar,
+                "author_blog_id": author_blog_id if post.userid else None,
                 "post_time": post.posttime,
                 "reply_count": post.replycount or 0,
             })
@@ -95,7 +96,12 @@ class PostRepository:
         """获取指定项目的最近评论，包含用户名和文章名"""
         # 使用JOIN查询获取评论、用户名和文章名；排除孤儿评论与已删除/下架文章上的评论
         statement = (
-            select(Post, User.name.label("user_name"), ProjectItem.name.label("project_item_name"))
+            select(
+                Post,
+                User.name.label("user_name"),
+                ProjectItem.name.label("project_item_name"),
+                User.projectid.label("author_blog_id"),
+            )
             .join(User, Post.userid == User.id)
             .join(ProjectItem, Post.projectitemid == ProjectItem.id)
             .join(Project, ProjectItem.projectid == Project.id)
@@ -111,7 +117,7 @@ class PostRepository:
         result = await self.session.exec(statement)
         comments = []
 
-        for post, user_name, project_item_name in result.all():
+        for post, user_name, project_item_name, author_blog_id in result.all():
             comments.append({
                 "id": post.id,
                 "user_name": user_name or "匿名用户",
@@ -119,7 +125,8 @@ class PostRepository:
                 "post_time": post.posttime,
                 "project_item_name": project_item_name or "文章",
                 "projectitemid": post.projectitemid,
-                "userid": post.userid
+                "userid": post.userid,
+                "author_blog_id": author_blog_id if post.userid else None,
             })
 
         return comments
@@ -132,7 +139,7 @@ class PostRepository:
         - 软删除/下架文章上的评论仍被展示。
         """
         statement = (
-            select(Post, User.name.label("user_name"))
+            select(Post, User.name.label("user_name"), User.projectid.label("author_blog_id"))
             .join(ProjectItem, Post.projectitemid == ProjectItem.id)
             .join(Project, ProjectItem.projectid == Project.id)
             .outerjoin(User, Post.userid == User.id)
@@ -148,7 +155,7 @@ class PostRepository:
         result = await self.session.exec(statement)
         comments = []
 
-        for comment, user_name in result.all():
+        for comment, user_name, author_blog_id in result.all():
             author_name = user_name if user_name else "匿名用户"
 
             comments.append({
@@ -157,6 +164,7 @@ class PostRepository:
                 "author_name": author_name,
                 "projectitemid": comment.projectitemid,
                 "userid": comment.userid,
+                "author_blog_id": author_blog_id if comment.userid else None,
                 "post_time": comment.posttime,  # 改为post_time以匹配BlogService的期望
                 "status": comment.status
             })

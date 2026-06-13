@@ -190,10 +190,12 @@ class RecentCommentsCard extends BaseComponent {
         return `/avatar/${prefix}/s_${userId}.jpg`;
     }
 
-    renderAuthorMetaItem(authorName, avatar, userId) {
+    renderAuthorMetaItem(authorName, avatar, userId, blogId) {
         const safeAuthor = this.escapeHtml(authorName || '匿名用户');
-        const avatarPath = avatar || this.getSmallAvatarPath(userId);
-        const fallbackLetter = safeAuthor.charAt(0).toUpperCase();
+        const isAnonymous = !userId || userId === 0;
+        const avatarPath = !isAnonymous ? (avatar || this.getSmallAvatarPath(userId)) : null;
+        const fallbackLetter = isAnonymous ? '?' : safeAuthor.charAt(0).toUpperCase();
+        const canLinkBlog = !isAnonymous && blogId;
 
         const avatarHtml = `
             <span class="author-avatar" aria-hidden="true">
@@ -205,11 +207,23 @@ class RecentCommentsCard extends BaseComponent {
                 <span class="author-avatar-fallback" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackLetter}</span>
             </span>
         `;
+        const nameHtml = `<span class="author-name">${safeAuthor}</span>`;
+
+        if (canLinkBlog) {
+            return `
+                <div class="meta-item meta-item-author">
+                    <a href="/blog/${blogId}" class="author-link" title="查看博客" target="_blank" rel="noopener noreferrer">
+                        ${avatarHtml}
+                        ${nameHtml}
+                    </a>
+                </div>
+            `;
+        }
 
         return `
             <div class="meta-item meta-item-author">
                 ${avatarHtml}
-                <span class="author-name">${safeAuthor}</span>
+                ${nameHtml}
             </div>
         `;
     }
@@ -260,6 +274,7 @@ class RecentCommentsCard extends BaseComponent {
 
                 .comment-item {
                     border-bottom: 1px solid var(--gray-100);
+                    padding: var(--spacing-3) var(--spacing-4);
                 }
 
                 .comment-item:last-child {
@@ -270,8 +285,26 @@ class RecentCommentsCard extends BaseComponent {
                     text-decoration: none;
                     color: inherit;
                     display: block;
-                    padding: var(--spacing-3) var(--spacing-4);
                     transition: var(--transition-fast);
+                }
+
+                .author-link {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                    text-decoration: none;
+                    color: inherit;
+                    min-width: 0;
+                }
+
+                .author-link:hover {
+                    text-decoration: none;
+                }
+
+                .author-link:hover .author-name,
+                .comment-item:hover .author-link .author-name,
+                .comment-item:focus-within .author-link .author-name {
+                    color: var(--interactive-hover-text);
                 }
 
                 .comment-item:hover,
@@ -290,7 +323,6 @@ class RecentCommentsCard extends BaseComponent {
 
                 .comment-item.disabled {
                     display: block;
-                    padding: var(--spacing-3) var(--spacing-4);
                     cursor: default;
                     opacity: 0.7;
                 }
@@ -406,19 +438,20 @@ class RecentCommentsCard extends BaseComponent {
                     <ul class="comment-list">
                         ${this.comments.map((comment) => {
                             const commentUrl = this.getNavigationUrl(comment);
-                            const contentHtml = `
+                            const headerHtml = `
                                 <div class="comment-header">
-                                    ${this.renderAuthorMetaItem(comment.author, comment.avatar, comment.userid)}
+                                    ${this.renderAuthorMetaItem(comment.author, comment.avatar, comment.userid, comment.blog_id)}
                                     <span class="time">${this.escapeHtml(comment.time)}</span>
                                 </div>
-                                <div class="comment-text">${this.escapeHtml(this.truncateText(comment.content, 20))}</div>
                             `;
+                            const textHtml = `<div class="comment-text">${this.escapeHtml(this.truncateText(comment.content, 20))}</div>`;
 
                             if (commentUrl) {
                                 return `
                                     <li class="comment-item">
+                                        ${headerHtml}
                                         <a href="${commentUrl}" class="comment-link" target="_blank" title="查看评论">
-                                            ${contentHtml}
+                                            ${textHtml}
                                         </a>
                                     </li>
                                 `;
@@ -426,7 +459,8 @@ class RecentCommentsCard extends BaseComponent {
 
                             return `
                                 <li class="comment-item disabled">
-                                    ${contentHtml}
+                                    ${headerHtml}
+                                    ${textHtml}
                                 </li>
                             `;
                         }).join('')}

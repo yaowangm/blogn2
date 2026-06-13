@@ -86,6 +86,7 @@ class ArticleCommentsCard extends BaseComponent {
                 id: comment.user_id,
                 name: comment.author_name || `用户${comment.user_id}`,
                 avatar: comment.author_avatar,
+                projectid: comment.author_blog_id,
             };
         });
     }
@@ -100,8 +101,10 @@ class ArticleCommentsCard extends BaseComponent {
 
     renderAuthorMetaItem(userName, userAvatar, userId, blogId) {
         const safeAuthor = this.escapeHtml(userName || '匿名用户');
-        const avatarPath = userId ? (userAvatar || this.getSmallAvatarPath(userId)) : null;
-        const fallbackLetter = userId ? safeAuthor.charAt(0).toUpperCase() : '?';
+        const isAnonymous = !userId || userId === 0;
+        const avatarPath = !isAnonymous ? (userAvatar || this.getSmallAvatarPath(userId)) : null;
+        const fallbackLetter = isAnonymous ? '?' : safeAuthor.charAt(0).toUpperCase();
+        const canLinkBlog = !isAnonymous && blogId;
 
         const avatarHtml = `
             <span class="author-avatar" aria-hidden="true">
@@ -113,23 +116,25 @@ class ArticleCommentsCard extends BaseComponent {
                 <span class="author-avatar-fallback" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackLetter}</span>
             </span>
         `;
+        const nameHtml = `<span class="author-name">${safeAuthor}</span>`;
 
-        const metaHtml = `
-            <div class="meta-item meta-item-author">
-                ${avatarHtml}
-                <span class="author-name">${safeAuthor}</span>
-            </div>
-        `;
-
-        if (blogId) {
+        if (canLinkBlog) {
             return `
-                <a href="/blog/${blogId}" class="author-link" title="查看博客" target="_blank" rel="noopener noreferrer">
-                    ${metaHtml}
-                </a>
+                <div class="meta-item meta-item-author">
+                    <a href="/blog/${blogId}" class="author-link" title="查看博客" target="_blank" rel="noopener noreferrer">
+                        ${avatarHtml}
+                        ${nameHtml}
+                    </a>
+                </div>
             `;
         }
 
-        return metaHtml;
+        return `
+            <div class="meta-item meta-item-author">
+                ${avatarHtml}
+                ${nameHtml}
+            </div>
+        `;
     }
 
     /**
@@ -476,10 +481,10 @@ class ArticleCommentsCard extends BaseComponent {
      * 渲染单个评论
      */
     renderComment(comment) {
-        const { id, content, user_id, post_time, reply_count, author_name, author_avatar } = comment;
+        const { id, content, user_id, post_time, reply_count, author_name, author_avatar, author_blog_id } = comment;
 
         let userName = author_name || '匿名';
-        let blogId = null;
+        let blogId = (user_id && user_id !== 0 && author_blog_id) ? author_blog_id : null;
         let userAvatar = author_avatar || null;
 
         const canDelete = this.canDeleteComment(comment);
@@ -488,7 +493,9 @@ class ArticleCommentsCard extends BaseComponent {
             if (this.userMap && this.userMap[user_id]) {
                 const user = this.userMap[user_id];
                 userName = user.name || userName;
-                blogId = user.projectid || null;
+                if (!blogId && user.projectid) {
+                    blogId = user.projectid;
+                }
                 if (!userAvatar && user.avatar) {
                     userAvatar = user.avatar;
                 }
@@ -752,6 +759,9 @@ class ArticleCommentsCard extends BaseComponent {
                 }
 
                 .author-link {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
                     text-decoration: none;
                     color: inherit;
                     min-width: 0;
@@ -759,6 +769,10 @@ class ArticleCommentsCard extends BaseComponent {
 
                 .author-link:hover {
                     text-decoration: none;
+                }
+
+                .author-link:hover .author-name {
+                    color: var(--interactive-hover-text);
                 }
 
                 .author-avatar {

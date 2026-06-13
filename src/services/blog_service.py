@@ -111,7 +111,8 @@ class BlogService(BaseService):
                     "time": time_str,
                     "projectitemid": comment["projectitemid"],
                     "avatar": avatar_path,
-                    "userid": userid
+                    "userid": userid,
+                    "blog_id": comment.get("author_blog_id"),
                 })
             
             return formatted_comments
