@@ -266,144 +266,6 @@ class RecentCommentsCard extends BaseComponent {
                     color: var(--primary-color);
                 }
 
-                .comment-list {
-                    list-style: none;
-                    margin: 0;
-                    padding: 0;
-                }
-
-                .comment-item {
-                    border-bottom: 1px solid var(--gray-100);
-                    padding: var(--spacing-3) var(--spacing-4);
-                }
-
-                .comment-item:last-child {
-                    border-bottom: none;
-                }
-
-                .comment-link {
-                    text-decoration: none;
-                    color: inherit;
-                    display: block;
-                    transition: var(--transition-fast);
-                }
-
-                .author-link {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: var(--spacing-2);
-                    text-decoration: none;
-                    color: inherit;
-                    min-width: 0;
-                }
-
-                .author-link:hover {
-                    text-decoration: none;
-                }
-
-                .author-link:hover .author-name,
-                .comment-item:hover .author-link .author-name,
-                .comment-item:focus-within .author-link .author-name {
-                    color: var(--interactive-hover-text);
-                }
-
-                .comment-item:hover,
-                .comment-item:focus-within {
-                    background: var(--interactive-hover-bg);
-                }
-
-                .comment-item:hover .author-name,
-                .comment-item:focus-within .author-name {
-                    color: var(--interactive-hover-text);
-                }
-
-                .comment-link:hover {
-                    text-decoration: none;
-                }
-
-                .comment-item.disabled {
-                    display: block;
-                    cursor: default;
-                    opacity: 0.7;
-                }
-
-                .comment-header {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    gap: var(--spacing-2);
-                    margin-bottom: var(--spacing-1);
-                }
-
-                .meta-item {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: var(--spacing-1);
-                    min-width: 0;
-                    color: var(--gray-500);
-                    font-size: var(--font-size-xs);
-                    white-space: nowrap;
-                }
-
-                .meta-item-author {
-                    gap: var(--spacing-2);
-                }
-
-                .author-avatar {
-                    width: 24px;
-                    height: 24px;
-                    border-radius: 50%;
-                    flex-shrink: 0;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: var(--gray-100);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                }
-
-                .author-avatar img {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                    display: block;
-                }
-
-                .author-avatar-fallback {
-                    width: 100%;
-                    height: 100%;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: var(--font-size-xs);
-                    font-weight: 600;
-                    color: var(--gray-600);
-                }
-
-                .author-name {
-                    font-weight: 500;
-                    color: var(--gray-700);
-                    transition: color var(--transition-fast);
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                }
-
-                .time {
-                    font-size: var(--font-size-xs);
-                    color: var(--gray-500);
-                }
-
-                .comment-text {
-                    font-size: var(--font-size-sm);
-                    font-weight: 400;
-                    color: var(--gray-600);
-                    line-height: 1.6;
-                    margin: 0;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                }
-
                 .loading {
                     text-align: center;
                     padding: var(--spacing-8);
@@ -435,36 +297,44 @@ class RecentCommentsCard extends BaseComponent {
                 </div>
                 ${this.loading ? `<div class="loading">${this.createLoadingHTML()}</div>` :
                   this.error ? this.createErrorHTML() : `
-                    <ul class="comment-list">
-                        ${this.comments.map((comment) => {
-                            const commentUrl = this.getNavigationUrl(comment);
-                            const headerHtml = `
-                                <div class="comment-header">
-                                    ${this.renderAuthorMetaItem(comment.author, comment.avatar, comment.userid, comment.blog_id)}
-                                    <span class="time">${this.escapeHtml(comment.time)}</span>
-                                </div>
-                            `;
-                            const textHtml = `<div class="comment-text">${this.escapeHtml(this.truncateText(comment.content, 20))}</div>`;
-
-                            if (commentUrl) {
-                                return `
-                                    <li class="comment-item">
-                                        ${headerHtml}
-                                        <a href="${commentUrl}" class="comment-link" target="_blank" title="查看评论">
-                                            ${textHtml}
-                                        </a>
-                                    </li>
+                    <div class="card-body">
+                        <div class="post-list">
+                            ${this.comments.map((comment) => {
+                                const commentUrl = this.getNavigationUrl(comment);
+                                const metaHtml = `
+                                    <div class="article-meta">
+                                        <div class="meta-items-left">
+                                            ${this.renderAuthorMetaItem(comment.author, comment.avatar, comment.userid, comment.blog_id)}
+                                        </div>
+                                        <div class="meta-item">
+                                            <span>${this.escapeHtml(comment.time)}</span>
+                                        </div>
+                                    </div>
                                 `;
-                            }
+                                const textHtml = `<p class="post-excerpt post-excerpt--single-line">${this.escapeHtml(this.truncateText(comment.content, 20))}</p>`;
 
-                            return `
-                                <li class="comment-item disabled">
-                                    ${headerHtml}
-                                    ${textHtml}
-                                </li>
-                            `;
-                        }).join('')}
-                    </ul>
+                                if (commentUrl) {
+                                    return `
+                                        <a href="${commentUrl}" class="post-item" target="_blank" title="查看评论">
+                                            <div class="post-content">
+                                                ${metaHtml}
+                                                ${textHtml}
+                                            </div>
+                                        </a>
+                                    `;
+                                }
+
+                                return `
+                                    <div class="post-item post-item-block disabled">
+                                        <div class="post-content">
+                                            ${metaHtml}
+                                            ${textHtml}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
                 `}
             </div>
         `;

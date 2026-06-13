@@ -8,6 +8,7 @@
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/components.css">
+    <link rel="stylesheet" href="/static/css/common-components.css">
     <style>
         .search-container {
             max-width: var(--layout-max-width);
@@ -96,12 +97,20 @@
             margin-top: var(--spacing-8);
         }
 
+        .search-results-card {
+            background: var(--white);
+            border-radius: var(--card-radius, var(--radius-lg));
+            box-shadow: var(--card-shadow, var(--shadow-sm));
+            border: 1px solid var(--card-border, var(--gray-200));
+            overflow: hidden;
+        }
+
         .results-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: var(--spacing-6);
-            padding-bottom: var(--spacing-4);
+            padding: var(--spacing-3) var(--spacing-4);
+            background: var(--gray-50);
             border-bottom: 1px solid var(--gray-200);
         }
 
@@ -131,92 +140,30 @@
             font-size: var(--font-size-sm);
         }
 
-        .result-item {
-            background: var(--white);
-            border: 1px solid var(--card-border);
-            border-radius: var(--card-radius);
-            margin-bottom: var(--spacing-4);
-            transition: var(--transition-fast);
-            overflow: hidden;
-            box-shadow: var(--card-shadow);
-        }
-
-        .result-item:hover {
-            border-color: var(--interactive-hover-border);
-            background: var(--interactive-hover-bg);
-            box-shadow: var(--card-shadow-hover);
-            transform: translateY(-1px);
-        }
-
-        .result-link {
-            display: block;
-            padding: var(--spacing-6);
-            text-decoration: none;
-            color: inherit;
-            transition: var(--transition-fast);
-        }
-
-        .result-link:hover {
-            text-decoration: none;
-            color: inherit;
-        }
-
-        .result-title {
-            font-size: var(--font-size-xl);
-            font-weight: 600;
-            color: var(--gray-900);
-            margin-bottom: var(--spacing-2);
-            line-height: 1.4;
-        }
-
-        .result-meta {
-            display: flex;
+        .search-tag {
+            display: inline-flex;
             align-items: center;
-            gap: var(--spacing-4);
-            margin-bottom: var(--spacing-3);
-            font-size: var(--font-size-sm);
-            color: var(--gray-600);
-        }
-
-        .result-author {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-2);
-        }
-
-        .result-date {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-2);
-        }
-
-        .result-similarity {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-2);
-            color: var(--primary-color);
-            font-weight: 500;
-        }
-
-        .result-content {
-            color: var(--gray-700);
-            line-height: 1.6;
-            margin-bottom: var(--spacing-3);
-        }
-
-        .result-tags {
-            display: flex;
-            gap: var(--spacing-2);
-            flex-wrap: wrap;
-        }
-
-        .result-tag {
+            gap: var(--spacing-1);
             background: var(--gray-100);
             color: var(--gray-700);
             padding: var(--spacing-1) var(--spacing-2);
             border-radius: var(--radius-sm);
             font-size: var(--font-size-xs);
             font-weight: 500;
+        }
+
+        .search-similarity {
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+
+        /* Match blog post-list hover; override global a:hover underline */
+        .search-results .post-list a.post-item,
+        .search-results .post-list a.post-item:hover,
+        .search-results .post-list a.post-item:focus,
+        .search-results .post-list a.post-item:focus-visible {
+            text-decoration: none;
+            color: inherit;
         }
 
         .loading {
@@ -244,34 +191,11 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            flex-wrap: wrap;
             gap: var(--spacing-2);
-            margin-top: var(--spacing-8);
-        }
-
-        .pagination-button {
-            padding: var(--spacing-2) var(--spacing-4);
-            border: 1px solid var(--gray-300);
-            background: var(--white);
-            color: var(--gray-700);
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            transition: var(--transition-fast);
-        }
-
-        .pagination-button:hover:not(:disabled) {
+            padding: var(--spacing-4);
             background: var(--gray-50);
-            border-color: var(--gray-400);
-        }
-
-        .pagination-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .pagination-button.active {
-            background: var(--primary-color);
-            color: var(--white);
-            border-color: var(--primary-color);
+            border-top: 1px solid var(--gray-200);
         }
 
         @media (max-width: 768px) {
@@ -350,7 +274,7 @@
             </div>
 
             <!-- 搜索结果区域 -->
-            <div class="search-results" id="searchResults" style="display: none;">
+            <div class="search-results search-results-card" id="searchResults" style="display: none;">
                 <div class="results-header">
                     <div class="results-count" id="resultsCount">找到 0 个结果</div>
                     <div class="results-sort">
@@ -362,7 +286,9 @@
                         </select>
                     </div>
                 </div>
-                <div class="results-list" id="resultsList"></div>
+                <div class="card-body">
+                    <div class="post-list" id="resultsList"></div>
+                </div>
                 <div class="pagination" id="pagination" style="display: none;"></div>
             </div>
 

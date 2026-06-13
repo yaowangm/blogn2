@@ -30,9 +30,11 @@ class RecentMessagesCard extends BaseComponent {
         if (cardBody) {
             if (messages.length === 0) {
                 cardBody.innerHTML = `
-                    <div class="message-list">
-                        <div class="message-item">
-                            <div class="message-subject">暂无留言</div>
+                    <div class="post-list">
+                        <div class="post-item post-item-block">
+                            <div class="post-content">
+                                <p class="post-excerpt">暂无留言</p>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -50,41 +52,47 @@ class RecentMessagesCard extends BaseComponent {
                 const messageId = message.id;
                 const hasValidId = messageId && messageId !== null && messageId !== undefined;
                 
-                if (hasValidId) {
-                    // 可点击的留言项
-                    return `
-                        <div class="message-item clickable" data-message-id="${messageId}" title="点击查看留言详情">
-                            <div class="message-header">
-                                <div class="message-author-info">
-                                    ${message.avatar ? `<img src="${message.avatar}" alt="${safeAuthor}" class="message-avatar">` : `<div class="message-avatar-placeholder">${safeAuthor.charAt(0).toUpperCase()}</div>`}
-                                    <span class="message-author">${safeAuthor}</span>
-                                </div>
-                                <span class="message-time">${safeTime}</span>
+                const avatarHtml = message.avatar
+                    ? `<span class="author-avatar"><img src="${message.avatar}" alt=""></span>`
+                    : `<span class="author-avatar"><span class="author-avatar-fallback">${safeAuthor.charAt(0).toUpperCase()}</span></span>`;
+
+                const contentHtml = `
+                    <div class="article-meta">
+                        <div class="meta-items-left">
+                            <div class="meta-item meta-item-author">
+                                ${avatarHtml}
+                                <span class="author-name">${safeAuthor}</span>
                             </div>
-                            <div class="message-subject">${safeSubject}</div>
-                            ${safeReplyInfo ? `<div class="message-reply-info">${safeReplyInfo}</div>` : ''}
                         </div>
-                    `;
-                } else {
-                    // 不可点击的留言项
+                        <div class="meta-item">
+                            <span>${safeTime}</span>
+                        </div>
+                    </div>
+                    <p class="post-title">${safeSubject}</p>
+                    ${safeReplyInfo ? `<p class="post-excerpt">${safeReplyInfo}</p>` : ''}
+                `;
+                
+                if (hasValidId) {
                     return `
-                        <div class="message-item disabled">
-                            <div class="message-header">
-                                <div class="message-author-info">
-                                    ${message.avatar ? `<img src="${message.avatar}" alt="${safeAuthor}" class="message-avatar">` : `<div class="message-avatar-placeholder">${safeAuthor.charAt(0).toUpperCase()}</div>`}
-                                    <span class="message-author">${safeAuthor}</span>
-                                </div>
-                                <span class="message-time">${safeTime}</span>
+                        <div class="post-item clickable" data-message-id="${messageId}" title="点击查看留言详情">
+                            <div class="post-content">
+                                ${contentHtml}
                             </div>
-                            <div class="message-subject">${safeSubject}</div>
-                            ${safeReplyInfo ? `<div class="message-reply-info">${safeReplyInfo}</div>` : ''}
                         </div>
                     `;
                 }
+
+                return `
+                    <div class="post-item post-item-block disabled">
+                        <div class="post-content">
+                            ${contentHtml}
+                        </div>
+                    </div>
+                `;
             }).join('');
             
             cardBody.innerHTML = `
-                <div class="message-list">
+                <div class="post-list">
                     ${messagesHtml}
                 </div>
             `;
@@ -106,7 +114,7 @@ class RecentMessagesCard extends BaseComponent {
      * 添加点击事件监听器
      */
     attachClickListeners() {
-        const messageItems = this.shadowRoot.querySelectorAll('.message-item[data-message-id]');
+        const messageItems = this.shadowRoot.querySelectorAll('.post-item[data-message-id]');
         messageItems.forEach(item => {
             item.addEventListener('click', (e) => {
                 const messageId = item.getAttribute('data-message-id');
@@ -133,130 +141,9 @@ class RecentMessagesCard extends BaseComponent {
                     color: var(--primary-color-dark);
                     text-decoration: underline;
                 }
-                .message-list {
-                    display: flex;
-                    flex-direction: column;
-                    gap: var(--spacing-3);
-                }
 
-                .message-item {
-                    padding: var(--spacing-3);
-                    border-radius: var(--radius-md);
-                    background: var(--gray-50);
-                    border: 1px solid var(--gray-200);
-                }
-
-                .message-item.clickable {
+                .post-item.clickable {
                     cursor: pointer;
-                    transition: var(--transition-normal);
-                }
-
-                .message-item.clickable:hover,
-                .message-item.clickable:focus-visible {
-                    background: var(--interactive-hover-bg);
-                    border-color: var(--interactive-hover-border);
-                }
-
-                .message-item.clickable:hover .message-author,
-                .message-item.clickable:focus-visible .message-author {
-                    color: var(--interactive-hover-text);
-                }
-
-                .message-item.disabled {
-                    cursor: default;
-                    opacity: 0.7;
-                }
-
-                .message-header {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    margin-bottom: var(--spacing-1);
-                    flex-wrap: wrap;
-                    gap: var(--spacing-2);
-                }
-
-                .message-author-info {
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-2);
-                    flex-shrink: 0;
-                }
-
-                .message-avatar {
-                    width: 24px;
-                    height: 24px;
-                    border-radius: 50%;
-                    object-fit: cover;
-                    border: 1px solid var(--gray-200);
-                    flex-shrink: 0;
-                }
-
-                .message-avatar-placeholder {
-                    width: 24px;
-                    height: 24px;
-                    border-radius: 50%;
-                    background: var(--primary-color);
-                    color: white;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: var(--font-size-xs);
-                    font-weight: 500;
-                    border: 1px solid var(--gray-200);
-                    flex-shrink: 0;
-                }
-
-                .message-author {
-                    font-weight: 400;
-                    color: var(--gray-800);
-                    transition: color var(--transition-fast);
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    max-width: 120px;
-                }
-
-                .message-time {
-                    font-size: var(--font-size-sm);
-                    color: var(--gray-500);
-                    white-space: nowrap;
-                    flex-shrink: 0;
-                }
-
-                .message-subject {
-                    font-size: var(--font-size-sm);
-                    color: var(--gray-700);
-                    line-height: 1.5;
-                    font-weight: 500;
-                    margin-bottom: var(--spacing-1);
-                    word-wrap: break-word;
-                    overflow-wrap: break-word;
-                }
-
-                .message-reply-info {
-                    font-size: var(--font-size-xs);
-                    color: var(--gray-500);
-                    line-height: 1.4;
-                    word-wrap: break-word;
-                    overflow-wrap: break-word;
-                }
-
-                /* 确保在小屏幕上不会重叠 */
-                @media (max-width: 480px) {
-                    .message-header {
-                        flex-direction: column;
-                        align-items: flex-start;
-                        gap: var(--spacing-1);
-                    }
-                    
-                    .message-author-info {
-                        max-width: 100%;
-                    }
-                    
-                    .message-author {
-                        max-width: 100px;
-                    }
                 }
             </style>
 
@@ -266,9 +153,11 @@ class RecentMessagesCard extends BaseComponent {
                     <a href="/messages" class="view-all-link" target="_blank">查看全部</a>
                 </div>
                 <div class="card-body">
-                    <div class="message-list">
-                        <div class="message-item">
-                            <div class="message-subject">正在加载留言...</div>
+                    <div class="post-list">
+                        <div class="post-item post-item-block">
+                            <div class="post-content">
+                                <p class="post-excerpt">正在加载留言...</p>
+                            </div>
                         </div>
                     </div>
                 </div>

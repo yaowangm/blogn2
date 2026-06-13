@@ -161,30 +161,8 @@ class SubscriptionsListCard extends BaseComponent {
         this.shadowRoot.innerHTML = `
             <style>
                 @import url('/static/css/common-components.css');
-                .blog-list {
-                    display: flex;
-                    flex-direction: column;
-                    gap: var(--spacing-4);
-                }
-                
-                .blog-item {
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-4);
-                    padding: var(--spacing-3) var(--spacing-4);
-                    border: 1px solid var(--gray-200);
-                    border-radius: var(--radius-lg);
-                    transition: var(--transition-fast);
-                    background: var(--white);
-                    cursor: pointer;
-                }
-                
-                .blog-item:hover {
-                    box-shadow: var(--shadow-md);
-                    border-color: var(--primary-color);
-                }
-                
-                .blog-avatar {
+
+                .subscription-avatar {
                     width: 48px;
                     height: 48px;
                     border-radius: var(--radius-full);
@@ -197,125 +175,52 @@ class SubscriptionsListCard extends BaseComponent {
                     font-weight: 600;
                     color: var(--gray-600);
                 }
-                
-                .blog-avatar img {
+
+                .subscription-avatar img {
                     width: 100%;
                     height: 100%;
                     object-fit: cover;
                 }
-                
-                .blog-content {
-                    flex: 1;
-                    min-width: 0;
-                }
-                
-                .blog-name {
-                    font-size: var(--font-size-base);
-                    font-weight: 600;
-                    color: var(--gray-900);
-                    margin: 0 0 var(--spacing-1) 0;
-                }
-                
-                .blog-description {
-                    font-size: var(--font-size-sm);
-                    color: var(--gray-600);
-                    margin: 0 0 var(--spacing-2) 0;
-                    line-height: 1.4;
-                    display: -webkit-box;
-                    -webkit-line-clamp: 2;
-                    -webkit-box-orient: vertical;
-                    overflow: hidden;
-                }
-                
-                .blog-meta {
+
+                .post-item.subscription-item {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-4);
-                    font-size: var(--font-size-xs);
-                    color: var(--gray-500);
+                    cursor: pointer;
                 }
-                
-                .blog-actions {
+
+                .subscription-content {
+                    flex: 1;
+                    min-width: 0;
+                }
+
+                .subscription-actions {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-2);
                     flex-shrink: 0;
-                    min-width: fit-content;
                 }
-                
-                .blog-actions .btn {
+
+                .subscription-actions .btn {
                     pointer-events: auto;
                 }
-                
-                .btn:disabled {
-                    opacity: 0.5;
-                    cursor: not-allowed;
-                }
-                
+
                 .loading {
                     text-align: center;
                     padding: var(--spacing-8);
                     color: var(--gray-500);
                 }
-                
+
                 .empty-state {
                     text-align: center;
                     padding: var(--spacing-8);
                     color: var(--gray-500);
                 }
-                
-                .pagination {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-top: var(--spacing-6);
+
+                .pagination-toolbar {
+                    margin-top: var(--spacing-4);
                     padding-top: var(--spacing-4);
                     border-top: 1px solid var(--gray-200);
-                }
-                
-                .pagination-info {
-                    font-size: var(--font-size-sm);
-                    color: var(--gray-600);
-                }
-                
-                .pagination-controls {
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-2);
-                }
-                
-                .nav-btn {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: var(--spacing-2);
-                    padding: var(--spacing-2) var(--spacing-3);
-                    font-size: var(--font-size-sm);
-                    color: var(--gray-600);
-                    background: var(--white);
-                    border: 1px solid var(--gray-300);
-                    border-radius: var(--radius-md);
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                    text-decoration: none;
-                }
-                
-                .nav-btn:hover:not(:disabled) {
-                    background: var(--gray-50);
-                    color: var(--primary-color);
-                    border-color: var(--primary-color);
-                }
-                
-                .nav-btn:disabled {
-                    opacity: 0.5;
-                    cursor: not-allowed;
-                }
-                
-                .page-info {
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-2);
-                    font-size: var(--font-size-sm);
-                    color: var(--gray-600);
                 }
             </style>
 
@@ -356,7 +261,7 @@ class SubscriptionsListCard extends BaseComponent {
         }
 
         return `
-            <div class="blog-list">
+            <div class="post-list">
                 ${this.blogs.map(blog => this.renderBlogItem(blog)).join('')}
             </div>
         `;
@@ -376,21 +281,25 @@ class SubscriptionsListCard extends BaseComponent {
             </button>` : '';
 
         return `
-            <div class="blog-item" onclick="window.open('/blog/${blog.project_id}', '_blank')" style="cursor: pointer;">
-                <div class="blog-avatar">
+            <div class="post-item subscription-item clickable" onclick="window.open('/blog/${blog.project_id}', '_blank')">
+                <div class="subscription-avatar">
                     ${avatar}
                 </div>
-                <div class="blog-content">
-                    <div class="blog-name">
-                        ${this.escapeHtml(blog.project_name)}
-                    </div>
-                    <p class="blog-description">${this.escapeHtml(blog.project_description || '暂无描述')}</p>
-                    <div class="blog-meta">
-                        <span>作者: ${this.escapeHtml(blog.user_name)}</span>
-                        <span>订阅时间: ${subscribedAt}</span>
+                <div class="subscription-content post-content">
+                    <h4 class="post-title">${this.escapeHtml(blog.project_name)}</h4>
+                    <p class="post-excerpt">${this.escapeHtml(blog.project_description || '暂无描述')}</p>
+                    <div class="article-meta">
+                        <div class="meta-items-left">
+                            <div class="meta-item">
+                                <span>作者: ${this.escapeHtml(blog.user_name)}</span>
+                            </div>
+                            <div class="meta-item">
+                                <span>订阅时间: ${subscribedAt}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="blog-actions">
+                <div class="subscription-actions">
                     ${unsubscribeButton}
                 </div>
             </div>
@@ -410,7 +319,7 @@ class SubscriptionsListCard extends BaseComponent {
             has_next: this.currentPage < this.totalPages
         };
         
-        return `<navigation-card mode="pagination" pagination='${JSON.stringify(pagination)}'></navigation-card>`;
+        return `<div class="pagination-toolbar"><navigation-card mode="pagination" pagination='${JSON.stringify(pagination)}'></navigation-card></div>`;
     }
 
     addEventListeners() {

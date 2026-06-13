@@ -212,45 +212,45 @@ class SearchPage {
 
         const href = this.getResultHref(result);
 
-        const div = document.createElement('div');
-        div.className = 'result-item';
-        div.innerHTML = `
-            <a href="${href}" target="_blank" class="result-link">
-                <div class="result-title">${title}</div>
-                <div class="result-meta">
-                    <div class="result-author">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                        ${author}
+        const anchor = document.createElement('a');
+        anchor.href = href;
+        anchor.target = '_blank';
+        anchor.className = 'post-item';
+        anchor.innerHTML = `
+            <div class="post-content">
+                <h4 class="post-title">${title}</h4>
+                <div class="article-meta">
+                    <div class="meta-items-left">
+                        <div class="meta-item meta-item-author">
+                            <span class="author-name">${author}</span>
+                        </div>
+                        <div class="meta-item">
+                            <svg class="meta-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12,6 12,12 16,14"></polyline>
+                            </svg>
+                            <span>${date}</span>
+                        </div>
+                        <div class="meta-item search-similarity">
+                            <svg class="meta-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M9 12l2 2 4-4"></path>
+                                <circle cx="12" cy="12" r="10"></circle>
+                            </svg>
+                            <span>相似度 ${similarityPercent}%</span>
+                        </div>
+                        <span class="search-tag">${typeText}</span>
                     </div>
-                    <div class="result-date">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <polyline points="12,6 12,12 16,14"></polyline>
-                        </svg>
-                        ${date}
-                    </div>
-                    <div class="result-similarity">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M9 12l2 2 4-4"></path>
-                            <circle cx="12" cy="12" r="10"></circle>
-                        </svg>
-                        相似度: ${similarityPercent}%
-                    </div>
-                    <div class="result-tag">${typeText}</div>
                 </div>
-                <div class="result-content">${content}</div>
+                <p class="post-excerpt">${content}</p>
                 ${result.tags && result.tags.length > 0 ? `
-                    <div class="result-tags">
-                        ${result.tags.map(tag => `<span class="result-tag">${this.escapeHtml(tag)}</span>`).join('')}
+                    <div class="meta-items-left" style="margin-top: var(--spacing-2);">
+                        ${result.tags.map(tag => `<span class="search-tag">${this.escapeHtml(tag)}</span>`).join('')}
                     </div>
                 ` : ''}
-            </a>
+            </div>
         `;
 
-        return div;
+        return anchor;
     }
 
     renderPagination(data) {
@@ -270,7 +270,7 @@ class SearchPage {
 
         // 上一页按钮
         const prevButton = document.createElement('button');
-        prevButton.className = 'pagination-button';
+        prevButton.className = 'btn btn-secondary btn-sm';
         prevButton.textContent = '上一页';
         prevButton.disabled = this.currentPage <= 1;
         prevButton.onclick = () => this.goToPage(this.currentPage - 1);
@@ -282,7 +282,7 @@ class SearchPage {
 
         for (let i = startPage; i <= endPage; i++) {
             const pageButton = document.createElement('button');
-            pageButton.className = `pagination-button ${i === this.currentPage ? 'active' : ''}`;
+            pageButton.className = i === this.currentPage ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm';
             pageButton.textContent = i;
             pageButton.onclick = () => this.goToPage(i);
             pagination.appendChild(pageButton);
@@ -290,7 +290,7 @@ class SearchPage {
 
         // 下一页按钮
         const nextButton = document.createElement('button');
-        nextButton.className = 'pagination-button';
+        nextButton.className = 'btn btn-secondary btn-sm';
         nextButton.textContent = '下一页';
         nextButton.disabled = this.currentPage >= totalPages;
         nextButton.onclick = () => this.goToPage(this.currentPage + 1);
