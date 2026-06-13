@@ -1,6 +1,6 @@
 /**
- * 单列布局（≤1024px）时，左侧栏卡片仅保留自身标题栏，点击标题展开/收起内容。
- * 样式注入各卡片 Shadow DOM，不插入额外 DOM 包裹层。
+ * 单列布局（≤1024px）时，左侧栏卡片仅保留标题栏，点击标题展开/收起内容。
+ * 折叠样式注入各卡片 Shadow DOM；卡片 innerHTML 重渲染会清掉 style 标签，需在每次渲染后重新注入。
  */
 (function () {
     const BREAKPOINT = 1024;
@@ -57,16 +57,24 @@
         if (!el.shadowRoot) {
             return;
         }
-        const css = el.hasAttribute('data-sidebar-collapsible') ? COLLAPSE_HOST_CSS : '';
+
+        const enabled = el.hasAttribute('data-sidebar-collapsible');
         let style = el.shadowRoot.getElementById(COLLAPSE_STYLE_ID);
+
+        if (!enabled) {
+            style?.remove();
+            return;
+        }
+
         if (!style) {
             style = document.createElement('style');
             style.id = COLLAPSE_STYLE_ID;
             el.shadowRoot.appendChild(style);
-        } else if (style.textContent === css) {
-            return;
         }
-        style.textContent = css;
+
+        if (style.textContent !== COLLAPSE_HOST_CSS) {
+            style.textContent = COLLAPSE_HOST_CSS;
+        }
     }
 
     function hasCollapsibleHeader(el) {
@@ -144,16 +152,14 @@
         if (!hasCollapsibleHeader(el)) {
             return;
         }
-        if (el.hasAttribute('data-sidebar-collapsible') && el._sidebarCollapseBound) {
-            syncHeaderAria(el);
-            return;
-        }
-        el.setAttribute('data-sidebar-collapsible', '');
-        if (!el.hasAttribute('data-sidebar-expanded')) {
-            el.setAttribute('data-sidebar-collapsed', '');
+        if (!el.hasAttribute('data-sidebar-collapsible')) {
+            el.setAttribute('data-sidebar-collapsible', '');
+            if (!el.hasAttribute('data-sidebar-expanded')) {
+                el.setAttribute('data-sidebar-collapsed', '');
+            }
+            bindCollapseInteraction(el);
         }
         injectCollapseStyles(el);
-        bindCollapseInteraction(el);
         syncHeaderAria(el);
     }
 
