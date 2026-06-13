@@ -20,6 +20,7 @@ class BlogListCard extends BaseComponent {
         this.categories = [];
         this.categoriesLoading = false;
         this.categoryMenuOpen = false;
+        this._categoryMenuAnchorKey = null;
         this.isOwner = false;
         this.projectId = null;
     }
@@ -123,12 +124,17 @@ class BlogListCard extends BaseComponent {
                 return;
             }
             const path = event.composedPath();
-            if (path.includes(this)) {
-                return;
-            }
             const panel = document.getElementById(BlogListCard.CATEGORY_MENU_PANEL_ID);
             if (panel && path.includes(panel)) {
                 return;
+            }
+            const triggers = this.shadowRoot?.querySelectorAll('.category-picker-trigger');
+            if (triggers) {
+                for (const trigger of triggers) {
+                    if (path.includes(trigger)) {
+                        return;
+                    }
+                }
             }
             this.closeCategoryMenu();
         };
@@ -372,17 +378,65 @@ class BlogListCard extends BaseComponent {
         }
     }
 
+    getCategoryMenuAnchorTrigger() {
+        const key = this._categoryMenuAnchorKey || 'top';
+        const barSelector = key === 'bottom'
+            ? '.pagination-bar--bottom'
+            : '.pagination-bar--top';
+        return this.shadowRoot?.querySelector(`${barSelector} .category-picker-trigger`)
+            || this.shadowRoot?.querySelector('.category-picker-trigger');
+    }
+
     positionCategoryMenuPanel() {
-        const trigger = this.shadowRoot?.querySelector('.category-picker-trigger');
+        const trigger = this.getCategoryMenuAnchorTrigger();
         const panel = document.getElementById(BlogListCard.CATEGORY_MENU_PANEL_ID);
         if (!trigger || !panel) {
             return;
         }
+
+        const gap = 4;
+        const viewportMargin = 8;
+        const minWidth = 224;
         const rect = trigger.getBoundingClientRect();
-        panel.style.top = `${Math.round(rect.bottom + 4)}px`;
-        panel.style.right = `${Math.round(window.innerWidth - rect.right)}px`;
+        const panelWidth = Math.max(Math.round(rect.width), minWidth);
+
+        panel.style.minWidth = `${panelWidth}px`;
+        panel.style.maxWidth = `${Math.max(minWidth, window.innerWidth - viewportMargin * 2)}px`;
         panel.style.left = 'auto';
-        panel.style.minWidth = `${Math.max(Math.round(rect.width), 224)}px`;
+        panel.style.right = 'auto';
+        panel.style.top = '0px';
+        panel.style.bottom = 'auto';
+
+        const panelHeight = panel.offsetHeight || panel.getBoundingClientRect().height;
+        const spaceBelow = window.innerHeight - rect.bottom - viewportMargin;
+        const spaceAbove = rect.top - viewportMargin;
+        const openBelow = spaceBelow >= panelHeight + gap || spaceBelow >= spaceAbove;
+
+        const availableHeight = Math.max(
+            120,
+            Math.floor((openBelow ? spaceBelow : spaceAbove) - gap)
+        );
+        panel.style.maxHeight = `${Math.min(320, availableHeight)}px`;
+
+        const measuredHeight = panel.offsetHeight || panel.getBoundingClientRect().height;
+        let top;
+        if (openBelow) {
+            top = rect.bottom + gap;
+        } else {
+            top = rect.top - gap - measuredHeight;
+        }
+        top = Math.max(
+            viewportMargin,
+            Math.min(top, window.innerHeight - measuredHeight - viewportMargin)
+        );
+        panel.style.top = `${Math.round(top)}px`;
+
+        let left = rect.right - panelWidth;
+        left = Math.max(
+            viewportMargin,
+            Math.min(left, window.innerWidth - panelWidth - viewportMargin)
+        );
+        panel.style.left = `${Math.round(left)}px`;
     }
 
     bindCategoryMenuPortalEvents(panel) {
@@ -527,8 +581,17 @@ class BlogListCard extends BaseComponent {
         `;
     }
 
-    toggleCategoryMenu() {
-        this.categoryMenuOpen = !this.categoryMenuOpen;
+    toggleCategoryMenu(trigger) {
+        const bar = trigger?.closest('.pagination-bar--top, .pagination-bar--bottom');
+        const anchorKey = bar?.classList.contains('pagination-bar--bottom') ? 'bottom' : 'top';
+
+        if (this.categoryMenuOpen && trigger && this._categoryMenuAnchorKey === anchorKey) {
+            this.closeCategoryMenu();
+            return;
+        }
+
+        this._categoryMenuAnchorKey = trigger ? anchorKey : (this._categoryMenuAnchorKey || 'top');
+        this.categoryMenuOpen = true;
         this.updatePagination();
         this.updateCategoryMenuPortal();
     }
@@ -538,6 +601,7 @@ class BlogListCard extends BaseComponent {
             return;
         }
         this.categoryMenuOpen = false;
+        this._categoryMenuAnchorKey = null;
         this.updatePagination();
         this.removeCategoryMenuPortal();
     }
@@ -563,14 +627,16 @@ class BlogListCard extends BaseComponent {
     }
 
     bindCategoryMenuEvents() {
-        const trigger = this.shadowRoot.querySelector('.category-picker-trigger');
-        if (trigger && !trigger._categoryMenuBound) {
+        this.shadowRoot.querySelectorAll('.category-picker-trigger').forEach((trigger) => {
+            if (trigger._categoryMenuBound) {
+                return;
+            }
             trigger._categoryMenuBound = true;
             trigger.addEventListener('click', (event) => {
                 event.stopPropagation();
-                this.toggleCategoryMenu();
+                this.toggleCategoryMenu(trigger);
             });
-        }
+        });
     }
 
     addEventListeners() {
@@ -844,6 +910,9 @@ class BlogListCard extends BaseComponent {
         if (this.showCategoryInfo) {
             this.bindCategoryMenuEvents();
         }
+        if (this.categoryMenuOpen) {
+            this.positionCategoryMenuPanel();
+        }
     }
 
     goToPage(page) {
@@ -1099,11 +1168,15 @@ class BlogListCard extends BaseComponent {
                     display: inline-flex;
                     align-items: center;
                     gap: var(--spacing-2);
+                    min-height: var(--btn-height, 36px);
+                    box-sizing: border-box;
                     background: var(--gray-100);
-                    padding: var(--spacing-1) var(--spacing-2);
+                    padding: 0 var(--spacing-3);
                     border: 1px solid var(--gray-200);
                     border-radius: var(--radius-md);
                     font-size: var(--font-size-sm);
+                    font-weight: 500;
+                    line-height: 1.25;
                     color: var(--gray-700);
                     cursor: pointer;
                     transition:
