@@ -309,6 +309,7 @@ class BlogService(BaseService):
                     "post_time": time_str,
                     "is_main_post": message["is_main_post"],
                     "userid": message["userid"],
+                    "author_blog_id": message.get("author_blog_id"),
                     "lastreplyid": message.get("lastreplyid"),
                     "lastreplytime": message.get("lastreplytime"),
                     "replycount": message.get("replycount", 0)

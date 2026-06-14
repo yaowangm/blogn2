@@ -266,14 +266,14 @@ class PostRepository:
         author_user = aliased(User, name="thread_author")
 
         main_post_statement = (
-            select(Post, author_user.name.label("author_name"))
+            select(Post, author_user.name.label("author_name"), author_user.projectid.label("author_blog_id"))
             .outerjoin(author_user, Post.userid == author_user.id)
             .where(Post.id == thread_id)
             .where(Post.projectitemid == 0)
         )
 
         replies_statement = (
-            select(Post, author_user.name.label("author_name"))
+            select(Post, author_user.name.label("author_name"), author_user.projectid.label("author_blog_id"))
             .outerjoin(author_user, Post.userid == author_user.id)
             .where(Post.rootid == thread_id)
             .where(Post.projectitemid == 0)
@@ -289,7 +289,7 @@ class PostRepository:
         messages = []
 
         if main_row:
-            main_post, main_author_name = main_row
+            main_post, main_author_name, main_author_blog_id = main_row
             messages.append({
                 "id": main_post.id,
                 "subject": main_post.subject,
@@ -297,6 +297,7 @@ class PostRepository:
                 "userid": main_post.userid,
                 "post_time": main_post.posttime,
                 "author_name": self._resolve_author_name(main_post.userid, main_author_name),
+                "author_blog_id": main_author_blog_id if main_post.userid else None,
                 "is_main_post": True,
                 "lastreplyid": main_post.lastreplyid,
                 "lastreplytime": main_post.lastreplytime,
@@ -305,7 +306,7 @@ class PostRepository:
         else:
             raise ValueError(f"主题 {thread_id} 不存在")
 
-        for reply, reply_author_name in replies:
+        for reply, reply_author_name, reply_author_blog_id in replies:
             messages.append({
                 "id": reply.id,
                 "subject": reply.subject,
@@ -313,6 +314,7 @@ class PostRepository:
                 "userid": reply.userid,
                 "post_time": reply.posttime,
                 "author_name": self._resolve_author_name(reply.userid, reply_author_name),
+                "author_blog_id": reply_author_blog_id if reply.userid else None,
                 "is_main_post": False,
             })
 

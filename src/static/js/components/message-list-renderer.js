@@ -34,7 +34,7 @@ class MessageListRenderer {
         return message.time ?? message.post_time ?? '';
     }
 
-    static renderAuthorMetaItem(component, authorName, avatar, userId) {
+    static renderAuthorMetaItem(component, authorName, avatar, userId, blogId = null) {
         const safeAuthor = component.escapeHtml(authorName || '匿名用户');
         const isAnonymous = component.isAnonymousUser(userId);
         const avatarPath = !isAnonymous ? (avatar || MessageListRenderer.getSmallAvatarPath(userId)) : null;
@@ -42,6 +42,7 @@ class MessageListRenderer {
         const fallbackClass = isAnonymous
             ? 'author-avatar-fallback author-avatar-fallback--default-user'
             : 'author-avatar-fallback';
+        const canLinkBlog = !isAnonymous && blogId;
 
         const avatarHtml = `
             <span class="author-avatar" aria-hidden="true">
@@ -53,21 +54,34 @@ class MessageListRenderer {
                 <span class="${fallbackClass}" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackContent}</span>
             </span>
         `;
+        const nameHtml = `<span class="author-name">${safeAuthor}</span>`;
+
+        if (canLinkBlog) {
+            return `
+                <div class="meta-item meta-item-author">
+                    <a href="/blog/${blogId}" class="author-link" title="查看博客" target="_blank" rel="noopener noreferrer">
+                        ${avatarHtml}
+                        ${nameHtml}
+                    </a>
+                </div>
+            `;
+        }
 
         return `
             <div class="meta-item meta-item-author">
                 ${avatarHtml}
-                <span class="author-name">${safeAuthor}</span>
+                ${nameHtml}
             </div>
         `;
     }
 
     static renderMessageMeta(component, message) {
         const safeTime = component.escapeHtml(MessageListRenderer.getMessageTime(message));
+        const blogId = message.author_blog_id || message.blog_id || null;
         return `
             <div class="article-meta">
                 <div class="meta-items-left">
-                    ${MessageListRenderer.renderAuthorMetaItem(component, message.author, message.avatar, message.userid)}
+                    ${MessageListRenderer.renderAuthorMetaItem(component, message.author, message.avatar, message.userid, blogId)}
                     <div class="meta-item">
                         <span>${safeTime}</span>
                     </div>

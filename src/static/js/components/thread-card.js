@@ -106,28 +106,18 @@ class ThreadCard extends BaseComponent {
         }
     }
 
-    getSmallAvatarPath(userId) {
-        if (!userId) {
-            return null;
-        }
-        const prefix = Math.floor(userId / 10000) + 1;
-        return `/avatar/${prefix}/s_${userId}.jpg`;
-    }
-
-    renderAuthorAvatar(authorName, userId) {
-        const safeAuthor = this.escapeHtml(authorName || '用户');
-        const avatarPath = this.getSmallAvatarPath(userId);
-        const fallbackLetter = safeAuthor.charAt(0).toUpperCase();
+    renderPostMeta(message) {
+        const safePostTime = this.escapeHtml(message.post_time);
+        const blogId = message.author_blog_id || message.blog_id || null;
 
         return `
-            <span class="author-avatar" aria-hidden="true">
-                ${avatarPath ? `
-                    <img src="${avatarPath}" alt=""
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-                         onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
-                ` : ''}
-                <span class="author-avatar-fallback" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackLetter}</span>
-            </span>
+            <div class="post-meta">
+                ${MessageListRenderer.renderAuthorMetaItem(this, message.author, message.avatar, message.userid, blogId)}
+                <div class="meta-item">
+                    ${this.getMetaIcon('time')}
+                    <span>${safePostTime}</span>
+                </div>
+            </div>
         `;
     }
 
@@ -141,24 +131,6 @@ class ThreadCard extends BaseComponent {
                     aria-label="${isMainPost ? '删除主题' : '删除回复'}">
                 ${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.delete) : `<svg class="delete-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3,6 5,6 21,6"></polyline><path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`}
             </button>
-        `;
-    }
-
-    renderPostMeta(message) {
-        const safeAuthor = this.escapeHtml(message.author);
-        const safePostTime = this.escapeHtml(message.post_time);
-
-        return `
-            <div class="post-meta">
-                <div class="meta-item meta-item-author">
-                    ${this.renderAuthorAvatar(message.author, message.userid)}
-                    <span class="author-name">${safeAuthor}</span>
-                </div>
-                <div class="meta-item">
-                    ${this.getMetaIcon('time')}
-                    <span>${safePostTime}</span>
-                </div>
-            </div>
         `;
     }
 
@@ -544,6 +516,12 @@ class ThreadCard extends BaseComponent {
                 .author-name {
                     font-weight: 500;
                     color: var(--gray-700);
+                }
+
+                .author-link:hover .author-name,
+                .post-card:hover .author-link .author-name,
+                .post-card:focus-within .author-link .author-name {
+                    color: var(--interactive-hover-text);
                 }
 
                 .post-content {
