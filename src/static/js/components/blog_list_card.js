@@ -7,6 +7,20 @@ class BlogListCard extends BaseComponent {
         return 'blogn-category-menu-styles';
     }
 
+    static get ATTACHMENT_IMAGE_MAX_WIDTH() {
+        return 400;
+    }
+
+    static clampAttachmentImageSize(img) {
+        if (!img?.naturalWidth) {
+            return;
+        }
+        const width = Math.min(img.naturalWidth, BlogListCard.ATTACHMENT_IMAGE_MAX_WIDTH);
+        img.style.width = `${width}px`;
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
+    }
+
     constructor() {
         super();
         this.currentPage = 1;
@@ -863,7 +877,7 @@ class BlogListCard extends BaseComponent {
                             ${this.renderPostMeta(post)}
                             <p class="post-excerpt">${safeExcerpt}</p>
                         </div>
-                        ${image ? `<div class="post-attachment-image"><img src="${image}" alt="${safeTitle}" loading="lazy" onerror="this.style.display='none'"></div>` : ''}
+                        ${image ? `<div class="post-attachment-image"><img src="${image}" alt="${safeTitle}" loading="lazy" onerror="this.style.display='none'" onload="BlogListCard.clampAttachmentImageSize(this)"></div>` : ''}
                     </a>
                 `;
             }).join('');

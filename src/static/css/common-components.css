@@ -591,24 +591,15 @@ a.post-item:focus-visible .author-name,
 .post-attachment-image {
     border-radius: var(--radius-md);
     overflow: hidden;
-    max-width: 100%;
+    width: fit-content;
+    max-width: min(400px, 100%);
+    justify-self: start;
 }
 
 .post-attachment-image img {
-    width: 100%;
-    max-width: 400px;
+    display: block;
+    width: auto;
+    max-width: 100%;
     height: auto;
     border-radius: var(--radius-md);
-    transition: var(--transition-fast);
-}
-
-.post-attachment-image img:hover {
-    transform: scale(1.02);
-}
-
-@media (max-width: 1024px) {
-    .post-attachment-image img {
-        max-width: 100%;
-        width: 100%;
-    }
 }
