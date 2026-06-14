@@ -997,6 +997,7 @@ class BlogListCard extends BaseComponent {
                 .card-body {
                     max-width: 100%;
                     overflow: hidden;
+                    padding: 0;
                 }
 
                 .category-picker {
@@ -1123,6 +1124,32 @@ class BlogListCard extends BaseComponent {
                     .pagination-bar navigation-card {
                         min-width: 100%;
                     }
+                }
+
+                .post-list {
+                    gap: 0;
+                    margin: 0;
+                    padding: 0;
+                }
+
+                .post-item {
+                    border-radius: 0;
+                    background: transparent;
+                    border: none;
+                    border-bottom: 1px solid var(--gray-100);
+                    margin: 0;
+                    padding: var(--spacing-3) var(--spacing-4);
+                }
+
+                .post-item:last-child {
+                    border-bottom: none;
+                }
+
+                a.post-item:hover,
+                a.post-item:focus-visible {
+                    background: var(--interactive-hover-bg);
+                    border-color: transparent;
+                    box-shadow: none;
                 }
             </style>
 
