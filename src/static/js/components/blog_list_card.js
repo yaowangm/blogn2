@@ -393,11 +393,7 @@ class BlogListCard extends BaseComponent {
     }
 
     getCategoryMenuAnchorTrigger() {
-        const key = this._categoryMenuAnchorKey || 'top';
-        const barSelector = key === 'bottom'
-            ? '.pagination-bar--bottom'
-            : '.pagination-bar--top';
-        return this.shadowRoot?.querySelector(`${barSelector} .category-picker-trigger`)
+        return this.shadowRoot?.querySelector('.card-header .category-picker-trigger')
             || this.shadowRoot?.querySelector('.category-picker-trigger');
     }
 
@@ -578,35 +574,55 @@ class BlogListCard extends BaseComponent {
 
     renderCategoryPicker() {
         return `
-            <div class="pagination">
-                <div class="category-picker${this.categoryMenuOpen ? ' is-open' : ''}">
-                    <button type="button"
-                            class="category-picker-trigger"
-                            aria-expanded="${this.categoryMenuOpen ? 'true' : 'false'}"
-                            aria-haspopup="listbox">
-                        <span class="category-label">分类：</span>
-                        <span class="category-picker-name">${this.escapeHtml(this.currentCategoryName)}</span>
-                        <svg class="category-picker-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                    </button>
-                </div>
+            <div class="category-picker${this.categoryMenuOpen ? ' is-open' : ''}">
+                <button type="button"
+                        class="category-picker-trigger"
+                        aria-expanded="${this.categoryMenuOpen ? 'true' : 'false'}"
+                        aria-haspopup="listbox">
+                    <span class="category-label">分类：</span>
+                    <span class="category-picker-name">${this.escapeHtml(this.currentCategoryName)}</span>
+                    <svg class="category-picker-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </button>
             </div>
         `;
     }
 
-    toggleCategoryMenu(trigger) {
-        const bar = trigger?.closest('.pagination-bar--top, .pagination-bar--bottom');
-        const anchorKey = bar?.classList.contains('pagination-bar--bottom') ? 'bottom' : 'top';
+    renderCardHeader() {
+        return `
+            <div class="card-header${this.showCategoryInfo ? ' card-header--with-category' : ''}">
+                <h3 class="card-title">${this.getCardTitle()}</h3>
+                ${this.showCategoryInfo ? this.renderCategoryPicker() : ''}
+            </div>
+        `;
+    }
 
-        if (this.categoryMenuOpen && trigger && this._categoryMenuAnchorKey === anchorKey) {
+    updateCardHeader() {
+        const card = this.shadowRoot?.querySelector('.card');
+        const existingHeader = this.shadowRoot?.querySelector('.card-header');
+        if (!card || !existingHeader) {
+            return;
+        }
+
+        existingHeader.outerHTML = this.renderCardHeader();
+        if (this.showCategoryInfo) {
+            this.bindCategoryMenuEvents();
+        }
+        if (this.categoryMenuOpen) {
+            this.positionCategoryMenuPanel();
+        }
+    }
+
+    toggleCategoryMenu(trigger) {
+        if (this.categoryMenuOpen && trigger) {
             this.closeCategoryMenu();
             return;
         }
 
-        this._categoryMenuAnchorKey = trigger ? anchorKey : (this._categoryMenuAnchorKey || 'top');
+        this._categoryMenuAnchorKey = 'header';
         this.categoryMenuOpen = true;
-        this.updatePagination();
+        this.updateCardHeader();
         this.updateCategoryMenuPortal();
     }
 
@@ -616,7 +632,7 @@ class BlogListCard extends BaseComponent {
         }
         this.categoryMenuOpen = false;
         this._categoryMenuAnchorKey = null;
-        this.updatePagination();
+        this.updateCardHeader();
         this.removeCategoryMenuPortal();
     }
 
@@ -905,10 +921,6 @@ class BlogListCard extends BaseComponent {
             innerHtml += `<navigation-card mode="pagination" compact pagination='${JSON.stringify(pagination)}'></navigation-card>`;
         }
 
-        if (this.showCategoryInfo) {
-            innerHtml += this.renderCategoryPicker();
-        }
-
         if (!innerHtml) {
             return '';
         }
@@ -922,10 +934,7 @@ class BlogListCard extends BaseComponent {
             placeholder.innerHTML = html;
         });
         if (this.showCategoryInfo) {
-            this.bindCategoryMenuEvents();
-        }
-        if (this.categoryMenuOpen) {
-            this.positionCategoryMenuPanel();
+            this.updateCardHeader();
         }
     }
 
@@ -1005,9 +1014,21 @@ class BlogListCard extends BaseComponent {
                     margin: 0;
                 }
 
-                .pagination-bar .pagination {
-                    flex: 0 0 auto;
-                    margin: 0 0 0 auto;
+                .card-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: var(--spacing-3);
+                }
+
+                .card-header .card-title {
+                    margin: 0;
+                    min-width: 0;
+                }
+
+                .card-header--with-category .category-picker {
+                    flex-shrink: 0;
+                    margin-left: auto;
                 }
 
                 .card-body {
@@ -1170,9 +1191,7 @@ class BlogListCard extends BaseComponent {
             </style>
 
             <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">${this.getCardTitle()}</h3>
-                </div>
+                ${this.renderCardHeader()}
                 <div class="pagination-bar pagination-bar--top"></div>
                 <div class="card-body">
                     <div class="post-list">
@@ -1186,6 +1205,10 @@ class BlogListCard extends BaseComponent {
                 <div class="pagination-bar pagination-bar--bottom"></div>
             </div>
         `;
+
+        if (this.showCategoryInfo) {
+            this.bindCategoryMenuEvents();
+        }
     }
 
     showListLoading() {
