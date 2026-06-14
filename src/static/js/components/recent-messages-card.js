@@ -173,6 +173,18 @@ class RecentMessagesCard extends BaseComponent {
                 .post-title {
                     font-weight: 400;
                 }
+
+                .post-excerpt.post-excerpt--single-line {
+                    font-size: var(--font-size-xs);
+                    font-weight: 500;
+                    color: var(--gray-700);
+                    line-height: 1.35;
+                }
+
+                a.post-item:hover .post-excerpt.post-excerpt--single-line,
+                a.post-item:focus-visible .post-excerpt.post-excerpt--single-line {
+                    color: var(--interactive-hover-text);
+                }
             </style>
 
             <div class="card">

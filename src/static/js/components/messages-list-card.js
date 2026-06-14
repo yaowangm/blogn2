@@ -368,6 +368,18 @@ class MessagesListCard extends BaseComponent {
                     font-weight: 400;
                 }
 
+                .message-item-row .post-excerpt.post-excerpt--single-line {
+                    font-size: var(--font-size-xs);
+                    font-weight: 500;
+                    color: var(--gray-700);
+                    line-height: 1.35;
+                }
+
+                .message-item-row a.post-item:hover .post-excerpt.post-excerpt--single-line,
+                .message-item-row a.post-item:focus-visible .post-excerpt.post-excerpt--single-line {
+                    color: var(--interactive-hover-text);
+                }
+
                 .loading {
                     text-align: center;
                     padding: var(--spacing-8);
