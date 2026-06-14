@@ -1,0 +1,10 @@
+---
+description: Skip pytest when changes are limited to CSS and HTML only
+alwaysApply: true
+---
+
+# CSS/HTML changes: no test run
+
+When a task changes **only** CSS and/or HTML (including static `.html`, `.css`, and CSS/HTML inside component templates), **do not run pytest** or other automated test suites as part of that task.
+
+Still run tests when changes include JavaScript logic, Python/backend code, build config, or any non-presentational behavior—even if CSS/HTML is also touched.
