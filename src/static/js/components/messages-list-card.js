@@ -69,72 +69,6 @@ class MessagesListCard extends BaseComponent {
         countEl.hidden = false;
     }
 
-    getSmallAvatarPath(userId) {
-        if (!userId) {
-            return null;
-        }
-        const prefix = Math.floor(userId / 10000) + 1;
-        return `/avatar/${prefix}/s_${userId}.jpg`;
-    }
-
-    renderAuthorMetaItem(authorName, avatar, userId) {
-        const safeAuthor = this.escapeHtml(authorName || '匿名用户');
-        const isAnonymous = this.isAnonymousUser(userId);
-        const avatarPath = !isAnonymous ? (avatar || this.getSmallAvatarPath(userId)) : null;
-        const fallbackContent = this.getAuthorAvatarFallbackContent(authorName, userId);
-        const fallbackClass = isAnonymous
-            ? 'author-avatar-fallback author-avatar-fallback--default-user'
-            : 'author-avatar-fallback';
-
-        const avatarHtml = `
-            <span class="author-avatar" aria-hidden="true">
-                ${avatarPath ? `
-                    <img src="${avatarPath}" alt=""
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-                         onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
-                ` : ''}
-                <span class="${fallbackClass}" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackContent}</span>
-            </span>
-        `;
-
-        return `
-            <div class="meta-item meta-item-author">
-                ${avatarHtml}
-                <span class="author-name">${safeAuthor}</span>
-            </div>
-        `;
-    }
-
-    renderMessageMeta(message) {
-        const safePostTime = this.escapeHtml(message.post_time || '');
-        return `
-            <div class="article-meta">
-                <div class="meta-items-left">
-                    ${this.renderAuthorMetaItem(message.author, message.avatar, message.userid)}
-                    <div class="meta-item">
-                        <span>${safePostTime}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    buildReplyExcerpt(message) {
-        const safeLastReplyAuthor = message.last_reply_author ? this.escapeHtml(message.last_reply_author) : '';
-        const safeLastReplyTime = message.last_reply_time ? this.escapeHtml(message.last_reply_time) : '';
-
-        if (safeLastReplyAuthor) {
-            return `最后回复: ${safeLastReplyAuthor}${safeLastReplyTime ? ` · ${safeLastReplyTime}` : ''}`;
-        }
-
-        const replyCount = message.reply_count || 0;
-        if (replyCount > 0) {
-            return `回复数: ${replyCount}`;
-        }
-
-        return '';
-    }
-
     renderDeleteButton(messageId) {
         return `
             <button type="button"
@@ -148,60 +82,18 @@ class MessagesListCard extends BaseComponent {
         `;
     }
 
-    renderMessageItem(message, isAdmin) {
-        const safeSubject = this.escapeHtml(message.subject || '无标题');
-        const replyExcerpt = this.buildReplyExcerpt(message);
-
-        const contentHtml = `
-            ${this.renderMessageMeta(message)}
-            <p class="post-title">${safeSubject}</p>
-            ${replyExcerpt ? `<p class="post-excerpt post-excerpt--single-line">${replyExcerpt}</p>` : ''}
-        `;
-
-        return `
-            <div class="message-item-row${isAdmin ? ' message-item-row--admin' : ''}">
-                <a href="/thread/${message.id}"
-                   class="post-item"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   title="查看留言">
-                    <div class="post-content">
-                        ${contentHtml}
-                    </div>
-                </a>
-                ${isAdmin ? this.renderDeleteButton(message.id) : ''}
-            </div>
-        `;
-    }
-
     renderMessagesList() {
         const cardBody = this.shadowRoot.querySelector('.card-body');
         if (!cardBody) {
             return;
         }
 
-        if (this.messages.length === 0) {
-            cardBody.innerHTML = `
-                <div class="post-list">
-                    <div class="post-item post-item-block">
-                        <div class="post-content">
-                            <p class="post-excerpt">暂无留言</p>
-                            <p class="post-excerpt post-excerpt--single-line">成为第一个发表留言的人吧</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            return;
-        }
-
         const isAdmin = typeof UserManager !== 'undefined' && UserManager.isAdmin();
-        const messagesHtml = this.messages.map((message) => this.renderMessageItem(message, isAdmin)).join('');
-
-        cardBody.innerHTML = `
-            <div class="post-list">
-                ${messagesHtml}
-            </div>
-        `;
+        cardBody.innerHTML = MessageListRenderer.renderMessageList(this, this.messages, {
+            isAdmin,
+            renderDeleteButton: (messageId) => this.renderDeleteButton(messageId),
+            emptyHint: '成为第一个发表留言的人吧',
+        });
 
         if (isAdmin) {
             this.attachDeleteListeners();
@@ -349,49 +241,13 @@ class MessagesListCard extends BaseComponent {
                     display: none;
                 }
 
-                .message-item-row {
-                    position: relative;
-                }
-
-                .message-item-row--admin .post-item {
-                    padding-right: calc(var(--spacing-3) + 2.25rem);
-                }
-
-                .message-item-row .btn-delete-reveal {
-                    position: absolute;
-                    top: var(--spacing-2);
-                    right: var(--spacing-2);
-                    z-index: 1;
-                }
-
-                .post-title {
-                    font-weight: 400;
-                }
-
-                .message-item-row .post-excerpt.post-excerpt--single-line {
-                    font-size: var(--font-size-xs);
-                    font-weight: 500;
-                    color: var(--gray-700);
-                    line-height: 1.35;
-                }
-
-                .message-item-row a.post-item:hover .post-excerpt.post-excerpt--single-line,
-                .message-item-row a.post-item:focus-visible .post-excerpt.post-excerpt--single-line {
-                    color: var(--interactive-hover-text);
-                }
-
                 .loading {
                     text-align: center;
                     padding: var(--spacing-8);
                     color: var(--gray-500);
                 }
 
-                @media (max-width: 768px) {
-                    .message-item-row .btn-delete-reveal {
-                        opacity: 1;
-                        pointer-events: auto;
-                    }
-                }
+                ${MessageListRenderer.getRowStyles()}
             </style>
 
             <div class="card">

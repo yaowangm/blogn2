@@ -32,105 +32,8 @@ class RecentMessagesCard extends BaseComponent {
         }
     }
 
-    getSmallAvatarPath(userId) {
-        if (!userId) {
-            return null;
-        }
-        const prefix = Math.floor(userId / 10000) + 1;
-        return `/avatar/${prefix}/s_${userId}.jpg`;
-    }
-
-    renderAuthorMetaItem(authorName, avatar, userId) {
-        const safeAuthor = this.escapeHtml(authorName || '匿名用户');
-        const isAnonymous = this.isAnonymousUser(userId);
-        const avatarPath = !isAnonymous ? (avatar || this.getSmallAvatarPath(userId)) : null;
-        const fallbackContent = this.getAuthorAvatarFallbackContent(authorName, userId);
-        const fallbackClass = isAnonymous
-            ? 'author-avatar-fallback author-avatar-fallback--default-user'
-            : 'author-avatar-fallback';
-
-        const avatarHtml = `
-            <span class="author-avatar" aria-hidden="true">
-                ${avatarPath ? `
-                    <img src="${avatarPath}" alt=""
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-                         onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
-                ` : ''}
-                <span class="${fallbackClass}" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackContent}</span>
-            </span>
-        `;
-
-        return `
-            <div class="meta-item meta-item-author">
-                ${avatarHtml}
-                <span class="author-name">${safeAuthor}</span>
-            </div>
-        `;
-    }
-
-    renderMessageMeta(message) {
-        const safeTime = this.escapeHtml(message.time || '');
-        return `
-            <div class="article-meta">
-                <div class="meta-items-left">
-                    ${this.renderAuthorMetaItem(message.author, message.avatar, message.userid)}
-                    <div class="meta-item">
-                        <span>${safeTime}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    renderMessageItem(message) {
-        const safeSubject = this.escapeHtml(message.subject || '无标题');
-        const safeReplyInfo = message.reply_info ? this.escapeHtml(message.reply_info) : '';
-        const messageId = message.id;
-        const hasValidId = messageId !== null && messageId !== undefined;
-
-        const contentHtml = `
-            ${this.renderMessageMeta(message)}
-            <p class="post-title">${safeSubject}</p>
-            ${safeReplyInfo ? `<p class="post-excerpt post-excerpt--single-line">${safeReplyInfo}</p>` : ''}
-        `;
-
-        if (hasValidId) {
-            return `
-                <a href="/thread/${messageId}" class="post-item" target="_blank" rel="noopener noreferrer" title="查看留言">
-                    <div class="post-content">
-                        ${contentHtml}
-                    </div>
-                </a>
-            `;
-        }
-
-        return `
-            <div class="post-item post-item-block disabled">
-                <div class="post-content">
-                    ${contentHtml}
-                </div>
-            </div>
-        `;
-    }
-
     renderMessages() {
-        if (this.messages.length === 0) {
-            return `
-                <div class="post-list">
-                    <div class="post-item post-item-block">
-                        <div class="post-content">
-                            <p class="post-excerpt">暂无留言</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        return `
-            <div class="post-list">
-                ${this.messages.map((message) => this.renderMessageItem(message)).join('')}
-            </div>
-        `;
+        return MessageListRenderer.renderMessageList(this, this.messages);
     }
 
     render() {
@@ -170,21 +73,7 @@ class RecentMessagesCard extends BaseComponent {
                     color: var(--gray-500);
                 }
 
-                .post-title {
-                    font-weight: 400;
-                }
-
-                .post-excerpt.post-excerpt--single-line {
-                    font-size: var(--font-size-xs);
-                    font-weight: 500;
-                    color: var(--gray-700);
-                    line-height: 1.35;
-                }
-
-                a.post-item:hover .post-excerpt.post-excerpt--single-line,
-                a.post-item:focus-visible .post-excerpt.post-excerpt--single-line {
-                    color: var(--interactive-hover-text);
-                }
+                ${MessageListRenderer.getRowStyles()}
             </style>
 
             <div class="card">
