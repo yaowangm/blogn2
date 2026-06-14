@@ -51,6 +51,18 @@ class TestAutolinkComponentWiring:
         assert "HtmlUtils.linkifyPlainTextToHtml" in content
         assert "processTextWithLinks" not in content
 
+    def test_comment_hash_scroll_waits_for_article_layout(self):
+        content = ARTICLE_COMMENTS_CARD_JS.read_text(encoding="utf-8")
+        assert "_waitForArticlePageLayoutReady" in content
+        assert "waitForLayoutReady" in content
+        assert "await this._waitForArticlePageLayoutReady()" in content
+
+    def test_article_content_card_waits_for_images_before_anchor_scroll(self):
+        content = ARTICLE_CONTENT_CARD_JS.read_text(encoding="utf-8")
+        assert "async waitForLayoutReady()" in content
+        assert "waitForImagesInRoot" in content
+        assert 'loading="eager"' in content
+
     def test_thread_card_use_html_utils_linkify(self):
         content = THREAD_CARD_JS.read_text(encoding="utf-8")
         assert "HtmlUtils.linkifyPlainTextToHtml" in content

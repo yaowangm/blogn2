@@ -127,6 +127,69 @@ class BaseComponent extends HTMLElement {
     }
 
     /**
+     * 等待两帧布局稳定（字体、KaTeX、图片占位等）。
+     */
+    static waitForLayoutSettle() {
+        return new Promise((resolve) => {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(resolve);
+            });
+        });
+    }
+
+    /**
+     * 等待 Shadow DOM / 容器内图片加载完成后再继续（含 lazy 图 promoted 为 eager）。
+     */
+    static waitForImagesInRoot(root, timeoutMs = 15000) {
+        if (!root) {
+            return BaseComponent.waitForLayoutSettle();
+        }
+
+        const images = [...root.querySelectorAll('img')];
+        images.forEach((img) => {
+            if (!img.complete && img.loading === 'lazy') {
+                img.loading = 'eager';
+            }
+        });
+
+        const pending = images.filter((img) => !img.complete);
+        if (pending.length === 0) {
+            return BaseComponent.waitForLayoutSettle();
+        }
+
+        return new Promise((resolve) => {
+            let settled = 0;
+            const finish = () => {
+                settled += 1;
+                if (settled >= pending.length) {
+                    clearTimeout(timer);
+                    resolve();
+                }
+            };
+            const timer = setTimeout(resolve, timeoutMs);
+            pending.forEach((img) => {
+                img.addEventListener('load', finish, { once: true });
+                img.addEventListener('error', finish, { once: true });
+            });
+        }).then(() => BaseComponent.waitForLayoutSettle());
+    }
+
+    /**
+     * 等待自定义元素满足就绪条件（如数据已加载）。
+     */
+    static async waitForCustomElementReady(selector, isReady, timeoutMs = 15000) {
+        const start = Date.now();
+        while (Date.now() - start < timeoutMs) {
+            const element = document.querySelector(selector);
+            if (element && isReady(element)) {
+                return element;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        return null;
+    }
+
+    /**
      * 统一的错误日志记录
      * @param {string} message - 错误消息
      * @param {any} error - 错误对象

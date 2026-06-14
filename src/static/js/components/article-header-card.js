@@ -35,6 +35,22 @@ class ArticleHeaderCard extends BaseComponent {
         this.updatePageTitle();
     }
 
+    /**
+     * 头部信息渲染完成后再返回，供评论锚点定位使用。
+     */
+    async waitForLayoutReady() {
+        await BaseComponent.waitForCustomElementReady(
+            'article-header-card',
+            (element) => Boolean(element.articleData),
+        );
+
+        if (!this.shadowRoot || !this.articleData) {
+            return;
+        }
+
+        await BaseComponent.waitForImagesInRoot(this.shadowRoot);
+    }
+
     disconnectedCallback() {
         this._detachLayoutSingleColumnObserver();
     }

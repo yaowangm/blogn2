@@ -124,6 +124,22 @@ class ArticleContentCard extends BaseComponent {
     }
 
     /**
+     * 正文与附件渲染完成且图片加载后再返回，供评论锚点定位使用。
+     */
+    async waitForLayoutReady() {
+        await BaseComponent.waitForCustomElementReady(
+            'article-content-card',
+            (element) => Boolean(element.articleData),
+        );
+
+        if (!this.shadowRoot || !this.articleData) {
+            return;
+        }
+
+        await BaseComponent.waitForImagesInRoot(this.shadowRoot);
+    }
+
+    /**
      * 是否按 Markdown 渲染正文（2026-03-28 及之后发表的文章）。
      */
     usesMarkdownContent(createdAt) {
@@ -248,7 +264,7 @@ class ArticleContentCard extends BaseComponent {
                     <div class="attachment-image"
                          data-image-src="/upload/${attachment}"
                          data-image-title="">
-                        <img src="/upload/${attachment}" alt="文章附件" loading="lazy">
+                        <img src="/upload/${attachment}" alt="文章附件" loading="eager">
                     </div>
                 </div>
             `;
@@ -290,7 +306,7 @@ class ArticleContentCard extends BaseComponent {
                             <div class="attachment-image">
                                 <img src="/upload/${att.linkstr}"
                                      alt="${this.escapeHtml(att.comment || '图片附件')}"
-                                     loading="lazy"
+                                     loading="eager"
                                      title="${captionForAttr}">
                             </div>
                             <div class="attachment-comment">
