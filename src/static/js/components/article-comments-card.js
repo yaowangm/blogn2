@@ -692,7 +692,7 @@ class ArticleCommentsCard extends BaseComponent {
         this.currentPage = page;
         await this.loadArticleData();
         this.render();
-        this.checkAndScrollToComment();
+        this.scrollPaginatedCardToTop();
     }
 
     /**

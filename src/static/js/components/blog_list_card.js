@@ -942,7 +942,9 @@ class BlogListCard extends BaseComponent {
         }
         window.history.pushState({}, '', url);
         
-        this.loadContent(page);
+        void this.loadContent(page).then(() => {
+            this.scrollPaginatedCardToTop();
+        });
     }
 
     showError() {

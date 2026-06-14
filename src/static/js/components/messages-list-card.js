@@ -167,9 +167,10 @@ class MessagesListCard extends BaseComponent {
                 has_prev: this.currentPage > 1,
                 has_next: this.currentPage < this.totalPages,
                 item_type: '条留言',
-            }, (page) => {
+            }, async (page) => {
                 this.currentPage = page;
-                this.loadMessages();
+                await this.loadMessages();
+                this.scrollPaginatedCardToTop();
             });
         }
     }

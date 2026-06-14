@@ -154,7 +154,13 @@ class SubscriptionsListCard extends BaseComponent {
 
     goToPage(page) {
         if (page < 1 || page > this.totalPages || page === this.currentPage) return;
-        this.loadSubscriptions(page);
+        void this._goToPage(page);
+    }
+
+    async _goToPage(page) {
+        this.currentPage = page;
+        await this.loadSubscriptions(page);
+        this.scrollPaginatedCardToTop();
     }
 
     render() {
@@ -327,15 +333,6 @@ class SubscriptionsListCard extends BaseComponent {
         document.addEventListener('page-change', (event) => {
             this.goToPage(event.detail.page);
         });
-    }
-
-    goToPage(page) {
-        if (page < 1 || page > this.totalPages || page === this.currentPage) {
-            return;
-        }
-        
-        this.currentPage = page;
-        this.loadSubscriptions(page);
     }
 }
 

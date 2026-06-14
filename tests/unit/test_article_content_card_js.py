@@ -63,6 +63,18 @@ class TestAutolinkComponentWiring:
         assert "waitForImagesInRoot" in content
         assert 'loading="eager"' in content
 
+    def test_paginated_cards_scroll_to_card_top_after_page_change(self):
+        base_js = PROJECT_ROOT / "src" / "static" / "js" / "components" / "base-component.js"
+        blog_list_js = PROJECT_ROOT / "src" / "static" / "js" / "components" / "blog_list_card.js"
+        messages_js = PROJECT_ROOT / "src" / "static" / "js" / "components" / "messages-list-card.js"
+        base_content = base_js.read_text(encoding="utf-8")
+        assert "scrollPaginatedCardToTop" in base_content
+        assert "scrollElementIntoView" in base_content
+        assert "getScrollTopOffset" in base_content
+        assert "scrollPaginatedCardToTop()" in blog_list_js.read_text(encoding="utf-8")
+        assert "scrollPaginatedCardToTop()" in messages_js.read_text(encoding="utf-8")
+        assert "scrollPaginatedCardToTop" in ARTICLE_COMMENTS_CARD_JS.read_text(encoding="utf-8")
+
     def test_thread_card_use_html_utils_linkify(self):
         content = THREAD_CARD_JS.read_text(encoding="utf-8")
         assert "HtmlUtils.linkifyPlainTextToHtml" in content

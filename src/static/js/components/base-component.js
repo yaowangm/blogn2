@@ -190,6 +190,43 @@ class BaseComponent extends HTMLElement {
     }
 
     /**
+     * 固定顶栏（header-component）占用的高度，用于 scroll 偏移。
+     */
+    static getScrollTopOffset(extra = 8) {
+        const header = document.querySelector('header-component');
+        const headerHeight = header ? header.getBoundingClientRect().height : 64;
+        return headerHeight + extra;
+    }
+
+    /**
+     * 将元素滚入视口，并留出 sticky 顶栏空间。
+     */
+    static scrollElementIntoView(element, options = {}) {
+        if (!element) {
+            return;
+        }
+        const behavior = options.behavior ?? 'auto';
+        const offset = options.offset ?? BaseComponent.getScrollTopOffset();
+        const top = window.scrollY + element.getBoundingClientRect().top - offset;
+        window.scrollTo({ top: Math.max(0, top), behavior });
+    }
+
+    /**
+     * 翻页后将所属卡片顶部滚入视口（留出 sticky 顶栏空间）。
+     */
+    scrollPaginatedCardToTop(options = {}) {
+        const behavior = options.behavior ?? 'auto';
+
+        void BaseComponent.waitForLayoutSettle().then(() => {
+            const card = this.shadowRoot?.querySelector('.card') ?? this;
+            BaseComponent.scrollElementIntoView(card, {
+                behavior,
+                offset: options.offset,
+            });
+        });
+    }
+
+    /**
      * 统一的错误日志记录
      * @param {string} message - 错误消息
      * @param {any} error - 错误对象
