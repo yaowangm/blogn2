@@ -258,7 +258,7 @@ class MessagesListCard extends BaseComponent {
                         <span class="thread-total-count" hidden></span>
                     </h3>
                 </div>
-                <div class="card-body">
+                <div class="card-body card-body--flush-list">
                     <div class="loading">${this.createLoadingHTML()}</div>
                 </div>
             </div>

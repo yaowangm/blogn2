@@ -340,6 +340,44 @@ a.blog-item:focus,
     outline: none;
 }
 
+/* Divider row lists (blog posts, messages, friend links) */
+.card-body--flush-list {
+    padding: 0;
+}
+
+.list-divider-rows,
+.post-list.list-divider-rows {
+    gap: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.list-divider-rows > .post-item,
+.list-divider-rows > .message-item-row .post-item,
+.list-divider-rows > li > .friend-link {
+    border-radius: 0;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--gray-100);
+    margin: 0;
+    padding: var(--spacing-3) calc(var(--spacing-4) + 3px);
+}
+
+.list-divider-rows > .post-item:last-child,
+.list-divider-rows > .message-item-row:last-child .post-item,
+.list-divider-rows > li:last-child > .friend-link {
+    border-bottom: none;
+}
+
+.list-divider-rows a.post-item:hover,
+.list-divider-rows a.post-item:focus-visible,
+.list-divider-rows .friend-link:hover,
+.list-divider-rows .friend-link:focus-visible {
+    background: var(--interactive-hover-bg);
+    border-color: transparent;
+    box-shadow: none;
+}
+
 /* Post list rows (blog page template) */
 .post-list {
     display: flex;

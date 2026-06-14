@@ -142,7 +142,7 @@ class MessageListRenderer {
 
         if (!messages.length) {
             return `
-                <div class="post-list">
+                <div class="post-list list-divider-rows">
                     <div class="post-item post-item-block">
                         <div class="post-content">
                             <p class="post-excerpt">暂无留言</p>
@@ -154,7 +154,7 @@ class MessageListRenderer {
         }
 
         return `
-            <div class="post-list">
+            <div class="post-list list-divider-rows">
                 ${messages.map((message) => MessageListRenderer.renderMessageItem(component, message, {
                     isAdmin,
                     renderDeleteButton,
@@ -194,13 +194,13 @@ class MessageListRenderer {
             }
 
             .message-item-row--admin .post-item {
-                padding-right: calc(var(--spacing-3) + 2.25rem);
+                padding-right: calc(calc(var(--spacing-4) + 3px) + 2.25rem);
             }
 
             .message-item-row .btn-delete-reveal {
                 position: absolute;
-                top: var(--spacing-2);
-                right: var(--spacing-2);
+                top: var(--spacing-3);
+                right: calc(var(--spacing-4) + 3px);
                 z-index: 1;
             }
 

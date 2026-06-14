@@ -84,7 +84,7 @@ class RecentMessagesCard extends BaseComponent {
                     </h3>
                     <a href="/messages" class="view-all-link" target="_blank" rel="noopener noreferrer">查看全部</a>
                 </div>
-                <div class="card-body">
+                <div class="card-body card-body--flush-list">
                     ${this.loading ? `<div class="loading">${this.createLoadingHTML()}</div>` :
                       this.error ? this.createErrorHTML('加载失败，请稍后重试') :
                       this.renderMessages()}

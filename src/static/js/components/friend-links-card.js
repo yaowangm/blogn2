@@ -134,30 +134,21 @@ class FriendLinksCard extends BaseComponent {
                 }
                 .friend-links {
                     list-style: none;
-                    margin: 0;
-                    padding: 0;
                     display: flex;
                     flex-direction: column;
-                    gap: calc(var(--spacing-1) + 1px);
                 }
 
                 .friend-link {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-2);
-                    padding: var(--spacing-2) var(--spacing-3);
-                    background: var(--gray-50);
-                    border: 1px solid var(--gray-200);
-                    border-radius: var(--radius-md);
                     text-decoration: none;
                     color: var(--gray-700);
                     font-size: var(--font-size-sm);
                     line-height: 1.35;
                     transition:
                         background-color var(--transition-fast),
-                        border-color var(--transition-fast),
-                        color var(--transition-fast),
-                        box-shadow var(--transition-fast);
+                        color var(--transition-fast);
                     min-width: 0;
                 }
 
@@ -179,8 +170,6 @@ class FriendLinksCard extends BaseComponent {
 
                 .friend-link:hover,
                 .friend-link:focus-visible {
-                    background: var(--interactive-hover-bg);
-                    border-color: var(--interactive-hover-border);
                     color: var(--interactive-hover-text);
                 }
 
@@ -232,7 +221,7 @@ class FriendLinksCard extends BaseComponent {
                         </a>
                     ` : ''}
                 </div>
-                <div class="card-body">
+                <div class="card-body card-body--flush-list">
                     ${this.loading ? this.renderLoading() : 
                       this.friendLinks.length > 0 ? this.renderFriendLinks() : 
                       this.renderEmptyState()}
@@ -247,7 +236,7 @@ class FriendLinksCard extends BaseComponent {
 
     renderFriendLinks() {
         return `
-            <ul class="friend-links">
+            <ul class="friend-links list-divider-rows">
                 ${this.friendLinks.map((link) => {
                     const safeSubject = this.escapeHtml(link.subject);
                     const safeLinkStr = this.escapeHtml(link.linkstr);
