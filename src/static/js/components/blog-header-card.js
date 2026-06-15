@@ -236,7 +236,6 @@ class BlogHeaderCard extends BaseComponent {
                     display: flex;
                     flex-wrap: wrap;
                     align-items: center;
-                    justify-content: space-between;
                     gap: var(--spacing-2) var(--spacing-3);
                     margin-bottom: var(--spacing-2);
                 }
@@ -255,12 +254,18 @@ class BlogHeaderCard extends BaseComponent {
                     font-size: var(--font-size-xs);
                     white-space: nowrap;
                 }
+
+                .blog-stats + .btn-toolbar {
+                    margin-top: var(--spacing-2);
+                    justify-content: flex-start;
+                }
+
                 :host([data-layout-single-column]) .blog-meta {
                     flex-direction: column;
                     align-items: stretch;
                 }
-                :host([data-layout-single-column]) .meta-items-left,
-                :host([data-layout-single-column]) .btn-toolbar {
+
+                :host([data-layout-single-column]) .meta-items-left {
                     justify-content: flex-start;
                 }
                 .subscription-section {
@@ -385,10 +390,6 @@ class BlogHeaderCard extends BaseComponent {
                             <span>更新于 ${updateDate}</span>
                         </div>
                     </div>
-                    <div class="btn-toolbar">
-                        ${this.renderEditButton()}
-                        ${this.renderSubscriptionButton()}
-                    </div>
                 </div>
                 <div class="blog-stats">
                     ${this.renderStatItem(icons.posts, '文章', this.blogData.recordcount || 0)}
@@ -396,6 +397,22 @@ class BlogHeaderCard extends BaseComponent {
                     ${this.renderStatItem(icons.views, '访问', this.blogData.accesscount || 0)}
                     ${this.renderStatItem(icons.history, '历史', this.getDaysSinceCreation(), '天')}
                 </div>
+                ${this.renderBlogToolbar()}
+            </div>
+        `;
+    }
+
+    renderBlogToolbar() {
+        const editButton = this.renderEditButton();
+        const subscriptionButton = this.renderSubscriptionButton();
+        if (!editButton && !subscriptionButton) {
+            return '';
+        }
+
+        return `
+            <div class="btn-toolbar">
+                ${editButton}
+                ${subscriptionButton}
             </div>
         `;
     }
