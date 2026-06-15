@@ -126,8 +126,10 @@ class CreatePostForm extends BaseComponent {
     }
 
     clearDraftOnSessionInvalid() {
-        this.clearDraftCache();
+        UserManager.clearPostFormDrafts();
+        this._draftAutoSaver?.resetSavedSnapshot();
         this._draftAutoSaver?.stop();
+        PostFormDraftCache.hideDraftSavedHint(this.shadowRoot);
     }
 
     startDraftAutoSave() {
@@ -508,11 +510,11 @@ class CreatePostForm extends BaseComponent {
                 
                 if (response.status === 401) {
                     errorMessage = '登录状态已过期，请重新登录';
+                    this.clearDraftOnSessionInvalid();
                     // 清除本地存储的认证信息
                     localStorage.removeItem('access_token');
                     localStorage.removeItem('refresh_token');
                     localStorage.removeItem('user_info');
-                    this.clearDraftOnSessionInvalid();
                 } else if (response.status === 403) {
                     errorMessage = '没有权限在此项目中创建文章';
                 } else if (response.status === 400) {

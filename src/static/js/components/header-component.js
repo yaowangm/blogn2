@@ -531,6 +531,8 @@ class HeaderComponent extends BaseComponent {
     }
 
     clearAuthData() {
+        const userId = UserManager.getCurrentUserId();
+        UserManager.clearPostFormDrafts(userId);
         this.isLoggedIn = false;
         this.userName = '';
         this.userInfo = null;

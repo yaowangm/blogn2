@@ -20,6 +20,18 @@ class TestPostFormDraftCacheJs:
         assert "getEditKey" in content
         assert "localStorage" in content
         assert "showDraftSavedHint" in content
+        assert "clearAllForUser" in content
+
+    def test_user_manager_clears_post_form_drafts(self):
+        content = (PROJECT_ROOT / "src" / "static" / "js" / "utils" / "user-manager.js").read_text(encoding="utf-8")
+        assert "clearPostFormDrafts" in content
+        assert "blogn_post_draft:" in content
+
+    def test_logout_clears_post_form_drafts(self):
+        header = (PROJECT_ROOT / "src" / "static" / "js" / "components" / "header-component.js").read_text(encoding="utf-8")
+        token_manager = (PROJECT_ROOT / "src" / "static" / "js" / "services" / "token-manager.js").read_text(encoding="utf-8")
+        assert "UserManager.clearPostFormDrafts" in header
+        assert "UserManager.clearPostFormDrafts" in token_manager
 
     def test_post_form_pages_load_draft_cache_script(self):
         for path in (CREATE_POST_HTML, EDIT_ARTICLE_HTML):

@@ -80,6 +80,10 @@ class PostFormDraftCache {
         }
     }
 
+    static clearAllForUser(userId = null) {
+        UserManager.clearPostFormDrafts(userId);
+    }
+
     static createAutoSaver({ key, getFormData }) {
         return new PostFormDraftAutoSaver(key, getFormData);
     }

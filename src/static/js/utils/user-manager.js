@@ -99,6 +99,35 @@ class UserManager {
             ...this.getAuthHeaders()
         };
     }
+
+    /**
+     * 清除指定用户的博客文章表单草稿缓存
+     * @param {number|null} userId - 用户 ID；为 0 或未传时不执行
+     */
+    static clearPostFormDrafts(userId = null) {
+        const resolvedUserId = userId ?? this.getCurrentUserId();
+        if (!resolvedUserId) {
+            return;
+        }
+
+        const userIdStr = String(resolvedUserId);
+        const prefix = 'blogn_post_draft:';
+
+        try {
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (!key || !key.startsWith(prefix)) {
+                    continue;
+                }
+                const parts = key.split(':');
+                if (parts.length >= 4 && parts[2] === userIdStr) {
+                    localStorage.removeItem(key);
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to clear post form drafts:', error);
+        }
+    }
 }
 
 // 导出到全局作用域
