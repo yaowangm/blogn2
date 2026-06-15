@@ -755,11 +755,18 @@ class ArticleCommentsCard extends BaseComponent {
                     padding: 0;
                 }
 
-                /* 从 #post{id} 进入：内嵌蓝框闪烁，避免被卡片裁切，总时长 3s（6×0.5s） */
-                .comment-item.comment-hash-flash {
+                /* 从 #post{id} 进入：圆角蓝框闪烁（::after 避免被 list-divider-rows 的 border-radius:0 覆盖） */
+                .comments-list.list-divider-rows > li.comment-item.comment-hash-flash {
                     position: relative;
                     z-index: 1;
-                    background-color: var(--white);
+                }
+
+                .comments-list.list-divider-rows > li.comment-item.comment-hash-flash::after {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    border-radius: var(--radius-md);
+                    pointer-events: none;
                     animation: commentHashBorderBlink 0.5s ease-in-out 6;
                 }
 
@@ -770,10 +777,10 @@ class ArticleCommentsCard extends BaseComponent {
 
                 @keyframes commentHashBorderBlink {
                     0%, 100% {
-                        box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.95);
+                        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.95);
                     }
                     50% {
-                        box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.12);
+                        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
                     }
                 }
 
