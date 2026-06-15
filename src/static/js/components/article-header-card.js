@@ -156,11 +156,9 @@ class ArticleHeaderCard extends BaseComponent {
                         created_at,
                         itemtype,
                         isAdmin: this.isAdmin,
-                        showToolbar,
-                        showSetSiteIntroButton,
-                        showSetIntroButton
                     })}
                     ${this.renderArticleStats(hits, comment_count, itemsize)}
+                    ${showToolbar ? this.renderArticleToolbar(showSetSiteIntroButton, showSetIntroButton) : ''}
                 </div>
             </div>
         `;
@@ -534,7 +532,7 @@ class ArticleHeaderCard extends BaseComponent {
         `;
     }
 
-    renderArticleMeta({ author, project, category, created_at, itemtype, isAdmin, showToolbar, showSetSiteIntroButton, showSetIntroButton }) {
+    renderArticleMeta({ author, project, category, created_at, itemtype, isAdmin }) {
         const safeCategory = category?.name ? this.escapeHtml(category.name) : '';
         const createDate = this.formatDate(created_at);
         const statusText = this.getStatusText(itemtype);
@@ -560,7 +558,6 @@ class ArticleHeaderCard extends BaseComponent {
                         </div>
                     ` : ''}
                 </div>
-                ${showToolbar ? this.renderArticleToolbar(showSetSiteIntroButton, showSetIntroButton) : ''}
             </div>
         `;
     }
@@ -731,7 +728,6 @@ class ArticleHeaderCard extends BaseComponent {
                     display: flex;
                     flex-wrap: wrap;
                     align-items: center;
-                    justify-content: space-between;
                     gap: var(--spacing-2) var(--spacing-3);
                     margin-bottom: var(--spacing-2);
                 }
@@ -819,11 +815,9 @@ class ArticleHeaderCard extends BaseComponent {
                     color: var(--primary-color);
                 }
 
-                .article-meta .btn-toolbar {
-                    margin-top: 0;
-                    padding-top: 0;
-                    border-top: none;
-                    width: auto;
+                .article-stats + .btn-toolbar {
+                    margin-top: var(--spacing-2);
+                    justify-content: flex-start;
                 }
 
                 .btn.btn-sm {
@@ -853,20 +847,8 @@ class ArticleHeaderCard extends BaseComponent {
                     align-items: stretch;
                 }
 
-                :host([data-layout-single-column]) .meta-items-left,
-                :host([data-layout-single-column]) .article-meta .btn-toolbar {
+                :host([data-layout-single-column]) .meta-items-left {
                     justify-content: flex-start;
-                }
-
-                :host([data-layout-single-column]) .article-meta .btn-toolbar {
-                    flex-direction: column;
-                    align-items: stretch;
-                    width: 100%;
-                }
-
-                :host([data-layout-single-column]) .article-meta .btn-toolbar .btn {
-                    width: 100%;
-                    box-sizing: border-box;
                 }
 
                 .status-0 {
