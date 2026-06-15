@@ -39,6 +39,107 @@ class EditPostForm extends BaseComponent {
         this.imageDeleted = false; // 图片是否被删除
         this.maxAttachments = 10; // 最大附件数量，默认10
         this.previewMode = false; // 预览模式状态
+        this._draftCacheKey = null;
+        this._draftAutoSaver = null;
+    }
+
+    disconnectedCallback() {
+        this._draftAutoSaver?.stop();
+    }
+
+    initDraftCache() {
+        const userId = UserManager.getCurrentUserId();
+        this._draftCacheKey = PostFormDraftCache.getEditKey(userId, this.articleId);
+        this._draftAutoSaver = PostFormDraftCache.createAutoSaver({
+            key: this._draftCacheKey,
+            getFormData: () => this.getDraftFormData()
+        });
+    }
+
+    getDraftFormData() {
+        const root = this.shadowRoot;
+        if (!root) {
+            return PostFormDraftCache.pickDraftFields(this.formData);
+        }
+
+        const folderSelect = root.querySelector('#folderid');
+        const allowpostSelect = root.querySelector('#allowpost');
+        return {
+            name: root.querySelector('#name')?.value ?? this.formData.name ?? '',
+            comment: root.querySelector('#comment')?.value ?? this.formData.comment ?? '',
+            folderid: folderSelect?.value
+                ? parseInt(folderSelect.value, 10)
+                : this.formData.folderid,
+            allowpost: allowpostSelect?.value
+                ? parseInt(allowpostSelect.value, 10)
+                : this.formData.allowpost
+        };
+    }
+
+    restoreDraftIfAny() {
+        const draft = PostFormDraftCache.load(this._draftCacheKey);
+        if (!draft) {
+            return false;
+        }
+        this.applyDraft(draft);
+        return true;
+    }
+
+    applyDraft(draft) {
+        if (draft.name !== undefined) {
+            this.formData.name = draft.name;
+        }
+        if (draft.comment !== undefined) {
+            this.formData.comment = draft.comment;
+        }
+        if (draft.folderid !== undefined) {
+            this.formData.folderid = draft.folderid;
+        }
+        if (draft.allowpost !== undefined) {
+            this.formData.allowpost = draft.allowpost;
+        }
+    }
+
+    syncFormFieldsFromDraft(draft) {
+        this.applyDraft(draft);
+        const root = this.shadowRoot;
+        if (!root) {
+            return;
+        }
+
+        const nameEl = root.querySelector('#name');
+        const commentEl = root.querySelector('#comment');
+        const folderEl = root.querySelector('#folderid');
+        const allowpostEl = root.querySelector('#allowpost');
+        if (nameEl && draft.name !== undefined) {
+            nameEl.value = draft.name;
+        }
+        if (commentEl && draft.comment !== undefined) {
+            commentEl.value = draft.comment;
+        }
+        if (folderEl && draft.folderid != null) {
+            folderEl.value = String(draft.folderid);
+        }
+        if (allowpostEl && draft.allowpost != null) {
+            allowpostEl.value = String(draft.allowpost);
+        }
+    }
+
+    clearDraftCache() {
+        if (this._draftCacheKey) {
+            PostFormDraftCache.clear(this._draftCacheKey);
+        }
+        this._draftAutoSaver?.resetSavedSnapshot();
+        PostFormDraftCache.hideDraftSavedHint(this.shadowRoot);
+    }
+
+    clearDraftOnSessionInvalid() {
+        this.clearDraftCache();
+        this._draftAutoSaver?.stop();
+    }
+
+    startDraftAutoSave() {
+        this._draftAutoSaver?.start(this);
     }
 
     async connectedCallback() {
@@ -61,9 +162,16 @@ class EditPostForm extends BaseComponent {
         await this.loadAppConfig();
         
         await this.loadArticleData();
+        if (!this.originalArticleData) {
+            return;
+        }
+
+        this.initDraftCache();
+        this.restoreDraftIfAny();
         await this.loadCategories();
         this.render();
         this.addEventListeners();
+        this.startDraftAutoSave();
     }
 
     async loadAppConfig() {
@@ -158,9 +266,6 @@ class EditPostForm extends BaseComponent {
                 
                 // 设置项目ID
                 this.projectId = this.originalArticleData.project?.id || null;
-                
-                // 重新渲染表单以显示数据
-                this.render();
             } else {
                 this.showError('文章不存在');
             }
@@ -553,6 +658,7 @@ class EditPostForm extends BaseComponent {
         // 再次检查登录状态
         if (!UserManager.isLoggedIn()) {
             this.showError('请先登录后再编辑文章');
+            this.clearDraftOnSessionInvalid();
             this.resetSubmitState();
             return;
         }
@@ -595,6 +701,7 @@ class EditPostForm extends BaseComponent {
             const token = await tokenManager.getValidAccessToken();
             if (!token) {
                 this.showError('登录状态已过期，请重新登录');
+                this.clearDraftOnSessionInvalid();
                 return;
             }
 
@@ -627,6 +734,8 @@ class EditPostForm extends BaseComponent {
 
             if (response.ok) {
                 const result = await response.json();
+                this.clearDraftCache();
+                this._draftAutoSaver?.stop();
                 this.showSuccess(`文章修改成功！`);
                 setTimeout(() => {
                     window.location.href = `/article/${this.articleId}`;
@@ -649,6 +758,7 @@ class EditPostForm extends BaseComponent {
                     localStorage.removeItem('access_token');
                     localStorage.removeItem('refresh_token');
                     localStorage.removeItem('user_info');
+                    this.clearDraftOnSessionInvalid();
                 } else if (response.status === 403) {
                     errorMessage = '没有权限在此项目中创建文章';
                 } else if (response.status === 400) {
@@ -1017,6 +1127,21 @@ class EditPostForm extends BaseComponent {
                     margin-top: var(--spacing-1);
                 }
 
+                .draft-cache-hint {
+                    margin-bottom: var(--spacing-3);
+                    padding: var(--spacing-2) var(--spacing-3);
+                    font-size: var(--font-size-xs);
+                    color: var(--gray-600);
+                    background: var(--gray-50);
+                    border: 1px solid var(--gray-200);
+                    border-radius: var(--radius-sm);
+                    line-height: 1.4;
+                }
+
+                .draft-cache-hint[hidden] {
+                    display: none;
+                }
+
                 /* 消息样式 */
                 .error-message,
                 .success-message {
@@ -1380,6 +1505,7 @@ class EditPostForm extends BaseComponent {
                     </h2>
                 </div>
                 <div class="card-body">
+                    <div class="draft-cache-hint" hidden>草稿已经保存到本地缓存</div>
                     <div class="error-message"></div>
                     <div class="success-message"></div>
                     
@@ -1392,6 +1518,7 @@ class EditPostForm extends BaseComponent {
                                 class="form-input post-title-input" 
                                 placeholder="请输入文章标题"
                                 value="${this.formData.name}"
+                                oninput="this.getRootNode().host.handleInputChange('name', this.value)"
                                 onchange="this.getRootNode().host.handleInputChange('name', this.value)"
                                 required
                             >

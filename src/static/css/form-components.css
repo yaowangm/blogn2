@@ -79,6 +79,21 @@
     margin-top: var(--spacing-1);
 }
 
+.draft-cache-hint {
+    margin-bottom: var(--spacing-3);
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: var(--font-size-xs);
+    color: var(--gray-600);
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    line-height: 1.4;
+}
+
+.draft-cache-hint[hidden] {
+    display: none;
+}
+
 /* 按钮样式 */
 .btn {
     display: inline-flex;
