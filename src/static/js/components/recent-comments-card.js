@@ -238,15 +238,6 @@ class RecentCommentsCard extends BaseComponent {
         return nameHtml;
     }
 
-    renderAuthorMetaItem(authorName, avatar, userId, blogId) {
-        return `
-            <div class="meta-item meta-item-author">
-                ${this.renderAuthorAvatar(authorName, avatar, userId, blogId)}
-                ${this.renderAuthorName(authorName, userId, blogId)}
-            </div>
-        `;
-    }
-
     getNavigationUrl(comment) {
         // 验证projectitemid和comment id是否存在且有效
         if (!comment.projectitemid || comment.projectitemid === undefined || comment.projectitemid === null) {

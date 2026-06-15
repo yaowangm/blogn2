@@ -35,6 +35,27 @@ class PostFormDraftCache {
         return !name && !comment;
     }
 
+    static normalizeDraftFieldValue(field, value) {
+        if (field === 'folderid') {
+            return value == null || value === '' ? null : Number(value);
+        }
+        if (field === 'allowpost') {
+            return value == null || value === '' ? null : Number(value);
+        }
+        return value ?? '';
+    }
+
+    static draftDiffersFrom(draft, baseline) {
+        for (const field of this.DRAFT_FIELDS) {
+            const left = this.normalizeDraftFieldValue(field, draft[field]);
+            const right = this.normalizeDraftFieldValue(field, baseline[field]);
+            if (left !== right) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     static load(key) {
         try {
             const raw = localStorage.getItem(key);
@@ -91,6 +112,15 @@ class PostFormDraftCache {
     static showDraftSavedHint(shadowRoot) {
         const hint = shadowRoot?.querySelector('.draft-cache-hint');
         if (hint) {
+            hint.textContent = '草稿已经保存到本地缓存';
+            hint.hidden = false;
+        }
+    }
+
+    static showDraftRestoredHint(shadowRoot, message = '已恢复未保存的草稿') {
+        const hint = shadowRoot?.querySelector('.draft-cache-hint');
+        if (hint) {
+            hint.textContent = message;
             hint.hidden = false;
         }
     }

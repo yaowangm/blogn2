@@ -154,15 +154,6 @@ class ArticleCommentsCard extends BaseComponent {
         return nameHtml;
     }
 
-    renderAuthorMetaItem(userName, userAvatar, userId, blogId) {
-        return `
-            <div class="meta-item meta-item-author">
-                ${this.renderAuthorAvatar(userName, userAvatar, userId, blogId)}
-                ${this.renderAuthorName(userName, userId, blogId)}
-            </div>
-        `;
-    }
-
     /**
      * 渲染组件
      */

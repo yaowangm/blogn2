@@ -51,6 +51,7 @@ function checkAuthStatus() {
         const user = UserManager.getCurrentUser();
     } catch (error) {
         console.error('解析用户信息失败:', error);
+        UserManager.clearPostFormDrafts();
         localStorage.removeItem('access_token');
         localStorage.removeItem('user_info');
     }

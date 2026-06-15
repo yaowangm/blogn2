@@ -44,104 +44,41 @@ class EditPostForm extends BaseComponent {
     }
 
     disconnectedCallback() {
-        this._draftAutoSaver?.stop();
+        PostFormDraftMixin.disconnected(this);
     }
 
     initDraftCache() {
         const userId = UserManager.getCurrentUserId();
-        this._draftCacheKey = PostFormDraftCache.getEditKey(userId, this.articleId);
-        this._draftAutoSaver = PostFormDraftCache.createAutoSaver({
-            key: this._draftCacheKey,
-            getFormData: () => this.getDraftFormData()
-        });
+        PostFormDraftMixin.init(this, PostFormDraftCache.getEditKey(userId, this.articleId));
     }
 
     getDraftFormData() {
-        const root = this.shadowRoot;
-        if (!root) {
-            return PostFormDraftCache.pickDraftFields(this.formData);
-        }
-
-        const folderSelect = root.querySelector('#folderid');
-        const allowpostSelect = root.querySelector('#allowpost');
-        return {
-            name: root.querySelector('#name')?.value ?? this.formData.name ?? '',
-            comment: root.querySelector('#comment')?.value ?? this.formData.comment ?? '',
-            folderid: folderSelect?.value
-                ? parseInt(folderSelect.value, 10)
-                : this.formData.folderid,
-            allowpost: allowpostSelect?.value
-                ? parseInt(allowpostSelect.value, 10)
-                : this.formData.allowpost
-        };
+        return PostFormDraftMixin.getDraftFormData(this);
     }
 
     restoreDraftIfAny() {
-        const draft = PostFormDraftCache.load(this._draftCacheKey);
-        if (!draft) {
-            return false;
-        }
-        this.applyDraft(draft);
-        return true;
+        const serverBaseline = PostFormDraftCache.pickDraftFields(this.formData);
+        return PostFormDraftMixin.restoreDraftIfAny(this, serverBaseline);
     }
 
     applyDraft(draft) {
-        if (draft.name !== undefined) {
-            this.formData.name = draft.name;
-        }
-        if (draft.comment !== undefined) {
-            this.formData.comment = draft.comment;
-        }
-        if (draft.folderid !== undefined) {
-            this.formData.folderid = draft.folderid;
-        }
-        if (draft.allowpost !== undefined) {
-            this.formData.allowpost = draft.allowpost;
-        }
+        PostFormDraftMixin.applyDraft(this, draft);
     }
 
     syncFormFieldsFromDraft(draft) {
-        this.applyDraft(draft);
-        const root = this.shadowRoot;
-        if (!root) {
-            return;
-        }
-
-        const nameEl = root.querySelector('#name');
-        const commentEl = root.querySelector('#comment');
-        const folderEl = root.querySelector('#folderid');
-        const allowpostEl = root.querySelector('#allowpost');
-        if (nameEl && draft.name !== undefined) {
-            nameEl.value = draft.name;
-        }
-        if (commentEl && draft.comment !== undefined) {
-            commentEl.value = draft.comment;
-        }
-        if (folderEl && draft.folderid != null) {
-            folderEl.value = String(draft.folderid);
-        }
-        if (allowpostEl && draft.allowpost != null) {
-            allowpostEl.value = String(draft.allowpost);
-        }
+        PostFormDraftMixin.syncFormFieldsFromDraft(this, draft);
     }
 
     clearDraftCache() {
-        if (this._draftCacheKey) {
-            PostFormDraftCache.clear(this._draftCacheKey);
-        }
-        this._draftAutoSaver?.resetSavedSnapshot();
-        PostFormDraftCache.hideDraftSavedHint(this.shadowRoot);
+        PostFormDraftMixin.clearDraftCache(this);
     }
 
     clearDraftOnSessionInvalid() {
-        UserManager.clearPostFormDrafts();
-        this._draftAutoSaver?.resetSavedSnapshot();
-        this._draftAutoSaver?.stop();
-        PostFormDraftCache.hideDraftSavedHint(this.shadowRoot);
+        PostFormDraftMixin.clearDraftOnSessionInvalid(this);
     }
 
     startDraftAutoSave() {
-        this._draftAutoSaver?.start(this);
+        PostFormDraftMixin.startDraftAutoSave(this);
     }
 
     async connectedCallback() {
@@ -169,9 +106,12 @@ class EditPostForm extends BaseComponent {
         }
 
         this.initDraftCache();
-        this.restoreDraftIfAny();
+        const draftRestored = this.restoreDraftIfAny();
         await this.loadCategories();
         this.render();
+        if (draftRestored) {
+            PostFormDraftCache.showDraftRestoredHint(this.shadowRoot);
+        }
         this.addEventListeners();
         this.startDraftAutoSave();
     }
@@ -697,6 +637,7 @@ class EditPostForm extends BaseComponent {
             const tokenManager = window.tokenManager;
             if (!tokenManager) {
                 this.showError('Token管理器未初始化，请刷新页面重试');
+                this.resetSubmitState();
                 return;
             }
 
@@ -704,6 +645,7 @@ class EditPostForm extends BaseComponent {
             if (!token) {
                 this.showError('登录状态已过期，请重新登录');
                 this.clearDraftOnSessionInvalid();
+                this.resetSubmitState();
                 return;
             }
 

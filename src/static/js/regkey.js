@@ -40,6 +40,7 @@ class RegistrationCodeManager {
                 this.currentUser = UserManager.getCurrentUser();
             } catch (error) {
                 console.error('解析用户信息失败:', error);
+                UserManager.clearPostFormDrafts();
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('user_info');
                 window.location.href = '/';
@@ -156,6 +157,7 @@ class RegistrationCodeManager {
             // 检查是否是认证错误
             if (error.message && error.message.includes('401')) {
                 // 清除过期的认证信息
+                UserManager.clearPostFormDrafts();
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('user_info');
                 
@@ -387,6 +389,7 @@ class RegistrationCodeManager {
             // 检查是否是认证错误
             if (error.message && error.message.includes('401')) {
                 // 清除过期的认证信息
+                UserManager.clearPostFormDrafts();
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('user_info');
                 alert('登录已过期，请重新登录');
