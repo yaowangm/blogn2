@@ -190,8 +190,7 @@ class RecentCommentsCard extends BaseComponent {
         return `/avatar/${prefix}/s_${userId}.jpg`;
     }
 
-    renderAuthorMetaItem(authorName, avatar, userId, blogId) {
-        const safeAuthor = this.escapeHtml(authorName || '匿名用户');
+    renderAuthorAvatar(authorName, avatar, userId, blogId) {
         const isAnonymous = this.isAnonymousUser(userId);
         const avatarPath = !isAnonymous ? (avatar || this.getSmallAvatarPath(userId)) : null;
         const fallbackContent = this.getAuthorAvatarFallbackContent(authorName, userId);
@@ -210,23 +209,40 @@ class RecentCommentsCard extends BaseComponent {
                 <span class="${fallbackClass}" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackContent}</span>
             </span>
         `;
+
+        if (canLinkBlog) {
+            return `
+                <a href="/blog/${blogId}" class="author-avatar-link" title="查看博客" target="_blank" rel="noopener noreferrer">
+                    ${avatarHtml}
+                </a>
+            `;
+        }
+
+        return avatarHtml;
+    }
+
+    renderAuthorName(authorName, userId, blogId) {
+        const safeAuthor = this.escapeHtml(authorName || '匿名用户');
+        const isAnonymous = this.isAnonymousUser(userId);
+        const canLinkBlog = !isAnonymous && blogId;
         const nameHtml = `<span class="author-name">${safeAuthor}</span>`;
 
         if (canLinkBlog) {
             return `
-                <div class="meta-item meta-item-author">
-                    <a href="/blog/${blogId}" class="author-link" title="查看博客" target="_blank" rel="noopener noreferrer">
-                        ${avatarHtml}
-                        ${nameHtml}
-                    </a>
-                </div>
+                <a href="/blog/${blogId}" class="author-link" title="查看博客" target="_blank" rel="noopener noreferrer">
+                    ${nameHtml}
+                </a>
             `;
         }
 
+        return nameHtml;
+    }
+
+    renderAuthorMetaItem(authorName, avatar, userId, blogId) {
         return `
             <div class="meta-item meta-item-author">
-                ${avatarHtml}
-                ${nameHtml}
+                ${this.renderAuthorAvatar(authorName, avatar, userId, blogId)}
+                ${this.renderAuthorName(authorName, userId, blogId)}
             </div>
         `;
     }
@@ -275,6 +291,22 @@ class RecentCommentsCard extends BaseComponent {
                     padding: 0;
                 }
 
+                .comment-row {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: var(--spacing-3);
+                    min-width: 0;
+                }
+
+                .comment-avatar-col {
+                    flex-shrink: 0;
+                }
+
+                .comment-body-col {
+                    flex: 1;
+                    min-width: 0;
+                }
+
                 .comment-link {
                     text-decoration: none;
                     color: inherit;
@@ -283,9 +315,7 @@ class RecentCommentsCard extends BaseComponent {
                 }
 
                 .author-link {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: var(--spacing-2);
+                    display: inline;
                     text-decoration: none;
                     color: inherit;
                     min-width: 0;
@@ -293,6 +323,21 @@ class RecentCommentsCard extends BaseComponent {
 
                 .author-link:hover {
                     text-decoration: none;
+                }
+
+                .author-avatar-link {
+                    display: block;
+                    text-decoration: none;
+                    color: inherit;
+                }
+
+                .author-avatar-link:hover {
+                    text-decoration: none;
+                }
+
+                .comment-avatar-col .author-avatar {
+                    width: 32px;
+                    height: 32px;
                 }
 
                 .author-link:hover .author-name,
@@ -322,6 +367,11 @@ class RecentCommentsCard extends BaseComponent {
                     justify-content: space-between;
                     gap: var(--spacing-2);
                     margin-bottom: var(--spacing-1);
+                }
+
+                .comment-author-line {
+                    min-width: 0;
+                    flex: 1;
                 }
 
                 .meta-item {
@@ -369,6 +419,7 @@ class RecentCommentsCard extends BaseComponent {
                 }
 
                 .author-name {
+                    font-size: var(--font-size-xs);
                     font-weight: 500;
                     color: var(--gray-700);
                     transition: color var(--transition-fast);
@@ -428,29 +479,43 @@ class RecentCommentsCard extends BaseComponent {
                     <ul class="comment-list list-divider-rows">
                         ${this.comments.map((comment) => {
                             const commentUrl = this.getNavigationUrl(comment);
-                            const headerHtml = `
+                            const bodyHtml = `
                                 <div class="comment-header">
-                                    ${this.renderAuthorMetaItem(comment.author, comment.avatar, comment.userid, comment.blog_id)}
+                                    <div class="comment-author-line">
+                                        ${this.renderAuthorName(comment.author, comment.userid, comment.blog_id)}
+                                    </div>
                                     <span class="time">${this.escapeHtml(comment.time)}</span>
                                 </div>
+                                <div class="comment-text">${this.escapeHtml(this.truncateText(comment.content, 20))}</div>
                             `;
-                            const textHtml = `<div class="comment-text">${this.escapeHtml(this.truncateText(comment.content, 20))}</div>`;
 
                             if (commentUrl) {
                                 return `
                                     <li class="comment-item">
-                                        ${headerHtml}
-                                        <a href="${commentUrl}" class="comment-link" target="_blank" title="查看评论">
-                                            ${textHtml}
-                                        </a>
+                                        <div class="comment-row">
+                                            <div class="comment-avatar-col">
+                                                ${this.renderAuthorAvatar(comment.author, comment.avatar, comment.userid, comment.blog_id)}
+                                            </div>
+                                            <div class="comment-body-col">
+                                                <a href="${commentUrl}" class="comment-link" target="_blank" title="查看评论">
+                                                    ${bodyHtml}
+                                                </a>
+                                            </div>
+                                        </div>
                                     </li>
                                 `;
                             }
 
                             return `
                                 <li class="comment-item disabled">
-                                    ${headerHtml}
-                                    ${textHtml}
+                                    <div class="comment-row">
+                                        <div class="comment-avatar-col">
+                                            ${this.renderAuthorAvatar(comment.author, comment.avatar, comment.userid, comment.blog_id)}
+                                        </div>
+                                        <div class="comment-body-col">
+                                            ${bodyHtml}
+                                        </div>
+                                    </div>
                                 </li>
                             `;
                         }).join('')}

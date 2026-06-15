@@ -106,8 +106,7 @@ class ArticleCommentsCard extends BaseComponent {
         return `/avatar/${prefix}/s_${userId}.jpg`;
     }
 
-    renderAuthorMetaItem(userName, userAvatar, userId, blogId) {
-        const safeAuthor = this.escapeHtml(userName || '匿名用户');
+    renderAuthorAvatar(userName, userAvatar, userId, blogId) {
         const isAnonymous = this.isAnonymousUser(userId);
         const avatarPath = !isAnonymous ? (userAvatar || this.getSmallAvatarPath(userId)) : null;
         const fallbackContent = this.getAuthorAvatarFallbackContent(userName, userId);
@@ -126,23 +125,40 @@ class ArticleCommentsCard extends BaseComponent {
                 <span class="${fallbackClass}" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackContent}</span>
             </span>
         `;
+
+        if (canLinkBlog) {
+            return `
+                <a href="/blog/${blogId}" class="author-avatar-link" title="查看博客" target="_blank" rel="noopener noreferrer">
+                    ${avatarHtml}
+                </a>
+            `;
+        }
+
+        return avatarHtml;
+    }
+
+    renderAuthorName(userName, userId, blogId) {
+        const safeAuthor = this.escapeHtml(userName || '匿名用户');
+        const isAnonymous = this.isAnonymousUser(userId);
+        const canLinkBlog = !isAnonymous && blogId;
         const nameHtml = `<span class="author-name">${safeAuthor}</span>`;
 
         if (canLinkBlog) {
             return `
-                <div class="meta-item meta-item-author">
-                    <a href="/blog/${blogId}" class="author-link" title="查看博客" target="_blank" rel="noopener noreferrer">
-                        ${avatarHtml}
-                        ${nameHtml}
-                    </a>
-                </div>
+                <a href="/blog/${blogId}" class="author-link" title="查看博客" target="_blank" rel="noopener noreferrer">
+                    ${nameHtml}
+                </a>
             `;
         }
 
+        return nameHtml;
+    }
+
+    renderAuthorMetaItem(userName, userAvatar, userId, blogId) {
         return `
             <div class="meta-item meta-item-author">
-                ${avatarHtml}
-                ${nameHtml}
+                ${this.renderAuthorAvatar(userName, userAvatar, userId, blogId)}
+                ${this.renderAuthorName(userName, userId, blogId)}
             </div>
         `;
     }
@@ -550,10 +566,15 @@ class ArticleCommentsCard extends BaseComponent {
 
         return `
             <li class="comment-item" id="post${id}" data-comment-id="${id}">
-                <div class="comment-content-wrapper">
-                    <div class="comment-main">
+                <div class="comment-row">
+                    <div class="comment-avatar-col">
+                        ${this.renderAuthorAvatar(userName, userAvatar, user_id, blogId)}
+                    </div>
+                    <div class="comment-body-col">
                         <div class="comment-header">
-                            ${this.renderAuthorMetaItem(userName, userAvatar, user_id, blogId)}
+                            <div class="comment-author-line">
+                                ${this.renderAuthorName(userName, user_id, blogId)}
+                            </div>
                             <span class="comment-time">${this.formatDate(post_time)}</span>
                         </div>
                         <div class="comment-text">${HtmlUtils.linkifyPlainTextToHtml(content || '')}</div>
@@ -765,12 +786,48 @@ class ArticleCommentsCard extends BaseComponent {
                     }
                 }
 
+                .comment-row {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: var(--spacing-3);
+                    min-width: 0;
+                }
+
+                .comment-avatar-col {
+                    flex-shrink: 0;
+                }
+
+                .comment-body-col {
+                    flex: 1;
+                    min-width: 0;
+                }
+
                 .comment-header {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
                     gap: var(--spacing-2);
                     margin-bottom: var(--spacing-1);
+                }
+
+                .comment-author-line {
+                    min-width: 0;
+                    flex: 1;
+                }
+
+                .author-avatar-link {
+                    display: block;
+                    text-decoration: none;
+                    color: inherit;
+                }
+
+                .author-avatar-link:hover {
+                    text-decoration: none;
+                }
+
+                .comment-avatar-col .author-avatar {
+                    width: 32px;
+                    height: 32px;
                 }
 
                 .meta-item {
@@ -788,9 +845,7 @@ class ArticleCommentsCard extends BaseComponent {
                 }
 
                 .author-link {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: var(--spacing-2);
+                    display: inline;
                     text-decoration: none;
                     color: inherit;
                     min-width: 0;
@@ -835,6 +890,7 @@ class ArticleCommentsCard extends BaseComponent {
                 }
 
                 .author-name {
+                    font-size: var(--font-size-xs);
                     font-weight: 500;
                     color: var(--gray-700);
                     transition: color var(--transition-fast);
@@ -843,24 +899,8 @@ class ArticleCommentsCard extends BaseComponent {
                     white-space: nowrap;
                 }
 
-                .comment-content-wrapper {
-                    display: grid;
-                    grid-template-columns: minmax(0, 1fr) auto;
-                    align-items: start;
-                    column-gap: var(--spacing-2);
-                    flex: 1;
-                    min-width: 0;
-                }
-
-                .comment-main {
-                    grid-column: 1;
-                    min-width: 0;
-                }
-
                 .comment-actions {
-                    grid-column: 2;
-                    grid-row: 1;
-                    align-self: start;
+                    flex-shrink: 0;
                     margin: 0;
                     padding: 0;
                 }
