@@ -671,13 +671,17 @@ class ArticleContentCard extends BaseComponent {
                     background: var(--white);
                     overflow: hidden;
                     box-shadow: var(--shadow-sm);
-                    transition: box-shadow var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+                    transition:
+                        background-color var(--transition-fast),
+                        box-shadow var(--transition-fast),
+                        border-color var(--transition-fast);
                 }
 
-                .attachment-item:hover {
+                .attachment-item:hover,
+                .attachment-item:focus-within {
+                    background: var(--interactive-hover-bg);
+                    border-color: var(--interactive-hover-border, var(--gray-200));
                     box-shadow: var(--shadow-md);
-                    border-color: var(--gray-300);
-                    
                 }
 
                 .attachment-item .attachment-image {
@@ -707,17 +711,18 @@ class ArticleContentCard extends BaseComponent {
                     text-align: left;
                 }
 
-                .attachment-comment,
+                .attachment-comment {
+                    border-top: 1px solid var(--gray-200);
+                    min-height: 2.75rem;
+                    font-size: var(--font-size-sm);
+                    color: var(--gray-700);
+                    line-height: 1.45;
+                }
+
                 .modal-lightbox-footer {
                     background-color: var(--gray-50);
                     border-top: 1px solid var(--gray-200);
                     min-height: 2.75rem;
-                }
-
-                .attachment-comment {
-                    font-size: var(--font-size-sm);
-                    color: var(--gray-700);
-                    line-height: 1.45;
                 }
 
                 .attachment-comment-placeholder {
