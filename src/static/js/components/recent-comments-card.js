@@ -275,15 +275,6 @@ class RecentCommentsCard extends BaseComponent {
                     padding: 0;
                 }
 
-                .comment-item {
-                    border-bottom: 1px solid var(--gray-100);
-                    padding: var(--spacing-3) var(--spacing-4);
-                }
-
-                .comment-item:last-child {
-                    border-bottom: none;
-                }
-
                 .comment-link {
                     text-decoration: none;
                     color: inherit;
@@ -308,11 +299,6 @@ class RecentCommentsCard extends BaseComponent {
                 .comment-item:hover .author-link .author-name,
                 .comment-item:focus-within .author-link .author-name {
                     color: var(--interactive-hover-text);
-                }
-
-                .comment-item:hover,
-                .comment-item:focus-within {
-                    background: var(--interactive-hover-bg);
                 }
 
                 .comment-item:hover .author-name,
@@ -438,7 +424,8 @@ class RecentCommentsCard extends BaseComponent {
                 </div>
                 ${this.loading ? `<div class="loading">${this.createLoadingHTML()}</div>` :
                   this.error ? this.createErrorHTML() : `
-                    <ul class="comment-list">
+                    <div class="card-body card-body--flush-list">
+                    <ul class="comment-list list-divider-rows">
                         ${this.comments.map((comment) => {
                             const commentUrl = this.getNavigationUrl(comment);
                             const headerHtml = `
@@ -468,6 +455,7 @@ class RecentCommentsCard extends BaseComponent {
                             `;
                         }).join('')}
                     </ul>
+                    </div>
                 `}
             </div>
         `;

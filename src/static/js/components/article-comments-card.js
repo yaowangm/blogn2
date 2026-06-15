@@ -177,7 +177,9 @@ class ArticleCommentsCard extends BaseComponent {
                         评论 (${comment_count || 0})
                     </h3>
                 </div>
-                ${this.renderComments(comments)}
+                <div class="card-body card-body--flush-list">
+                    ${this.renderComments(comments)}
+                </div>
                 ${this.renderPagination()}
             </div>
         `;
@@ -513,7 +515,7 @@ class ArticleCommentsCard extends BaseComponent {
         }
 
         return `
-            <ul class="comments-list">
+            <ul class="comments-list list-divider-rows">
                 ${comments.map(comment => this.renderComment(comment)).join('')}
             </ul>
         `;
@@ -738,28 +740,7 @@ class ArticleCommentsCard extends BaseComponent {
                 .comments-list {
                     list-style: none;
                     margin: 0;
-                    padding: 2px var(--spacing-1);
-                }
-
-                .comment-item {
-                    padding: var(--spacing-3) var(--spacing-4);
-                    border-bottom: 1px solid var(--gray-100);
-                    transition: background-color var(--transition-fast);
-                    border-radius: var(--radius-md, 8px);
-                }
-
-                .comment-item:last-child {
-                    border-bottom: none;
-                }
-
-                .comment-item:hover,
-                .comment-item:focus-within {
-                    background: var(--interactive-hover-bg);
-                }
-
-                .comment-item:hover .author-name,
-                .comment-item:focus-within .author-name {
-                    color: var(--interactive-hover-text);
+                    padding: 0;
                 }
 
                 /* 从 #post{id} 进入：内嵌蓝框闪烁，避免被卡片裁切，总时长 3s（6×0.5s） */
@@ -768,6 +749,11 @@ class ArticleCommentsCard extends BaseComponent {
                     z-index: 1;
                     background-color: var(--white);
                     animation: commentHashBorderBlink 0.5s ease-in-out 6;
+                }
+
+                .comment-item:hover .author-name,
+                .comment-item:focus-within .author-name {
+                    color: var(--interactive-hover-text);
                 }
 
                 @keyframes commentHashBorderBlink {

@@ -354,7 +354,9 @@ a.blog-item:focus,
 
 .list-divider-rows > .post-item,
 .list-divider-rows > .message-item-row .post-item,
-.list-divider-rows > li > .friend-link {
+.list-divider-rows > li > .friend-link,
+.list-divider-rows > .comment-item,
+.list-divider-rows > li.comment-item {
     border-radius: 0;
     background: transparent;
     border: none;
@@ -365,14 +367,20 @@ a.blog-item:focus,
 
 .list-divider-rows > .post-item:last-child,
 .list-divider-rows > .message-item-row:last-child .post-item,
-.list-divider-rows > li:last-child > .friend-link {
+.list-divider-rows > li:last-child > .friend-link,
+.list-divider-rows > .comment-item:last-child,
+.list-divider-rows > li.comment-item:last-child {
     border-bottom: none;
 }
 
 .list-divider-rows a.post-item:hover,
 .list-divider-rows a.post-item:focus-visible,
 .list-divider-rows .friend-link:hover,
-.list-divider-rows .friend-link:focus-visible {
+.list-divider-rows .friend-link:focus-visible,
+.list-divider-rows > .comment-item:hover,
+.list-divider-rows > .comment-item:focus-within,
+.list-divider-rows > li.comment-item:hover,
+.list-divider-rows > li.comment-item:focus-within {
     background: var(--interactive-hover-bg);
     border-color: transparent;
     box-shadow: none;
