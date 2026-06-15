@@ -48,6 +48,22 @@
     min-height: 400px;
 }
 
+/* 与文章页标题/正文显示一致 */
+.form-input.post-title-input {
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--gray-900);
+}
+
+.form-textarea.post-content-input,
+.content-editor.post-content-input {
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    line-height: 1.8;
+    color: var(--gray-800);
+}
+
 .form-actions {
     display: flex;
     gap: var(--spacing-3);
@@ -239,7 +255,7 @@
 
 /* Markdown预览样式 */
 .preview-content.markdown-content {
-    line-height: 1.6;
+    line-height: 1.8;
     color: var(--gray-800);
 }
 

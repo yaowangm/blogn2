@@ -902,13 +902,13 @@ class EditPostForm extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
+                @import url('/static/css/common-components.css');
+                @import url('/static/css/form-components.css');
+
                 :host {
                     display: block;
                     font-family: var(--font-family);
                 }
-
-                @import url('/static/css/common-components.css');
-                @import url('/static/css/form-components.css');
                 
                 /* 卡片样式 */
                 .card {
@@ -985,6 +985,21 @@ class EditPostForm extends BaseComponent {
 
                 .form-textarea.large {
                     min-height: 400px;
+                }
+
+                .form-input.post-title-input {
+                    font-size: var(--font-size-xl);
+                    font-weight: 700;
+                    line-height: 1.3;
+                    color: var(--gray-900);
+                }
+
+                .form-textarea.post-content-input,
+                .content-editor.post-content-input {
+                    font-family: var(--font-family);
+                    font-size: var(--font-size-base);
+                    line-height: 1.8;
+                    color: var(--gray-800);
                 }
 
                 .form-actions {
@@ -1081,7 +1096,7 @@ class EditPostForm extends BaseComponent {
 
                 /* Markdown预览样式 */
                 .preview-content.markdown-content {
-                    line-height: 1.6;
+                    line-height: 1.8;
                     color: var(--gray-800);
                 }
 
@@ -1374,7 +1389,7 @@ class EditPostForm extends BaseComponent {
                             <input 
                                 type="text" 
                                 id="name" 
-                                class="form-input" 
+                                class="form-input post-title-input" 
                                 placeholder="请输入文章标题"
                                 value="${this.formData.name}"
                                 onchange="this.getRootNode().host.handleInputChange('name', this.value)"
@@ -1396,7 +1411,7 @@ class EditPostForm extends BaseComponent {
                             <div class="content-container">
                                 <textarea 
                                     id="comment" 
-                                    class="form-textarea large content-editor" 
+                                    class="form-textarea large content-editor post-content-input" 
                                     placeholder="请输入文章内容..."
                                     oninput="this.getRootNode().host.handleInputChange('comment', this.value)"
                                     required

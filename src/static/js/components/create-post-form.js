@@ -664,13 +664,13 @@ class CreatePostForm extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
+                @import url('/static/css/common-components.css');
+                @import url('/static/css/form-components.css');
+
                 :host {
                     display: block;
                     font-family: var(--font-family);
                 }
-
-                @import url('/static/css/common-components.css');
-                @import url('/static/css/form-components.css');
                 
                 .card {
                     background: var(--white);
@@ -748,6 +748,21 @@ class CreatePostForm extends BaseComponent {
                 .form-textarea.large {
                     min-height: 400px;
                 }
+
+                .form-input.post-title-input {
+                    font-size: var(--font-size-xl);
+                    font-weight: 700;
+                    line-height: 1.3;
+                    color: var(--gray-900);
+                }
+
+                .form-textarea.post-content-input,
+                .content-editor.post-content-input {
+                    font-family: var(--font-family);
+                    font-size: var(--font-size-base);
+                    line-height: 1.8;
+                    color: var(--gray-800);
+                }
                 
                 .form-help {
                     font-size: var(--font-size-xs);
@@ -795,12 +810,6 @@ class CreatePostForm extends BaseComponent {
                 .content-editor {
                     width: 100%;
                     min-height: 400px;
-                    padding: var(--spacing-4);
-                    border: 1px solid var(--gray-300);
-                    border-radius: var(--radius-md);
-                    font-family: var(--font-family-mono);
-                    font-size: var(--font-size-sm);
-                    line-height: 1.5;
                     resize: vertical;
                 }
                 
@@ -816,7 +825,7 @@ class CreatePostForm extends BaseComponent {
                 
                 .markdown-content {
                     font-family: var(--font-family);
-                    line-height: 1.6;
+                    line-height: 1.8;
                     color: var(--gray-800);
                 }
                 
@@ -1012,7 +1021,7 @@ class CreatePostForm extends BaseComponent {
                             <input 
                                 type="text" 
                                 id="name" 
-                                class="form-input" 
+                                class="form-input post-title-input" 
                                 placeholder="请输入文章标题"
                                 value="${this.formData.name}"
                                 onchange="this.getRootNode().host.handleInputChange('name', this.value)"
@@ -1034,7 +1043,7 @@ class CreatePostForm extends BaseComponent {
                             <div class="content-container">
                                 <textarea 
                                     id="comment" 
-                                    class="form-textarea large content-editor" 
+                                    class="form-textarea large content-editor post-content-input" 
                                     placeholder="请输入文章内容..."
                                     oninput="this.getRootNode().host.handleInputChange('comment', this.value)"
                                     required
