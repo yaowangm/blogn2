@@ -63,10 +63,19 @@ class StatsCard extends BaseComponent {
                     overflow: hidden;
                 }
 
+                .stat-meta {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: var(--spacing-1);
+                    min-width: 0;
+                    max-width: 100%;
+                }
+
                 .stat-icon {
                     flex-shrink: 0;
-                    width: 32px;
-                    height: 32px;
+                    width: 24px;
+                    height: 24px;
                     border-radius: 50%;
                     display: flex;
                     align-items: center;
@@ -76,13 +85,8 @@ class StatsCard extends BaseComponent {
                 }
 
                 .stat-icon svg {
-                    width: 16px;
-                    height: 16px;
-                }
-
-                .stat-content {
-                    min-width: 0;
-                    width: 100%;
+                    width: 14px;
+                    height: 14px;
                 }
 
                 .stat-number {
@@ -100,12 +104,9 @@ class StatsCard extends BaseComponent {
                 }
 
                 .stat-label {
-                    display: block;
-                    margin-top: var(--spacing-1);
                     font-size: var(--font-size-xs);
                     font-weight: 500;
                     color: var(--gray-600);
-                    max-width: 100%;
                     overflow: hidden;
                     text-overflow: ellipsis;
                     white-space: nowrap;
@@ -133,30 +134,30 @@ class StatsCard extends BaseComponent {
                 </div>
                 <div class="card-body stats-body">
                     <div class="stat-block">
-                        <div class="stat-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="9" cy="7" r="4"></circle>
-                                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                            </svg>
-                        </div>
-                        <div class="stat-content">
-                            <span class="stat-number">${userCount.toLocaleString()}</span>
+                        <span class="stat-number">${userCount.toLocaleString()}</span>
+                        <div class="stat-meta">
+                            <div class="stat-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                            </div>
                             <span class="stat-label">注册用户</span>
                         </div>
                     </div>
                     <div class="stat-block">
-                        <div class="stat-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                <polyline points="14 2 14 8 20 8"></polyline>
-                                <line x1="16" y1="13" x2="8" y2="13"></line>
-                                <line x1="16" y1="17" x2="8" y2="17"></line>
-                            </svg>
-                        </div>
-                        <div class="stat-content">
-                            <span class="stat-number">${postCount.toLocaleString()}</span>
+                        <span class="stat-number">${postCount.toLocaleString()}</span>
+                        <div class="stat-meta">
+                            <div class="stat-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                </svg>
+                            </div>
                             <span class="stat-label">博文总数</span>
                         </div>
                     </div>
