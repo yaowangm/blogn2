@@ -22,7 +22,7 @@ from src.utils.auth_dependencies import get_current_user, get_optional_current_u
 from src.utils.permission_manager import permission_manager
 from src.services.blog_service import BlogService
 from src.repositories.user_repository import UserRepository
-from src.constants import ArticleStatus
+from src.constants import ArticleStatus, ProjectStatus
 from src.utils.file_utils import promote_temp_relative_path
 from src.utils.time_utils import TimeUtils
 from src.utils.text_utils import plain_text_excerpt, truncate_excerpt
@@ -402,7 +402,7 @@ async def create_project(
                 userid=userid,
                 createtime=TimeUtils.now_utc(),
                 updatetime=TimeUtils.now_utc(),
-                state=1,  # 正常状态
+                state=ProjectStatus.ACTIVE,
                 recordcount=0,
                 accesscount=0,
                 commentcount=0

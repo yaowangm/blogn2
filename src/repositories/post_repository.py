@@ -3,7 +3,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import aliased
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from src.constants import ArticleStatus
+from src.constants import ArticleStatus, ProjectStatus
 from src.models.post import Post
 from src.models.project import Project
 from src.models.project_item import ProjectItem
@@ -109,7 +109,7 @@ class PostRepository:
             .where(Post.status == 1)
             .where(ProjectItem.status == 1)
             .where(or_(ProjectItem.itemtype.is_(None), ProjectItem.itemtype != ArticleStatus.DELETED))
-            .where(Project.state == 0)  # 与 project_repository 列表一致：库内 state=0 为正常博客
+            .where(Project.state == ProjectStatus.ACTIVE)
             .order_by(Post.posttime.desc())
             .limit(limit)
         )
@@ -147,7 +147,7 @@ class PostRepository:
             .where(Post.status == 1)
             .where(ProjectItem.status == 1)
             .where(or_(ProjectItem.itemtype.is_(None), ProjectItem.itemtype != ArticleStatus.DELETED))
-            .where(Project.state == 0)  # 与 project_repository 列表一致：库内 state=0 为正常博客
+            .where(Project.state == ProjectStatus.ACTIVE)
             .order_by(Post.posttime.desc())
             .limit(limit)
         )
@@ -362,7 +362,7 @@ class PostRepository:
             .where(Post.status == 1)
             .where(ProjectItem.status == 1)
             .where(or_(ProjectItem.itemtype.is_(None), ProjectItem.itemtype != ArticleStatus.DELETED))
-            .where(Project.state == 0)  # 与 project_repository 列表一致：库内 state=0 为正常博客
+            .where(Project.state == ProjectStatus.ACTIVE)
         )
         result = await self.session.exec(statement)
         return result.first() or 0

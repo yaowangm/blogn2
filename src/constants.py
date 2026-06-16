@@ -25,9 +25,9 @@ class ArticleStatus:
 
 # 项目状态常量
 class ProjectStatus:
-    """项目状态常量"""
-    INACTIVE = 0     # 非活跃状态
-    ACTIVE = 1       # 活跃状态
+    """项目（博客）状态常量，与生产库 project.state 一致"""
+    ACTIVE = 0       # 正常
+    DISABLED = 1     # 禁用
 
 # 通用状态常量
 class Status:

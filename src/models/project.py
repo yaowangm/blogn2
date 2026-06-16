@@ -1,6 +1,7 @@
 from sqlmodel import Field
 from typing import Optional
 from datetime import datetime
+from src.constants import ProjectStatus
 from src.models.base import BaseModel, TimestampMixin, UserMixin, FolderMixin, CountMixin
 
 class Project(BaseModel, TimestampMixin, UserMixin, FolderMixin, CountMixin, table=True):
@@ -11,4 +12,7 @@ class Project(BaseModel, TimestampMixin, UserMixin, FolderMixin, CountMixin, tab
     comment: Optional[str] = Field(default=None, description="项目描述")
     recordcount: Optional[int] = Field(default=None, description="记录数量")
     lastitem: Optional[int] = Field(default=None, description="最后条目ID")
-    state: Optional[int] = Field(default=1, description="项目状态：1=正常，0=禁用") 
+    state: Optional[int] = Field(
+        default=ProjectStatus.ACTIVE,
+        description="项目状态：0=正常，1=禁用",
+    ) 

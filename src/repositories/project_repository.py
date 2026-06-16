@@ -6,7 +6,7 @@ from typing import List, Optional
 from src.models.project import Project
 from src.models.user import User
 from src.models.project_item import ProjectItem
-from src.constants import ArticleStatus
+from src.constants import ArticleStatus, ProjectStatus
 
 
 def _blog_updatetime_from_articles_expr():
@@ -45,7 +45,7 @@ class ProjectRepository:
         statement = (
             select(Project.id, Project.name, Project.accesscount, Project.userid, Project.createtime, User.name.label("author_name"))
             .join(User, Project.userid == User.id)
-            .where(Project.state == 0)  # 数据库中state=0表示正常状态
+            .where(Project.state == ProjectStatus.ACTIVE)
             .order_by(Project.accesscount.desc())
             .limit(limit)
         )
@@ -64,7 +64,7 @@ class ProjectRepository:
         statement = (
             select(Project.id, Project.name, Project.createtime, Project.userid, User.name.label("author_name"))
             .join(User, Project.userid == User.id)
-            .where(Project.state == 0)  # 数据库中state=0表示正常状态
+            .where(Project.state == ProjectStatus.ACTIVE)
             .order_by(Project.createtime.desc())
             .limit(limit)
         )
