@@ -94,7 +94,7 @@ class PostRepository:
 
     async def get_recent_comments_by_project(self, project_id: int, limit: int = 5) -> List[dict]:
         """获取指定项目的最近评论，包含用户名和文章名"""
-        # 使用JOIN查询获取评论、用户名和文章名；排除孤儿评论与已删除/下架文章上的评论
+        # 使用 JOIN 获取评论与文章信息；user 用 outer join 以包含匿名评论（userid=0）
         statement = (
             select(
                 Post,
@@ -102,7 +102,7 @@ class PostRepository:
                 ProjectItem.name.label("project_item_name"),
                 User.projectid.label("author_blog_id"),
             )
-            .join(User, Post.userid == User.id)
+            .outerjoin(User, Post.userid == User.id)
             .join(ProjectItem, Post.projectitemid == ProjectItem.id)
             .join(Project, ProjectItem.projectid == Project.id)
             .where(ProjectItem.projectid == project_id)

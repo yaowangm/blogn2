@@ -100,6 +100,33 @@ class TestPostRepository:
         assert result[1]["id"] == 2
 
     @pytest.mark.unit
+    async def test_get_recent_comments_by_project_includes_anonymous(
+        self, post_repository, mock_session
+    ):
+        """博客最近评论应包含匿名评论（outer join users）。"""
+        from sqlalchemy.dialects import postgresql
+
+        anonymous_post = Post(
+            id=2,
+            content="匿名评论",
+            userid=0,
+            projectitemid=456,
+            posttime="2026-04-16 13:12:33",
+            status=1,
+        )
+        mock_result = MagicMock()
+        mock_result.all.return_value = [(anonymous_post, None, "测试文章", None)]
+        mock_session.exec.return_value = mock_result
+
+        result = await post_repository.get_recent_comments_by_project(23, 5)
+
+        assert len(result) == 1
+        assert result[0]["user_name"] == "匿名用户"
+        statement = mock_session.exec.call_args[0][0]
+        sql = str(statement.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}))
+        assert "LEFT OUTER JOIN" in sql.upper()
+
+    @pytest.mark.unit
     async def test_get_by_project_item_id_paginated_includes_author(
         self, post_repository, mock_session, sample_post
     ):
