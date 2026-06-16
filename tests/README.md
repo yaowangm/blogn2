@@ -214,8 +214,9 @@ assert "expected message" in str(exc_info.value)
 
 2. **数据库连接错误**
    - 集成测试使用 PostgreSQL；`.env` 中的 `DATABASE_URL` 仅用于解析连接信息（业务库名可以不存在）
-   - `pytest` 启动时连 catalog 库（默认 `postgres`）`CREATE DATABASE blogn_pytest_<pid>`、初始化表结构，结束后 `DROP`
-   - 可选 `BLOGN_PYTEST_ADMIN_DATABASE_URL` 指定 catalog 连接；调试可设 `BLOGN_SKIP_TEST_DB_LIFECYCLE=1`（慎用，勿对生产库跑集成测试）
+   - 仅当选中的测试位于 `tests/integration/`、标记为 `integration`，或使用真实数据库 fixture 时，pytest 才会连 catalog 库（默认 `postgres`）`CREATE DATABASE blogn_pytest_<pid>`、初始化表结构，结束后 `DROP`
+   - 纯单元/静态测试不会自动创建临时库
+   - 可选 `BLOGN_PYTEST_ADMIN_DATABASE_URL` 指定 catalog 连接；调试可设 `BLOGN_SKIP_TEST_DB_LIFECYCLE=1` 跳过自动建库，或 `BLOGN_FORCE_TEST_DB_LIFECYCLE=1` 强制恢复旧的启动即建库行为
 
 3. **异步测试失败**
    - 使用 `@pytest.mark.asyncio` 装饰器
@@ -246,4 +247,4 @@ pytest --durations=10
 
 ## 联系方式
 
-如有测试相关问题，请查看项目文档或提交Issue。 
+如有测试相关问题，请查看项目文档或提交Issue。

@@ -8,7 +8,7 @@
 
 - 对外模板为项目根目录 **`.env.example`**（Docker 与本地共用，见 `docker/README-DOCKER.md`）；私有配置写入 **`.env`**（gitignore，不提交）。
 - 本地 **`.env` 的活动键名**须与 **`.env.example` 的活动键名**完全一致（值可不同）。
-- **pytest 临时库**：集成测试不写入 `.env` 中的业务库名；`pytest` 会连 catalog 库（默认 `postgres`）创建 `blogn_pytest_<pid>`，结束后销毁。`DATABASE_URL` 仅用于解析主机/账号。可选 `BLOGN_PYTEST_ADMIN_DATABASE_URL` 覆盖 catalog 连接；`BLOGN_SKIP_TEST_DB_LIFECYCLE=1` 可跳过自动建库（调试用，慎用）。
+- **pytest 临时库**：集成测试不写入 `.env` 中的业务库名；当选中的测试位于 `tests/integration/`、标记为 `integration`，或使用真实数据库 fixture 时，`pytest` 会连 catalog 库（默认 `postgres`）创建 `blogn_pytest_<pid>`，结束后销毁。纯单元/静态测试不会自动创建临时库。`DATABASE_URL` 仅用于解析主机/账号。可选 `BLOGN_PYTEST_ADMIN_DATABASE_URL` 覆盖 catalog 连接；`BLOGN_SKIP_TEST_DB_LIFECYCLE=1` 可跳过自动建库，`BLOGN_FORCE_TEST_DB_LIFECYCLE=1` 可强制恢复启动即建库行为。
 
 ## 测试文件结构
 

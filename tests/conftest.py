@@ -268,6 +268,60 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+_TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
+_DB_LIFECYCLE_STARTED = False
+_REAL_DB_FIXTURE_NAMES = {
+    "real_async_engine",
+    "real_sync_engine",
+    "real_sync_session",
+    "real_sync_session_with_commit",
+    "real_async_session",
+    "real_async_session_with_commit",
+    "unified_db_manager",
+    "test_client",
+    "test_client_with_rollback",
+    "script_sync_session",
+    "setup_test_env",
+}
+
+
+def _truthy_env(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in _TRUTHY_ENV_VALUES
+
+
+def _db_lifecycle_disabled() -> bool:
+    return _truthy_env("BLOGN_SKIP_TEST_DB_LIFECYCLE")
+
+
+def _db_lifecycle_forced() -> bool:
+    return _truthy_env("BLOGN_FORCE_TEST_DB_LIFECYCLE")
+
+
+def _item_requires_test_database(item) -> bool:
+    path = str(getattr(item, "fspath", "")).replace("\\", "/")
+    if "/tests/integration/" in path or path.startswith("tests/integration/"):
+        return True
+    if item.get_closest_marker("integration") is not None:
+        return True
+    return bool(_REAL_DB_FIXTURE_NAMES.intersection(getattr(item, "fixturenames", ())))
+
+
+def _selected_items_need_test_database(items) -> bool:
+    if _db_lifecycle_forced():
+        return True
+    return any(_item_requires_test_database(item) for item in items)
+
+
+def _provision_test_database_once() -> None:
+    global _DB_LIFECYCLE_STARTED
+    if _DB_LIFECYCLE_STARTED:
+        return
+    from tests.db_lifecycle import provision_test_database
+
+    provision_test_database()
+    _DB_LIFECYCLE_STARTED = True
+
+
 def get_database_url() -> str:
     """当前 pytest 会话使用的数据库 URL（configure 后为临时测试库）。"""
     url = os.getenv("DATABASE_URL")
@@ -281,17 +335,24 @@ def get_sync_database_url() -> str:
 
 
 def pytest_configure(config):
-    """pytest 启动时创建独立临时库，避免写入 .env 中的生产库。"""
-    if os.getenv("BLOGN_SKIP_TEST_DB_LIFECYCLE", "").strip().lower() in ("1", "true", "yes"):
+    """可选强制创建独立临时库，避免写入 .env 中的生产库。"""
+    if _db_lifecycle_disabled():
         return
-    from tests.db_lifecycle import provision_test_database
+    if _db_lifecycle_forced():
+        _provision_test_database_once()
 
-    provision_test_database()
+
+def pytest_collection_modifyitems(config, items):
+    """只在选中的测试需要 PostgreSQL 时创建临时库。"""
+    if _db_lifecycle_disabled() or _DB_LIFECYCLE_STARTED:
+        return
+    if _selected_items_need_test_database(items):
+        _provision_test_database_once()
 
 
 def pytest_sessionfinish(session, exitstatus):
     """pytest 结束时删除临时测试库。"""
-    if os.getenv("BLOGN_SKIP_TEST_DB_LIFECYCLE", "").strip().lower() in ("1", "true", "yes"):
+    if _db_lifecycle_disabled() or not _DB_LIFECYCLE_STARTED:
         return
     from tests.db_lifecycle import destroy_test_database
 
