@@ -80,7 +80,7 @@ class TestAuthService:
         plain_password = "password123"
         bcrypt_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/8KzK5K2"
         
-        with patch('src.services.auth_service.bcrypt_verify') as mock_verify:
+        with patch('src.services.auth_service.verify_user_password') as mock_verify:
             mock_verify.return_value = True
             
             result = auth_service.verify_password(plain_password, bcrypt_hash)
@@ -88,51 +88,18 @@ class TestAuthService:
             assert result is True
             mock_verify.assert_called_once_with(plain_password, bcrypt_hash)
 
-    def test_verify_password_bcrypt_md5_fallback(self, auth_service):
-        """测试密码验证 - bcrypt格式，MD5回退"""
+    def test_verify_password_delegates_to_util(self, auth_service):
+        """测试密码验证委托给 password_hash 模块"""
         plain_password = "password123"
-        bcrypt_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/8KzK5K2"
-        md5_hash = hashlib.md5(plain_password.encode()).hexdigest()
-        
-        with patch('src.services.auth_service.bcrypt_verify') as mock_verify:
-            # 第一次调用返回False（直接验证失败）
-            # 第二次调用返回True（MD5+bcrypt验证成功）
-            mock_verify.side_effect = [False, True]
-            
-            result = auth_service.verify_password(plain_password, bcrypt_hash)
-            
-            assert result is True
-            assert mock_verify.call_count == 2
-            mock_verify.assert_any_call(plain_password, bcrypt_hash)
-            mock_verify.assert_any_call(md5_hash, bcrypt_hash)
+        stored_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/8KzK5K2"
 
-    def test_verify_password_non_bcrypt_format(self, auth_service):
-        """测试密码验证 - 非bcrypt格式"""
-        plain_password = "password123"
-        non_bcrypt_hash = "some_other_hash_format"
-        md5_hash = hashlib.md5(plain_password.encode()).hexdigest()
-        
-        with patch('src.services.auth_service.bcrypt_verify') as mock_verify:
-            mock_verify.return_value = True
-            
-            result = auth_service.verify_password(plain_password, non_bcrypt_hash)
-            
-            assert result is True
-            mock_verify.assert_called_once_with(md5_hash, non_bcrypt_hash)
-
-    def test_verify_password_failure(self, auth_service):
-        """测试密码验证失败"""
-        plain_password = "wrong_password"
-        bcrypt_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/8KzK5K2"
-        md5_hash = hashlib.md5(plain_password.encode()).hexdigest()
-        
-        with patch('src.services.auth_service.bcrypt_verify') as mock_verify:
+        with patch("src.services.auth_service.verify_user_password") as mock_verify:
             mock_verify.return_value = False
-            
-            result = auth_service.verify_password(plain_password, bcrypt_hash)
-            
+
+            result = auth_service.verify_password(plain_password, stored_hash)
+
             assert result is False
-            assert mock_verify.call_count == 2
+            mock_verify.assert_called_once_with(plain_password, stored_hash)
 
     @pytest.mark.asyncio
     async def test_authenticate_user_success_by_username(self, auth_service, mock_user_repo, mock_user):

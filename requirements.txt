@@ -1,6 +1,6 @@
 # Core dependencies
 # 重要：以下版本约束为避免已知兼容性问题，升级前请查文档与测试
-# - bcrypt: passlib 依赖 __about__，bcrypt 4.1+ 已移除，导致登录 401
+# - bcrypt: 须 <4.1（4.1+ 移除 __about__，曾导致 passlib 登录 401；现直接用 bcrypt）
 # - SQLAlchemy: sqlmodel 0.0.14 要求 <2.1
 # - pydantic: 与 FastAPI/sqlmodel/pydantic-settings 保持一致，避免 2.11+ 未验证变更
 fastapi==0.104.1
@@ -15,7 +15,6 @@ pydantic-settings==2.0.3
 pydantic>=2.0,<2.11
 portalocker==2.8.2
 PyJWT==2.8.0
-passlib[bcrypt]==1.7.4
 bcrypt>=4.0,<4.1
 python-multipart==0.0.6
 

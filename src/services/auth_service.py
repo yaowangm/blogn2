@@ -4,13 +4,12 @@ JWT认证服务
 提供用户登录、令牌生成和验证功能
 """
 
-import hashlib
 import jwt
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from fastapi import HTTPException, status
 import os
-from src.utils.password_hash import bcrypt_hash, bcrypt_verify
+from src.utils.password_hash import hash_user_password, verify_user_password
 from sqlmodel import select
 
 from src.models.user import User
@@ -34,30 +33,14 @@ class AuthService:
         1. 直接bcrypt哈希（旧格式）
         2. MD5+bcrypt双重哈希（新格式）
         """
-        try:
-            # 检查是否是bcrypt格式
-            if stored_hash.startswith('$2b$') and len(stored_hash) == 60:
-                # 尝试直接验证（旧格式）
-                if bcrypt_verify(plain_password, stored_hash):
-                    return True
-                
-                # 如果不是直接验证，尝试MD5+bcrypt双重哈希（新格式）
-                md5_hash = hashlib.md5(plain_password.encode()).hexdigest()
-                return bcrypt_verify(md5_hash, stored_hash)
-            else:
-                # 非bcrypt格式，尝试MD5+bcrypt双重哈希
-                md5_hash = hashlib.md5(plain_password.encode()).hexdigest()
-                return bcrypt_verify(md5_hash, stored_hash)
-        except Exception:
-            return False
+        return verify_user_password(plain_password, stored_hash)
     
     def hash_password(self, password: str) -> str:
         """
         哈希密码：password → MD5 → bcrypt
         用于新用户注册或密码修改
         """
-        md5_hash = hashlib.md5(password.encode()).hexdigest()
-        return bcrypt_hash(md5_hash)
+        return hash_user_password(password)
     
     async def authenticate_user(self, username_or_email: str, password: str, client_ip: str) -> Optional[User]:
         """

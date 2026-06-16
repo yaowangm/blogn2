@@ -104,12 +104,9 @@ def _import_all_models() -> None:
 
 def _hash_test_password(plain: str) -> str:
     """与 create_admin_user 一致：MD5 → bcrypt。"""
-    import hashlib
+    from src.utils.password_hash import hash_user_password
 
-    from src.utils.password_hash import bcrypt_hash
-
-    md5_hash = hashlib.md5(plain.encode()).hexdigest()
-    return bcrypt_hash(md5_hash)
+    return hash_user_password(plain)
 
 
 def _align_schema_with_legacy(conn) -> None:
