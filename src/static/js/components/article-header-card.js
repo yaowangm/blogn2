@@ -673,7 +673,7 @@ class ArticleHeaderCard extends BaseComponent {
                 .card { margin-bottom: 0; }
 
                 .card-body {
-                    padding: calc(var(--spacing-3) * 0.6) var(--spacing-4);
+                    padding: 20px;
                 }
 
                 .article-title h1 {

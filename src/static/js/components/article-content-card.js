@@ -501,7 +501,7 @@ class ArticleContentCard extends BaseComponent {
                 .card { margin-bottom: 0; }
 
                 .card-body {
-                    padding: calc((var(--spacing-3) + 5px) * 0.6) calc(var(--spacing-4) + 5px);
+                    padding: 20px;
                 }
 
                 :host {

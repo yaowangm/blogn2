@@ -1175,7 +1175,7 @@ class BlogListCard extends BaseComponent {
                     border: none;
                     border-bottom: 1px solid var(--gray-100);
                     margin: 0;
-                    padding: var(--spacing-3) calc(var(--spacing-4) + 3px);
+                    padding: var(--spacing-3) 20px;
                 }
 
                 .post-item:last-child {
