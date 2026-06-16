@@ -13,7 +13,6 @@
 
 import sys
 import os
-import hashlib
 import getpass
 import argparse
 from pathlib import Path
