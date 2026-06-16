@@ -1,7 +1,8 @@
 """
 Pytest 专用：基于 DATABASE_URL 中的连接信息创建/销毁临时 PostgreSQL 库。
 
-生产库名仅用于解析主机、用户、密码；实际测试始终落在 blogn_pytest_<pid> 上。
+DATABASE_URL 仅用于解析主机/账号；CREATE/DROP 连 catalog 库（默认 postgres），
+不依赖其中的业务库名（如 blogn）是否存在。
 """
 
 from __future__ import annotations
@@ -73,9 +74,16 @@ def _normalize_local_database_url(database_url: str, database_name: str | None =
     return f"{driver}://{user}@/{db}"
 
 
+_ADMIN_CATALOG_DATABASE = "postgres"
+
+
 def _admin_sync_url(database_url: str) -> str:
-    """CREATE/DROP DATABASE 时使用的连接：保持 .env 原库名（如 blogn），勿切到 postgres。"""
-    return _normalize_local_database_url(_sync_url(database_url))
+    """CREATE/DROP DATABASE 时连接 catalog 库，勿依赖 .env 业务库是否存在。"""
+    override = os.getenv("BLOGN_PYTEST_ADMIN_DATABASE_URL", "").strip()
+    if override:
+        return _normalize_local_database_url(_sync_url(override))
+
+    return _normalize_local_database_url(_sync_url(database_url), _ADMIN_CATALOG_DATABASE)
 
 
 def _database_url_with_name(database_url: str, database_name: str) -> str:

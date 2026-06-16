@@ -36,10 +36,9 @@ class TestBERTVectorizationPerformance:
     """BERT向量化性能测试类"""
 
     @pytest.fixture(autouse=True)
-    async def setup_performance_test_data(self, real_async_session, test_data_tracker):
+    async def setup_performance_test_data(self, real_async_session):
         """设置性能测试数据"""
         self.session = real_async_session
-        self.tracker = test_data_tracker
 
         # 创建测试用户
         test_user = User(
@@ -50,7 +49,6 @@ class TestBERTVectorizationPerformance:
         )
         self.session.add(test_user)
         await self.session.flush()
-        self.tracker.add_user(test_user.id)
         self.test_user_id = test_user.id
 
         # 创建大量测试文章用于性能测试
@@ -66,10 +64,6 @@ class TestBERTVectorizationPerformance:
             self.test_articles.append(article)
 
         await self.session.flush()
-
-        # 记录文章ID用于清理
-        for article in self.test_articles:
-            self.tracker.add_article(article.id)
 
         await self.session.commit()
 

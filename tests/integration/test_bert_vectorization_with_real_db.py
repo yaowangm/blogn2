@@ -36,10 +36,9 @@ class TestBERTVectorizationIntegration:
     """BERT向量化集成测试类"""
     
     @pytest.fixture(autouse=True)
-    async def setup_test_data(self, real_async_session, test_data_tracker):
+    async def setup_test_data(self, real_async_session):
         """设置测试数据"""
         self.session = real_async_session
-        self.tracker = test_data_tracker
         
         # 创建测试用户
         test_user = User(
@@ -50,7 +49,6 @@ class TestBERTVectorizationIntegration:
         )
         self.session.add(test_user)
         await self.session.flush()
-        self.tracker.add_user(test_user.id)
         self.test_user_id = test_user.id
         
         # 创建测试文章
@@ -62,7 +60,6 @@ class TestBERTVectorizationIntegration:
         )
         self.session.add(test_article)
         await self.session.flush()
-        self.tracker.add_article(test_article.id)
         self.test_article_id = test_article.id
         
         # 创建测试评论
@@ -75,7 +72,6 @@ class TestBERTVectorizationIntegration:
         )
         self.session.add(test_comment)
         await self.session.flush()
-        self.tracker.add_comment(test_comment.id)
         self.test_comment_id = test_comment.id
         
         await self.session.commit()
@@ -397,10 +393,6 @@ class TestBERTVectorizationIntegration:
             test_articles.append(article)
         
         await self.session.flush()
-        
-        # 记录文章ID用于清理
-        for article in test_articles:
-            self.tracker.add_article(article.id)
         
         await self.session.commit()
         

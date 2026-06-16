@@ -17,7 +17,7 @@ class TestArticleCommentsSimple:
     """文章评论功能简单测试类 - 真实数据库版本"""
 
     @pytest.mark.integration
-    def test_create_article_comment_basic(self, test_client, real_sync_session_with_commit, test_data_tracker):
+    def test_create_article_comment_basic(self, test_client, real_sync_session_with_commit):
         """测试创建文章评论的基本功能"""
         # 创建测试用户
         user = User(
@@ -28,7 +28,6 @@ class TestArticleCommentsSimple:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         
         # 创建测试项目
         project = Project(
@@ -40,7 +39,6 @@ class TestArticleCommentsSimple:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        test_data_tracker.add_project(project.id)  # 跟踪项目ID
         
         # 创建测试文章
         article = ProjectItem(
@@ -55,7 +53,6 @@ class TestArticleCommentsSimple:
         )
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        test_data_tracker.add_article(article.id)  # 跟踪文章ID
         
         # 临时提交数据，让API调用能找到
         real_sync_session_with_commit.commit()
@@ -82,7 +79,6 @@ class TestArticleCommentsSimple:
         assert data["success"] is True
         assert "comment_id" in data
         assert data["message"] == "评论创建成功"
-        test_data_tracker.add_comment(int(data["comment_id"]))
 
         # 清除 session 缓存后再查，确保读到 API 已提交的数据
         real_sync_session_with_commit.expire_all()
@@ -99,7 +95,7 @@ class TestArticleCommentsSimple:
         # 数据将在测试结束时自动回滚，无需手动删除
 
     @pytest.mark.integration
-    def test_get_article_comments_basic(self, test_client, real_sync_session_with_commit, test_data_tracker):
+    def test_get_article_comments_basic(self, test_client, real_sync_session_with_commit):
         """测试获取文章评论列表的基本功能"""
         # 创建测试用户
         user = User(
@@ -110,7 +106,6 @@ class TestArticleCommentsSimple:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        test_data_tracker.add_user(user.id)
 
         # 创建测试项目
         project = Project(
@@ -122,7 +117,6 @@ class TestArticleCommentsSimple:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        test_data_tracker.add_project(project.id)
 
         # 创建测试文章
         article = ProjectItem(
@@ -137,7 +131,6 @@ class TestArticleCommentsSimple:
         )
         real_sync_session_with_commit.add(article)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        test_data_tracker.add_article(article.id)
 
         # 创建测试评论
         comment = Post(
@@ -156,7 +149,6 @@ class TestArticleCommentsSimple:
         )
         real_sync_session_with_commit.add(comment)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        test_data_tracker.add_comment(comment.id)
 
         # 临时提交数据，让API调用能找到
         real_sync_session_with_commit.commit()

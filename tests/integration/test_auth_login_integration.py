@@ -28,7 +28,7 @@ class TestAuthLoginIntegration:
     """真实 HTTP + 数据库的登录流程。"""
 
     def test_login_success_returns_tokens(
-        self, test_client, real_sync_session_with_commit: Session, test_data_tracker
+        self, test_client, real_sync_session_with_commit: Session
     ):
         username = _unique_username()
         plain_password = "IntegrationTest_Pw1!"
@@ -42,7 +42,6 @@ class TestAuthLoginIntegration:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()
-        test_data_tracker.add_user(user.id)
         real_sync_session_with_commit.commit()
 
         response = test_client.post(
@@ -58,7 +57,7 @@ class TestAuthLoginIntegration:
         assert (data.get("user") or {}).get("name", "").strip() == username
 
     def test_login_wrong_password_returns_401(
-        self, test_client, real_sync_session_with_commit: Session, test_data_tracker
+        self, test_client, real_sync_session_with_commit: Session
     ):
         username = _unique_username()
         plain_password = "Right_Pw_1!"
@@ -72,7 +71,6 @@ class TestAuthLoginIntegration:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()
-        test_data_tracker.add_user(user.id)
         real_sync_session_with_commit.commit()
 
         response = test_client.post(
@@ -83,7 +81,7 @@ class TestAuthLoginIntegration:
         assert "用户名或密码错误" in response.json().get("detail", "")
 
     def test_login_by_email(
-        self, test_client, real_sync_session_with_commit: Session, test_data_tracker
+        self, test_client, real_sync_session_with_commit: Session
     ):
         username = _unique_username()
         email = f"{username}@mail.example.invalid"
@@ -98,7 +96,6 @@ class TestAuthLoginIntegration:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()
-        test_data_tracker.add_user(user.id)
         real_sync_session_with_commit.commit()
 
         response = test_client.post(
