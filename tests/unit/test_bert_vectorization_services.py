@@ -753,6 +753,61 @@ class TestHierarchicalSearchService:
         assert page2["total"] == 4
         assert page2["has_more"] is False
 
+    @pytest.mark.asyncio
+    async def test_search_queries_use_bound_params(self, search_service):
+        """搜索 SQL 应通过参数绑定传递动态值，而不是字符串拼接。"""
+        article_rows = MagicMock()
+        article_rows.fetchall.return_value = []
+        article_count = MagicMock()
+        article_count.fetchone.return_value = (0,)
+
+        search_service.session.exec = AsyncMock(side_effect=[article_rows, article_count])
+        await search_service._search_articles("[0.1,0.2]", "relevance", page=2, limit=7, query="测试")
+
+        article_call = search_service.session.exec.call_args_list[0]
+        article_count_call = search_service.session.exec.call_args_list[1]
+        assert "query_vector_json" in article_call.kwargs["params"]
+        assert article_call.kwargs["params"]["limit"] == 7
+        assert article_call.kwargs["params"]["offset"] == 7
+        assert article_call.kwargs["params"]["adjusted_threshold"] >= 0.1
+        assert article_count_call.kwargs["params"]["min_segment_length"] >= 3
+        assert "[0.1,0.2]" not in str(article_call.args[0])
+
+        search_service.session.exec.reset_mock()
+
+        comment_rows = MagicMock()
+        comment_rows.fetchall.return_value = []
+        comment_count = MagicMock()
+        comment_count.fetchone.return_value = (0,)
+
+        search_service.session.exec = AsyncMock(side_effect=[comment_rows, comment_count])
+        await search_service._search_comments("[0.1,0.2]", "relevance", page=3, limit=5, query="测试")
+
+        comment_call = search_service.session.exec.call_args_list[0]
+        assert comment_call.kwargs["params"]["query_vector_json"] == "[0.1,0.2]"
+        assert comment_call.kwargs["params"]["limit"] == 5
+        assert comment_call.kwargs["params"]["offset"] == 10
+        assert "[0.1,0.2]" not in str(comment_call.args[0])
+
+        search_service.session.exec.reset_mock()
+
+        hybrid_rows = MagicMock()
+        hybrid_rows.fetchall.return_value = [
+            (1, "标题", "正文", "作者", datetime(2024, 1, 1, 10, 0, 0), 0.9, "正文", "content"),
+        ]
+        hybrid_empty = MagicMock()
+        hybrid_empty.fetchall.return_value = []
+
+        search_service.session.exec = AsyncMock(side_effect=[hybrid_rows, hybrid_empty])
+        await search_service.hybrid_search_articles("[0.1,0.2]", "relevance", page=1, limit=4, query="测试")
+
+        hybrid_call = search_service.session.exec.call_args_list[0]
+        assert hybrid_call.kwargs["params"]["query_vector_json"] == "[0.1,0.2]"
+        assert hybrid_call.kwargs["params"]["batch_limit"] >= 50
+        assert hybrid_call.kwargs["params"]["batch_offset"] == 0
+        assert hybrid_call.kwargs["params"]["title_only_min_similarity"] == TITLE_ONLY_MIN_SIMILARITY
+        assert "[0.1,0.2]" not in str(hybrid_call.args[0])
+
 
 class TestVectorizationIntegration:
     """向量化集成测试（模拟环境）"""

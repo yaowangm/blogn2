@@ -266,7 +266,7 @@ class HierarchicalSearchService:
         min_segment_length = max(3, keyword_length)
 
         # 有正文：按动态阈值；无正文：仅当标题与查询相似度 >= TITLE_ONLY_MIN_SIMILARITY 时保留（标题即“邱华栋”可搜到，“上头像”等泛匹配排除）
-        sql = f"""
+        sql = text("""
             WITH all_segments AS (
                 -- 标题作为特殊片段（权重更高）
                 SELECT
@@ -301,7 +301,7 @@ class HierarchicalSearchService:
                 LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
                 WHERE pi.status = 1
                 AND csv.confidence_score >= 0.8
-                AND LENGTH(TRIM(csv.segment_text)) >= {min_segment_length}
+                AND LENGTH(TRIM(csv.segment_text)) >= :min_segment_length
             ),
             best_segments AS (
                 -- 选择每篇文章中相似度最高的片段
@@ -309,18 +309,18 @@ class HierarchicalSearchService:
                     projectitem_id,
                     segment_text,
                     segment_type,
-                    (1 - (segment_vector <=> '{query_vector_json}'::vector)) as segment_similarity,
+                    (1 - (segment_vector <=> CAST(:query_vector_json AS vector))) as segment_similarity,
                     segment_weight
                 FROM all_segments
-                WHERE (1 - (segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
-                ORDER BY projectitem_id, (1 - (segment_vector <=> '{query_vector_json}'::vector)) DESC
+                WHERE (1 - (segment_vector <=> CAST(:query_vector_json AS vector))) >= :adjusted_threshold
+                ORDER BY projectitem_id, (1 - (segment_vector <=> CAST(:query_vector_json AS vector))) DESC
             ),
             article_scores AS (
                 -- 文章级相似度（仅作为参考，权重很低）
                 SELECT
                     av.projectitem_id,
-                    (1 - (av.title_vector <=> '{query_vector_json}'::vector)) * 0.3 +
-                    (1 - (av.content_vector <=> '{query_vector_json}'::vector)) * 0.7 as article_similarity
+                    (1 - (av.title_vector <=> CAST(:query_vector_json AS vector))) * 0.3 +
+                    (1 - (av.content_vector <=> CAST(:query_vector_json AS vector))) * 0.7 as article_similarity
                 FROM article_vectors av
                 LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
                 WHERE pi.status = 1
@@ -341,23 +341,29 @@ class HierarchicalSearchService:
                 LEFT JOIN projectitem pi ON bs.projectitem_id = pi.id
                 LEFT JOIN users u ON pi.userid = u.id
                 LEFT JOIN article_scores art ON bs.projectitem_id = art.projectitem_id
-                WHERE (COALESCE(art.article_similarity, 0) * 0.1 + bs.segment_similarity * 0.9) >= {TITLE_ONLY_MIN_SIMILARITY}
+                WHERE (COALESCE(art.article_similarity, 0) * 0.1 + bs.segment_similarity * 0.9) >= :title_only_min_similarity
             )
             SELECT id, title, content, author, createtime, relevance_score, best_match_text, match_type
             FROM ranked
             ORDER BY relevance_score DESC
-            LIMIT {{batch_limit}} OFFSET {{batch_offset}}
-        """
+            LIMIT :batch_limit OFFSET :batch_offset
+        """)
 
         # 过量拉取再过滤，保证每页返回固定条数：每批取 batch_size 条，过滤后累积；拉取到无更多数据为止，用实际有效条数作 total
         # batch_size 上限用于避免外部传入较大 limit 时 DB 批量拉取过大
         batch_size = max(min(limit * 5, 250), 50)
         all_valid: List[Dict[str, Any]] = []
         batch_offset = 0
+        sql_params = {
+            "query_vector_json": query_vector_json,
+            "adjusted_threshold": adjusted_threshold,
+            "min_segment_length": min_segment_length,
+            "title_only_min_similarity": TITLE_ONLY_MIN_SIMILARITY,
+        }
 
         while True:
-            batch_sql = sql.replace("{batch_limit}", str(batch_size)).replace("{batch_offset}", str(batch_offset))
-            result = await self.session.exec(text(batch_sql))
+            batch_params = {**sql_params, "batch_limit": batch_size, "batch_offset": batch_offset}
+            result = await self.session.exec(sql, params=batch_params)
             batch_items = result.fetchall()
             if not batch_items:
                 break
@@ -643,41 +649,56 @@ class HierarchicalSearchService:
         keyword_length = len(query.strip()) if query else 0
         min_segment_length = max(3, keyword_length)
 
-        sql = f"""
+        sql = text("""
             SELECT DISTINCT ON (av.projectitem_id)
                 av.projectitem_id as id,
                 pi.name as title,
                 pi.comment as content,
                 u.name as author,
                 pi.createtime,
-                (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) as relevance_score
+                (1 - (csv.segment_vector <=> CAST(:query_vector_json AS vector))) as relevance_score
             FROM article_vectors av
             LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
             LEFT JOIN users u ON pi.userid = u.id
             LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
             WHERE pi.status = 1
             AND pi.comment IS NOT NULL AND LENGTH(TRIM(pi.comment)) > 0
-            AND (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
-            AND LENGTH(TRIM(csv.segment_text)) >= {min_segment_length}
-            ORDER BY av.projectitem_id, (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) DESC
-            LIMIT {limit} OFFSET {offset}
-            """
+            AND (1 - (csv.segment_vector <=> CAST(:query_vector_json AS vector))) >= :adjusted_threshold
+            AND LENGTH(TRIM(csv.segment_text)) >= :min_segment_length
+            ORDER BY av.projectitem_id, (1 - (csv.segment_vector <=> CAST(:query_vector_json AS vector))) DESC
+            LIMIT :limit OFFSET :offset
+            """)
 
-        result = await self.session.exec(text(sql))
+        params = {
+            "query_vector_json": query_vector_json,
+            "adjusted_threshold": adjusted_threshold,
+            "min_segment_length": min_segment_length,
+            "limit": limit,
+            "offset": offset,
+        }
+
+        result = await self.session.exec(sql, params=params)
         items = result.fetchall()
 
         # 获取总数 - 简化查询，使用相同的过滤条件
-        count_sql = f"""
+        count_sql = text("""
         SELECT COUNT(DISTINCT av.projectitem_id)
         FROM article_vectors av
         LEFT JOIN projectitem pi ON av.projectitem_id = pi.id
         LEFT JOIN content_segment_vectors csv ON av.id = csv.article_vector_id
         WHERE pi.status = 1
         AND pi.comment IS NOT NULL AND LENGTH(TRIM(pi.comment)) > 0
-        AND (1 - (csv.segment_vector <=> '{query_vector_json}'::vector)) >= {adjusted_threshold}
-        AND LENGTH(TRIM(csv.segment_text)) >= {min_segment_length}
-        """
-        count_result = await self.session.exec(text(count_sql))
+        AND (1 - (csv.segment_vector <=> CAST(:query_vector_json AS vector))) >= :adjusted_threshold
+        AND LENGTH(TRIM(csv.segment_text)) >= :min_segment_length
+        """)
+        count_result = await self.session.exec(
+            count_sql,
+            params={
+                "query_vector_json": query_vector_json,
+                "adjusted_threshold": adjusted_threshold,
+                "min_segment_length": min_segment_length,
+            },
+        )
         total = count_result.fetchone()[0]
 
         formatted = [self._format_article_result(item) for item in items]
@@ -695,34 +716,41 @@ class HierarchicalSearchService:
         offset = (page - 1) * limit
 
         # 使用向量搜索
-        sql = f"""
+        sql = text("""
             SELECT
                 p.id,
                 p.subject as title,
                 p.content,
                 u.name as author,
                 p.posttime,
-                (1 - (cv.content_vector <=> '{query_vector_json}'::vector)) as relevance_score,
+                (1 - (cv.content_vector <=> CAST(:query_vector_json AS vector))) as relevance_score,
                 p.projectitemid as projectitem_id
             FROM comment_vectors cv
             LEFT JOIN post p ON cv.post_id = p.id
             LEFT JOIN users u ON p.userid = u.id
             WHERE p.status = 1
             ORDER BY relevance_score DESC
-            LIMIT {limit} OFFSET {offset}
-            """
+            LIMIT :limit OFFSET :offset
+            """)
 
-        result = await self.session.exec(text(sql))
+        result = await self.session.exec(
+            sql,
+            params={
+                "query_vector_json": query_vector_json,
+                "limit": limit,
+                "offset": offset,
+            },
+        )
         items = result.fetchall()
 
         # 获取总数
-        count_sql = """
+        count_sql = text("""
         SELECT COUNT(*)
         FROM comment_vectors cv
         LEFT JOIN post p ON cv.post_id = p.id
         WHERE p.status = 1
-        """
-        count_result = await self.session.exec(text(count_sql))
+        """)
+        count_result = await self.session.exec(count_sql)
         total = count_result.fetchone()[0]
 
         return {
