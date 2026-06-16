@@ -6,7 +6,7 @@
 
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select
 from src.models.attachment import Attachment
 
 class AttachmentRepository:

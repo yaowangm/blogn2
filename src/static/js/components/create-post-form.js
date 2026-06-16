@@ -180,34 +180,7 @@ class CreatePostForm extends BaseComponent {
     updatePreview() {
         const previewContent = this.shadowRoot.querySelector('.preview-content');
         const content = this.formData.comment || '';
-        
-        if (!previewContent) {
-            console.error('preview-content element not found!');
-            return;
-        }
-        
-        if (!content.trim()) {
-            previewContent.innerHTML = '<p class="no-content">暂无内容</p>';
-            return;
-        }
-        
-        if (typeof MarkdownUtils === 'undefined') {
-            console.error('MarkdownUtils is not available');
-            previewContent.innerHTML = '<p style="color: red;">错误：Markdown 解析库未加载，请刷新页面重试</p>';
-            return;
-        }
-        
-        try {
-            MarkdownUtils.ensureKatexStyles(this.shadowRoot);
-            const html = MarkdownUtils.parseMarkdown(content);
-
-            previewContent.innerHTML = HtmlUtils.processRichTextLinks(html);
-        } catch (error) {
-            console.error('Markdown parsing failed in preview', error);
-            this.logError('Markdown parsing failed in preview', error);
-            // 如果Markdown解析失败，显示原始文本
-            previewContent.innerHTML = `<pre>${this.escapeHtml(content)}</pre>`;
-        }
+        this.renderMarkdownPreview(previewContent, content);
     }
 
 

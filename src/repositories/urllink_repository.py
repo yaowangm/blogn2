@@ -1,7 +1,7 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.models.urllink import UrlLink
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 
 class UrlLinkRepository:
     """友情链接数据访问层"""

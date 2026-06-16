@@ -11,6 +11,7 @@ EDIT_ARTICLE_HTML = PROJECT_ROOT / "src" / "static" / "edit-article.html"
 ARTICLE_CONTENT_CARD_JS = (
     PROJECT_ROOT / "src" / "static" / "js" / "components" / "article-content-card.js"
 )
+BASE_COMPONENT_JS = PROJECT_ROOT / "src" / "static" / "js" / "components" / "base-component.js"
 CREATE_POST_FORM_JS = PROJECT_ROOT / "src" / "static" / "js" / "components" / "create-post-form.js"
 EDIT_POST_FORM_JS = PROJECT_ROOT / "src" / "static" / "js" / "components" / "edit-post-form.js"
 DOC_MARKDOWN_KATEX = PROJECT_ROOT / "doc" / "MARKDOWN_KATEX.md"
@@ -45,9 +46,12 @@ class TestMarkdownUtilsJs:
         assert 'data-math-idx' in content
 
     def test_components_use_markdown_utils(self):
-        for path in (ARTICLE_CONTENT_CARD_JS, CREATE_POST_FORM_JS, EDIT_POST_FORM_JS):
+        for path in (ARTICLE_CONTENT_CARD_JS, BASE_COMPONENT_JS):
             text = path.read_text(encoding="utf-8")
             assert "MarkdownUtils.parseMarkdown" in text
+        for path in (CREATE_POST_FORM_JS, EDIT_POST_FORM_JS):
+            text = path.read_text(encoding="utf-8")
+            assert "renderMarkdownPreview" in text
 
     def test_html_pages_load_local_katex_not_cdn(self):
         for path in (ARTICLE_HTML, CREATE_POST_HTML, EDIT_ARTICLE_HTML):

@@ -2,7 +2,6 @@ from sqlmodel import select, func, or_
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import aliased
 from typing import List, Optional, Dict, Any
-from datetime import datetime
 from src.constants import ArticleStatus, ProjectStatus
 from src.models.post import Post
 from src.models.project import Project
@@ -209,23 +208,40 @@ class PostRepository:
         messages = []
 
         for message, author_name, reply_user_name in result.all():
-            messages.append({
-                "id": message.id,
-                "subject": message.subject,
-                "content": message.content,
-                "userid": message.userid,
-                "projectitemid": message.projectitemid,
-                "rootid": message.rootid,
-                "post_time": message.posttime,
-                "status": message.status,
-                "lastreplyid": message.lastreplyid,
-                "replycount": message.replycount or 0,
-                "author_name": self._resolve_author_name(message.userid, author_name),
-                "last_reply_author": self._resolve_last_reply_author(message.lastreplyid, reply_user_name),
-                "reply_count": message.replycount or 0,
-            })
+            messages.append(self._build_message_summary(message, author_name, reply_user_name))
 
         return messages
+
+    def _build_message_summary(
+        self,
+        message: Post,
+        author_name: str | None,
+        reply_user_name: str | None,
+        *,
+        include_pagination_fields: bool = False,
+    ) -> dict:
+        summary = {
+            "id": message.id,
+            "subject": message.subject,
+            "content": message.content,
+            "userid": message.userid,
+            "projectitemid": message.projectitemid,
+            "rootid": message.rootid,
+            "post_time": message.posttime,
+            "status": message.status,
+            "lastreplyid": message.lastreplyid,
+            "replycount": message.replycount or 0,
+            "author_name": self._resolve_author_name(message.userid, author_name),
+            "last_reply_author": self._resolve_last_reply_author(message.lastreplyid, reply_user_name),
+            "reply_count": message.replycount or 0,
+        }
+        if include_pagination_fields:
+            summary.update({
+                "last_reply_time": message.lastreplytime,
+                "size": message.size or 0,
+                "hits": message.hits or 0,
+            })
+        return summary
 
     async def get_recent_messages(self, limit: int = 5) -> List[dict]:
         """获取最近的留言本记录（别名方法）"""
@@ -240,24 +256,14 @@ class PostRepository:
         messages = []
 
         for message, author_name, reply_user_name in result.all():
-            messages.append({
-                "id": message.id,
-                "subject": message.subject,
-                "content": message.content,
-                "userid": message.userid,
-                "projectitemid": message.projectitemid,
-                "rootid": message.rootid,
-                "post_time": message.posttime,
-                "last_reply_time": message.lastreplytime,
-                "status": message.status,
-                "lastreplyid": message.lastreplyid,
-                "replycount": message.replycount or 0,
-                "author_name": self._resolve_author_name(message.userid, author_name),
-                "last_reply_author": self._resolve_last_reply_author(message.lastreplyid, reply_user_name),
-                "reply_count": message.replycount or 0,
-                "size": message.size or 0,
-                "hits": message.hits or 0,
-            })
+            messages.append(
+                self._build_message_summary(
+                    message,
+                    author_name,
+                    reply_user_name,
+                    include_pagination_fields=True,
+                )
+            )
 
         return messages
 

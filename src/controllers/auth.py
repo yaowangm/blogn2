@@ -5,9 +5,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import Dict, Any, Optional
-from datetime import timedelta
-from sqlmodel.ext.asyncio.session import AsyncSession
+from typing import Optional
 
 from src.models.auth import (
     LoginRequest, LoginResponse, TokenRefreshRequest,
@@ -401,5 +399,4 @@ async def validate_reset_token(
         await auth_security_service.check_reset_token_validate_rate_limit(record.user_id)
     valid = record is not None
     return ValidateResetTokenResponse(valid=valid)
-
 

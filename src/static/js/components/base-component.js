@@ -408,6 +408,40 @@ class BaseComponent extends HTMLElement {
     }
 
     /**
+     * 将文章表单的 Markdown 正文渲染到预览容器。
+     * create/edit 表单共用，保持空内容、库缺失和解析失败时的原有展示。
+     */
+    renderMarkdownPreview(previewContent, content) {
+        if (!previewContent) {
+            console.error('preview-content element not found!');
+            return;
+        }
+
+        if (!content.trim()) {
+            previewContent.innerHTML = '<p class="no-content">暂无内容</p>';
+            return;
+        }
+
+        if (typeof MarkdownUtils === 'undefined') {
+            console.error('MarkdownUtils is not available');
+            previewContent.innerHTML = '<p style="color: red;">错误：Markdown 解析库未加载，请刷新页面重试</p>';
+            return;
+        }
+
+        try {
+            MarkdownUtils.ensureKatexStyles(this.shadowRoot);
+            const html = MarkdownUtils.parseMarkdown(content);
+
+            previewContent.innerHTML = HtmlUtils.processRichTextLinks(html);
+        } catch (error) {
+            console.error('Markdown parsing failed in preview', error);
+            this.logError('Markdown parsing failed in preview', error);
+            // 如果Markdown解析失败，显示原始文本
+            previewContent.innerHTML = `<pre>${this.escapeHtml(content)}</pre>`;
+        }
+    }
+
+    /**
      * 创建加载状态HTML
      * 统一的加载状态显示
      */
@@ -702,4 +736,4 @@ class BaseComponent extends HTMLElement {
 })();
 
 // 注册基础组件（不直接使用，仅作为基类）
-customElements.define('base-component', BaseComponent); 
+customElements.define('base-component', BaseComponent);

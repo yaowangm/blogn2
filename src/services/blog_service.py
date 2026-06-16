@@ -1,6 +1,4 @@
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
-import os
 from src.repositories.user_repository import UserRepository
 from src.repositories.project_item_repository import ProjectItemRepository
 from src.repositories.project_repository import ProjectRepository
@@ -13,10 +11,10 @@ from src.utils.text_utils import plain_text_excerpt
 
 class BlogService(BaseService):
     """博客业务逻辑服务类
-    
+
     提供博客相关的业务逻辑处理，包括最新加入、最热门、最近评论等功能。
     """
-    
+
     def __init__(self, user_repo: UserRepository, project_item_repo: ProjectItemRepository, project_repo: ProjectRepository, post_repo: PostRepository, glovar_repo: Optional[GlovarRepository] = None):
         self.user_repo = user_repo
         self.project_item_repo = project_item_repo
@@ -397,4 +395,3 @@ class BlogService(BaseService):
                 "page_size": page_size,
                 "total_pages": 0
             }
-    
