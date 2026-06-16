@@ -104,11 +104,8 @@ class CommentHandler:
         )
         
         try:
-            # 创建评论（包含向量化处理）
+            # 创建评论（post_repo.create 内已通过 StatsService 更新评论统计）
             await post_repo.create(comment)
-            
-            # 更新文章的评论数
-            await project_item_repo.increment_comment_count(article_id)
             
             # 提交事务（所有操作在同一个事务中）
             await session.commit()
@@ -118,6 +115,15 @@ class CommentHandler:
             await clear_article_comments_cache(article_id)
             if article.projectid:
                 await invalidate_project_recent_comments_cache(article.projectid)
+
+            from src.utils.vectorization_tasks import schedule_comment_vectorization
+
+            schedule_comment_vectorization(
+                comment.id,
+                comment.subject or "",
+                comment.content,
+                comment.projectitemid,
+            )
 
             return {
                 "success": True,
@@ -192,11 +198,8 @@ class CommentHandler:
                 logger = logging.getLogger(__name__)
                 logger.error(f"删除评论 {comment_id} 向量化数据失败: {e}")
             
-            # 删除评论
+            # 删除评论（post_repo.delete 内已通过 StatsService 更新评论统计）
             await post_repo.delete(comment_id)
-            
-            # 更新文章的评论数
-            await project_item_repo.decrement_comment_count(article_id)
             
             # 提交事务（所有操作在同一个事务中）
             await session.commit()

@@ -12,6 +12,7 @@ class HeaderComponent extends BaseComponent {
 
 
     async connectedCallback() {
+        this.renderSkeleton();
         await this.loadMetadata();
         await this.checkAuthStatus();
         this.render();
@@ -25,6 +26,24 @@ class HeaderComponent extends BaseComponent {
         this.loadTokenManager();
     }
 
+    renderSkeleton() {
+        this.shadowRoot.innerHTML = `
+            <style>
+                :host { display: block; background: var(--white); border-bottom: 1px solid var(--gray-200); box-shadow: var(--shadow-sm); position: sticky; top: 0; z-index: 100; }
+                :host, :host * { box-sizing: border-box; }
+                .header-container { box-sizing: border-box; width: 100%; max-width: var(--layout-max-width, 1200px); margin: 0 auto; padding: 0 var(--layout-gutter, var(--spacing-4)); display: flex; align-items: center; justify-content: space-between; height: 64px; }
+                .skeleton-block { background: var(--gray-200); border-radius: var(--radius-md); animation: pulse 1.2s ease-in-out infinite; }
+                .skeleton-logo { width: 120px; height: 28px; }
+                .skeleton-actions { width: 180px; height: 32px; }
+                @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+            </style>
+            <div class="header-container">
+                <div class="skeleton-block skeleton-logo"></div>
+                <div class="skeleton-block skeleton-actions"></div>
+            </div>
+        `;
+    }
+
     render() {
         const siteName = this.metadata?.site_name || 'BlogN';
         const logoUrl = this.getLogoUrl();
@@ -33,12 +52,14 @@ class HeaderComponent extends BaseComponent {
         const hasIcons = typeof Icons !== 'undefined';
         const searchIcon = hasIcons ? Icons.search : this.getDefaultSearchIcon();
         const userHomeIcon = hasIcons ? Icons.userHome : this.getDefaultUserHomeIcon();
-        const blogIcon = hasIcons ? Icons.userHome : this.getDefaultHomeIcon();
+        const blogIcon = hasIcons ? Icons.blog : this.getDefaultHomeIcon();
         const settingsIcon = hasIcons && Icons.settings ? Icons.settings : this.getDefaultSettingsIcon();
         const logoutIcon = hasIcons ? Icons.logout : this.getDefaultLogoutIcon();
 
         this.shadowRoot.innerHTML = `
             <style>
+                @import url('/static/css/common-components.css');
+
                 :host {
                     display: block;
                     background: var(--white);
@@ -50,9 +71,11 @@ class HeaderComponent extends BaseComponent {
                 }
 
                 .header-container {
-                    max-width: 1200px;
+                    box-sizing: border-box;
+                    width: 100%;
+                    max-width: var(--layout-max-width, 1200px);
                     margin: 0 auto;
-                    padding: 0 var(--spacing-4);
+                    padding: 0 var(--layout-gutter, var(--spacing-4));
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
@@ -222,77 +245,17 @@ class HeaderComponent extends BaseComponent {
                     border-radius: 50%;
                 }
 
-                .search-button {
-                    background: transparent;
-                    border: none;
-                    color: var(--gray-600);
-                    padding: var(--spacing-2);
-                    border-radius: var(--radius-md);
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                }
-
-                .search-button:hover {
-                    background: var(--gray-100);
-                    color: var(--gray-800);
-                }
-
-                .btn {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: var(--spacing-2) var(--spacing-4);
-                    font-size: var(--font-size-sm);
-                    font-weight: 500;
-                    border-radius: var(--radius-md);
-                    border: 1px solid transparent;
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                    text-decoration: none;
-                    line-height: 1;
-                }
-
-                .btn-primary {
-                    background-color: var(--primary-color);
-                    color: var(--white);
-                    border-color: var(--primary-color);
-                }
-
-                .btn-primary:hover {
-                    background-color: var(--primary-hover);
-                    border-color: var(--primary-hover);
-                }
-
-                .btn-ghost {
-                    background-color: transparent;
-                    color: var(--gray-600);
-                    border-color: transparent;
-                }
-
-                .btn-ghost:hover {
-                    background-color: var(--gray-100);
-                    color: var(--gray-800);
-                }
-
                 @media (max-width: 768px) {
-                    .header-container {
-                        padding: 0 var(--spacing-3);
-                    }
-                    
                     .header-actions {
                         gap: var(--spacing-2);
                     }
                 }
 
                 @media (max-width: 480px) {
-                    .header-container {
-                        padding: 0 var(--spacing-2);
-                    }
-                    
                     .logo-text {
                         font-size: var(--font-size-lg);
                     }
-                    
+
                     .header-actions {
                         gap: var(--spacing-2);
                     }
@@ -314,20 +277,7 @@ class HeaderComponent extends BaseComponent {
                     ${this.isLoggedIn ? `
                         <div class="user-menu" id="userMenu">
                             <div class="user-avatar">
-                                ${(() => {
-                                    // 按照最新评论卡片的方式：同时渲染头像和用户名首字母
-                                    const hasAvatar = this.userInfo && this.userInfo.avatar_url && this.userInfo.avatar_url !== 'null' && this.userInfo.avatar_url !== '';
-                                    const firstChar = this.userName && this.userName.length > 0 ? this.userName.charAt(0).toUpperCase() : 'U';
-                                    
-                                    if (hasAvatar) {
-                                        // 有头像URL，显示头像，失败时显示用户名首字母
-                                        return `<img src="${this.escapeHtml(this.userInfo.avatar_url)}" alt="Avatar" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                        <div class="avatar-placeholder" style="display: none;">${this.escapeHtml(firstChar)}</div>`;
-                                    } else {
-                                        // 没有头像URL，直接显示用户名首字母
-                                        return `<div class="avatar-placeholder">${this.escapeHtml(firstChar)}</div>`;
-                                    }
-                                })()}
+                                ${this.renderUserAvatarHtml()}
                             </div>
                             <span class="user-name">${this.escapeHtml(this.userName)}</span>
                             <div class="dropdown-arrow">▼</div>
@@ -484,7 +434,8 @@ class HeaderComponent extends BaseComponent {
         if (!customElements.get('login-modal')) {
             // 如果组件未定义，动态加载脚本
             const script = document.createElement('script');
-            script.src = '/static/js/components/login-modal.js';
+            script.src = (window.BlognStatic && window.BlognStatic.url('/static/js/components/login-modal.js'))
+                || '/static/js/components/login-modal.js';
             script.onload = () => {
                 // 脚本加载完成后创建模态框
                 this.createLoginModal();
@@ -580,6 +531,8 @@ class HeaderComponent extends BaseComponent {
     }
 
     clearAuthData() {
+        const userId = UserManager.getCurrentUserId();
+        UserManager.clearPostFormDrafts(userId);
         this.isLoggedIn = false;
         this.userName = '';
         this.userInfo = null;
@@ -663,6 +616,38 @@ class HeaderComponent extends BaseComponent {
         }
     }
 
+    getSmallAvatarPath(userId) {
+        if (!userId) {
+            return null;
+        }
+        const prefix = Math.floor(userId / 10000) + 1;
+        return `/avatar/${prefix}/s_${userId}.jpg`;
+    }
+
+    getUserAvatarPath() {
+        const avatarUrl = this.userInfo?.avatar_url;
+        if (avatarUrl && avatarUrl !== 'null' && avatarUrl !== '') {
+            return avatarUrl;
+        }
+        return this.getSmallAvatarPath(this.userInfo?.id);
+    }
+
+    renderUserAvatarHtml() {
+        const firstChar = this.userName && this.userName.length > 0
+            ? this.userName.charAt(0).toUpperCase()
+            : 'U';
+        const avatarPath = this.getUserAvatarPath();
+
+        if (avatarPath) {
+            return `<img src="${this.escapeHtml(avatarPath)}" alt=""
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                         onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
+                    <div class="avatar-placeholder" style="display: none;">${this.escapeHtml(firstChar)}</div>`;
+        }
+
+        return `<div class="avatar-placeholder">${this.escapeHtml(firstChar)}</div>`;
+    }
+
     // 默认图标方法，当图标库不可用时使用
     getDefaultSearchIcon() {
         return `<svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -729,17 +714,15 @@ class HeaderComponent extends BaseComponent {
         }
 
         // 检查是否已经有token-manager脚本
-        const existingScript = document.querySelector('script[src="/static/js/services/token-manager.js"]');
+        const existingScript = document.querySelector('script[src*="token-manager.js"]');
         if (existingScript) {
             return;
         }
 
         // 动态加载token-manager脚本
         const script = document.createElement('script');
-        script.src = '/static/js/services/token-manager.js';
-        script.onload = () => {
-            // TokenManager加载成功
-        };
+        const tokenManagerJs = '/static/js/services/token-manager.js';
+        script.src = (window.BlognStatic && window.BlognStatic.url(tokenManagerJs)) || tokenManagerJs;
         script.onerror = () => {
             console.error('Failed to load token-manager.js');
         };

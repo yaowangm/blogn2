@@ -126,11 +126,9 @@ async def register_user(
 
         # 4. 创建新用户
         # 对密码进行双重哈希加密：password → MD5 → bcrypt
-        from passlib.context import CryptContext
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        from src.utils.password_hash import hash_user_password
 
-        md5_hash = hashlib.md5(request.password.encode()).hexdigest()
-        password_hash = pwd_context.hash(md5_hash)
+        password_hash = hash_user_password(request.password)
 
         new_user = User(
             name=request.username,

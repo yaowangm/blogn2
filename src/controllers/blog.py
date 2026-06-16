@@ -5,7 +5,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from src.services.blog_service import BlogService
 from src.utils.error_handlers import handle_api_errors
 from src.utils.dependencies import get_blog_service
-from src.utils.cache import cache_blog_recent_list, cache_blog_popular_list, cache_blog_detail, cache_blog_comments, cache_blog_messages_recent, cache_blog_messages_list, cache_blog_message_thread, clear_blog_messages_cache
+from src.utils.cache import cache_blog_recent_list, cache_blogs_joined_recent, cache_blog_popular_list, cache_blog_detail, cache_blog_comments, cache_blog_messages_recent, cache_blog_messages_list, cache_blog_message_thread, clear_blog_messages_cache
 from src.utils.auth_dependencies import get_current_user, get_optional_current_user
 from src.database import get_async_session
 from src.services.global_stats_service import GlobalStatsService
@@ -15,7 +15,7 @@ router = APIRouter()
 
 @router.get("/blogs/recent", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最新加入博客失败")
-@cache_blog_recent_list()  # 使用默认缓存时间
+@cache_blogs_joined_recent()
 async def get_recent_blogs(
     limit: int = 10,
     blog_service: BlogService = Depends(get_blog_service)
@@ -53,7 +53,7 @@ async def get_popular_blogs(
 
 @router.get("/comments/recent", response_model=List[Dict[str, Any]])
 @handle_api_errors("获取最近评论失败")
-# @cache_blog_comments()  # 使用默认缓存时间 - 临时禁用用于测试
+@cache_blog_comments()
 async def get_recent_comments(
     limit: int = 5,
     blog_service: BlogService = Depends(get_blog_service)
@@ -273,18 +273,23 @@ async def create_message(
         )
         
         try:
-            # 创建留言（包含向量化处理）
+            # 创建留言（跟贴时 post_repo.create 内已通过 StatsService 更新 replycount）
             await post_repo.create(message)
-            
-            # 如果是跟贴，更新主贴的统计信息
-            if thread_id:
-                await post_repo._update_main_post_stats(thread_id, message.id, user_id)
             
             # 提交事务
             await session.commit()
             
             # 清除留言相关缓存
             await clear_blog_messages_cache()
+
+            from src.utils.vectorization_tasks import schedule_comment_vectorization
+
+            schedule_comment_vectorization(
+                message.id,
+                message.subject or "",
+                message.content,
+                message.projectitemid,
+            )
             
             return {
                 "success": True,

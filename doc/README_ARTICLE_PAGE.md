@@ -8,12 +8,11 @@
 
 ### 1. 页面结构
 - **顶栏和底栏**: 使用现有的 `header-component` 和 `footer-component`
-- **左边栏**: 与博客页面完全一致，包含：
+- **左边栏**: 与博客页面侧边栏一致，包含：
   - 用户头像和博客名称 (`blog-profile-card`)
   - 博客导航 (`blog-navigation-card`)
-  - 分类列表 (`categories-card`)
-  - 最近评论 (`recent-comments-card`)
-  - 最近更新的博客 (`recent-updates-card`)
+  - 最近评论 (`recent-comments-card`，作者名左侧 24px 内联头像)
+  - 最近更新的博客 (`recent-updates-card`，博客名左侧 24px 内联头像)
   - 外站链接 (`friend-links-card`)
 
 - **右边栏**: 文章主体内容，包含：
@@ -32,15 +31,16 @@
 
 #### article-content-card
 - 显示文章的完整内容
-- 支持段落格式化
+- **Markdown 渲染**：2026-03-28 及之后发表的文章使用 GFM Markdown；更早文章为纯文本 + 自动链接
+- **数学公式**：通过本地 KaTeX 渲染行内（`$...$`、`\(...\)`）与块级（`$$...$$`、`\[...\]`）公式
 - 自动检测并显示附件（图片或文件链接）
-- HTML安全转义
+- 经 `HtmlUtils.sanitizeHtml` 过滤后再注入 KaTeX 输出，详见 [MARKDOWN_KATEX.md](MARKDOWN_KATEX.md)
 
 #### article-comments-card
-- 显示文章的所有评论
-- 评论列表，包含用户ID、评论时间、内容、回复数
-- 支持滚动加载
-- 无评论时显示友好提示
+- 通过 `GET /api/articles/{article_id}/comments?page=&limit=` 加载评论（不重复请求文章正文）
+- 每条评论含 `author_name`、`author_avatar`，无需再逐条请求 `/api/users/{id}`
+- 支持分页；无评论时显示友好提示
+- 可根据 URL hash（`#post{id}`）滚动到指定楼层
 
 #### comment-form-card
 - 评论输入表单
@@ -58,7 +58,38 @@
 - 项目信息
 - 分类信息
 - 统计信息（点击数、评论数）
-- 评论列表
+
+评论列表请使用下方独立接口，不包含在本响应中。
+
+#### GET /api/articles/{article_id}/comments
+获取指定文章的评论列表（分页），响应格式：
+
+```json
+{
+  "comments": [
+    {
+      "id": 1,
+      "content": "评论内容",
+      "user_id": 1,
+      "author_name": "用户名",
+      "author_avatar": "/avatar/1/s_1.jpg",
+      "post_time": "2024-01-01T12:00:00",
+      "reply_count": 0
+    }
+  ],
+  "pagination": {
+    "current_page": 1,
+    "per_page": 20,
+    "total": 1,
+    "total_pages": 1,
+    "has_prev": false,
+    "has_next": false
+  },
+  "comment_count": 1
+}
+```
+
+查询参数：`page`（默认 1）、`limit`（默认 20）。
 
 #### POST /api/articles/{article_id}/comments
 为指定文章创建评论，包括：
@@ -77,9 +108,10 @@ async def article_page(article_id: int):
 ```
 
 ### 2. API控制器
-在 `src/controllers/project.py` 中添加了新的API端点：
-- `get_article_detail()`: 获取文章详情
-- `create_article_comment()`: 创建评论
+文章相关 API 位于 `src/controllers/article.py`：
+- `get_article_detail()`：获取文章详情
+- `get_article_comments()`：获取评论列表（分页）
+- `create_article_comment()`：创建评论
 
 ### 3. 数据库关系
 - `user` 表和 `projectitem` 表：一对多关系 (user.id → projectitem.userid)
@@ -103,8 +135,8 @@ src/
 │       ├── article-comments-card.js    # 评论列表组件
 │       └── comment-form-card.js        # 评论表单组件
 ├── controllers/
-│   └── project.py                      # 新增文章相关API
-└── main.py                             # 新增文章页面路由
+│   └── article.py                      # 文章与评论 API
+└── main.py                             # 文章页面路由
 ```
 
 ## 使用方法
@@ -119,7 +151,12 @@ http://blogn2.local/article/123
 GET /api/articles/123
 ```
 
-### 3. 发表评论
+### 3. 查看评论列表
+```
+GET /api/articles/123/comments?page=1&limit=20
+```
+
+### 4. 发表评论
 ```
 POST /api/articles/123/comments
 Content-Type: application/json
@@ -142,9 +179,9 @@ Content-Type: application/json
 
 1. **用户认证**: 集成用户登录系统，获取真实用户ID
 2. **评论回复**: 支持评论的回复功能
-3. **富文本编辑**: 支持Markdown或富文本编辑器
+3. ~~**富文本编辑**~~: 已支持 Markdown 与 KaTeX 预览（发表/编辑页）；详见 [MARKDOWN_KATEX.md](MARKDOWN_KATEX.md)
 4. **图片预览**: 支持图片的缩略图预览和放大查看
-5. **分页加载**: 评论列表支持分页加载
+5. **分页加载**: 评论列表已通过 `/api/articles/{id}/comments` 分页实现
 6. **实时更新**: 使用WebSocket实现评论的实时更新
 7. **SEO优化**: 添加meta标签和结构化数据
 8. **性能优化**: 实现评论的懒加载和虚拟滚动
@@ -162,7 +199,7 @@ Content-Type: application/json
 ## 问题修复
 
 ### 组件兼容性问题
-在开发过程中发现，现有的web components（如`blog-profile-card`、`categories-card`等）期望从URL中获取项目ID（如`/blog/123`），但文章页面的URL格式是`/article/123`。
+在开发过程中发现，现有的 web components（如 `blog-profile-card` 等）期望从 URL 中获取项目 ID（如 `/blog/123`），但文章页面的 URL 格式是 `/article/123`。
 
 ### 解决方案
 1. **扩展BaseComponent**: 在基类中添加了统一的方法：

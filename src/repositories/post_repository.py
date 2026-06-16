@@ -1,13 +1,15 @@
 from sqlmodel import select, func, or_
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.orm import aliased
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from src.constants import ArticleStatus
+from src.constants import ArticleStatus, ProjectStatus
 from src.models.post import Post
 from src.models.project import Project
 from src.models.project_item import ProjectItem
 from src.models.user import User
 from src.utils.time_utils import TimeUtils
+from src.utils.avatar_utils import check_avatar_exists
 
 class PostRepository:
     """评论数据访问层
@@ -39,28 +41,44 @@ class PostRepository:
         return result.all()
 
     async def get_by_project_item_id_paginated(self, project_item_id: int, page: int = 1, per_page: int = 10) -> Dict[str, Any]:
-        """根据项目项ID获取分页评论"""
-        # 计算偏移量
+        """根据项目项ID获取分页评论（含作者信息）"""
         offset = (page - 1) * per_page
 
-        # 获取总数
         count_statement = select(func.count(Post.id)).where(Post.projectitemid == project_item_id)
         count_result = await self.session.exec(count_statement)
         total = count_result.first()
 
-        # 获取分页数据
         statement = (
-            select(Post)
+            select(Post, User.name.label("author_name"), User.projectid.label("author_blog_id"))
+            .outerjoin(User, Post.userid == User.id)
             .where(Post.projectitemid == project_item_id)
             .order_by(Post.posttime.desc())
             .offset(offset)
             .limit(per_page)
         )
         result = await self.session.exec(statement)
-        comments = result.all()
+        rows = result.all()
 
-        # 计算分页信息
-        total_pages = (total + per_page - 1) // per_page
+        avatar_cache: Dict[int, str | None] = {}
+        comments = []
+        for post, author_name, author_blog_id in rows:
+            avatar = None
+            if post.userid:
+                if post.userid not in avatar_cache:
+                    avatar_cache[post.userid] = check_avatar_exists(post.userid)
+                avatar = avatar_cache[post.userid]
+            comments.append({
+                "id": post.id,
+                "content": post.content,
+                "user_id": post.userid,
+                "author_name": author_name or "匿名用户",
+                "author_avatar": avatar,
+                "author_blog_id": author_blog_id if post.userid else None,
+                "post_time": post.posttime,
+                "reply_count": post.replycount or 0,
+            })
+
+        total_pages = (total + per_page - 1) // per_page if total else 0
 
         return {
             "comments": comments,
@@ -76,17 +94,22 @@ class PostRepository:
 
     async def get_recent_comments_by_project(self, project_id: int, limit: int = 5) -> List[dict]:
         """获取指定项目的最近评论，包含用户名和文章名"""
-        # 使用JOIN查询获取评论、用户名和文章名；排除孤儿评论与已删除/下架文章上的评论
+        # 使用 JOIN 获取评论与文章信息；user 用 outer join 以包含匿名评论（userid=0）
         statement = (
-            select(Post, User.name.label("user_name"), ProjectItem.name.label("project_item_name"))
-            .join(User, Post.userid == User.id)
+            select(
+                Post,
+                User.name.label("user_name"),
+                ProjectItem.name.label("project_item_name"),
+                User.projectid.label("author_blog_id"),
+            )
+            .outerjoin(User, Post.userid == User.id)
             .join(ProjectItem, Post.projectitemid == ProjectItem.id)
             .join(Project, ProjectItem.projectid == Project.id)
             .where(ProjectItem.projectid == project_id)
             .where(Post.status == 1)
             .where(ProjectItem.status == 1)
             .where(or_(ProjectItem.itemtype.is_(None), ProjectItem.itemtype != ArticleStatus.DELETED))
-            .where(Project.state == 0)  # 与 project_repository 列表一致：库内 state=0 为正常博客
+            .where(Project.state == ProjectStatus.ACTIVE)
             .order_by(Post.posttime.desc())
             .limit(limit)
         )
@@ -94,7 +117,7 @@ class PostRepository:
         result = await self.session.exec(statement)
         comments = []
 
-        for post, user_name, project_item_name in result.all():
+        for post, user_name, project_item_name, author_blog_id in result.all():
             comments.append({
                 "id": post.id,
                 "user_name": user_name or "匿名用户",
@@ -102,7 +125,8 @@ class PostRepository:
                 "post_time": post.posttime,
                 "project_item_name": project_item_name or "文章",
                 "projectitemid": post.projectitemid,
-                "userid": post.userid
+                "userid": post.userid,
+                "author_blog_id": author_blog_id if post.userid else None,
             })
 
         return comments
@@ -115,7 +139,7 @@ class PostRepository:
         - 软删除/下架文章上的评论仍被展示。
         """
         statement = (
-            select(Post, User.name.label("user_name"))
+            select(Post, User.name.label("user_name"), User.projectid.label("author_blog_id"))
             .join(ProjectItem, Post.projectitemid == ProjectItem.id)
             .join(Project, ProjectItem.projectid == Project.id)
             .outerjoin(User, Post.userid == User.id)
@@ -123,7 +147,7 @@ class PostRepository:
             .where(Post.status == 1)
             .where(ProjectItem.status == 1)
             .where(or_(ProjectItem.itemtype.is_(None), ProjectItem.itemtype != ArticleStatus.DELETED))
-            .where(Project.state == 0)  # 与 project_repository 列表一致：库内 state=0 为正常博客
+            .where(Project.state == ProjectStatus.ACTIVE)
             .order_by(Post.posttime.desc())
             .limit(limit)
         )
@@ -131,7 +155,7 @@ class PostRepository:
         result = await self.session.exec(statement)
         comments = []
 
-        for comment, user_name in result.all():
+        for comment, user_name, author_blog_id in result.all():
             author_name = user_name if user_name else "匿名用户"
 
             comments.append({
@@ -140,57 +164,51 @@ class PostRepository:
                 "author_name": author_name,
                 "projectitemid": comment.projectitemid,
                 "userid": comment.userid,
+                "author_blog_id": author_blog_id if comment.userid else None,
                 "post_time": comment.posttime,  # 改为post_time以匹配BlogService的期望
                 "status": comment.status
             })
 
         return comments
 
+    @staticmethod
+    def _resolve_last_reply_author(lastreplyid: int | None, reply_user_name: str | None) -> str | None:
+        if lastreplyid is None or lastreplyid < 0:
+            return None
+        if lastreplyid == 0:
+            return "匿名用户"
+        return reply_user_name if reply_user_name else "未知用户"
+
+    @staticmethod
+    def _resolve_author_name(userid: int | None, user_name: str | None) -> str:
+        if not userid:
+            return "用户"
+        return user_name if user_name else "用户"
+
+    def _message_base_query(self):
+        author_user = aliased(User, name="message_author")
+        reply_user = aliased(User, name="message_reply_author")
+        return (
+            select(
+                Post,
+                author_user.name.label("author_name"),
+                reply_user.name.label("reply_user_name"),
+            )
+            .outerjoin(author_user, Post.userid == author_user.id)
+            .outerjoin(reply_user, Post.lastreplyid == reply_user.id)
+            .where(Post.projectitemid == 0)
+            .where(Post.rootid == 0)
+        ), author_user, reply_user
+
     async def get_messages(self, limit: int = 5) -> List[dict]:
         """获取留言本记录"""
-        statement = (
-            select(Post)
-            .where(Post.projectitemid == 0)  # 只获取留言本
-            .where(Post.rootid == 0)  # 只获取主贴
-            .order_by(Post.posttime.desc())
-            .limit(limit)
-        )
+        base_query, _, _ = self._message_base_query()
+        statement = base_query.order_by(Post.posttime.desc()).limit(limit)
 
         result = await self.session.exec(statement)
         messages = []
 
-        for message in result.all():
-            # 获取用户名
-            author_name = "用户"  # 默认值
-            if message.userid:
-                try:
-                    # 查询用户表获取用户名
-                    user_result = await self.session.exec(select(User.name).where(User.id == message.userid))
-                    user_name = user_result.first()
-                    if user_name:
-                        author_name = user_name
-                    else:
-                        author_name = "用户"
-                except Exception as e:
-                    author_name = "用户"
-
-            # 获取最后回复用户名
-            last_reply_author = None
-            if message.lastreplyid is not None and message.lastreplyid >= 0:
-                if message.lastreplyid == 0:
-                    last_reply_author = "匿名用户"
-                else:
-                    try:
-                        # 查询用户表获取最后回复用户名
-                        user_result = await self.session.exec(select(User.name).where(User.id == message.lastreplyid))
-                        last_reply_user_name = user_result.first()
-                        if last_reply_user_name:
-                            last_reply_author = last_reply_user_name
-                        else:
-                            last_reply_author = "未知用户"
-                    except Exception as e:
-                        last_reply_author = "未知用户"
-
+        for message, author_name, reply_user_name in result.all():
             messages.append({
                 "id": message.id,
                 "subject": message.subject,
@@ -198,13 +216,13 @@ class PostRepository:
                 "userid": message.userid,
                 "projectitemid": message.projectitemid,
                 "rootid": message.rootid,
-                "post_time": message.posttime,  # 改为post_time以匹配BlogService的期望
+                "post_time": message.posttime,
                 "status": message.status,
                 "lastreplyid": message.lastreplyid,
-                "replycount": message.replycount or 0,  # None值转换为0
-                "author_name": author_name,
-                "last_reply_author": last_reply_author,
-                "reply_count": message.replycount or 0  # 兼容测试中的字段名
+                "replycount": message.replycount or 0,
+                "author_name": self._resolve_author_name(message.userid, author_name),
+                "last_reply_author": self._resolve_last_reply_author(message.lastreplyid, reply_user_name),
+                "reply_count": message.replycount or 0,
             })
 
         return messages
@@ -215,50 +233,13 @@ class PostRepository:
 
     async def get_messages_paginated(self, limit: int = 10, offset: int = 0) -> List[dict]:
         """获取留言本分页记录"""
-        statement = (
-            select(Post)
-            .where(Post.projectitemid == 0)  # 只获取留言本
-            .where(Post.rootid == 0)  # 只获取主贴
-            .order_by(Post.id.desc())  # 按id倒序排序
-            .offset(offset)
-            .limit(limit)
-        )
+        base_query, _, _ = self._message_base_query()
+        statement = base_query.order_by(Post.id.desc()).offset(offset).limit(limit)
 
         result = await self.session.exec(statement)
         messages = []
 
-        for message in result.all():
-            # 获取用户名
-            author_name = "用户"  # 默认值
-            if message.userid:
-                try:
-                    # 查询用户表获取用户名
-                    user_result = await self.session.exec(select(User.name).where(User.id == message.userid))
-                    user_name = user_result.first()
-                    if user_name:
-                        author_name = user_name
-                    else:
-                        author_name = "用户"
-                except Exception as e:
-                    author_name = "用户"
-
-            # 获取最后回复用户名
-            last_reply_author = None
-            if message.lastreplyid is not None and message.lastreplyid >= 0:
-                if message.lastreplyid == 0:
-                    last_reply_author = "匿名用户"
-                else:
-                    try:
-                        # 查询用户表获取最后回复用户名
-                        user_result = await self.session.exec(select(User.name).where(User.id == message.lastreplyid))
-                        last_reply_user_name = user_result.first()
-                        if last_reply_user_name:
-                            last_reply_author = last_reply_user_name
-                        else:
-                            last_reply_author = "未知用户"
-                    except Exception as e:
-                        last_reply_author = "未知用户"
-
+        for message, author_name, reply_user_name in result.all():
             messages.append({
                 "id": message.id,
                 "subject": message.subject,
@@ -271,71 +252,70 @@ class PostRepository:
                 "status": message.status,
                 "lastreplyid": message.lastreplyid,
                 "replycount": message.replycount or 0,
-                "author_name": author_name,
-                "last_reply_author": last_reply_author,
+                "author_name": self._resolve_author_name(message.userid, author_name),
+                "last_reply_author": self._resolve_last_reply_author(message.lastreplyid, reply_user_name),
                 "reply_count": message.replycount or 0,
                 "size": message.size or 0,
-                "hits": message.hits or 0
+                "hits": message.hits or 0,
             })
 
         return messages
 
     async def get_thread_messages(self, thread_id: int) -> List[dict]:
         """获取主题的所有留言（主贴+跟贴）"""
-        # 获取主贴
+        author_user = aliased(User, name="thread_author")
+
         main_post_statement = (
-            select(Post)
+            select(Post, author_user.name.label("author_name"), author_user.projectid.label("author_blog_id"))
+            .outerjoin(author_user, Post.userid == author_user.id)
             .where(Post.id == thread_id)
-            .where(Post.projectitemid == 0)  # 留言本
+            .where(Post.projectitemid == 0)
         )
 
-        # 获取跟贴
         replies_statement = (
-            select(Post)
+            select(Post, author_user.name.label("author_name"), author_user.projectid.label("author_blog_id"))
+            .outerjoin(author_user, Post.userid == author_user.id)
             .where(Post.rootid == thread_id)
-            .where(Post.projectitemid == 0)  # 留言本
-            .order_by(Post.id.asc())  # 按id正序排序
+            .where(Post.projectitemid == 0)
+            .order_by(Post.id.asc())
         )
 
-        # 执行查询
         main_result = await self.session.exec(main_post_statement)
-        main_post = main_result.first()
+        main_row = main_result.first()
 
         replies_result = await self.session.exec(replies_statement)
         replies = replies_result.all()
 
         messages = []
 
-        # 处理主贴
-        if main_post:
-            author_name = await self._get_user_name(main_post.userid)
+        if main_row:
+            main_post, main_author_name, main_author_blog_id = main_row
             messages.append({
                 "id": main_post.id,
                 "subject": main_post.subject,
                 "content": main_post.content,
                 "userid": main_post.userid,
                 "post_time": main_post.posttime,
-                "author_name": author_name,
+                "author_name": self._resolve_author_name(main_post.userid, main_author_name),
+                "author_blog_id": main_author_blog_id if main_post.userid else None,
                 "is_main_post": True,
                 "lastreplyid": main_post.lastreplyid,
                 "lastreplytime": main_post.lastreplytime,
-                "replycount": main_post.replycount or 0
+                "replycount": main_post.replycount or 0,
             })
         else:
-            # 如果找不到主贴，抛出异常
             raise ValueError(f"主题 {thread_id} 不存在")
 
-        # 处理跟贴
-        for reply in replies:
-            author_name = await self._get_user_name(reply.userid)
+        for reply, reply_author_name, reply_author_blog_id in replies:
             messages.append({
                 "id": reply.id,
                 "subject": reply.subject,
                 "content": reply.content,
                 "userid": reply.userid,
                 "post_time": reply.posttime,
-                "author_name": author_name,
-                "is_main_post": False
+                "author_name": self._resolve_author_name(reply.userid, reply_author_name),
+                "author_blog_id": reply_author_blog_id if reply.userid else None,
+                "is_main_post": False,
             })
 
         return messages
@@ -382,7 +362,7 @@ class PostRepository:
             .where(Post.status == 1)
             .where(ProjectItem.status == 1)
             .where(or_(ProjectItem.itemtype.is_(None), ProjectItem.itemtype != ArticleStatus.DELETED))
-            .where(Project.state == 0)  # 与 project_repository 列表一致：库内 state=0 为正常博客
+            .where(Project.state == ProjectStatus.ACTIVE)
         )
         result = await self.session.exec(statement)
         return result.first() or 0
@@ -408,25 +388,6 @@ class PostRepository:
         except Exception as e:
             # 统计更新失败不影响评论创建，静默处理
             pass
-
-        # 统一处理向量化（评论和留言都使用comment_vectors表）
-        try:
-            from src.services.vectorization_update_service import get_vectorization_update_service
-            vectorization_service = get_vectorization_update_service(self.session)
-
-            # 创建向量化数据
-            await vectorization_service.update_comment_vectors(
-                post.id,
-                post.subject or "",
-                post.content,
-                post.projectitemid  # 评论为article_id，留言为0
-            )
-
-        except Exception as e:
-            # 向量化失败不影响post创建成功
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Post {post.id} 向量化失败: {e}")
 
         return post
 

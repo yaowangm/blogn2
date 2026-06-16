@@ -1,6 +1,7 @@
 from sqlmodel import Field
 from typing import Optional
 from datetime import datetime
+from pydantic import field_serializer
 from src.models.base import BaseModel
 
 class PointLog(BaseModel, table=True):
@@ -16,9 +17,7 @@ class PointLog(BaseModel, table=True):
     source: str = Field(max_length=50, description="积分来源：article_create, regkey_exchange等")
     log_date: datetime = Field(description="积分记录日期（只记录日期，不记录时间）")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="记录创建时间")
-    
-    class Config:
-        # 确保log_date字段只存储日期部分
-        json_encoders = {
-            datetime: lambda v: v.date().isoformat() if hasattr(v, 'date') else v.isoformat()
-        }
+
+    @field_serializer("log_date")
+    def serialize_log_date(self, value: datetime) -> str:
+        return value.date().isoformat()

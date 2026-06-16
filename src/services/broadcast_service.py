@@ -3,7 +3,6 @@ from typing import List, Dict, Any
 from src.repositories.relation_repository import RelationRepository
 from src.repositories.subscription_repository import SubscriptionRepository
 from src.models.subscription import Subscription
-from datetime import datetime
 
 class BroadcastService:
     """广播服务层 - 处理博客文章发布后的订阅者通知"""
@@ -14,18 +13,8 @@ class BroadcastService:
         self.subscription_repo = SubscriptionRepository(session)
     
     async def broadcast_new_article(self, author_project_id: int, article_id: int) -> Dict[str, Any]:
-        """
-        广播新文章给所有订阅者
-        
-        Args:
-            author_project_id: 作者博客的ID
-            article_id: 新文章的ID (projectitem.id)
-        
-        Returns:
-            Dict包含广播结果
-        """
+        """广播新文章给所有订阅者"""
         try:
-            # 1. 获取所有订阅了当前博客的订阅者ID列表
             subscribers = await self.relation_repo.get_subscribers_by_project(author_project_id)
             
             if not subscribers:
@@ -36,36 +25,23 @@ class BroadcastService:
                     "broadcast_count": 0
                 }
             
-            # 2. 为每个订阅者创建广播记录
+            subscriber_project_ids = [s.projectid for s in subscribers]
+            existing_ids = await self.subscription_repo.get_existing_broadcast_project_ids(
+                article_id, subscriber_project_ids
+            )
+
+            new_broadcasts = [
+                Subscription(projectid=subscriber_project_id, piid=article_id)
+                for subscriber_project_id in subscriber_project_ids
+                if subscriber_project_id not in existing_ids
+            ]
+
             broadcast_count = 0
             failed_broadcasts = []
-            
-            for subscriber_relation in subscribers:
-                try:
-                    subscriber_project_id = subscriber_relation.projectid
-                    # 检查是否已经广播过这篇文章给这个订阅者
-                    existing_broadcast = await self.subscription_repo.get_broadcast(
-                        subscriber_project_id, article_id
-                    )
-                    
-                    if existing_broadcast:
-                        # 已经广播过，跳过
-                        continue
-                    
-                    # 创建新的广播记录
-                    broadcast = Subscription(
-                        projectid=subscriber_project_id,
-                        piid=article_id
-                    )
-                    
-                    await self.subscription_repo.create_broadcast(broadcast)
-                    broadcast_count += 1
-                    
-                except Exception as e:
-                    failed_broadcasts.append({
-                        "subscriber_id": subscriber_project_id,
-                        "error": str(e)
-                    })
+            try:
+                broadcast_count = await self.subscription_repo.create_broadcasts_bulk(new_broadcasts)
+            except Exception as e:
+                failed_broadcasts.append({"error": str(e)})
             
             return {
                 "success": True,
@@ -86,10 +62,7 @@ class BroadcastService:
     async def get_broadcast_stats(self, project_id: int) -> Dict[str, Any]:
         """获取广播统计信息"""
         try:
-            # 获取订阅者数量
             subscribers = await self.relation_repo.get_subscribers_by_project(project_id)
-            
-            # 获取已广播的文章数量
             broadcasts = await self.subscription_repo.get_broadcasts_by_project(project_id)
             
             return {

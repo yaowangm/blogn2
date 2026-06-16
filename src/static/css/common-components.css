@@ -1,17 +1,60 @@
 /* 通用组件样式 */
 
-/* 卡片基础样式 */
+:host,
+:host * {
+    box-sizing: border-box;
+}
+
+:host {
+    --btn-height: 36px;
+    --btn-icon-size: 18px;
+}
+
+/* 卡片基础样式（紧凑风格，与 blog-profile-card 一致） */
 .card {
     background: var(--white);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--gray-200);
+    border-radius: var(--card-radius, var(--radius-lg));
+    box-shadow: var(--card-shadow, var(--shadow-sm));
+    border: 1px solid var(--card-border, var(--gray-200));
     overflow: hidden;
     margin-bottom: var(--card-margin);
 }
 
+.card:hover {
+    box-shadow: var(--card-shadow-hover, var(--shadow-md));
+}
+
+/* 侧栏列表行：统一过渡 */
+.nav-link,
+.blog-link,
+.comment-link,
+.friend-link {
+    transition:
+        background-color var(--transition-fast),
+        color var(--transition-fast),
+        border-color var(--transition-fast);
+}
+
+.card-header {
+    padding: var(--spacing-3) var(--spacing-4);
+    background: var(--card-header-bg, var(--gray-50));
+    border-bottom: 1px solid var(--card-header-border, var(--gray-200));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+}
+
+.card-title {
+    margin: 0;
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--gray-900);
+    line-height: 1.3;
+}
+
 .card-body {
-    padding: var(--spacing-6);
+    padding: var(--spacing-3) var(--spacing-4);
 }
 
 /* 全局长文本断行策略，防止超长连续字符串/链接撑破卡片布局 */
@@ -47,14 +90,14 @@
 .loading {
     text-align: center;
     color: var(--gray-500);
-    padding: var(--spacing-8);
+    padding: var(--spacing-4);
 }
 
 /* 错误消息 */
 .error-message {
     text-align: center;
     color: var(--error-color);
-    padding: var(--spacing-8);
+    padding: var(--spacing-4);
 }
 
 /* 无内容状态 */
@@ -62,19 +105,19 @@
     color: var(--gray-500);
     font-style: italic;
     text-align: center;
-    padding: var(--spacing-8);
+    padding: var(--spacing-4);
 }
 
 /* 自动链接样式 */
 .auto-link {
-    color: #0066cc; /* 蓝色字体 */
+    color: var(--primary-color);
     text-decoration: none;
     word-break: break-all; /* 链接文本优先强断行，避免溢出 */
 }
 
 .auto-link:hover {
     text-decoration: underline !important;
-    color: #0052a3 !important; /* 悬停时更深的蓝色 */
+    color: var(--primary-hover) !important;
 }
 
 /* 用户头像样式 */
@@ -110,19 +153,36 @@
     text-decoration: underline;
 }
 
-/* 按钮样式 */
+/* 按钮与焦点（与 main.css 一致，供 Shadow DOM @import） */
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: var(--spacing-2) var(--spacing-4);
-    border: 1px solid transparent;
+    gap: var(--spacing-2);
+    min-height: var(--btn-height);
+    padding: 0 var(--spacing-3);
+    border: 1px solid var(--gray-300);
     border-radius: var(--radius-md);
     font-size: var(--font-size-sm);
     font-weight: 500;
     text-decoration: none;
     cursor: pointer;
     transition: all var(--transition-fast);
+    background-color: var(--white);
+    color: var(--gray-700);
+    line-height: 1.25;
+    box-sizing: border-box;
+}
+
+.btn:hover:not(:disabled) {
+    background-color: var(--gray-50);
+    border-color: var(--gray-400);
+    color: var(--gray-900);
+}
+
+.btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
 }
 
 .btn-primary {
@@ -131,18 +191,423 @@
     border-color: var(--primary-color);
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
     background-color: var(--primary-hover);
     border-color: var(--primary-hover);
+    color: var(--white);
 }
 
 .btn-secondary {
-    background-color: var(--gray-100);
+    background-color: var(--white);
     color: var(--gray-700);
     border-color: var(--gray-300);
 }
 
-.btn-secondary:hover {
-    background-color: var(--gray-200);
+.btn-secondary:hover:not(:disabled) {
+    background-color: var(--gray-50);
     border-color: var(--gray-400);
+}
+
+.btn-danger {
+    background-color: var(--white);
+    color: var(--error-color);
+    border-color: var(--red-300);
+}
+
+.btn-danger:hover:not(:disabled) {
+    background-color: var(--red-50);
+    border-color: var(--error-color);
+    color: var(--red-700);
+}
+
+.btn-success {
+    background-color: var(--success-color);
+    color: var(--white);
+    border-color: var(--success-color);
+}
+
+.btn-success:hover:not(:disabled) {
+    background-color: var(--green-700, #047857);
+    border-color: var(--green-700, #047857);
+    color: var(--white);
+}
+
+.btn-ghost {
+    background-color: transparent;
+    color: var(--gray-600);
+    border-color: transparent;
+}
+
+.btn-ghost:hover:not(:disabled) {
+    background-color: var(--gray-100);
+    color: var(--gray-800);
+    border-color: transparent;
+}
+
+.btn-block {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.btn-close,
+.modal-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--btn-height);
+    height: var(--btn-height);
+    min-width: var(--btn-height);
+    min-height: var(--btn-height);
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--gray-500);
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.btn-close:hover,
+.modal-close:hover {
+    background: var(--gray-100);
+    color: var(--gray-700);
+}
+
+.btn-delete-reveal {
+    opacity: 0;
+    pointer-events: none;
+}
+
+:hover .btn-delete-reveal,
+.btn-delete-reveal:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.btn-sm {
+    min-height: var(--btn-height);
+    padding: 0 var(--spacing-3);
+    gap: var(--spacing-2);
+    font-size: var(--font-size-sm);
+    line-height: 1.25;
+}
+
+.btn .btn-icon {
+    width: var(--btn-icon-size);
+    height: var(--btn-icon-size);
+    flex-shrink: 0;
+}
+
+.btn.btn-sm.btn-icon-only,
+.btn-icon-only {
+    width: var(--btn-height);
+    height: var(--btn-height);
+    min-width: var(--btn-height);
+    min-height: var(--btn-height);
+    padding: 0;
+    gap: 0;
+}
+
+.btn-icon-only .btn-icon,
+.btn-icon-only > svg {
+    width: var(--btn-icon-size);
+    height: var(--btn-icon-size);
+}
+
+.btn-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing-2);
+}
+
+:focus {
+    outline: none;
+}
+
+:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+a.post-item:focus,
+a.blog-item:focus,
+.nav-item:focus {
+    outline: none;
+}
+
+/* Divider row lists (blog posts, messages, friend links) */
+.card-body--flush-list {
+    padding: 0;
+}
+
+.list-divider-rows,
+.post-list.list-divider-rows {
+    gap: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.list-divider-rows > .post-item,
+.list-divider-rows > .message-item-row .post-item,
+.list-divider-rows > li > .friend-link,
+.list-divider-rows > .comment-item,
+.list-divider-rows > li.comment-item {
+    border-radius: 0;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--gray-100);
+    margin: 0;
+    padding: var(--spacing-3) calc(var(--spacing-4) + 3px);
+}
+
+.list-divider-rows > .post-item:last-child,
+.list-divider-rows > .message-item-row:last-child .post-item,
+.list-divider-rows > li:last-child > .friend-link,
+.list-divider-rows > .comment-item:last-child,
+.list-divider-rows > li.comment-item:last-child {
+    border-bottom: none;
+}
+
+.list-divider-rows a.post-item:hover,
+.list-divider-rows a.post-item:focus-visible,
+.list-divider-rows .friend-link:hover,
+.list-divider-rows .friend-link:focus-visible,
+.list-divider-rows > .comment-item:hover,
+.list-divider-rows > .comment-item:focus-within,
+.list-divider-rows > li.comment-item:hover,
+.list-divider-rows > li.comment-item:focus-within {
+    background: var(--interactive-hover-bg);
+    border-color: transparent;
+    box-shadow: none;
+}
+
+/* Post list rows (blog page template) */
+.post-list {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing-2) + 2px);
+    max-width: 100%;
+    overflow: hidden;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.post-item {
+    display: grid;
+    grid-template-columns: 1fr;
+    row-gap: var(--spacing-3);
+    padding: var(--spacing-3);
+    border-radius: var(--radius-md);
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    transition: var(--transition-fast);
+    text-decoration: none;
+    color: inherit;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+a.post-item:hover,
+a.post-item:focus-visible,
+.post-item.clickable:hover,
+.post-item.clickable:focus-visible {
+    background: var(--interactive-hover-bg);
+    border-color: var(--interactive-hover-border);
+    box-shadow: none;
+    text-decoration: none;
+    color: inherit;
+}
+
+a.post-item:hover .post-title,
+a.post-item:focus-visible .post-title,
+.post-item.clickable:hover .post-title,
+.post-item.clickable:focus-visible .post-title {
+    color: var(--interactive-hover-text);
+}
+
+a.post-item:hover .author-name,
+a.post-item:focus-visible .author-name,
+.post-item.clickable:hover .author-name,
+.post-item.clickable:focus-visible .author-name {
+    color: var(--interactive-hover-text);
+}
+
+.post-item-block {
+    cursor: default;
+}
+
+.post-item-block.disabled {
+    opacity: 0.7;
+}
+
+.post-item:focus {
+    outline: none;
+}
+
+.post-content {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.post-title {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--gray-900);
+    margin: 0 0 var(--spacing-1);
+    line-height: 1.4;
+    overflow: hidden;
+    max-width: 100%;
+    transition: color var(--transition-fast);
+}
+
+.post-excerpt {
+    font-size: var(--font-size-sm);
+    color: var(--gray-600);
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 0;
+    max-width: 100%;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+.post-excerpt--single-line {
+    -webkit-line-clamp: 1;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    display: block;
+}
+
+.meta-icon {
+    display: block;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.article-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2) var(--spacing-3);
+    margin-bottom: var(--spacing-2);
+    padding-top: var(--spacing-1);
+}
+
+.article-meta:last-child {
+    margin-bottom: 0;
+}
+
+.meta-items-left {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-3);
+    min-width: 0;
+}
+
+.meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    color: var(--gray-500);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+}
+
+.meta-item-author {
+    gap: var(--spacing-2);
+}
+
+.author-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gray-100);
+    border: 1px solid var(--gray-200);
+    overflow: hidden;
+}
+
+.author-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.author-avatar-fallback {
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--gray-600);
+}
+
+.author-avatar-fallback--default-user {
+    color: var(--gray-500);
+}
+
+.author-avatar-fallback--default-user .author-avatar-icon {
+    width: 14px;
+    height: 14px;
+    display: block;
+}
+
+.author-name {
+    font-weight: 500;
+    color: var(--gray-700);
+    transition: color var(--transition-fast);
+}
+
+.author-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    text-decoration: none;
+    color: inherit;
+    min-width: 0;
+}
+
+.author-link:hover {
+    text-decoration: none;
+}
+
+.post-item:hover .author-link .author-name,
+.post-item:focus-within .author-link .author-name,
+.author-link:hover .author-name {
+    color: var(--interactive-hover-text);
+}
+
+.post-attachment-image {
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    width: fit-content;
+    max-width: min(400px, 100%);
+    justify-self: start;
+}
+
+.post-attachment-image img {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--radius-md);
 }

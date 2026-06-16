@@ -43,34 +43,8 @@ class CategoryMaintenanceCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
-                :host {
-                    display: block;
-                    font-family: var(--font-family);
-                }
-
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-xl);
-                    box-shadow: var(--shadow-md);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    margin-bottom: var(--card-margin);
-                }
-
-                .card-header {
-                    padding: var(--spacing-4) var(--spacing-6);
-                    background: var(--gray-50);
-                    border-bottom: 1px solid var(--gray-200);
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }
-
+                @import url('/static/css/common-components.css');
                 .card-title {
-                    margin: 0;
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--gray-800);
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-2);
@@ -80,31 +54,6 @@ class CategoryMaintenanceCard extends BaseComponent {
                     width: 20px;
                     height: 20px;
                     color: var(--primary-color);
-                }
-
-                .add-button {
-                    background: var(--primary-color);
-                    color: white;
-                    border: none;
-                    padding: var(--spacing-2) var(--spacing-4);
-                    border-radius: var(--radius-md);
-                    cursor: pointer;
-                    font-size: var(--font-size-sm);
-                    font-weight: 500;
-                    transition: all 0.2s ease;
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-1);
-                }
-
-                .add-button:hover {
-                    background: var(--primary-hover);
-                    transform: translateY(-1px);
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                }
-
-                .card-body {
-                    padding: var(--spacing-6);
                 }
 
                 .category-list {
@@ -117,7 +66,7 @@ class CategoryMaintenanceCard extends BaseComponent {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    padding: var(--spacing-4);
+                    padding: var(--spacing-3) var(--spacing-4);
                     border: 1px solid var(--gray-200);
                     border-radius: var(--radius-lg);
                     margin-bottom: var(--spacing-3);
@@ -146,7 +95,7 @@ class CategoryMaintenanceCard extends BaseComponent {
 
                 .category-name {
                     font-weight: 500;
-                    color: var(--gray-800);
+                    color: var(--gray-900);
                 }
 
                 .category-count {
@@ -163,39 +112,6 @@ class CategoryMaintenanceCard extends BaseComponent {
                 .category-actions {
                     display: flex;
                     gap: var(--spacing-2);
-                }
-
-                .action-button {
-                    background: none;
-                    border: 1px solid var(--gray-300);
-                    padding: var(--spacing-1) var(--spacing-2);
-                    border-radius: var(--radius-sm);
-                    cursor: pointer;
-                    font-size: var(--font-size-xs);
-                    transition: all 0.2s ease;
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-1);
-                }
-
-                .edit-button {
-                    color: var(--primary-color);
-                    border-color: var(--primary-color);
-                }
-
-                .edit-button:hover {
-                    background: var(--primary-color);
-                    color: white;
-                }
-
-                .delete-button {
-                    color: var(--error-color);
-                    border-color: var(--error-color);
-                }
-
-                .delete-button:hover {
-                    background: var(--error-color);
-                    color: white;
                 }
 
                 .add-form {
@@ -230,41 +146,13 @@ class CategoryMaintenanceCard extends BaseComponent {
                 .form-group input:focus {
                     outline: none;
                     border-color: var(--primary-color);
-                    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+                    box-shadow: 0 0 0 2px var(--primary-color-10);
                 }
 
                 .form-actions {
                     display: flex;
                     gap: var(--spacing-2);
                     justify-content: flex-end;
-                }
-
-                .btn {
-                    padding: var(--spacing-2) var(--spacing-4);
-                    border: none;
-                    border-radius: var(--radius-md);
-                    cursor: pointer;
-                    font-size: var(--font-size-sm);
-                    font-weight: 500;
-                    transition: all 0.2s ease;
-                }
-
-                .btn-primary {
-                    background: var(--primary-color);
-                    color: white;
-                }
-
-                .btn-primary:hover {
-                    background: var(--primary-hover);
-                }
-
-                .btn-secondary {
-                    background: var(--gray-200);
-                    color: var(--gray-700);
-                }
-
-                .btn-secondary:hover {
-                    background: var(--gray-300);
                 }
 
                 .loading {
@@ -275,7 +163,7 @@ class CategoryMaintenanceCard extends BaseComponent {
 
                 .error {
                     text-align: center;
-                    padding: var(--spacing-6);
+                    padding: var(--spacing-3) var(--spacing-4);
                     color: var(--error-color);
                     background: var(--gray-50);
                     border-radius: var(--radius-lg);
@@ -283,7 +171,7 @@ class CategoryMaintenanceCard extends BaseComponent {
 
                 .empty-state {
                     text-align: center;
-                    padding: var(--spacing-6);
+                    padding: var(--spacing-3) var(--spacing-4);
                     color: var(--gray-500);
                 }
             </style>
@@ -297,11 +185,8 @@ class CategoryMaintenanceCard extends BaseComponent {
                         </svg>
                         分类维护
                     </h3>
-                    <button class="add-button" onclick="this.getRootNode().host.toggleAddForm()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 5v14M5 12h14"></path>
-                        </svg>
-                        添加分类
+                    <button type="button" class="btn btn-primary btn-sm btn-icon-only" title="添加分类" aria-label="添加分类" onclick="this.getRootNode().host.toggleAddForm()">
+                        ${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.add) : '+'}
                     </button>
                 </div>
                 <div class="card-body">
@@ -329,8 +214,8 @@ class CategoryMaintenanceCard extends BaseComponent {
                     <input type="text" id="category-name" placeholder="请输入分类名称" value="${this.editingCategory ? this.escapeHtml(this.editingCategory.name) : ''}">
                 </div>
                 <div class="form-actions">
-                    <button class="btn btn-secondary" onclick="this.getRootNode().host.cancelEdit()">取消</button>
-                    <button class="btn btn-primary" onclick="this.getRootNode().host.saveCategory()">
+                    <button type="button" class="btn btn-secondary btn-sm btn-icon-only" title="取消" aria-label="取消" onclick="this.getRootNode().host.cancelEdit()">${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.close) : '取消'}</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="this.getRootNode().host.saveCategory()">
                         ${this.editingCategory ? '更新' : '添加'}
                     </button>
                 </div>
@@ -362,18 +247,11 @@ class CategoryMaintenanceCard extends BaseComponent {
                                 <span class="category-count">${safeCount}</span>
                             </div>
                             <div class="category-actions">
-                                <button class="action-button edit-button" onclick="this.getRootNode().host.editCategory(${category.id})">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                    </svg>
-                                    编辑
+                                <button type="button" class="btn btn-secondary btn-sm btn-icon-only" title="编辑" aria-label="编辑" onclick="this.getRootNode().host.editCategory(${category.id})">
+                                    ${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.edit) : '编辑'}
                                 </button>
-                                <button class="action-button delete-button" onclick="this.getRootNode().host.deleteCategory(${category.id})">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                    </svg>
-                                    删除
+                                <button type="button" class="btn btn-danger btn-sm btn-icon-only" title="删除" aria-label="删除" onclick="this.getRootNode().host.deleteCategory(${category.id})">
+                                    ${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.delete) : '删除'}
                                 </button>
                             </div>
                         </li>

@@ -15,11 +15,19 @@ fi
 
 export DOCKER_BUILDKIT=0
 
+if [ -z "${STATIC_VERSION:-}" ]; then
+  STATIC_VERSION="$("${ROOT}/scripts/generate-static-version.sh" --write "${ROOT}")"
+else
+  printf '%s\n' "$STATIC_VERSION" > "${ROOT}/.static_version"
+fi
+
 echo "==> 构建 blogn2-app:${TAG} （BASE_IMAGE=${BASE_IMAGE}）"
 echo "    仅复制代码层，不会重新 pip 下载依赖"
+echo "    STATIC_VERSION=${STATIC_VERSION}"
 docker build \
   -f "${ROOT}/docker/Dockerfile.app" \
   --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
+  --build-arg "STATIC_VERSION=${STATIC_VERSION}" \
   -t "blogn2-app:${TAG}" \
   "${ROOT}"
 

@@ -2,28 +2,28 @@
 
 /* 卡片通用样式变量 */
 :root {
-    /* 卡片基础样式 */
+    /* 卡片基础样式（继承 main.css 全站主题变量） */
     --card-bg: var(--white);
-    --card-border: var(--gray-200);
-    --card-shadow: var(--shadow-md);
-    --card-shadow-hover: var(--shadow-lg);
-    --card-radius: var(--radius-xl);
-    --card-padding: var(--spacing-6);
+    --card-border: rgba(15, 23, 42, 0.11);
+    --card-shadow: var(--shadow-sm);
+    --card-shadow-hover: var(--shadow-md);
+    --card-radius: var(--radius-lg);
+    --card-padding: var(--spacing-3) var(--spacing-4);
     --card-margin: var(--card-gap);
     
     /* 卡片头部样式 */
-    --card-header-bg: var(--gray-50);
-    --card-header-border: var(--gray-200);
-    --card-header-padding: var(--spacing-4) var(--spacing-6);
+    --card-header-bg: #f8fafd;
+    --card-header-border: #d5dde9;
+    --card-header-padding: var(--spacing-3) var(--spacing-4);
     
     /* 卡片标题样式 */
-    --card-title-color: var(--gray-800);
-    --card-title-size: var(--font-size-lg);
+    --card-title-color: var(--gray-900);
+    --card-title-size: var(--font-size-base);
     --card-title-weight: 600;
     
     /* 卡片内容样式 */
-    --card-content-padding: var(--spacing-6);
-    --card-content-gap: var(--spacing-4);
+    --card-content-padding: var(--spacing-3) var(--spacing-4);
+    --card-content-gap: var(--spacing-2);
     
     /* 状态颜色 */
     --state-admin: var(--red-600);
@@ -46,8 +46,8 @@
 /* 顶栏组件样式 */
 header-component {
     display: block;
-    background: var(--white);
-    border-bottom: 1px solid var(--gray-200);
+    background: rgba(255, 255, 255, 0.92);
+    border-bottom: 1px solid var(--card-header-border);
     box-shadow: var(--shadow-sm);
     position: sticky;
     top: 0;
@@ -55,9 +55,9 @@ header-component {
 }
 
 .header-container {
-    max-width: 1200px;
+    max-width: var(--layout-max-width, 1200px);
     margin: 0 auto;
-    padding: 0 var(--spacing-4);
+    padding: 0 var(--layout-gutter, var(--spacing-4));
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -123,35 +123,20 @@ header-component {
     font-size: var(--font-size-sm);
 }
 
-.search-button {
-    background: transparent;
-    border: none;
-    color: var(--gray-600);
-    padding: var(--spacing-2);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: var(--transition-fast);
-}
-
-.search-button:hover {
-    background: var(--gray-100);
-    color: var(--gray-800);
-}
-
 /* 底栏组件样式 */
 footer-component {
     display: block;
-    background: var(--white);
+    background: rgba(255, 255, 255, 0.9);
     color: var(--gray-600);
-    padding: var(--spacing-8) 0;
+    padding: var(--spacing-5) 0;
     margin-top: auto;
-    border-top: 1px solid var(--gray-200);
+    border-top: 1px solid var(--card-header-border);
 }
 
 .footer-container {
-    max-width: 1200px;
+    max-width: var(--layout-max-width, 1200px);
     margin: 0 auto;
-    padding: 0 var(--spacing-4);
+    padding: 0 var(--layout-gutter, var(--spacing-4));
     text-align: center;
 }
 
@@ -356,12 +341,13 @@ friend-links-card {
 }
 
 .friend-links {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: var(--spacing-2);
 }
 
 .friend-link {
+    display: block;
     padding: var(--spacing-2) var(--spacing-3);
     background: var(--gray-50);
     border: 1px solid var(--gray-200);
@@ -369,14 +355,16 @@ friend-links-card {
     text-decoration: none;
     color: var(--gray-700);
     font-size: var(--font-size-sm);
-    text-align: center;
     transition: var(--transition-fast);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .friend-link:hover {
-    background: var(--primary-color);
-    color: var(--white);
-    border-color: var(--primary-color);
+    background: var(--gray-100);
+    color: var(--gray-900);
+    border-color: var(--gray-400);
 }
 
 /* 关于卡片样式 */
@@ -446,14 +434,14 @@ latest-posts-card {
 .post-list {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-4);
+    gap: var(--spacing-2);
 }
 
 .post-item {
     display: flex;
-    gap: var(--spacing-4);
-    padding: var(--spacing-4);
-    border-radius: var(--radius-lg);
+    gap: var(--spacing-3);
+    padding: var(--spacing-3);
+    border-radius: var(--radius-md);
     background: var(--gray-50);
     border: 1px solid var(--gray-200);
     transition: var(--transition-fast);
@@ -463,8 +451,12 @@ latest-posts-card {
 
 .post-item:hover {
     background: var(--white);
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+    border-color: var(--gray-300);
+}
+
+.post-item:focus {
+    outline: none;
 }
 
 .post-image {
@@ -524,19 +516,11 @@ latest-posts-card {
 
 /* 响应式调整 */
 @media (max-width: 768px) {
-    .header-container {
-        padding: 0 var(--spacing-3);
-    }
-    
     .header-nav {
         gap: var(--spacing-2);
     }
     
     .stats-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .friend-links {
         grid-template-columns: 1fr;
     }
     
@@ -552,10 +536,6 @@ latest-posts-card {
 }
 
 @media (max-width: 480px) {
-    .header-container {
-        padding: 0 var(--spacing-2);
-    }
-    
     .logo-text {
         font-size: var(--font-size-lg);
     }
@@ -687,7 +667,7 @@ latest-posts-card {
     color: var(--gray-800);
     padding: 2px 4px;
     border-radius: var(--radius-sm);
-    font-family: 'Consolas', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+    font-family: var(--font-family-mono);
     font-size: 0.9em;
 }
 
@@ -700,7 +680,7 @@ latest-posts-card {
     overflow-x: auto;
     overflow-y: hidden;
     margin: var(--spacing-4) 0;
-    font-family: 'Consolas', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+    font-family: var(--font-family-mono);
     font-size: 0.9em;
     line-height: 1.5;
     white-space: pre;
@@ -773,6 +753,34 @@ latest-posts-card {
     height: auto;
     border-radius: var(--radius-md);
     margin: var(--spacing-4) 0;
+}
+
+/* KaTeX 数学公式（字体见 /static/js/libs/katex/） */
+.markdown-content .katex,
+.markdown-content .katex-display,
+.markdown-content .katex *,
+.card-body .katex,
+.card-body .katex-display,
+.card-body .katex * {
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+}
+
+.markdown-content .katex-display {
+    display: block;
+    margin: var(--spacing-4) 0;
+    text-align: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+}
+
+.markdown-content .math-fallback {
+    font-family: var(--font-family-mono);
+    color: var(--gray-700);
+    background-color: var(--gray-50);
+    padding: var(--spacing-1) var(--spacing-2);
+    border-radius: var(--radius-sm);
 }
 
 .markdown-content hr {

@@ -8,6 +8,8 @@ from src.repositories.post_repository import PostRepository
 from src.repositories.glovar_repository import GlovarRepository
 from src.services.base_service import BaseService
 from src.utils.time_utils import TimeUtils
+from src.utils.avatar_utils import check_avatar_exists
+from src.utils.text_utils import plain_text_excerpt
 
 class BlogService(BaseService):
     """博客业务逻辑服务类
@@ -21,32 +23,8 @@ class BlogService(BaseService):
         self.project_repo = project_repo
         self.post_repo = post_repo
         self.glovar_repo = glovar_repo
-    
     def _check_avatar_exists(self, userid: int) -> str | None:
-        """检查用户头像文件是否存在
-        
-        Args:
-            userid: 用户ID
-            
-        Returns:
-            str | None: 如果头像存在返回路径，否则返回None
-        """
-        if not userid:
-            return None
-            
-        from src.config.app import validate_app_config
-        config = validate_app_config()
-        avatar_dir = config["avatar_dir"]
-        
-        prefix = (userid // 10000) + 1
-        avatar_path = f"/avatar/{prefix}/s_{userid}.jpg"
-        real_path = os.path.join(avatar_dir, str(prefix), f"s_{userid}.jpg")
-        
-        # 检查文件是否存在
-        if os.path.exists(real_path):
-            return avatar_path
-        else:
-            return None
+        return check_avatar_exists(userid)
     
     async def get_recent_blogs(self, limit: int = 10) -> List[Dict[str, Any]]:
         """获取最新加入的博客（按创建时间倒序）"""
@@ -84,6 +62,12 @@ class BlogService(BaseService):
             # 格式化访问量
             access_count = project["accesscount"]
             access_str = TimeUtils.format_access_count(access_count)
+
+            createtime = project.get("createtime")
+            if createtime:
+                join_date = TimeUtils.format_relative_time(createtime)
+            else:
+                join_date = "未知日期"
             
             # 检查用户头像是否存在
             userid = project["userid"]
@@ -93,6 +77,7 @@ class BlogService(BaseService):
                 "id": project["id"],
                 "name": project["name"],
                 "followers": access_str,  # 这里显示的是访问量，但保持字段名兼容
+                "join_date": join_date,
                 "avatar": avatar_path,
                 "rank": i + 1,
                 "author": project["author_name"],
@@ -126,7 +111,8 @@ class BlogService(BaseService):
                     "time": time_str,
                     "projectitemid": comment["projectitemid"],
                     "avatar": avatar_path,
-                    "userid": userid
+                    "userid": userid,
+                    "blog_id": comment.get("author_blog_id"),
                 })
             
             return formatted_comments
@@ -323,6 +309,7 @@ class BlogService(BaseService):
                     "post_time": time_str,
                     "is_main_post": message["is_main_post"],
                     "userid": message["userid"],
+                    "author_blog_id": message.get("author_blog_id"),
                     "lastreplyid": message.get("lastreplyid"),
                     "lastreplytime": message.get("lastreplytime"),
                     "replycount": message.get("replycount", 0)
@@ -373,10 +360,8 @@ class BlogService(BaseService):
                 if len(title) > 50:
                     title = title[:50] + "..."
                 
-                # 处理博文摘要
-                excerpt = post["comment"] or ""
-                if len(excerpt) > 100:
-                    excerpt = excerpt[:100] + "..."
+                # 处理博文摘要（服务端剥离 Markdown，前端无需重复处理）
+                excerpt = plain_text_excerpt(post["comment"], max_length=100)
                 
                 # 处理附件图片路径
                 image_path = None

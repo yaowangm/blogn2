@@ -96,6 +96,12 @@ COPY --chown=appuser:appuser . .
 COPY --chown=appuser:appuser docker/docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 
+# 构建时写入静态资源版本（build-legacy.sh 传入；未传则用 UTC 时间戳）
+ARG STATIC_VERSION=
+RUN STATIC_VERSION="${STATIC_VERSION:-$(date -u +%Y%m%d%H%M%S)}" && \
+    printf '%s\n' "$STATIC_VERSION" > /app/.static_version && \
+    chown appuser:appuser /app/.static_version
+
 # 确保缓存与上传目录存在（bert-model 为默认模型路径，可被 volume 挂载覆盖）
 RUN mkdir -p /app/.cache/models /app/.cache/models/bert-model /app/uploads /app/avatars && \
     chown -R appuser:appuser /app/.cache /app/uploads /app/avatars

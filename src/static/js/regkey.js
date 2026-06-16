@@ -40,6 +40,7 @@ class RegistrationCodeManager {
                 this.currentUser = UserManager.getCurrentUser();
             } catch (error) {
                 console.error('解析用户信息失败:', error);
+                UserManager.clearPostFormDrafts();
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('user_info');
                 window.location.href = '/';
@@ -156,31 +157,26 @@ class RegistrationCodeManager {
             // 检查是否是认证错误
             if (error.message && error.message.includes('401')) {
                 // 清除过期的认证信息
+                UserManager.clearPostFormDrafts();
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('user_info');
                 
                 container.innerHTML = `
-                    <div class="error">
-                        <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="15" y1="9" x2="9" y2="15"/>
-                            <line x1="9" y1="9" x2="15" y2="15"/>
-                        </svg>
-                        <p>登录已过期，请重新登录</p>
-                        <button class="login-btn" onclick="window.location.href='/'">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">${Icons.error}</div>
+                        <p class="empty-state-title">登录已过期</p>
+                        <p class="empty-state-description">请返回首页重新登录</p>
+                        <button type="button" class="btn btn-primary btn-sm" style="margin-top: var(--spacing-3);" onclick="window.location.href='/'">
                             返回首页登录
                         </button>
                     </div>
                 `;
             } else {
                 container.innerHTML = `
-                    <div class="error">
-                        <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="15" y1="9" x2="9" y2="15"/>
-                            <line x1="9" y1="9" x2="15" y2="15"/>
-                        </svg>
-                        加载失败，请稍后重试
+                    <div class="empty-state">
+                        <div class="empty-state-icon">${Icons.error}</div>
+                        <p class="empty-state-title">加载失败</p>
+                        <p class="empty-state-description">请稍后重试</p>
                     </div>
                 `;
             }
@@ -192,19 +188,19 @@ class RegistrationCodeManager {
         if (!container) return;
 
         if (this.regkeyData.length === 0) {
+            const keyIcon = typeof Icons !== 'undefined' ? Icons.registrationCode : '';
             container.innerHTML = `
                 <div class="empty-state">
-                    <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 0 1 21.75 8.25z"></path>
-                    </svg>
-                    暂无注册码数据
+                    <div class="empty-state-icon">${keyIcon}</div>
+                    <p class="empty-state-title">暂无注册码</p>
+                    <p class="empty-state-description">使用积分兑换后将显示在这里</p>
                 </div>
             `;
             return;
         }
 
         const tableHTML = `
-            <table class="regkey-table">
+            <table class="data-table">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -222,13 +218,13 @@ class RegistrationCodeManager {
                             <td><code>${this.escapeHtml(window.RegKeyFormatter.format(item.regkey))}</code></td>
                             <td>
                                 ${item.ownerid && item.owner_name ? 
-                                    `<a href="/profile/${item.ownerid}" class="user-link" target="_blank" rel="noopener noreferrer">${this.escapeHtml(item.owner_name)}</a>` : 
+                                    `<a href="/profile/${item.ownerid}" class="profile-link" target="_blank" rel="noopener noreferrer">${this.escapeHtml(item.owner_name)}</a>` : 
                                     this.escapeHtml(item.owner_name || '未知')
                                 }
                             </td>
                             <td>
                                 ${item.userid && item.user_name ? 
-                                    `<a href="/profile/${item.userid}" class="user-link" target="_blank" rel="noopener noreferrer">${this.escapeHtml(item.user_name)}</a>` : 
+                                    `<a href="/profile/${item.userid}" class="profile-link" target="_blank" rel="noopener noreferrer">${this.escapeHtml(item.user_name)}</a>` : 
                                     (item.user_name ? this.escapeHtml(item.user_name) : '-')
                                 }
                             </td>
@@ -393,6 +389,7 @@ class RegistrationCodeManager {
             // 检查是否是认证错误
             if (error.message && error.message.includes('401')) {
                 // 清除过期的认证信息
+                UserManager.clearPostFormDrafts();
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('user_info');
                 alert('登录已过期，请重新登录');

@@ -41,14 +41,29 @@ class TestSubscriptionRepository:
             status=1
         )
 
+    def _make_subscription_post_row(self, project_item, blog_name="测试博客", author_name="测试用户"):
+        """构造与列投影查询一致的 mock row。"""
+        mock_row = MagicMock()
+        mock_row.id = project_item.id
+        mock_row.name = project_item.name
+        mock_row.comment = project_item.comment
+        mock_row.createtime = project_item.createtime
+        mock_row.accesscount = getattr(project_item, "accesscount", 0)
+        mock_row.commentcount = getattr(project_item, "commentcount", 0)
+        mock_row.projectid = getattr(project_item, "projectid", 1)
+        mock_row.userid = project_item.userid
+        mock_row.attachment = getattr(project_item, "attachment", None)
+        mock_row.blog_name = blog_name
+        mock_row.author_name = author_name
+        return mock_row
+
     @pytest.mark.asyncio
     async def test_get_subscription_posts_by_project_success(self, repository, mock_session, mock_project_item):
         """测试成功获取订阅文章列表"""
         # 模拟查询结果 - 第一次调用返回文章列表
         mock_result1 = MagicMock()
-        # 确保result对象本身是可迭代的
         mock_result1.__iter__ = MagicMock(return_value=iter([
-            (mock_project_item, "测试博客", "测试用户")
+            self._make_subscription_post_row(mock_project_item)
         ]))
         
         # 第二次调用返回总数
@@ -135,7 +150,7 @@ class TestSubscriptionRepository:
         # 模拟查询结果
         mock_result1 = MagicMock()
         mock_result1.__iter__ = MagicMock(return_value=iter([
-            (mock_project_item, "测试博客", "测试用户")
+            self._make_subscription_post_row(mock_project_item)
         ]))
         
         mock_result2 = MagicMock()
@@ -170,7 +185,7 @@ class TestSubscriptionRepository:
         # 模拟查询结果
         mock_result1 = MagicMock()
         mock_result1.__iter__ = MagicMock(return_value=iter([
-            (project_item_no_user, "测试博客", "未知用户")
+            self._make_subscription_post_row(project_item_no_user, author_name="未知用户")
         ]))
         
         mock_result2 = MagicMock()

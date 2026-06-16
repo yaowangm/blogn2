@@ -178,6 +178,8 @@ class NewMessageForm extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
+                @import url('/static/css/common-components.css');
+
                 :host {
                     display: block;
                 }
@@ -253,50 +255,6 @@ class NewMessageForm extends BaseComponent {
                     gap: var(--spacing-3);
                 }
 
-                .btn {
-                    padding: var(--spacing-3) var(--spacing-5);
-                    border: none;
-                    border-radius: var(--radius-md);
-                    font-size: var(--font-size-sm);
-                    font-weight: 500;
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                    text-decoration: none;
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    position: relative;
-                    z-index: 1;
-                }
-
-                .btn-primary {
-                    background: #2563eb;
-                    color: #ffffff;
-                }
-
-                .btn-primary:hover:not(:disabled) {
-                    background: #1d4ed8;
-                    transform: translateY(-1px);
-                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-                }
-
-                .btn-primary:disabled {
-                    background: #94a3b8;
-                    cursor: not-allowed;
-                }
-
-                .btn-secondary {
-                    background: #f1f5f9;
-                    color: #374151;
-                    border: 1px solid #d1d5db;
-                }
-
-                .btn-secondary:hover {
-                    background: #e2e8f0;
-                    transform: translateY(-1px);
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                }
-
                 .error-message {
                     display: none;
                     color: var(--error-color);
@@ -325,7 +283,7 @@ class NewMessageForm extends BaseComponent {
                         flex-direction: column;
                     }
                     
-                    .btn {
+                    .form-actions .btn {
                         width: 100%;
                     }
                 }
@@ -364,8 +322,8 @@ class NewMessageForm extends BaseComponent {
                         </div>
                         
                         <div class="form-actions">
-                            <button type="button" class="btn btn-secondary" id="clear-btn">
-                                清空
+                            <button type="button" class="btn btn-secondary btn-icon-only" id="clear-btn" title="清空" aria-label="清空">
+                                ${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.clear) : '清空'}
                             </button>
                             <button type="submit" id="submit-btn" class="btn btn-primary">
                                 ${this.threadId !== null ? '发表跟贴' : '发表留言'}

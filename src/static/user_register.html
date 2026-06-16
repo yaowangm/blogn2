@@ -125,28 +125,6 @@
             opacity: 1 !important;
         }
 
-        .submit-button {
-            background: var(--primary-color);
-            color: var(--white);
-            border: none;
-            padding: var(--spacing-3) var(--spacing-6);
-            border-radius: var(--radius-md);
-            font-size: var(--font-size-base);
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition-fast);
-            margin-top: var(--spacing-2);
-        }
-
-        .submit-button:hover:not(:disabled) {
-            background: var(--primary-hover);
-        }
-
-        .submit-button:disabled {
-            background: var(--gray-400);
-            cursor: not-allowed;
-        }
-
         .login-link {
             text-align: center;
             margin-top: var(--spacing-6);
@@ -307,7 +285,7 @@
                         <div class="form-error" id="regkeyError"></div>
                     </div>
 
-                    <button type="submit" class="submit-button" id="submitBtn">
+                    <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
                         注册
                     </button>
                 </form>

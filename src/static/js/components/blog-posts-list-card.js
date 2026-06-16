@@ -22,7 +22,8 @@ class BlogPostsListCard extends BaseComponent {
 
     connectedCallback() {
         this.projectId = this.getProjectIdFromUrl();
-        this.currentFolderId = this.getCurrentFolderId();
+        this.currentFolderId = FolderFilter.normalizeFolderId(this.getCurrentFolderId());
+        this.currentCategoryName = FolderFilter.getCategoryLabel(this.currentFolderId);
         this.currentPage = this.getCurrentPageFromUrl();
         // 不阻塞：先渲染内层 blog-list-card，由它单独请求文章列表，避免重复请求
         this.loading = false;
@@ -96,8 +97,15 @@ class BlogPostsListCard extends BaseComponent {
         const blogListCard = this.shadowRoot?.querySelector('blog-list-card:not(#subscription-posts-card)');
         if (blogListCard && this.activeTab === 'original') {
             blogListCard.currentFolderId = this.currentFolderId;
-            blogListCard.currentCategoryName = this.currentCategoryName;
+            blogListCard.currentCategoryName = FolderFilter.getCategoryLabel(
+                this.currentFolderId,
+                null,
+                this.currentCategoryName
+            );
             blogListCard.currentPage = page;
+            if (typeof blogListCard.updatePagination === 'function') {
+                blogListCard.updatePagination();
+            }
             if (typeof blogListCard.loadContent === 'function') {
                 blogListCard.loadContent(page);
             }
@@ -111,7 +119,7 @@ class BlogPostsListCard extends BaseComponent {
         this.addEventListener('categoryChanged', (event) => {
             const { folderId, folderName } = event.detail;
             this.currentFolderId = FolderFilter.normalizeFolderId(folderId);
-            this.currentCategoryName = folderName || '全部文章';
+            this.currentCategoryName = FolderFilter.getCategoryLabel(folderId, null, folderName);
             this.currentPage = 1;
             if (!this.reloadBlogListCard(1)) {
                 this.loadData();
@@ -156,7 +164,10 @@ class BlogPostsListCard extends BaseComponent {
                 this.posts = data.posts || [];
                 this.totalPosts = typeof data.total === 'number' ? data.total : 0;
                 this.totalPages = typeof data.total_pages === 'number' ? data.total_pages : 0;
-                this.currentCategoryName = data.category || '全部文章';
+                this.currentCategoryName = FolderFilter.getCategoryLabel(
+                    this.currentFolderId,
+                    data.category
+                );
             } else if (response.status === 404) {
                 // 如果博客不存在，跳转到错误页面
                 window.location.href = '/static/error.html';
@@ -238,123 +249,113 @@ class BlogPostsListCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
-                :host { display: block; font-family: var(--font-family); }
-                
-                /* CSS Variables */
-                :root {
-                    --primary-color: #3b82f6;
-                    --primary-hover: #2563eb;
-                    --white: #ffffff;
-                    --gray-50: #f9fafb;
-                    --gray-100: #f3f4f6;
-                    --gray-200: #e5e7eb;
-                    --gray-300: #d1d5db;
-                    --gray-400: #9ca3af;
-                    --gray-500: #6b7280;
-                    --gray-600: #4b5563;
-                    --gray-700: #374151;
-                    --gray-800: #1f2937;
-                    --gray-900: #111827;
-                    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    --font-size-xs: 0.75rem;
-                    --font-size-sm: 0.875rem;
-                    --font-size-base: 1rem;
-                    --font-size-lg: 1.125rem;
-                    --font-size-xl: 1.25rem;
-                    --spacing-1: 0.25rem;
-                    --spacing-2: 0.5rem;
-                    --spacing-3: 0.75rem;
-                    --spacing-4: 1rem;
-                    --spacing-5: 1.25rem;
-                    --spacing-6: 1.5rem;
-                    --spacing-8: 2rem;
-                    --spacing-10: 2.5rem;
-                    --radius-sm: 0.25rem;
-                    --radius-md: 0.375rem;
-                    --radius-lg: 0.5rem;
-                    --radius-xl: 0.75rem;
-                    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-                    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-                    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-                    --transition-fast: all 0.15s ease;
-                    --transition-normal: all 0.3s ease;
+                @import url('/static/css/common-components.css');
+
+                .tabs {
+                    display: flex;
+                    padding: var(--spacing-3) var(--spacing-4) var(--spacing-2);
                 }
-                
-                .tabs { display: flex; border-bottom: 1px solid var(--gray-200); }
-                .tab { flex: 1; padding: var(--spacing-4) var(--spacing-6); text-align: center; background: var(--gray-100); border: none; cursor: pointer; transition: var(--transition-fast); font-size: var(--font-size-sm); color: var(--gray-600); }
-                .tab.active { background: var(--white); color: var(--primary-color); border-bottom: 2px solid var(--primary-color); }
-                .tab:hover:not(.active) { background: var(--gray-200); }
+
+                .tab-group {
+                    display: flex;
+                    flex: 1;
+                    gap: 2px;
+                    padding: 3px;
+                    background: var(--gray-100);
+                    border: 1px solid var(--gray-200);
+                    border-radius: var(--radius-lg);
+                }
+
+                .tab {
+                    flex: 1;
+                    min-width: 0;
+                    min-height: var(--btn-height, 36px);
+                    padding: 0 var(--spacing-3);
+                    text-align: center;
+                    background: transparent;
+                    border: 1.5px solid transparent;
+                    border-radius: calc(var(--radius-lg) - 3px);
+                    box-sizing: border-box;
+                    cursor: pointer;
+                    transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+                    font-size: var(--font-size-sm);
+                    font-weight: 500;
+                    color: var(--gray-600);
+                    line-height: 1.25;
+                }
+
+                .tab.active {
+                    background: var(--white);
+                    color: var(--gray-900);
+                    font-weight: 600;
+                    border: 1.5px solid var(--gray-300);
+                    box-shadow: var(--shadow-sm);
+                }
+
+                .tab:hover:not(.active) {
+                    color: var(--gray-900);
+                    background: rgba(255, 255, 255, 0.55);
+                }
+
+                .tab:focus { outline: none; }
+
+                .tab:focus-visible {
+                    outline: 2px solid var(--primary-color);
+                    outline-offset: 1px;
+                }
                 .posts-list { list-style: none; margin: 0; padding: 0; }
-                .post-item { border-bottom: 1px solid var(--gray-100); padding: var(--spacing-6); }
+                .post-item { border-bottom: 1px solid var(--gray-100); padding: var(--spacing-3) var(--spacing-4); }
                 .post-item:last-child { border-bottom: none; }
                 .post-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-3); }
-                .post-title { margin: 0; font-size: var(--font-size-lg); font-weight: 600; color: var(--gray-800); text-decoration: none; }
+                .post-title { margin: 0; font-size: var(--font-size-base); font-weight: 600; color: var(--gray-900); text-decoration: none; }
                 .post-title:hover { color: var(--primary-color); }
                 .post-meta { display: flex; align-items: center; gap: var(--spacing-4); font-size: var(--font-size-xs); color: var(--gray-500); }
                 .post-category { background: var(--primary-color); color: var(--white); padding: var(--spacing-1) var(--spacing-2); border-radius: var(--radius-full); font-size: var(--font-size-xs); }
                 .post-content { color: var(--gray-700); line-height: 1.6; margin-bottom: var(--spacing-4); }
                 .post-stats { display: flex; align-items: center; gap: var(--spacing-4); font-size: var(--font-size-xs); color: var(--gray-500); }
-                .loading { text-align: center; padding: var(--spacing-8); color: var(--gray-500); }
-                .error { text-align: center; padding: var(--spacing-6); color: var(--error-color); background: var(--gray-50); border-radius: var(--radius-lg); }
-                .empty-state { text-align: center; padding: var(--spacing-6); color: var(--gray-500); }
+                .loading { text-align: center; padding: var(--spacing-4); color: var(--gray-500); }
+                .error { text-align: center; padding: var(--spacing-3) var(--spacing-4); color: var(--error-color); background: var(--gray-50); border-radius: var(--radius-lg); }
+                .empty-state { text-align: center; padding: var(--spacing-3) var(--spacing-4); color: var(--gray-500); }
                 
                 /* 卡片样式：根 .card 不设 margin，由父级 .sidebar 的 gap 统一控制间距，避免双倍间距 */
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    margin-bottom: 0;
-                }
+                .card { margin-bottom: 0; }
                 
                 /* 博文列表容器样式 */
                 .blog-list-container {
                     padding: 0;
                 }
                 
-                /* 发表博客文章按钮样式 */
+                /* 发表文章：重要操作，使用主色按钮 */
                 .create-post-button {
-                    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
-                    color: var(--white);
-                    border: none;
-                    padding: var(--spacing-4) var(--spacing-6);
-                    border-radius: var(--radius-lg);
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                    box-shadow: var(--shadow-md);
-                    margin: var(--spacing-4) var(--spacing-5) var(--spacing-3) var(--spacing-5);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: var(--spacing-2);
-                    width: calc(100% - var(--spacing-10));
+                    margin: var(--spacing-3) var(--spacing-4) var(--spacing-2);
                 }
-                
-                .create-post-button:hover {
-                    transform: translateY(-2px);
-                    box-shadow: var(--shadow-lg);
-                    background: linear-gradient(135deg, var(--primary-hover), var(--primary-color));
-                }
-                
-                .create-post-button:active {
-                    transform: translateY(0);
-                }
-                
+
                 .create-post-icon {
-                    width: 20px;
-                    height: 20px;
+                    width: 18px;
+                    height: 18px;
                     fill: currentColor;
                 }
             </style>
 
             <div class="card">
                 ${this.isOwner ? this.renderCreatePostButton() : ''}
-                <div class="tabs">
-                    <button class="tab ${this.activeTab === 'original' ? 'active' : ''}" onclick="this.getRootNode().host.switchTab('original')">原创文章</button>
-                    <button class="tab ${this.activeTab === 'subscription' ? 'active' : ''}" onclick="this.getRootNode().host.switchTab('subscription')">订阅文章</button>
+                <div class="tabs" role="tablist" aria-label="文章类型">
+                    <div class="tab-group">
+                        <button
+                            type="button"
+                            class="tab ${this.activeTab === 'original' ? 'active' : ''}"
+                            role="tab"
+                            aria-selected="${this.activeTab === 'original'}"
+                            onclick="this.getRootNode().host.switchTab('original')"
+                        >原创文章</button>
+                        <button
+                            type="button"
+                            class="tab ${this.activeTab === 'subscription' ? 'active' : ''}"
+                            role="tab"
+                            aria-selected="${this.activeTab === 'subscription'}"
+                            onclick="this.getRootNode().host.switchTab('subscription')"
+                        >订阅文章</button>
+                    </div>
                 </div>
                 ${this.loading ? this.renderLoading() : 
                   this.activeTab === 'original' ? this.renderOriginalPosts() :
@@ -365,10 +366,8 @@ class BlogPostsListCard extends BaseComponent {
 
     renderCreatePostButton() {
         return `
-            <button class="create-post-button" onclick="this.getRootNode().host.navigateToCreatePost()">
-                <svg class="create-post-icon" viewBox="0 0 24 24">
-                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                </svg>
+            <button type="button" class="btn btn-primary btn-block create-post-button" onclick="this.getRootNode().host.navigateToCreatePost()">
+                ${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.add) : `<svg class="create-post-icon" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`}
                 发表博客文章
             </button>
         `;

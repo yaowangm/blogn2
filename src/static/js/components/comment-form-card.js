@@ -54,7 +54,6 @@ class CommentFormCard extends BaseComponent {
         }
     }
 
-
     /**
      * 检查是否可以发表评论
      */
@@ -102,7 +101,7 @@ class CommentFormCard extends BaseComponent {
                             ></textarea>
                         </div>
                         <div class="form-actions">
-                            <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <button type="submit" class="btn btn-primary btn-sm" id="submitBtn">
                                 <span class="btn-text">发表评论</span>
                                 <span class="btn-loading" style="display: none;">提交中...</span>
                             </button>
@@ -221,7 +220,6 @@ class CommentFormCard extends BaseComponent {
         }
     }
 
-
     showSuccess(message) {
         this.showMessage(message, 'success');
     }
@@ -254,23 +252,26 @@ class CommentFormCard extends BaseComponent {
         if (!this.shadowRoot.querySelector('style')) {
             const style = document.createElement('style');
             style.textContent = `
-                .comment-form-card {
+                @import url('/static/css/common-components.css');
+
+                .card {
                     margin-bottom: 0;
                 }
-                .card-header {
-                    padding: var(--spacing-4) var(--spacing-6);
-                    border-bottom: 1px solid var(--gray-200);
-                    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-                    background-color: var(--gray-50);
+
+                .card-body {
+                    padding: calc(var(--spacing-3) * 0.6) var(--spacing-4);
                 }
+
                 .card-header h3 {
-                    font-size: var(--font-size-lg);
+                    font-size: var(--font-size-base);
                     font-weight: 600;
-                    color: var(--gray-800);
+                    color: var(--gray-900);
                     margin: 0;
                 }
+
+                #commentForm,
                 .comment-form {
-                    padding: var(--spacing-4) var(--spacing-6);
+                    margin: 0;
                 }
                 .form-group {
                     margin-bottom: var(--spacing-4);
@@ -301,35 +302,19 @@ class CommentFormCard extends BaseComponent {
                     display: flex;
                     justify-content: flex-end;
                 }
-                .btn {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: var(--spacing-3) var(--spacing-6);
-                    border: none;
-                    border-radius: var(--radius-md);
-                    font-size: var(--font-size-base);
-                    font-weight: 500;
-                    text-decoration: none;
-                    cursor: pointer;
-                    transition: all var(--transition-fast);
-                    min-width: 100px;
+
+                .btn.btn-sm {
+                    padding: calc(var(--spacing-2) * 1.2) calc(var(--spacing-3) * 1.2);
+                    gap: calc(var(--spacing-2) * 1.2);
+                    font-size: calc(var(--font-size-xs) * 1.2);
+                    line-height: 1.25;
+                    min-width: 0;
                 }
-                .btn:disabled {
-                    opacity: 0.6;
-                    cursor: not-allowed;
-                }
-                .btn-primary {
-                    background-color: var(--primary-color);
-                    color: var(--white);
-                }
-                .btn-primary:hover:not(:disabled) {
-                    background-color: var(--primary-hover);
-                }
+
                 .message {
                     padding: var(--spacing-3) var(--spacing-4);
                     border-radius: var(--radius-md);
-                    margin: var(--spacing-4) var(--spacing-6) 0;
+                    margin: var(--spacing-3) 0 0;
                     font-size: var(--font-size-sm);
                 }
                 .message-success {

@@ -53,16 +53,16 @@ class FriendLinksManager {
     updatePageHeader() {
         const isGlobal = this.projectId === 0;
         const titleEl = document.querySelector('title');
-        const h1 = document.querySelector('.page-title');
-        const desc = document.querySelector('.page-description');
+        const pageTitle = document.getElementById('pageTitleText');
+        const desc = document.getElementById('pageDescription');
         if (isGlobal) {
-            if (titleEl) titleEl.textContent = '管理全站友情链接 - 博客管理系统';
-            if (h1) h1.lastChild && h1.lastChild.nodeType === Node.TEXT_NODE ? h1.lastChild.textContent = '管理全站友情链接' : h1.appendChild(document.createTextNode('管理全站友情链接'));
-            if (desc) desc.textContent = '管理全站友情链接，最多可添加20个友情链接';
+            if (titleEl) titleEl.textContent = '管理全站友情链接 - BlogN';
+            if (pageTitle) pageTitle.textContent = '管理全站友情链接';
+            if (desc) desc.textContent = '管理全站友情链接，最多可添加 20 个友情链接';
         } else {
-            if (titleEl) titleEl.textContent = '管理友情链接 - 博客管理系统';
-            if (h1) h1.lastChild && h1.lastChild.nodeType === Node.TEXT_NODE ? h1.lastChild.textContent = '管理友情链接' : h1.appendChild(document.createTextNode('管理友情链接'));
-            if (desc) desc.textContent = '管理您的博客友情链接，最多可添加20个友情链接';
+            if (titleEl) titleEl.textContent = '管理友情链接 - BlogN';
+            if (pageTitle) pageTitle.textContent = '管理友情链接';
+            if (desc) desc.textContent = '管理您的博客友情链接，最多可添加 20 个友情链接';
         }
     }
     
@@ -158,57 +158,53 @@ class FriendLinksManager {
         }
         
         if (this.friendLinks.length === 0) {
+            const linkIcon = typeof Icons !== 'undefined' ? Icons.friendLinks : '';
             linksList.innerHTML = `
                 <div class="empty-state">
-                    <div class="empty-state-icon">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                        </svg>
-                    </div>
-                    <div class="empty-state-text">暂无友情链接</div>
-                    <div class="empty-state-description">点击"添加链接"按钮开始添加友情链接</div>
+                    <div class="empty-state-icon">${linkIcon}</div>
+                    <p class="empty-state-title">暂无友情链接</p>
+                    <p class="empty-state-description">点击「新建链接」开始添加友情链接</p>
                 </div>
             `;
             return;
         }
-        
-        // 显示数量限制警告
-        if (this.friendLinks.length >= 20) {
-            linksList.innerHTML = `
-                <div class="limit-warning">
-                    ⚠️ 友情链接数量已达到上限（20个），无法继续添加
-                </div>
-            ` + this.renderLinksItems();
-        } else {
-            linksList.innerHTML = this.renderLinksItems();
-        }
+
+        const limitNotice = this.friendLinks.length >= 20 ? `
+            <div class="limit-notice">友情链接数量已达到上限（20 个），无法继续添加</div>
+        ` : '';
+
+        linksList.innerHTML = `
+            <div class="link-rows">
+                ${limitNotice}
+                ${this.renderLinksItems()}
+            </div>
+        `;
     }
     
     renderLinksItems() {
+        const editIcon = typeof Icons !== 'undefined'
+            ? Icons.asBtnIcon(Icons.edit)
+            : '';
+        const deleteIcon = typeof Icons !== 'undefined'
+            ? Icons.asBtnIcon(Icons.delete)
+            : '';
+
         return this.friendLinks.map(link => `
-            <div class="link-item" data-link-id="${link.id}">
-                <div class="link-info">
-                    <div class="link-name" title="${this.escapeHtml(link.subject)}">
+            <div class="link-row" data-link-id="${link.id}">
+                <div class="link-row-info">
+                    <div class="link-row-name" title="${this.escapeHtml(link.subject)}">
                         ${this.escapeHtml(link.subject)}
                     </div>
-                    <div class="link-url" title="${this.escapeHtml(link.linkstr)}">
+                    <div class="link-row-url" title="${this.escapeHtml(link.linkstr)}">
                         ${this.escapeHtml(link.linkstr)}
                     </div>
                 </div>
-                <div class="link-actions">
-                    <button class="action-button edit-button" onclick="friendLinksManager.editLink(${link.id})">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                        编辑
+                <div class="link-row-actions">
+                    <button type="button" class="btn btn-secondary btn-sm btn-icon-only" title="编辑" aria-label="编辑" onclick="friendLinksManager.editLink(${link.id})">
+                        ${editIcon}
                     </button>
-                    <button class="action-button delete-button" onclick="friendLinksManager.deleteLink(${link.id})">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                        删除
+                    <button type="button" class="btn btn-danger btn-sm btn-icon-only" title="删除" aria-label="删除" onclick="friendLinksManager.deleteLink(${link.id})">
+                        ${deleteIcon}
                     </button>
                 </div>
             </div>
@@ -300,141 +296,43 @@ class FriendLinksManager {
     }
     
     showModal(title, buttonText, data = {}) {
-        // 创建模态框
         const modal = document.createElement('div');
-        modal.className = 'friend-link-modal';
+        modal.className = 'modal-root';
         modal.innerHTML = `
-            <div class="modal-overlay" onclick="this.parentElement.remove()">
-                <div class="modal-content" onclick="event.stopPropagation()">
-                    <div class="modal-header">
-                        <h3>${title}</h3>
-                        <button class="modal-close" onclick="this.closest('.friend-link-modal').remove()">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="modalLinkForm">
-                            <div class="form-group">
-                                <label for="modalLinkName">链接名称</label>
-                                <input type="text" id="modalLinkName" name="subject" value="${this.escapeHtml(data.subject || '')}" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="modalLinkUrl">链接地址</label>
-                                <input type="url" id="modalLinkUrl" name="linkstr" value="${this.escapeHtml(data.linkstr || '')}" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="modalLinkOrder">排序</label>
-                                <input type="number" id="modalLinkOrder" name="ordernum" value="${data.ordernum || 0}" min="0">
-                            </div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn-cancel" onclick="this.closest('.friend-link-modal').remove()">取消</button>
-                        <button type="button" class="btn-save" onclick="window.friendLinksManager.handleModalSubmit()">${buttonText}</button>
-                    </div>
+            <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="friendLinkModalTitle">
+                <div class="modal-header">
+                    <h3 class="modal-title" id="friendLinkModalTitle">${title}</h3>
+                    <button type="button" class="modal-close" aria-label="关闭" onclick="this.closest('.modal-root').remove()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="modalLinkForm">
+                        <div class="form-group">
+                            <label class="form-label" for="modalLinkName">链接名称</label>
+                            <input type="text" id="modalLinkName" class="form-input" name="subject" value="${this.escapeHtml(data.subject || '')}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="modalLinkUrl">链接地址</label>
+                            <input type="url" id="modalLinkUrl" class="form-input" name="linkstr" value="${this.escapeHtml(data.linkstr || '')}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="modalLinkOrder">排序</label>
+                            <input type="number" id="modalLinkOrder" class="form-input" name="ordernum" value="${data.ordernum || 0}" min="0">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm btn-icon-only" title="取消" aria-label="取消" onclick="this.closest('.modal-root').remove()">${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.close) : '取消'}</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="window.friendLinksManager.handleModalSubmit()">${buttonText}</button>
                 </div>
             </div>
-            <style>
-                .friend-link-modal {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    z-index: 1000;
-                }
-                .modal-overlay {
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0, 0, 0, 0.5);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-                .modal-content {
-                    background: white;
-                    border-radius: 8px;
-                    width: 90%;
-                    max-width: 500px;
-                    max-height: 90vh;
-                    overflow-y: auto;
-                }
-                .modal-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 20px;
-                    border-bottom: 1px solid #e5e7eb;
-                }
-                .modal-header h3 {
-                    margin: 0;
-                    font-size: 18px;
-                    font-weight: 600;
-                }
-                .modal-close {
-                    background: none;
-                    border: none;
-                    font-size: 24px;
-                    cursor: pointer;
-                    color: #6b7280;
-                }
-                .modal-body {
-                    padding: 20px;
-                }
-                .form-group {
-                    margin-bottom: 20px;
-                }
-                .form-group label {
-                    display: block;
-                    margin-bottom: 5px;
-                    font-weight: 500;
-                    color: #374151;
-                }
-                .form-group input {
-                    width: 100%;
-                    padding: 10px;
-                    border: 1px solid #d1d5db;
-                    border-radius: 4px;
-                    font-size: 14px;
-                }
-                .form-group input:focus {
-                    outline: none;
-                    border-color: #3b82f6;
-                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-                }
-                .modal-footer {
-                    display: flex;
-                    justify-content: flex-end;
-                    gap: 10px;
-                    padding: 20px;
-                    border-top: 1px solid #e5e7eb;
-                }
-                .btn-cancel, .btn-save {
-                    padding: 10px 20px;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    font-size: 14px;
-                    font-weight: 500;
-                }
-                .btn-cancel {
-                    background: #f3f4f6;
-                    color: #374151;
-                }
-                .btn-cancel:hover {
-                    background: #e5e7eb;
-                }
-                .btn-save {
-                    background: #3b82f6;
-                    color: white;
-                }
-                .btn-save:hover {
-                    background: #2563eb;
-                }
-            </style>
         `;
-        
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                modal.remove();
+            }
+        });
+
         document.body.appendChild(modal);
         
         // 聚焦到第一个输入框
@@ -465,7 +363,7 @@ class FriendLinksManager {
         }
         
         // 关闭模态框
-        const modal = document.querySelector('.friend-link-modal');
+        const modal = document.querySelector('.modal-root');
         if (modal) {
             modal.remove();
         }
@@ -511,22 +409,19 @@ class FriendLinksManager {
     }
     
     showMessage(message, type) {
-        // 移除现有消息
-        const existingMessage = document.querySelector('.error-message, .success-message');
+        const existingMessage = document.querySelector('.page-toast');
         if (existingMessage) {
             existingMessage.remove();
         }
-        
+
         const messageDiv = document.createElement('div');
-        messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
+        messageDiv.className = type === 'error' ? 'page-toast page-toast-error' : 'page-toast page-toast-success';
         messageDiv.textContent = message;
-        
-        // 在页面顶部显示消息
-        const mainContent = document.querySelector('main');
-        if (mainContent) {
-            mainContent.insertBefore(messageDiv, mainContent.firstChild);
+
+        const container = document.querySelector('.management-container');
+        if (container) {
+            container.insertBefore(messageDiv, container.firstChild);
         } else {
-            // 如果找不到main元素，添加到body
             document.body.insertBefore(messageDiv, document.body.firstChild);
         }
         

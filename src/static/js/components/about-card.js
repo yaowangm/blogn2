@@ -5,7 +5,7 @@ class AboutCard extends BaseComponent {
 
     connectedCallback() {
         this.render();
-        this.loadAboutContent();
+        BaseComponent.observeWhenVisible(this, () => this.loadAboutContent());
     }
 
     /**
@@ -24,7 +24,6 @@ class AboutCard extends BaseComponent {
             this.showError();
         }
     }
-
 
     updateContent(data) {
         const cardTitle = this.shadowRoot.querySelector('.card-title');
@@ -93,41 +92,15 @@ class AboutCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
+                @import url('/static/css/common-components.css');
+
+                .card-body {
+                    padding: calc(var(--spacing-3) + 5px) calc(var(--spacing-4) + 5px);
+                }
+
                 :host {
                     display: block;
                 }
-
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    transition: var(--transition-normal);
-                }
-
-                .card:hover {
-                    box-shadow: var(--shadow-md);
-                    transform: translateY(-2px);
-                }
-
-                .card-header {
-                    padding: var(--spacing-4) var(--spacing-5);
-                    border-bottom: 1px solid var(--gray-200);
-                    background: var(--gray-50);
-                }
-
-                .card-title {
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--gray-900);
-                    margin: 0;
-                }
-
-                .card-body {
-                    padding: var(--spacing-5);
-                }
-
                 .about-content {
                     line-height: 1.7;
                     color: var(--gray-700);

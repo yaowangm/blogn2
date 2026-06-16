@@ -31,7 +31,6 @@
 
 import sys
 import os
-import hashlib
 import getpass
 import argparse
 from pathlib import Path
@@ -48,12 +47,9 @@ try:
 except ImportError:
     print("⚠️  dotenv 模块未安装，将使用环境变量或默认配置")
 
-from passlib.context import CryptContext
+from src.utils.password_hash import hash_user_password, verify_user_password
 from sqlmodel import create_engine, Session, select
 from src.models.user import User
-
-# 创建密码上下文
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def get_database_connection(database_name: str = "blogn_example"):
     """获取数据库连接"""
@@ -113,35 +109,12 @@ def find_user_by_name(session: Session, username: str) -> Optional[User]:
         return None
 
 def hash_password(password: str) -> str:
-    """
-    哈希密码：password → MD5 → bcrypt
-    与登录系统使用相同的加密方式
-    """
-    md5_hash = hashlib.md5(password.encode()).hexdigest()
-    return pwd_context.hash(md5_hash)
+    """哈希密码：password → MD5 → bcrypt（与登录系统一致）。"""
+    return hash_user_password(password)
 
 def verify_password(plain_password: str, stored_hash: str) -> bool:
-    """
-    验证密码，支持两种格式：
-    1. 直接bcrypt哈希（旧格式）
-    2. MD5+bcrypt双重哈希（新格式）
-    """
-    try:
-        # 检查是否是bcrypt格式
-        if stored_hash.startswith('$2b$') and len(stored_hash) == 60:
-            # 尝试直接验证（旧格式）
-            if pwd_context.verify(plain_password, stored_hash):
-                return True
-            
-            # 如果不是直接验证，尝试MD5+bcrypt双重哈希（新格式）
-            md5_hash = hashlib.md5(plain_password.encode()).hexdigest()
-            return pwd_context.verify(md5_hash, stored_hash)
-        else:
-            # 非bcrypt格式，尝试MD5+bcrypt双重哈希
-            md5_hash = hashlib.md5(plain_password.encode()).hexdigest()
-            return pwd_context.verify(md5_hash, stored_hash)
-    except Exception:
-        return False
+    """验证密码（支持旧/新两种 bcrypt 格式）。"""
+    return verify_user_password(plain_password, stored_hash)
 
 def create_admin_user(session: Session, username: str, password: str, email: str = "") -> bool:
     """创建管理员用户"""

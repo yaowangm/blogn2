@@ -55,7 +55,8 @@ class TestBlogService:
             "content": "这是一条测试评论",
             "post_time": TimeUtils.now_utc() - timedelta(hours=2),
             "projectitemid": 456,
-            "userid": 789
+            "userid": 789,
+            "author_blog_id": 55,
         }
     
     @pytest.fixture
@@ -102,6 +103,7 @@ class TestBlogService:
         """测试检查头像存在成功"""
         # 设置测试环境变量，确保使用测试期望的路径
         monkeypatch.setenv("AVATAR_DIR", "../pic/blogn_img/userlogo")
+        monkeypatch.setattr('src.utils.avatar_utils._avatar_dir', None)
         
         mock_exists.return_value = True
         
@@ -120,6 +122,7 @@ class TestBlogService:
         """测试检查头像不存在"""
         # 设置测试环境变量，确保使用测试期望的路径
         monkeypatch.setenv("AVATAR_DIR", "../pic/blogn_img/userlogo")
+        monkeypatch.setattr('src.utils.avatar_utils._avatar_dir', None)
         
         mock_exists.return_value = False
         
@@ -217,6 +220,7 @@ class TestBlogService:
         assert result[0]["content"] == "这是一条测试评论"
         assert result[0]["projectitemid"] == 456
         assert result[0]["userid"] == 789
+        assert result[0]["blog_id"] == 55
         assert "小时前" in result[0]["time"]
         mock_post_repo.get_recent_comments.assert_called_once_with(5)
     

@@ -11,13 +11,10 @@ class RecentUpdatesCard extends BaseComponent {
         this.errorMessage = '';
     }
 
-
     connectedCallback() {
         this.render();
-        this.loadData();
+        BaseComponent.observeWhenVisible(this, () => this.loadData());
     }
-
-
 
     async loadData() {
         // 检测是否在博客页面
@@ -79,6 +76,38 @@ class RecentUpdatesCard extends BaseComponent {
         return this.getProjectId();
     }
 
+    getSmallAvatarPath(userId) {
+        if (!userId) {
+            return null;
+        }
+        const prefix = Math.floor(userId / 10000) + 1;
+        return `/avatar/${prefix}/s_${userId}.jpg`;
+    }
+
+    renderAuthorMetaItem(authorName, avatar, userId) {
+        const safeAuthor = this.escapeHtml(authorName || '未知作者');
+        const avatarPath = avatar || this.getSmallAvatarPath(userId);
+        const fallbackLetter = safeAuthor.charAt(0).toUpperCase();
+
+        const avatarHtml = `
+            <span class="author-avatar" aria-hidden="true">
+                ${avatarPath ? `
+                    <img src="${avatarPath}" alt=""
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                         onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
+                ` : ''}
+                <span class="author-avatar-fallback" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackLetter}</span>
+            </span>
+        `;
+
+        return `
+            <div class="meta-item meta-item-author">
+                ${avatarHtml}
+                <span class="author-name">${safeAuthor}</span>
+            </div>
+        `;
+    }
+
     getMockRecentUpdates() {
         return [
             {
@@ -114,31 +143,8 @@ class RecentUpdatesCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
-                :host {
-                    display: block;
-                    font-family: var(--font-family);
-                }
-
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-xl);
-                    box-shadow: var(--shadow-md);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    margin-bottom: var(--card-margin);
-                }
-
-                .card-header {
-                    padding: var(--spacing-4) var(--spacing-6);
-                    background: var(--gray-50);
-                    border-bottom: 1px solid var(--gray-200);
-                }
-
+                @import url('/static/css/common-components.css');
                 .card-title {
-                    margin: 0;
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--gray-800);
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-2);
@@ -158,20 +164,24 @@ class RecentUpdatesCard extends BaseComponent {
 
                 .update-item {
                     border-bottom: 1px solid var(--gray-100);
-                    padding: var(--spacing-4) var(--spacing-6);
+                    padding: var(--spacing-3) var(--spacing-4);
                     transition: var(--transition-normal);
                 }
 
-                .update-item:hover {
-                    background: var(--gray-50);
+                .update-item:hover,
+                .update-item:focus-within {
+                    background: var(--interactive-hover-bg);
+                }
+
+                .update-item:hover .author-name,
+                .update-item:focus-within .author-name {
+                    color: var(--interactive-hover-text);
                 }
 
                 .update-link {
                     text-decoration: none;
                     color: inherit;
-                    display: flex;
-                    align-items: flex-start;
-                    gap: var(--spacing-3);
+                    display: block;
                     width: 100%;
                 }
 
@@ -183,44 +193,65 @@ class RecentUpdatesCard extends BaseComponent {
                     border-bottom: none;
                 }
 
-                .user-avatar {
-                    width: 40px;
-                    height: 40px;
+                .update-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: var(--spacing-2);
+                    margin-bottom: var(--spacing-1);
+                }
+
+                .meta-item {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: var(--spacing-1);
+                    min-width: 0;
+                    color: var(--gray-500);
+                    font-size: var(--font-size-xs);
+                    white-space: nowrap;
+                }
+
+                .meta-item-author {
+                    gap: var(--spacing-2);
+                }
+
+                .author-avatar {
+                    width: 24px;
+                    height: 24px;
                     border-radius: 50%;
                     flex-shrink: 0;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     background: var(--gray-100);
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--gray-600);
-                    border: 2px solid var(--gray-200);
+                    border: 1px solid var(--gray-200);
                     overflow: hidden;
                 }
 
-                .user-avatar img {
+                .author-avatar img {
                     width: 100%;
                     height: 100%;
                     object-fit: cover;
+                    display: block;
                 }
 
-                .update-content {
-                    flex: 1;
-                    min-width: 0;
-                }
-
-                .update-header {
-                    display: flex;
+                .author-avatar-fallback {
+                    width: 100%;
+                    height: 100%;
                     align-items: center;
-                    justify-content: space-between;
-                    margin-bottom: var(--spacing-2);
+                    justify-content: center;
+                    font-size: var(--font-size-xs);
+                    font-weight: 600;
+                    color: var(--gray-600);
                 }
 
-                .blog-name {
-                    font-weight: 700;
-                    color: var(--gray-900);
-                    font-size: var(--font-size-sm);
+                .author-name {
+                    font-weight: 500;
+                    color: var(--gray-700);
+                    transition: color var(--transition-fast);
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
                 }
 
                 .update-time {
@@ -229,13 +260,14 @@ class RecentUpdatesCard extends BaseComponent {
                 }
 
                 .latest-post {
-                    color: var(--gray-700);
+                    color: var(--gray-600);
                     font-size: var(--font-size-sm);
-                    line-height: 1.4;
-                    background: var(--gray-50);
-                    padding: 0;
-                    border-radius: var(--radius-md);
+                    font-weight: 400;
+                    line-height: 1.6;
                     margin: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
                 }
 
                 .loading {
@@ -246,7 +278,7 @@ class RecentUpdatesCard extends BaseComponent {
 
                 .error {
                     text-align: center;
-                    padding: var(--spacing-6);
+                    padding: var(--spacing-3) var(--spacing-4);
                     color: var(--error-color);
                     background: var(--gray-50);
                     border-radius: var(--radius-lg);
@@ -254,7 +286,7 @@ class RecentUpdatesCard extends BaseComponent {
 
                 .empty-state {
                     text-align: center;
-                    padding: var(--spacing-6);
+                    padding: var(--spacing-3) var(--spacing-4);
                     color: var(--gray-500);
                 }
             </style>
@@ -287,51 +319,33 @@ class RecentUpdatesCard extends BaseComponent {
     renderUpdates() {
         return `
             <ul class="updates-list">
-                ${this.recentUpdates.map((update, index) => {
-                    // 安全处理所有文本字段，防止HTML注入和XSS攻击
-                    const safeBlogName = this.escapeHtml(update.blog_name);
+                ${this.recentUpdates.map((update) => {
                     const safeTime = this.escapeHtml(update.time);
                     const safeTitle = this.escapeHtml(update.title);
-                    
+                    const authorMeta = this.renderAuthorMetaItem(update.blog_name, update.avatar, update.userid);
+                    const contentHtml = `
+                        <div class="update-header">
+                            ${authorMeta}
+                            <span class="update-time">${safeTime}</span>
+                        </div>
+                        <div class="latest-post">${this.truncateText(safeTitle, 40)}</div>
+                    `;
+
                     if (update.id) {
                         return `
                             <li class="update-item">
                                 <a href="/article/${update.id}" class="update-link" target="_blank" title="查看文章">
-                                    <div class="user-avatar">
-                                        ${update.avatar ? 
-                                            `<img src="${update.avatar}" alt="${safeBlogName}" />` : 
-                                            `<span>${safeBlogName.charAt(0)}</span>`
-                                        }
-                                    </div>
-                                    <div class="update-content">
-                                        <div class="update-header">
-                                            <span class="blog-name">${safeBlogName}</span>
-                                            <span class="update-time">${safeTime}</span>
-                                        </div>
-                                        <div class="latest-post">${this.truncateText(safeTitle, 40)}</div>
-                                    </div>
+                                    ${contentHtml}
                                 </a>
                             </li>
                         `;
-                    } else {
-                        return `
-                            <li class="update-item disabled">
-                                <div class="user-avatar">
-                                    ${update.avatar ? 
-                                        `<img src="${update.avatar}" alt="${safeBlogName}" />` : 
-                                        `<span>${safeBlogName.charAt(0)}</span>`
-                                    }
-                                </div>
-                                <div class="update-content">
-                                    <div class="update-header">
-                                        <span class="blog-name">${safeBlogName}</span>
-                                        <span class="update-time">${safeTime}</span>
-                                    </div>
-                                    <div class="latest-post">${this.truncateText(safeTitle, 40)}</div>
-                                </div>
-                            </li>
-                        `;
                     }
+
+                    return `
+                        <li class="update-item disabled">
+                            ${contentHtml}
+                        </li>
+                    `;
                 }).join('')}
             </ul>
         `;

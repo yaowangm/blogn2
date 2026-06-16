@@ -8,9 +8,8 @@ import asyncio
 import os
 import sys
 import logging
-from contextvars import ContextVar
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, Generator, Optional, Set
+from typing import Any, AsyncGenerator, Dict, Generator
 from unittest.mock import AsyncMock, MagicMock
 from dotenv import load_dotenv
 from sqlalchemy.exc import InvalidRequestError, StatementError
@@ -20,97 +19,6 @@ load_dotenv()
 
 # 配置日志记录器
 logger = logging.getLogger(__name__)
-
-class TestDataTracker:
-    """测试数据跟踪器：本用例写入数据库并需 teardown 删除的实体 ID。
-
-    凡 ``commit`` 后仍应留在库中的行（供 TestClient 后续请求读取），必须在同一用例内
-    调用 ``add_user`` / ``add_project`` 等登记；否则 autouse 清理不会删除，会污染数据库。
-    认证相关表 ``user_auth_security_state`` 在按 user_id 清理时先于 ``users`` 显式删除（双保险）。
-    """
-
-    def __init__(self):
-        self.user_ids: Set[int] = set()
-        self.project_ids: Set[int] = set()
-        self.article_ids: Set[int] = set()
-        self.comment_ids: Set[int] = set()
-        self.message_ids: Set[int] = set()
-        self.attachment_ids: Set[int] = set()
-        self.folder_ids: Set[int] = set()
-        self.urllink_ids: Set[int] = set()
-        self.subscription_ids: Set[int] = set()
-
-    def add_user(self, user_id: int):
-        """记录用户ID"""
-        self.user_ids.add(user_id)
-
-    def add_project(self, project_id: int):
-        """记录项目ID"""
-        self.project_ids.add(project_id)
-
-    def add_article(self, article_id: int):
-        """记录文章ID"""
-        self.article_ids.add(article_id)
-
-    def add_comment(self, comment_id: int):
-        """记录评论ID"""
-        self.comment_ids.add(comment_id)
-
-    def add_message(self, message_id: int):
-        """记录留言ID"""
-        self.message_ids.add(message_id)
-
-    def add_attachment(self, attachment_id: int):
-        """记录附件ID"""
-        self.attachment_ids.add(attachment_id)
-
-    def add_folder(self, folder_id: int):
-        """记录分类ID"""
-        self.folder_ids.add(folder_id)
-
-    def add_urllink(self, urllink_id: int):
-        """记录友情链接ID"""
-        self.urllink_ids.add(urllink_id)
-
-    def add_subscription(self, subscription_id: int):
-        """记录订阅ID"""
-        self.subscription_ids.add(subscription_id)
-
-    def clear(self):
-        """清空所有记录的ID"""
-        self.user_ids.clear()
-        self.project_ids.clear()
-        self.article_ids.clear()
-        self.comment_ids.clear()
-        self.message_ids.clear()
-        self.attachment_ids.clear()
-        self.folder_ids.clear()
-        self.urllink_ids.clear()
-        self.subscription_ids.clear()
-
-    def has_data(self) -> bool:
-        """检查是否有记录的数据"""
-        return any([
-            self.user_ids, self.project_ids, self.article_ids,
-            self.comment_ids, self.message_ids, self.attachment_ids,
-            self.folder_ids, self.urllink_ids, self.subscription_ids
-        ])
-
-
-_blogn_test_tracker_ctx: ContextVar[Optional[TestDataTracker]] = ContextVar(
-    "_blogn_test_tracker_ctx", default=None
-)
-
-
-def get_test_data_tracker() -> TestDataTracker:
-    """当前用例的跟踪器，与 autouse `_autouse_test_tracker_cleanup` 绑定同一实例。"""
-    t = _blogn_test_tracker_ctx.get()
-    if t is None:
-        raise RuntimeError(
-            "get_test_data_tracker() 仅在 pytest 用例执行期间可用（尚未注入或非测试线程）。"
-        )
-    return t
-
 
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent
@@ -243,233 +151,6 @@ except Exception as e:
             os.environ["MODEL_FALLBACK_TO_HUGGINGFACE"] = "false"
 
 
-def cleanup_test_data_by_ids(tracker: TestDataTracker):
-    """基于ID精确清理测试数据"""
-    if not tracker.has_data():
-        print("🧹 没有测试数据需要清理")
-        return
-
-    print("🧹 开始基于ID清理测试数据...")
-
-    # 使用真实数据库连接
-    from sqlmodel import create_engine, text
-    from sqlalchemy import create_engine as create_sync_engine
-
-    # 创建同步引擎
-    sync_engine = create_sync_engine(REAL_SYNC_DATABASE_URL, echo=False)
-
-    try:
-        with sync_engine.connect() as conn:
-            # 开始事务
-            trans = conn.begin()
-
-            try:
-                total_deleted = 0
-
-                # 按依赖关系顺序删除数据
-                if tracker.comment_ids or tracker.message_ids:
-                    # 删除评论和留言
-                    all_post_ids = tracker.comment_ids | tracker.message_ids
-                    if all_post_ids:
-                        placeholders = ','.join(map(str, all_post_ids))
-                        query = f"DELETE FROM post WHERE id IN ({placeholders})"
-                        result = conn.execute(text(query))
-                        deleted_count = result.rowcount
-                        total_deleted += deleted_count
-                        print(f"🗑️ 删除了 {deleted_count} 个测试评论和留言")
-
-                if tracker.attachment_ids:
-                    # 删除附件（parentid 指向 projectitem，先于文章删）
-                    placeholders = ','.join(map(str, tracker.attachment_ids))
-                    query = f"DELETE FROM attachment WHERE id IN ({placeholders})"
-                    result = conn.execute(text(query))
-                    deleted_count = result.rowcount
-                    total_deleted += deleted_count
-                    print(f"🗑️ 删除了 {deleted_count} 个测试附件")
-
-                if tracker.article_ids:
-                    # 删除文章
-                    placeholders = ','.join(map(str, tracker.article_ids))
-                    query = f"DELETE FROM projectitem WHERE id IN ({placeholders})"
-                    result = conn.execute(text(query))
-                    deleted_count = result.rowcount
-                    total_deleted += deleted_count
-                    print(f"🗑️ 删除了 {deleted_count} 个测试文章")
-
-                if tracker.subscription_ids:
-                    # 删除订阅（表名为 subsc）
-                    placeholders = ','.join(map(str, tracker.subscription_ids))
-                    query = f"DELETE FROM subsc WHERE id IN ({placeholders})"
-                    result = conn.execute(text(query))
-                    deleted_count = result.rowcount
-                    total_deleted += deleted_count
-                    print(f"🗑️ 删除了 {deleted_count} 个测试订阅")
-
-                if tracker.urllink_ids:
-                    # 删除友情链接（project 之前）
-                    placeholders = ','.join(map(str, tracker.urllink_ids))
-                    query = f"DELETE FROM urllink WHERE id IN ({placeholders})"
-                    result = conn.execute(text(query))
-                    deleted_count = result.rowcount
-                    total_deleted += deleted_count
-                    print(f"🗑️ 删除了 {deleted_count} 个测试友情链接")
-
-                if tracker.folder_ids:
-                    # 删除分类（表名为 folders，外键依赖 project，先于 project 删除）
-                    placeholders = ','.join(map(str, tracker.folder_ids))
-                    query = f"DELETE FROM folders WHERE id IN ({placeholders})"
-                    result = conn.execute(text(query))
-                    deleted_count = result.rowcount
-                    total_deleted += deleted_count
-                    print(f"🗑️ 删除了 {deleted_count} 个测试分类")
-
-                if tracker.project_ids:
-                    # 删除项目
-                    placeholders = ','.join(map(str, tracker.project_ids))
-                    query = f"DELETE FROM project WHERE id IN ({placeholders})"
-                    result = conn.execute(text(query))
-                    deleted_count = result.rowcount
-                    total_deleted += deleted_count
-                    print(f"🗑️ 删除了 {deleted_count} 个测试项目")
-
-                if tracker.user_ids:
-                    placeholders = ','.join(map(str, tracker.user_ids))
-                    # 认证安全状态：外键多为 ON DELETE CASCADE，仍先删以免历史库或漏登记 user 时残留
-                    try:
-                        q_uas = text(
-                            f"DELETE FROM user_auth_security_state WHERE user_id IN ({placeholders})"
-                        )
-                        r_uas = conn.execute(q_uas)
-                        n_uas = r_uas.rowcount or 0
-                        if n_uas:
-                            total_deleted += n_uas
-                            print(f"🗑️ 删除了 {n_uas} 条 user_auth_security_state")
-                    except Exception as e:
-                        logger.warning("清理 user_auth_security_state 跳过: %s", e)
-
-                    # 删除用户（最后删除，因为其他表可能引用用户）
-                    query = f"DELETE FROM users WHERE id IN ({placeholders})"
-                    result = conn.execute(text(query))
-                    deleted_count = result.rowcount
-                    total_deleted += deleted_count
-                    print(f"🗑️ 删除了 {deleted_count} 个测试用户")
-
-                # 提交事务
-                trans.commit()
-                print(f"✅ 基于ID的测试数据清理完成，共删除 {total_deleted} 条记录")
-
-            except Exception as e:
-                # 回滚事务
-                trans.rollback()
-                logger.error(f"Failed to cleanup test data by ID: {e}")
-                raise
-
-    except Exception as e:
-        logger.error(f"Failed to connect to database: {e}")
-        raise
-    finally:
-        sync_engine.dispose()
-
-def cleanup_test_data(engine):
-    """
-    【遗留】按关键字批量 DELETE，曾用于「猜测」哪些是测试行。
-
-    条件过宽（如 name LIKE '%Article%'）会误删正式博客文章；且不应在每次 pytest 后自动执行。
-    默认已禁用；仅当显式设置 BLOGN_ALLOW_DANGEROUS_TEST_SQL_CLEANUP=1 时才执行。
-    默认每个用例结束会由 _autouse_test_tracker_cleanup 对「本用例登记过的 ID」调用 cleanup_test_data_by_ids。
-    """
-    if os.getenv("BLOGN_ALLOW_DANGEROUS_TEST_SQL_CLEANUP", "").strip().lower() not in (
-        "1",
-        "true",
-        "yes",
-    ):
-        logger.warning(
-            "已跳过 cleanup_test_data（危险 SQL 清理）。"
-            "若确需旧行为，请设置 BLOGN_ALLOW_DANGEROUS_TEST_SQL_CLEANUP=1（勿对生产库使用）。"
-        )
-        return
-
-    from sqlmodel import Session
-    from sqlalchemy import text
-    session = Session(engine)
-    try:
-        print("🧹 开始清理测试数据（BLOGN_ALLOW_DANGEROUS_TEST_SQL_CLEANUP 已开启）...")
-
-        # 获取当前最大的ID作为基准
-        max_id_result = session.execute(text("SELECT MAX(id) as max_id FROM post"))
-        max_id = max_id_result.fetchone()[0] or 0
-        test_id_threshold = max_id - 1000  # 假设测试数据的ID比当前最大ID小1000以内
-
-        # 删除测试用户
-        result1 = session.execute(text("DELETE FROM users WHERE name LIKE '%test%' OR email LIKE '%test%' OR name LIKE '%Test%' OR email LIKE '%Test%'"))
-        print(f"🗑️ 删除了 {result1.rowcount} 个测试用户")
-
-        # 删除测试项目
-        result2 = session.execute(text("DELETE FROM project WHERE name LIKE '%Test%' OR name LIKE '%test%'"))
-        print(f"🗑️ 删除了 {result2.rowcount} 个测试项目")
-
-        # 删除测试文章
-        result3 = session.execute(text("""
-            DELETE FROM projectitem WHERE
-                name LIKE '%Test%' OR name LIKE '%test%' OR
-                name LIKE '%Article%' OR name LIKE '%Comment%' OR
-                name LIKE '%Message%' OR name LIKE '%Guest%' OR
-                name LIKE '%Anonymous%' OR name LIKE '%Login%' OR
-                name LIKE '%Required%' OR name LIKE '%Disabled%' OR
-                id > 9000
-        """))
-        print(f"🗑️ 删除了 {result3.rowcount} 个测试文章")
-
-        # 删除测试评论和留言（更全面的清理策略）
-        result4 = session.execute(text("""
-            DELETE FROM post WHERE
-                (content LIKE '%测试%' OR content LIKE '%test%' OR
-                 subject LIKE '%测试%' OR subject LIKE '%test%' OR
-                 content LIKE '%Test%' OR subject LIKE '%Test%' OR
-                 content LIKE '%留言本%' OR subject LIKE '%留言本%' OR
-                 content LIKE '%主贴%' OR subject LIKE '%主贴%' OR
-                 content LIKE '%留言%' OR subject LIKE '%留言%') AND
-                (posttime > NOW() - INTERVAL '1 day' OR
-                 posttime = '2024-01-01 10:00:00' OR
-                 posttime = '2024-01-01 11:00:00' OR
-                 posttime = '2024-01-01 12:00:00' OR
-                 posttime = '2024-01-01 11:01:00' OR
-                 posttime = '2024-01-01 11:02:00' OR
-                 posttime = '2024-01-01 11:03:00' OR
-                 posttime = '2024-01-01 11:04:00' OR
-                 posttime = '2024-01-01 11:05:00' OR
-                 posttime = '2024-01-01 11:06:00' OR
-                 posttime = '2024-01-01 11:07:00' OR
-                 posttime = '2024-01-01 11:08:00' OR
-                 posttime = '2024-01-01 11:09:00' OR
-                 posttime = '2024-01-01 11:10:00')
-        """))
-        print(f"🗑️ 删除了 {result4.rowcount} 个测试评论和留言")
-
-        # 删除测试附件
-        result5 = session.execute(text("DELETE FROM attachment WHERE comment LIKE '%test%' OR comment LIKE '%Test%' OR linkstr LIKE '%test%' OR linkstr LIKE '%Test%'"))
-        print(f"🗑️ 删除了 {result5.rowcount} 个测试附件")
-
-        # 删除测试分类
-        result6 = session.execute(text("DELETE FROM folders WHERE name LIKE '%test%' OR name LIKE '%Test%'"))
-        print(f"🗑️ 删除了 {result6.rowcount} 个测试分类")
-
-        # 删除测试友情链接
-        result7 = session.execute(text("DELETE FROM urllink WHERE subject LIKE '%test%' OR subject LIKE '%Test%' OR linkstr LIKE '%test%' OR linkstr LIKE '%Test%'"))
-        print(f"🗑️ 删除了 {result7.rowcount} 个测试友情链接")
-
-        # 删除测试订阅（基于项目ID）
-        result8 = session.execute(text("DELETE FROM subsc WHERE projectid IN (SELECT id FROM project WHERE name LIKE '%test%' OR name LIKE '%Test%')"))
-        print(f"🗑️ 删除了 {result8.rowcount} 个测试订阅")
-
-        session.commit()
-        print("✅ 测试数据清理完成")
-    except Exception as e:
-        logger.error(f"Failed to cleanup test data: {e}")
-        session.rollback()
-    finally:
-        session.close()
-
 class UnifiedDatabaseManager:
     """统一的数据库连接和事务管理器"""
 
@@ -587,13 +268,34 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-# 使用真实的PostgreSQL数据库进行集成测试
-# 必须从环境变量获取数据库URL，不允许硬编码密码
-REAL_DATABASE_URL = os.getenv("DATABASE_URL")
-if not REAL_DATABASE_URL:
-    raise ValueError("DATABASE_URL 环境变量未设置，请在 .env 文件中配置数据库连接信息")
+def get_database_url() -> str:
+    """当前 pytest 会话使用的数据库 URL（configure 后为临时测试库）。"""
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        raise ValueError("DATABASE_URL 环境变量未设置，请在 .env 文件中配置数据库连接信息")
+    return url
 
-REAL_SYNC_DATABASE_URL = REAL_DATABASE_URL.replace("+asyncpg", "+psycopg2")
+
+def get_sync_database_url() -> str:
+    return get_database_url().replace("+asyncpg", "+psycopg2")
+
+
+def pytest_configure(config):
+    """pytest 启动时创建独立临时库，避免写入 .env 中的生产库。"""
+    if os.getenv("BLOGN_SKIP_TEST_DB_LIFECYCLE", "").strip().lower() in ("1", "true", "yes"):
+        return
+    from tests.db_lifecycle import provision_test_database
+
+    provision_test_database()
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """pytest 结束时删除临时测试库。"""
+    if os.getenv("BLOGN_SKIP_TEST_DB_LIFECYCLE", "").strip().lower() in ("1", "true", "yes"):
+        return
+    from tests.db_lifecycle import destroy_test_database
+
+    destroy_test_database()
 
 @pytest.fixture(scope="session")
 def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
@@ -610,7 +312,7 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 def real_async_engine():
     """创建真实PostgreSQL异步引擎 - 每个测试独立"""
     engine = create_async_engine(
-        REAL_DATABASE_URL,
+        get_database_url(),
         echo=False,  # 测试时不显示SQL
         future=True,
         pool_pre_ping=True,  # 连接前检查
@@ -654,7 +356,7 @@ def real_async_engine():
 def real_sync_engine():
     """创建真实PostgreSQL同步引擎 - 每个测试独立"""
     engine = create_engine(
-        REAL_SYNC_DATABASE_URL,
+        get_sync_database_url(),
         echo=False,  # 测试时不显示SQL
         future=True,
         pool_pre_ping=True,  # 连接前检查
@@ -897,7 +599,7 @@ def setup_test_env():
     original_database_url = os.environ.get("DATABASE_URL")
 
     # 设置测试数据库URL
-    os.environ["DATABASE_URL"] = REAL_DATABASE_URL
+    os.environ["DATABASE_URL"] = get_database_url()
 
     yield
 
@@ -906,26 +608,6 @@ def setup_test_env():
         os.environ["DATABASE_URL"] = original_database_url
     else:
         os.environ.pop("DATABASE_URL", None)
-
-
-@pytest.fixture(autouse=True)
-def _autouse_test_tracker_cleanup():
-    """
-    每个用例注入一个 TestDataTracker；若用例内向跟踪器登记过 ID，则在本用例结束后按 ID 删除对应行。
-    未登记则不访问数据库。危险的关键字批量清理仍仅由 BLOGN_ALLOW_DANGEROUS_TEST_SQL_CLEANUP 控制。
-    """
-    tracker = TestDataTracker()
-    token = _blogn_test_tracker_ctx.set(tracker)
-    try:
-        yield
-    finally:
-        try:
-            if tracker.has_data():
-                cleanup_test_data_by_ids(tracker)
-        except Exception as e:
-            logger.error("基于 ID 的测试数据清理失败: %s", e, exc_info=True)
-        finally:
-            _blogn_test_tracker_ctx.reset(token)
 
 
 @pytest.fixture(autouse=True)
@@ -950,8 +632,3 @@ async def clear_cache_after_each_test():
     except Exception as e:
         # 如果缓存清理失败，记录警告但继续测试
         logger.warning(f"Failed to clear cache during test cleanup: {e}")
-
-@pytest.fixture
-def test_data_tracker() -> TestDataTracker:
-    """与当前用例共享的跟踪器；写入数据库后务必 add_* 登记 ID，以便 autouse 仅删除本次数据。"""
-    return get_test_data_tracker()

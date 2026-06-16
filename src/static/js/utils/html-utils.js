@@ -54,6 +54,9 @@ class HtmlUtils {
         
         // 预编译正则表达式（避免重复编译）
         const patterns = {
+            // 数学公式（块级与行内）
+            displayMath: /\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]/g,
+            inlineMath: /\\\(.+?\\\)|(?<!\$)\$(?!\$)[^\$\n]+?\$(?!\$)/g,
             // 代码块（优先处理，避免处理代码块内的Markdown）
             codeBlocks: /```[\s\S]*?```|~~~[\s\S]*?~~~/g,
             // 行首标记（标题、引用、列表、水平线）
@@ -72,7 +75,9 @@ class HtmlUtils {
         // 分步处理，减少字符串操作次数
         let result = text;
         
-        // 1. 移除代码块（避免处理代码块内的Markdown语法）
+        // 1. 移除数学公式与代码块
+        result = result.replace(patterns.displayMath, '');
+        result = result.replace(patterns.inlineMath, '');
         result = result.replace(patterns.codeBlocks, '');
         
         // 2. 处理行首标记
@@ -94,6 +99,254 @@ class HtmlUtils {
             .trim();
         
         return result;
+    }
+
+    /**
+     * 自动链接：协议 + RFC 3986 允许的 ASCII 字符（不含 CJK、全角标点等）
+     * @type {string}
+     */
+    static get AUTO_LINK_URL_SOURCE() {
+        return "[a-zA-Z][a-zA-Z0-9+.-]*:\\/\\/(?:[A-Za-z0-9\\-._~:/?#\\[\\]@!$&'()*+,;=%]|%[0-9A-Fa-f]{2})+";
+    }
+
+    /** @returns {RegExp} 全局匹配，用于 String.replace / matchAll */
+    static get AUTO_LINK_URL_REGEX() {
+        return new RegExp(`(${HtmlUtils.AUTO_LINK_URL_SOURCE})`, 'g');
+    }
+
+    /** @returns {RegExp} 非 global，用于 RegExp.test（避免 lastIndex 副作用） */
+    static get AUTO_LINK_URL_TEST_REGEX() {
+        return new RegExp(HtmlUtils.AUTO_LINK_URL_SOURCE);
+    }
+
+    /**
+     * 去掉自动识别 URL 末尾常见的句读/括号（仍保留 URL 字符集内的合法结尾）
+     * @param {string} url
+     * @returns {string}
+     */
+    static trimAutoLinkUrl(url) {
+        if (!url || typeof url !== 'string') {
+            return '';
+        }
+        let s = url;
+        const trailingPunct = /(?:[,;:!?]+|[\u3001\u3002\uff0c\uff0e\uff1a\uff1b\uff01\uff1f\uff09\uff3d\uff5d\u300b\u300d\u300f\uff02\uff07\u2026])+$/;
+        for (;;) {
+            const before = s;
+            s = s.replace(trailingPunct, '');
+            while (s.endsWith(')')) {
+                const open = (s.match(/\(/g) || []).length;
+                const close = (s.match(/\)/g) || []).length;
+                if (close <= open) {
+                    break;
+                }
+                s = s.slice(0, -1);
+            }
+            while (s.endsWith('\uFF09')) {
+                const open = (s.match(/\uFF08/g) || []).length;
+                const close = (s.match(/\uFF09/g) || []).length;
+                if (close <= open) {
+                    break;
+                }
+                s = s.slice(0, -1);
+            }
+            while (s.endsWith(']')) {
+                const open = (s.match(/\[/g) || []).length;
+                const close = (s.match(/\]/g) || []).length;
+                if (close <= open) {
+                    break;
+                }
+                s = s.slice(0, -1);
+            }
+            if (s.endsWith('.') && HtmlUtils.isValidUrl(s.slice(0, -1))) {
+                s = s.slice(0, -1);
+            }
+            if (s === before) {
+                break;
+            }
+        }
+        return s;
+    }
+
+    /**
+     * 从字符串开头提取符合规则的 URL（用于修正 marked 等产生的过长 href）
+     * @param {string} str
+     * @returns {string}
+     */
+    static extractAutoLinkUrl(str) {
+        if (!str || typeof str !== 'string') {
+            return '';
+        }
+        const re = new RegExp(`^${HtmlUtils.AUTO_LINK_URL_SOURCE}`);
+        const match = str.match(re);
+        if (!match) {
+            return '';
+        }
+        return HtmlUtils.trimAutoLinkUrl(match[0]);
+    }
+
+    /**
+     * 纯文本 → HTML：识别 URL 并转为链接（调用方若未转义，需自行保证 XSS 安全）
+     * @param {string} text
+     * @returns {string}
+     */
+    static linkifyPlainTextToHtml(text) {
+        if (!text || typeof text !== 'string') {
+            return '';
+        }
+        text = text.trimStart();
+        const parts = [];
+        let lastIndex = 0;
+        const re = new RegExp(HtmlUtils.AUTO_LINK_URL_SOURCE, 'g');
+        let match;
+        while ((match = re.exec(text)) !== null) {
+            if (match.index > lastIndex) {
+                parts.push(HtmlUtils.escapeHtml(text.slice(lastIndex, match.index)));
+            }
+            const rawUrl = match[0];
+            const url = HtmlUtils.trimAutoLinkUrl(rawUrl);
+            const tail = rawUrl.length > url.length
+                ? HtmlUtils.escapeHtml(rawUrl.slice(url.length))
+                : '';
+            if (url && HtmlUtils.isValidUrl(url)) {
+                const safeUrl = HtmlUtils.escapeHtml(url);
+                parts.push(
+                    `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="auto-link">${safeUrl}</a>${tail}`
+                );
+            } else {
+                parts.push(HtmlUtils.escapeHtml(rawUrl));
+            }
+            lastIndex = match.index + rawUrl.length;
+        }
+        if (lastIndex < text.length) {
+            parts.push(HtmlUtils.escapeHtml(text.slice(lastIndex)));
+        }
+        return parts.join('');
+    }
+
+    /**
+     * 修正 HTML 中已有 &lt;a&gt; 的 href（如 marked GFM 用 [^\\s&lt;]* 误吞 CJK）
+     * @param {string} html
+     * @returns {string}
+     */
+    static normalizeAutoLinkAnchors(html) {
+        if (!html || typeof html !== 'string') {
+            return '';
+        }
+        const container = document.createElement('div');
+        container.innerHTML = html;
+        container.querySelectorAll('a[href]').forEach((anchor) => {
+            const href = anchor.getAttribute('href') || '';
+            const fixed = HtmlUtils.extractAutoLinkUrl(href);
+            if (!fixed || !HtmlUtils.isValidUrl(fixed) || href === fixed) {
+                return;
+            }
+            if (!href.startsWith(fixed)) {
+                return;
+            }
+            const hrefTail = href.slice(fixed.length);
+            anchor.setAttribute('href', fixed);
+            if (anchor.textContent === href) {
+                anchor.textContent = fixed;
+                if (hrefTail) {
+                    anchor.after(document.createTextNode(hrefTail));
+                }
+            }
+        });
+        return container.innerHTML;
+    }
+
+    /**
+     * 在 HTML 的文本节点中识别 URL（跳过已有 a/code/pre 等）
+     * @param {string} html
+     * @returns {string}
+     */
+    static linkifyHtmlContent(html) {
+        if (!html || typeof html !== 'string') {
+            return '';
+        }
+        const urlRegex = HtmlUtils.AUTO_LINK_URL_REGEX;
+        const urlTestRegex = HtmlUtils.AUTO_LINK_URL_TEST_REGEX;
+        const container = document.createElement('div');
+        container.innerHTML = html;
+
+        const SKIP_TAGS = new Set(['A', 'CODE', 'PRE', 'SCRIPT', 'STYLE']);
+
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+            acceptNode: (node) => {
+                const parent = node.parentNode;
+                if (!parent) {
+                    return NodeFilter.FILTER_REJECT;
+                }
+                let el = parent;
+                while (el && el.nodeType === 1) {
+                    if (SKIP_TAGS.has(el.nodeName)) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    el = el.parentNode;
+                }
+                return urlTestRegex.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+            },
+        });
+
+        const nodes = [];
+        let n;
+        while ((n = walker.nextNode())) {
+            nodes.push(n);
+        }
+
+        for (const textNode of nodes) {
+            const text = textNode.nodeValue;
+            const parts = [];
+            let lastIndex = 0;
+            text.replace(urlRegex, (match, url, offset) => {
+                if (offset > lastIndex) {
+                    parts.push(document.createTextNode(text.slice(lastIndex, offset)));
+                }
+                const linkUrl = HtmlUtils.trimAutoLinkUrl(url);
+                const tail = linkUrl.length < url.length ? url.slice(linkUrl.length) : '';
+                if (linkUrl && HtmlUtils.isValidUrl(linkUrl)) {
+                    const a = document.createElement('a');
+                    a.href = linkUrl;
+                    a.target = '_blank';
+                    a.rel = 'noopener noreferrer';
+                    a.className = 'auto-link';
+                    a.textContent = linkUrl;
+                    parts.push(a);
+                    if (tail) {
+                        parts.push(document.createTextNode(tail));
+                    }
+                } else {
+                    parts.push(document.createTextNode(url));
+                }
+                lastIndex = offset + match.length;
+                return match;
+            });
+            if (lastIndex < text.length) {
+                parts.push(document.createTextNode(text.slice(lastIndex)));
+            }
+
+            const parent = textNode.parentNode;
+            if (parent) {
+                for (const part of parts) {
+                    parent.insertBefore(part, textNode);
+                }
+                parent.removeChild(textNode);
+            }
+        }
+
+        return container.innerHTML;
+    }
+
+    /**
+     * Markdown/HTML 正文：先修正错误 autolink，再 linkify 剩余裸 URL
+     * @param {string} html
+     * @returns {string}
+     */
+    static processRichTextLinks(html) {
+        if (!html || typeof html !== 'string') {
+            return '';
+        }
+        return HtmlUtils.linkifyHtmlContent(HtmlUtils.normalizeAutoLinkAnchors(html));
     }
 
     /**
@@ -180,7 +433,7 @@ class HtmlUtils {
                 // 复制安全的属性
                 for (const attr of node.attributes) {
                     const attrName = attr.name.toLowerCase();
-                    if (['href', 'src', 'alt', 'title', 'class', 'id'].includes(attrName)) {
+                    if (['href', 'src', 'alt', 'title', 'class', 'id', 'data-math-idx'].includes(attrName)) {
                         if (attrName === 'href') {
                             const href = attr.value;
                             if (this.isValidUrl(href)) {

@@ -87,176 +87,276 @@ class BlogInfoCard extends BaseComponent {
         });
     }
 
+    getCardStyles() {
+        return `
+            @import url('/static/css/common-components.css');
+            :host { display: block; }
+            .card-title {
+                display: flex;
+                align-items: center;
+                gap: var(--spacing-2);
+            }
+            .title-icon {
+                width: 20px;
+                height: 20px;
+                color: var(--primary-color);
+                flex-shrink: 0;
+            }
+            .title-icon svg {
+                width: 100%;
+                height: 100%;
+                display: block;
+            }
+            .blog-name {
+                margin: 0 0 var(--spacing-2);
+                font-size: var(--font-size-base);
+                font-weight: 600;
+                line-height: 1.3;
+            }
+            .blog-name a {
+                color: var(--primary-color);
+                text-decoration: none;
+            }
+            .blog-name a:hover {
+                color: var(--primary-hover);
+                text-decoration: underline;
+            }
+            .blog-description {
+                margin: 0 0 var(--spacing-3);
+                color: var(--gray-600);
+                font-size: var(--font-size-sm);
+                line-height: 1.5;
+            }
+            .blog-stats {
+                display: flex;
+                flex-wrap: wrap;
+                gap: var(--spacing-2);
+                margin-bottom: var(--spacing-3);
+                padding-bottom: var(--spacing-3);
+                border-bottom: 1px solid var(--gray-100);
+            }
+            .stat-item {
+                display: inline-flex;
+                align-items: center;
+                gap: var(--spacing-1);
+                padding: var(--spacing-1) var(--spacing-2);
+                background: var(--gray-50);
+                border: 1px solid var(--gray-200);
+                border-radius: var(--radius-sm);
+                font-size: var(--font-size-xs);
+                color: var(--gray-600);
+            }
+            .stat-icon {
+                display: block;
+                width: 16px;
+                height: 16px;
+                flex-shrink: 0;
+            }
+            .stat-label { font-weight: 500; }
+            .stat-number {
+                font-weight: 600;
+                color: var(--gray-900);
+            }
+            .meta-items {
+                display: flex;
+                flex-wrap: wrap;
+                gap: var(--spacing-3);
+            }
+            .meta-item {
+                display: inline-flex;
+                align-items: center;
+                gap: var(--spacing-1);
+                color: var(--gray-500);
+                font-size: var(--font-size-xs);
+            }
+            .meta-icon {
+                display: block;
+                width: 16px;
+                height: 16px;
+                flex-shrink: 0;
+            }
+            .empty-state {
+                text-align: center;
+                padding: var(--spacing-6) var(--spacing-2);
+            }
+            .empty-icon {
+                width: 40px;
+                height: 40px;
+                margin: 0 auto var(--spacing-3);
+                color: var(--gray-400);
+            }
+            .empty-icon svg {
+                width: 100%;
+                height: 100%;
+                display: block;
+            }
+            .empty-title {
+                margin: 0 0 var(--spacing-2);
+                font-size: var(--font-size-base);
+                font-weight: 600;
+                color: var(--gray-800);
+            }
+            .empty-description {
+                margin: 0 0 var(--spacing-4);
+                color: var(--gray-500);
+                font-size: var(--font-size-sm);
+                line-height: 1.5;
+            }
+            .loading, .error {
+                text-align: center;
+                padding: var(--spacing-8);
+                color: var(--gray-500);
+            }
+            .error { color: var(--error-color); }
+            .modal-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+            }
+            .modal-overlay.show { display: flex; }
+            .modal-panel {
+                background: var(--white);
+                padding: var(--spacing-4);
+                border-radius: var(--radius-lg);
+                box-shadow: var(--shadow-xl);
+                border: 1px solid var(--gray-200);
+                max-width: 500px;
+                width: 90%;
+            }
+            .modal-title {
+                font-size: var(--font-size-base);
+                font-weight: 600;
+                margin: 0 0 var(--spacing-4);
+                color: var(--gray-900);
+            }
+            .modal-form {
+                display: flex;
+                flex-direction: column;
+                gap: var(--spacing-3);
+            }
+            .form-group {
+                display: flex;
+                flex-direction: column;
+                gap: var(--spacing-1);
+            }
+            .form-label {
+                font-weight: 500;
+                color: var(--gray-700);
+                font-size: var(--font-size-sm);
+            }
+            .form-input, .form-textarea {
+                padding: var(--spacing-2) var(--spacing-3);
+                border: 1px solid var(--gray-300);
+                border-radius: var(--radius-md);
+                font-size: var(--font-size-sm);
+            }
+            .form-input:focus, .form-textarea:focus {
+                outline: none;
+                border-color: var(--primary-color);
+                box-shadow: 0 0 0 3px var(--primary-color-10);
+            }
+            .form-textarea {
+                resize: vertical;
+                min-height: 96px;
+            }
+            .error-message {
+                color: var(--error-color);
+                font-size: var(--font-size-xs);
+            }
+            .modal-actions {
+                display: flex;
+                gap: var(--spacing-2);
+                justify-content: flex-end;
+                margin-top: var(--spacing-2);
+            }
+            .btn svg {
+                width: 16px;
+                height: 16px;
+                flex-shrink: 0;
+            }
+        `;
+    }
+
+    getStatIcon(type) {
+        const stroke = '#475569';
+        const svg = (paths) =>
+            `<svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+        const icons = {
+            posts: svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/>'),
+            comments: svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
+            views: svg('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'),
+        };
+        return icons[type] || '';
+    }
+
+    getMetaIcon(calendar) {
+        const stroke = '#475569';
+        if (calendar) {
+            return `<svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>`;
+        }
+        return `<svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>`;
+    }
+
+    renderStatItem(type, label, value) {
+        return `
+            <div class="stat-item">
+                ${this.getStatIcon(type)}
+                <span class="stat-label">${label}</span>
+                <span class="stat-number">${value}</span>
+            </div>
+        `;
+    }
+
     render() {
         if (!this.blogData && !this.userId) {
             this.shadowRoot.innerHTML = `
-                <div class="loading">加载中...</div>
+                <style>${this.getCardStyles()}</style>
+                <div class="card"><div class="loading">加载中...</div></div>
             `;
             return;
         }
 
         if (!this.blogData && this.userId) {
-            // 用户没有博客，显示开通博客选项
             this.renderCreateBlogOption();
             return;
         }
 
+        const safeBlogName = this.escapeHtml(this.blogData.name || '未设置');
+        const safeBlogDesc = this.escapeHtml(this.blogData.comment || '暂无说明');
+
         this.shadowRoot.innerHTML = `
-            <style>
-                :host {
-                    display: block;
-                    background: var(--card-bg);
-                    border-radius: var(--card-radius);
-                    box-shadow: var(--card-shadow);
-                    padding: var(--card-padding);
-                    margin-bottom: var(--card-margin);
-                    border: 1px solid var(--card-border);
-                }
-                
-                .card-header {
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-3);
-                    margin-bottom: var(--card-content-gap);
-                    padding-bottom: var(--spacing-4);
-                    border-bottom: 1px solid var(--card-header-border);
-                }
-                
-                .card-title {
-                    font-size: var(--card-title-size);
-                    font-weight: var(--card-title-weight);
-                    color: var(--card-title-color);
-                    margin: 0;
-                }
-                
-                .blog-info {
-                    margin-bottom: var(--card-content-gap);
-                }
-                
-                .blog-name {
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--primary-color);
-                    margin-bottom: var(--spacing-3);
-                    word-break: break-word;
-                }
-                
-                .blog-name a {
-                    color: inherit;
-                    text-decoration: none;
-                }
-                
-                .blog-name a:hover {
-                    text-decoration: underline;
-                }
-                
-                .blog-description {
-                    color: var(--gray-500);
-                    margin-bottom: var(--spacing-4);
-                    line-height: 1.5;
-                    word-break: break-word;
-                }
-                
-                .stats-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-                    gap: var(--spacing-4);
-                    margin-bottom: var(--card-content-gap);
-                }
-                
-                .stat-item {
-                    text-align: center;
-                    padding: var(--spacing-3);
-                    background: var(--gray-50);
-                    border-radius: var(--radius-lg);
-                }
-                
-                .stat-number {
-                    font-size: var(--font-size-xl);
-                    font-weight: 700;
-                    color: var(--primary-color);
-                    display: block;
-                }
-                
-                .stat-label {
-                    font-size: var(--font-size-xs);
-                    color: var(--gray-500);
-                    margin-top: var(--spacing-1);
-                }
-                
-                .info-grid {
-                    display: grid;
-                    gap: var(--spacing-3);
-                }
-                
-                .info-item {
-                    display: flex;
-                    align-items: flex-start;
-                    gap: var(--spacing-3);
-                }
-                
-                .info-label {
-                    min-width: 100px;
-                    font-weight: 500;
-                    color: var(--gray-600);
-                    font-size: var(--font-size-sm);
-                }
-                
-                .info-value {
-                    flex: 1;
-                    color: var(--gray-800);
-                    font-size: var(--font-size-sm);
-                }
-                
-                .loading, .error {
-                    text-align: center;
-                    padding: var(--spacing-8);
-                    color: var(--loading-color);
-                }
-                
-                .error {
-                    color: var(--error-color);
-                }
-            </style>
-            
-            <div class="card-header">
-                <h2 class="card-title">博客信息</h2>
-            </div>
-
-            <div class="blog-info">
-                <div class="blog-name">
-                    <a href="/blog/${this.blogData.id}" target="_blank" rel="noopener noreferrer">${this.escapeHtml(this.blogData.name || '未设置')}</a>
+            <style>${this.getCardStyles()}</style>
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span class="title-icon">${Icons.home}</span>
+                        博客信息
+                    </h2>
                 </div>
-                
-                <div class="blog-description">
-                    ${this.escapeHtml(this.blogData.comment || '暂无说明')}
-                </div>
-            </div>
-
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <span class="stat-number">${this.blogData.recordcount || 0}</span>
-                    <span class="stat-label">文章数量</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-number">${this.blogData.commentcount || 0}</span>
-                    <span class="stat-label">评论数量</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-number">${this.blogData.accesscount || 0}</span>
-                    <span class="stat-label">访问数量</span>
-                </div>
-            </div>
-
-            <div class="info-grid">
-                <div class="info-item">
-                    <span class="info-label">创建时间</span>
-                    <span class="info-value">${this.formatDateTime(this.blogData.createtime)}</span>
-                </div>
-
-                <div class="info-item">
-                    <span class="info-label">最后更新</span>
-                    <span class="info-value">${this.formatDateTime(this.blogData.updatetime)}</span>
+                <div class="card-body">
+                    <h3 class="blog-name">
+                        <a href="/blog/${this.blogData.id}" target="_blank" rel="noopener noreferrer">${safeBlogName}</a>
+                    </h3>
+                    <p class="blog-description">${safeBlogDesc}</p>
+                    <div class="blog-stats">
+                        ${this.renderStatItem('posts', '文章', this.blogData.recordcount || 0)}
+                        ${this.renderStatItem('comments', '评论', this.blogData.commentcount || 0)}
+                        ${this.renderStatItem('views', '访问', this.blogData.accesscount || 0)}
+                    </div>
+                    <div class="meta-items">
+                        <div class="meta-item">
+                            ${this.getMetaIcon(true)}
+                            <span>创建于 ${this.formatDateTime(this.blogData.createtime)}</span>
+                        </div>
+                        <div class="meta-item">
+                            ${this.getMetaIcon(false)}
+                            <span>更新于 ${this.formatDateTime(this.blogData.updatetime)}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -264,218 +364,38 @@ class BlogInfoCard extends BaseComponent {
 
     showError(message) {
         this.shadowRoot.innerHTML = `
-            <div class="error">${this.escapeHtml(message)}</div>
+            <style>${this.getCardStyles()}</style>
+            <div class="card"><div class="error">${this.escapeHtml(message)}</div></div>
         `;
     }
 
     renderCreateBlogOption() {
         this.shadowRoot.innerHTML = `
-            <style>
-                :host {
-                    display: block;
-                    background: var(--card-bg);
-                    border-radius: var(--card-radius);
-                    box-shadow: var(--card-shadow);
-                    padding: var(--card-padding);
-                    margin-bottom: var(--card-margin);
-                    border: 1px solid var(--card-border);
-                }
-                
-                .card-header {
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-3);
-                    margin-bottom: var(--card-content-gap);
-                    padding-bottom: var(--spacing-4);
-                    border-bottom: 1px solid var(--card-header-border);
-                }
-                
-                .card-title {
-                    font-size: var(--card-title-size);
-                    font-weight: var(--card-title-weight);
-                    color: var(--card-title-color);
-                    margin: 0;
-                }
-                
-                .create-blog-content {
-                    text-align: center;
-                    padding: var(--spacing-8) 0;
-                }
-                
-                .create-blog-icon {
-                    font-size: 3rem;
-                    margin-bottom: var(--spacing-4);
-                    color: var(--gray-400);
-                }
-                
-                .create-blog-title {
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--gray-700);
-                    margin-bottom: var(--spacing-3);
-                }
-                
-                .create-blog-description {
-                    color: var(--gray-500);
-                    margin-bottom: var(--spacing-6);
-                    line-height: 1.5;
-                }
-                
-                .create-blog-btn {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: var(--spacing-2);
-                    padding: var(--spacing-3) var(--spacing-6);
-                    font-size: var(--font-size-base);
-                    font-weight: 500;
-                    background-color: var(--primary-color);
-                    color: white;
-                    border: none;
-                    border-radius: var(--radius-md);
-                    cursor: pointer;
-                    transition: background-color var(--transition-fast);
-                    text-decoration: none;
-                }
-                
-                .create-blog-btn:hover {
-                    background-color: var(--primary-hover);
-                }
-                
-                .create-blog-modal {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0, 0, 0, 0.5);
-                    display: none;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 1000;
-                }
-                
-                .create-blog-modal.show {
-                    display: flex;
-                }
-                
-                .create-blog-modal-content {
-                    background: white;
-                    padding: var(--spacing-6);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-xl);
-                    max-width: 500px;
-                    width: 90%;
-                }
-                
-                .create-blog-modal-title {
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    margin-bottom: var(--spacing-4);
-                    color: var(--gray-900);
-                }
-                
-                .create-blog-form {
-                    display: flex;
-                    flex-direction: column;
-                    gap: var(--spacing-4);
-                }
-                
-                .form-group {
-                    display: flex;
-                    flex-direction: column;
-                    gap: var(--spacing-2);
-                }
-                
-                .form-label {
-                    font-weight: 500;
-                    color: var(--gray-700);
-                    font-size: var(--font-size-sm);
-                }
-                
-                .form-input, .form-textarea {
-                    padding: var(--spacing-3);
-                    border: 1px solid var(--gray-300);
-                    border-radius: var(--radius-md);
-                    font-size: var(--font-size-sm);
-                    transition: border-color var(--transition-fast);
-                }
-                
-                .form-input:focus, .form-textarea:focus {
-                    outline: none;
-                    border-color: var(--primary-color);
-                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-                }
-                
-                .form-textarea {
-                    resize: vertical;
-                    min-height: 100px;
-                }
-                
-                .create-blog-actions {
-                    display: flex;
-                    gap: var(--spacing-3);
-                    justify-content: flex-end;
-                    margin-top: var(--spacing-4);
-                }
-                
-                .btn-secondary {
-                    background-color: var(--gray-100);
-                    color: var(--gray-700);
-                    border: 1px solid var(--gray-300);
-                    padding: var(--spacing-2) var(--spacing-4);
-                    border-radius: var(--radius-md);
-                    cursor: pointer;
-                    transition: all var(--transition-fast);
-                }
-                
-                .btn-secondary:hover {
-                    background-color: var(--gray-200);
-                    border-color: var(--gray-400);
-                }
-                
-                .btn-primary {
-                    background-color: var(--primary-color);
-                    color: white;
-                    border: 1px solid var(--primary-color);
-                    padding: var(--spacing-2) var(--spacing-4);
-                    border-radius: var(--radius-md);
-                    cursor: pointer;
-                    transition: all var(--transition-fast);
-                }
-                
-                .btn-primary:hover {
-                    background-color: var(--primary-hover);
-                    border-color: var(--primary-hover);
-                }
-                
-                .error-message {
-                    color: var(--error-color);
-                    font-size: var(--font-size-sm);
-                    margin-top: var(--spacing-1);
-                }
-            </style>
-            
-            <div class="card-header">
-                <h2 class="card-title">博客信息</h2>
+            <style>${this.getCardStyles()}</style>
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span class="title-icon">${Icons.home}</span>
+                        博客信息
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="empty-state">
+                        <div class="empty-icon">${Icons.edit}</div>
+                        <h3 class="empty-title">还没有开通博客</h3>
+                        <p class="empty-description">开通博客后，您可以发布文章、管理内容，开始您的创作之旅。</p>
+                        <button type="button" class="btn btn-primary btn-sm" id="createBlogBtn">
+                            ${Icons.add}
+                            开通博客
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <div class="create-blog-content">
-                <div class="create-blog-icon">📝</div>
-                <h3 class="create-blog-title">还没有开通博客</h3>
-                <p class="create-blog-description">开通博客后，您可以发布文章、管理内容，开始您的创作之旅。</p>
-                <button class="create-blog-btn" id="createBlogBtn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 5v14M5 12h14"></path>
-                    </svg>
-                    开通博客
-                </button>
-            </div>
-            
-            <!-- 创建博客模态框 -->
-            <div class="create-blog-modal" id="createBlogModal">
-                <div class="create-blog-modal-content">
-                    <h3 class="create-blog-modal-title">开通博客</h3>
-                    <form class="create-blog-form" id="createBlogForm">
+            <div class="modal-overlay" id="createBlogModal">
+                <div class="modal-panel">
+                    <h3 class="modal-title">开通博客</h3>
+                    <form class="modal-form" id="createBlogForm">
                         <div class="form-group">
                             <label class="form-label" for="blogName">博客名称 *</label>
                             <input type="text" id="blogName" class="form-input" required maxlength="100" placeholder="请输入博客名称">
@@ -486,16 +406,15 @@ class BlogInfoCard extends BaseComponent {
                             <textarea id="blogDescription" class="form-textarea" maxlength="500" placeholder="请输入博客描述（可选）"></textarea>
                             <div class="error-message" id="blogDescriptionError"></div>
                         </div>
-                        <div class="create-blog-actions">
-                            <button type="button" class="btn-secondary" id="cancelCreateBtn">取消</button>
-                            <button type="submit" class="btn-primary" id="confirmCreateBtn">创建博客</button>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary btn-sm btn-icon-only" id="cancelCreateBtn" title="取消" aria-label="取消">${Icons.asBtnIcon(Icons.close)}</button>
+                            <button type="submit" class="btn btn-primary btn-sm" id="confirmCreateBtn">创建博客</button>
                         </div>
                     </form>
                 </div>
             </div>
         `;
 
-        // 添加事件监听器
         this.addCreateBlogEventListeners();
     }
 

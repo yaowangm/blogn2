@@ -15,15 +15,12 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from dotenv import load_dotenv
-from passlib.context import CryptContext
+from src.utils.password_hash import bcrypt_hash, hash_user_password, verify_user_password
 from sqlmodel import create_engine, Session, select
 from src.models.user import User
 
 # 加载环境变量
 load_dotenv()
-
-# 创建密码上下文
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def is_md5_hash(hash_value: str) -> bool:
     """判断是否为MD5哈希"""
@@ -35,15 +32,11 @@ def is_bcrypt_hash(hash_value: str) -> bool:
 
 def convert_md5_to_bcrypt(md5_hash: str) -> str:
     """将MD5哈希转换为bcrypt哈希"""
-    return pwd_context.hash(md5_hash)
+    return bcrypt_hash(md5_hash)
 
 def verify_double_hash(plain_password: str, stored_hash: str) -> bool:
     """验证双重哈希密码"""
-    # 1. 计算MD5哈希
-    md5_hash = hashlib.md5(plain_password.encode()).hexdigest()
-    
-    # 2. 验证bcrypt哈希
-    return pwd_context.verify(md5_hash, stored_hash)
+    return verify_user_password(plain_password, stored_hash)
 
 def migrate_to_double_hash():
     """执行双重哈希迁移"""

@@ -8,7 +8,7 @@
 
 - 对外模板为项目根目录 **`.env.example`**（Docker 与本地共用，见 `docker/README-DOCKER.md`）；私有配置写入 **`.env`**（gitignore，不提交）。
 - 本地 **`.env` 的活动键名**须与 **`.env.example` 的活动键名**完全一致（值可不同）。
-- **`BLOGN_ALLOW_DANGEROUS_TEST_SQL_CLEANUP`** 仅出现在 `.env.example` 的注释中，用于说明 `tests/conftest.py` 在显式设为 `1` 时的危险 SQL 清理行为；**不要**将其作为 `.env` 的活动配置项。
+- **pytest 临时库**：集成测试不写入 `.env` 中的业务库名；`pytest` 会连 catalog 库（默认 `postgres`）创建 `blogn_pytest_<pid>`，结束后销毁。`DATABASE_URL` 仅用于解析主机/账号。可选 `BLOGN_PYTEST_ADMIN_DATABASE_URL` 覆盖 catalog 连接；`BLOGN_SKIP_TEST_DB_LIFECYCLE=1` 可跳过自动建库（调试用，慎用）。
 
 ## 测试文件结构
 

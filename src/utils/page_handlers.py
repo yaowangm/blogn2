@@ -13,6 +13,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database import get_async_session
 from src.config.app import get_base_url
+from src.utils.static_assets import build_versioned_html_response
 from src.utils.share_preview import (
     ArticleShareMeta,
     get_request_public_base_url,
@@ -43,6 +44,14 @@ class PageHandler:
         project_root = current_file.parent.parent.parent
         static_file = project_root / "src" / "static" / filename
         return str(static_file.resolve())
+
+    @staticmethod
+    def _serve_static_html(filename: str) -> HTMLResponse:
+        """读取静态 HTML 模板并注入资源版本号，避免浏览器缓存旧页面。"""
+        static_path = PageHandler._get_static_file_path(filename)
+        with open(static_path, encoding="utf-8") as f:
+            template = f.read()
+        return build_versioned_html_response(template)
 
     @staticmethod
     async def _maybe_share_preview_html(
@@ -77,14 +86,13 @@ class PageHandler:
             ),
             get_base_url(),
         )
-        return HTMLResponse(
-            content=inject_article_share_preview(
-                template,
-                meta,
-                og_type=og_type,
-                public_base_url=public_base,
-            ),
+        html = inject_article_share_preview(
+            template,
+            meta,
+            og_type=og_type,
+            public_base_url=public_base,
         )
+        return build_versioned_html_response(html)
 
     @staticmethod
     def create_page_router() -> APIRouter:
@@ -100,7 +108,7 @@ class PageHandler:
         @router.get("/")
         async def root():
             """根路径和首页路由"""
-            return FileResponse(PageHandler._get_static_file_path("index.html"))
+            return PageHandler._serve_static_html("index.html")
 
         # 博客页面
         @router.get("/blog/{project_id}")
@@ -124,7 +132,7 @@ class PageHandler:
         @router.get("/messages")
         async def messages_page():
             """留言本页面路由"""
-            return FileResponse(PageHandler._get_static_file_path("messages.html"))
+            return PageHandler._serve_static_html("messages.html")
 
         # 留言本主题页面
         @router.get("/thread/{thread_id}")
@@ -148,50 +156,50 @@ class PageHandler:
         @router.get("/blog/{project_id}/create-post")
         async def create_post_page(project_id: int):
             """发表博客文章页面路由"""
-            return FileResponse(PageHandler._get_static_file_path("create-post.html"))
+            return PageHandler._serve_static_html("create-post.html")
 
         # 编辑博客文章页面
         @router.get("/edit-article/{article_id}")
         async def edit_article_page(article_id: int):
             """编辑博客文章页面路由"""
-            return FileResponse(PageHandler._get_static_file_path("edit-article.html"))
+            return PageHandler._serve_static_html("edit-article.html")
 
         # 个人资料页面
         @router.get("/profile")
         @router.get("/profile/{user_id}")
         async def profile_page(user_id: Optional[int] = None):
             """个人资料页面路由"""
-            return FileResponse(PageHandler._get_static_file_path("profile.html"))
+            return PageHandler._serve_static_html("profile.html")
 
         # 注册码管理页面
         @router.get("/regkey")
         async def registration_code_page():
             """注册码管理页面路由"""
-            return FileResponse(PageHandler._get_static_file_path("regkey.html"))
+            return PageHandler._serve_static_html("regkey.html")
 
         # 用户列表页面
         @router.get("/users")
         async def users_list_page():
             """用户列表页面路由"""
-            return FileResponse(PageHandler._get_static_file_path("users.html"))
+            return PageHandler._serve_static_html("users.html")
 
         # 用户注册页面
         @router.get("/user_register")
         async def user_register_page():
             """用户注册页面路由"""
-            return FileResponse(PageHandler._get_static_file_path("user_register.html"))
+            return PageHandler._serve_static_html("user_register.html")
 
         # 忘记密码页面
         @router.get("/forgot-password")
         async def forgot_password_page():
             """忘记密码页面路由"""
-            return FileResponse(PageHandler._get_static_file_path("forgot-password.html"))
+            return PageHandler._serve_static_html("forgot-password.html")
 
         # 重置密码页面
         @router.get("/reset-password")
         async def reset_password_page():
             """重置密码页面路由"""
-            return FileResponse(PageHandler._get_static_file_path("reset-password.html"))
+            return PageHandler._serve_static_html("reset-password.html")
 
         # 博客文章页面
         @router.get("/article/{article_id}")
@@ -215,19 +223,19 @@ class PageHandler:
         @router.get("/blog/{project_id}/subscriptions")
         async def subscriptions_page(project_id: int):
             """订阅的博客页面路由"""
-            return FileResponse(PageHandler._get_static_file_path("subscriptions.html"))
+            return PageHandler._serve_static_html("subscriptions.html")
 
         # 分类维护页面
         @router.get("/blog/{project_id}/categories/maintenance")
         async def category_maintenance_page(project_id: int):
             """分类维护页面路由"""
-            return FileResponse(PageHandler._get_static_file_path("category-maintenance.html"))
+            return PageHandler._serve_static_html("category-maintenance.html")
 
         # 管理友情链接页面
         @router.get("/manage-friend-links")
         async def manage_friend_links_page():
             """管理友情链接页面路由"""
-            return FileResponse(PageHandler._get_static_file_path("manage-friend-links.html"))
+            return PageHandler._serve_static_html("manage-friend-links.html")
 
         # 调试页面（这些文件可能在项目根目录）
         @router.get("/debug/article-api")
@@ -252,7 +260,7 @@ class PageHandler:
         @router.get("/search")
         async def search_page():
             """搜索页面路由"""
-            return FileResponse(PageHandler._get_static_file_path("search.html"))
+            return PageHandler._serve_static_html("search.html")
 
         return router
 

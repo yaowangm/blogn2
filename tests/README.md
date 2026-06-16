@@ -57,6 +57,15 @@ tests/
 - **真实数据库版本** (`test_api_endpoints_with_real_db.py`): 使用真实数据库，完整验证业务流程
 - **基础端点测试** (`test_basic_endpoints.py`): 快速验证基本功能，不创建测试数据
 
+#### 真实数据库集成测试须知
+
+一次 `pytest` 会话共用**同一个**临时库 `blogn_pytest_<pid>`（见 `tests/db_lifecycle.py`），会话结束才 `DROP`；**不会**在每个用例后清空表数据。
+
+- 库启动时会写入种子用户 `admin`（供部分元数据/计数类用例使用）。
+- 用例内 `commit()` 的数据会留在库中，后续用例可能看到；勿假设「库中只有本用例的数据」。
+- 断言用户/项目总数时，用 `>=` 或为本用例生成唯一名称（如 `uuid` 前缀），避免与种子或其它用例冲突。
+- 需要精确计数或空表时，应查询本用例创建的主键/唯一字段，而不是 `COUNT(*)` 全表。
+
 ## 运行测试
 
 ### 使用测试脚本（推荐）
@@ -204,8 +213,9 @@ assert "expected message" in str(exc_info.value)
    - 检查 `PYTHONPATH` 设置
 
 2. **数据库连接错误**
-   - 集成测试（含 BERT 向量化）使用真实 PostgreSQL，需配置 `DATABASE_URL`
-   - 确保测试环境变量正确设置
+   - 集成测试使用 PostgreSQL；`.env` 中的 `DATABASE_URL` 仅用于解析连接信息（业务库名可以不存在）
+   - `pytest` 启动时连 catalog 库（默认 `postgres`）`CREATE DATABASE blogn_pytest_<pid>`、初始化表结构，结束后 `DROP`
+   - 可选 `BLOGN_PYTEST_ADMIN_DATABASE_URL` 指定 catalog 连接；调试可设 `BLOGN_SKIP_TEST_DB_LIFECYCLE=1`（慎用，勿对生产库跑集成测试）
 
 3. **异步测试失败**
    - 使用 `@pytest.mark.asyncio` 装饰器

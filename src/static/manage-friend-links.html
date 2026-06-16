@@ -3,331 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理友情链接 - 博客管理系统</title>
+    <title>管理友情链接 - BlogN</title>
     <link rel="icon" type="image/png" href="/static/favicon.png">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/components.css">
-    <style>
-        body {
-            background: var(--gray-50);
-            min-height: 100vh;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: var(--spacing-6);
-        }
-
-        .page-header {
-            background: var(--white);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--gray-200);
-            padding: var(--spacing-6);
-            margin-bottom: var(--spacing-6);
-        }
-
-        .page-title {
-            font-size: var(--font-size-2xl);
-            font-weight: 700;
-            color: var(--gray-900);
-            margin: 0 0 var(--spacing-2) 0;
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-3);
-        }
-
-        .page-title-icon {
-            width: 24px;
-            height: 24px;
-            color: var(--primary-color);
-        }
-
-        .page-description {
-            color: var(--gray-600);
-            font-size: var(--font-size-base);
-            margin: 0;
-        }
-
-        .management-container {
-            display: grid;
-            grid-template-columns: 1fr 400px;
-            gap: var(--spacing-6);
-        }
-
-        .links-section {
-            background: var(--white);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--gray-200);
-            overflow: hidden;
-        }
-
-        .section-header {
-            padding: var(--spacing-5);
-            border-bottom: 1px solid var(--gray-200);
-            background: var(--gray-50);
-        }
-
-        .section-title {
-            font-size: var(--font-size-lg);
-            font-weight: 600;
-            color: var(--gray-900);
-            margin: 0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .add-button {
-            padding: var(--spacing-2) var(--spacing-4);
-            background: var(--primary-color);
-            color: var(--white);
-            border: none;
-            border-radius: var(--radius-md);
-            font-size: var(--font-size-sm);
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition-fast);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-2);
-        }
-
-        .add-button:hover {
-            background: var(--primary-dark);
-            transform: translateY(-1px);
-        }
-
-        .links-list {
-            padding: var(--spacing-5);
-        }
-
-        .link-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: var(--spacing-4);
-            border: 1px solid var(--gray-200);
-            border-radius: var(--radius-md);
-            margin-bottom: var(--spacing-3);
-            background: var(--gray-50);
-            transition: var(--transition-fast);
-        }
-
-        .link-item:hover {
-            background: var(--white);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .link-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .link-name {
-            font-weight: 500;
-            color: var(--gray-900);
-            margin-bottom: var(--spacing-1);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .link-url {
-            font-size: var(--font-size-sm);
-            color: var(--gray-600);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .link-actions {
-            display: flex;
-            gap: var(--spacing-2);
-        }
-
-        .action-button {
-            padding: var(--spacing-1) var(--spacing-2);
-            border: none;
-            border-radius: var(--radius-sm);
-            font-size: var(--font-size-xs);
-            cursor: pointer;
-            transition: var(--transition-fast);
-        }
-
-        .edit-button {
-            background: var(--blue-100);
-            color: var(--blue-700);
-        }
-
-        .edit-button:hover {
-            background: var(--blue-200);
-        }
-
-        .delete-button {
-            background: var(--red-100);
-            color: var(--red-700);
-        }
-
-        .delete-button:hover {
-            background: var(--red-200);
-        }
-
-
-        .empty-state {
-            text-align: center;
-            padding: var(--spacing-8);
-            color: var(--gray-500);
-        }
-
-        .empty-state-icon {
-            font-size: var(--font-size-4xl);
-            margin-bottom: var(--spacing-4);
-        }
-
-        .empty-state-text {
-            font-size: var(--font-size-lg);
-            margin-bottom: var(--spacing-2);
-        }
-
-        .empty-state-description {
-            font-size: var(--font-size-sm);
-            color: var(--gray-400);
-        }
-
-        .loading {
-            text-align: center;
-            padding: var(--spacing-8);
-            color: var(--gray-500);
-        }
-
-        .error-message {
-            background: var(--red-50);
-            color: var(--red-700);
-            padding: var(--spacing-4) var(--spacing-6);
-            border-radius: var(--radius-lg);
-            border: 1px solid var(--red-200);
-            margin: var(--spacing-4) auto;
-            max-width: 500px;
-            text-align: center;
-            font-weight: 500;
-            box-shadow: var(--shadow-sm);
-            position: relative;
-            animation: slideDown 0.3s ease-out;
-        }
-
-        .success-message {
-            background: var(--green-50);
-            color: var(--green-700);
-            padding: var(--spacing-4) var(--spacing-6);
-            border-radius: var(--radius-lg);
-            border: 1px solid var(--green-200);
-            margin: var(--spacing-4) auto;
-            max-width: 500px;
-            text-align: center;
-            font-weight: 500;
-            box-shadow: var(--shadow-sm);
-            position: relative;
-            animation: slideDown 0.3s ease-out;
-        }
-
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .limit-warning {
-            background: var(--yellow-50);
-            color: var(--yellow-700);
-            padding: var(--spacing-3);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--yellow-200);
-            margin-bottom: var(--spacing-4);
-            font-size: var(--font-size-sm);
-        }
-
-        @media (max-width: 768px) {
-            .management-container {
-                grid-template-columns: 1fr;
-            }
-
-            .container {
-                padding: var(--spacing-4);
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/management-pages.css">
 </head>
 <body>
-    <!-- 顶栏组件 -->
     <header-component></header-component>
 
-    <!-- 主要内容区域 -->
     <main class="main-content">
-        <div class="container">
-            <!-- 页面头部 -->
-            <div class="page-header">
-                <h1 class="page-title">
-                    <svg class="page-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                    </svg>
-                    管理友情链接
-                </h1>
-                <p class="page-description">
-                    管理您的博客友情链接，最多可添加20个友情链接
-                </p>
-            </div>
-
-            <!-- 管理容器 -->
-            <div class="management-container">
-                <!-- 友情链接列表 -->
-                <div class="links-section">
-                    <div class="section-header">
-                        <h2 class="section-title">
-                            友情链接列表
-                            <button class="add-button" id="addLinkBtn">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M12 5v14M5 12h14"></path>
-                                </svg>
-                                新建链接
-                            </button>
-                        </h2>
+        <div class="container management-container">
+            <div class="card">
+                <div class="card-header">
+                    <h1 class="card-title">
+                        <span class="title-icon" id="friendLinksTitleIcon"></span>
+                        <span id="pageTitleText">管理友情链接</span>
+                    </h1>
+                    <div class="btn-toolbar">
+                        <button type="button" class="btn btn-primary btn-sm btn-icon-only" id="addLinkBtn" title="新建链接" aria-label="新建链接">
+                        </button>
                     </div>
-                    <div class="links-list" id="linksList">
+                </div>
+                <div class="card-body">
+                    <p class="page-description" id="pageDescription">
+                        管理您的博客友情链接，最多可添加 20 个友情链接
+                    </p>
+                    <div id="linksList">
                         <div class="loading">加载中...</div>
                     </div>
                 </div>
-
             </div>
         </div>
     </main>
 
-    <!-- 底栏组件 -->
     <footer-component></footer-component>
 
-    <!-- 图标库 -->
     <script src="/static/js/components/icons.js"></script>
-
-    <!-- 用户管理工具 -->
     <script src="/static/js/utils/user-manager.js"></script>
     <script src="/static/js/utils/confirm-dialog.js"></script>
-
-    <!-- Web Components -->
     <script src="/static/js/utils/html-utils.js"></script>
     <script src="/static/js/components/base-component.js"></script>
     <script src="/static/js/components/footer-component.js"></script>
     <script src="/static/js/components/header-component.js"></script>
-
-    <!-- 管理友情链接脚本 -->
     <script src="/static/js/manage-friend-links.js"></script>
+    <script>
+        document.getElementById('friendLinksTitleIcon').innerHTML = Icons.friendLinks;
+        const addBtn = document.getElementById('addLinkBtn');
+        if (addBtn && typeof Icons !== 'undefined') {
+            addBtn.innerHTML = Icons.asBtnIcon(Icons.add);
+        }
+    </script>
 </body>
 </html>

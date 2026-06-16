@@ -8,6 +8,8 @@ services:
       dockerfile: docker/Dockerfile.app
       args:
         BASE_IMAGE: blogn2-base:${BASE_VERSION:-1.0}
+        # 未设置时由 Dockerfile.app 在镜像构建阶段自动生成 UTC 时间戳
+        STATIC_VERSION: ${STATIC_VERSION:-}
     container_name: blogn2-app
     restart: unless-stopped
     network_mode: "host"

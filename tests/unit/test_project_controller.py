@@ -101,6 +101,33 @@ class TestProjectController:
                 assert "total" in result
 
     @pytest.mark.asyncio
+    async def test_get_project_posts_uncategorized_folderid_zero(self, mock_session):
+        """folderid=0 时应返回未分类，而非全部文章"""
+        with patch('src.controllers.project.ProjectItemRepository') as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_repo.get_by_project_id_and_folder = AsyncMock(return_value=[])
+            mock_repo.count_by_project_id_and_folder = AsyncMock(return_value=0)
+            mock_repo_class.return_value = mock_repo
+
+            with patch('src.controllers.project.permission_manager') as mock_permission:
+                mock_permission.can_manage_system.return_value = False
+
+                result = await get_project_posts(
+                    project_id=1,
+                    page=1,
+                    limit=10,
+                    type="original",
+                    category=None,
+                    folderid=0,
+                    include_deleted=False,
+                    session=mock_session,
+                    current_user=None
+                )
+
+                assert result["category"] == "未分类"
+                assert result["folderid"] == 0
+
+    @pytest.mark.asyncio
     async def test_get_project_posts_subscription_success(self, mock_session):
         """测试成功获取订阅文章列表"""
         # 模拟订阅仓库

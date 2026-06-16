@@ -29,6 +29,17 @@ class ArticleCommentsCard extends BaseComponent {
 
         // 检查URL锚点，如果需要定位到特定评论
         this.checkAndScrollToComment();
+
+        this._boundHashChangeHandler = () => this.checkAndScrollToComment();
+        window.addEventListener('hashchange', this._boundHashChangeHandler);
+    }
+
+    disconnectedCallback() {
+        this._detachCommentScrollCorrection();
+        if (this._boundHashChangeHandler) {
+            window.removeEventListener('hashchange', this._boundHashChangeHandler);
+            this._boundHashChangeHandler = null;
+        }
     }
 
     /**
@@ -44,76 +55,103 @@ class ArticleCommentsCard extends BaseComponent {
      */
     async loadArticleData() {
         try {
-            // 获取认证头
             const headers = UserManager.createHeaders();
 
-            const response = await fetch(`/api/articles/${this.articleId}?page=${this.currentPage}&per_page=${this.perPage}`, {
-                headers: headers
-            });
+            const response = await fetch(
+                `/api/articles/${this.articleId}/comments?page=${this.currentPage}&limit=${this.perPage}`,
+                { headers }
+            );
             if (response.ok) {
-                this.articleData = await response.json();
+                const data = await response.json();
+                this.articleData = {
+                    comments: data.comments || [],
+                    comment_count: data.comment_count ?? data.pagination?.total ?? 0,
+                };
 
-                // 保存分页信息
-                if (this.articleData.comments_pagination) {
-                    this.pagination = this.articleData.comments_pagination;
+                if (data.pagination) {
+                    this.pagination = data.pagination;
                 }
 
-                // 如果有评论，获取每个评论的用户信息
-                if (this.articleData.comments && this.articleData.comments.length > 0) {
-                    await this.loadCommentUsers();
-                }
+                this.buildUserMapFromComments(this.articleData.comments);
             } else if (response.status === 404) {
-                // 文章不存在，跳转到错误页面
                 window.location.href = '/static/error.html';
                 return;
             } else {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
         } catch (error) {
-            this.logError('Failed to load article data', error);
-            // 加载失败，跳转到错误页面
+            this.logError('Failed to load article comments', error);
             window.location.href = '/static/error.html';
         }
     }
 
-    /**
-     * 加载评论用户信息
-     */
-    async loadCommentUsers() {
-        if (!this.articleData.comments) return;
+    buildUserMapFromComments(comments) {
+        this.userMap = {};
+        (comments || []).forEach((comment) => {
+            if (!comment.user_id) return;
+            this.userMap[comment.user_id] = {
+                id: comment.user_id,
+                name: comment.author_name || `用户${comment.user_id}`,
+                avatar: comment.author_avatar,
+                projectid: comment.author_blog_id,
+            };
+        });
+    }
 
-        try {
-            // 获取所有不重复的用户ID
-            const userIds = [...new Set(this.articleData.comments
-                .map(comment => comment.user_id)
-                .filter(id => id))];
-
-            // 批量获取用户信息
-            const userPromises = userIds.map(async (userId) => {
-                try {
-                    const userResponse = await fetch(`/api/users/${userId}`);
-                    if (userResponse.ok) {
-                        return await userResponse.json();
-                    }
-                } catch (error) {
-                    console.warn(`Failed to load user ${userId}:`, error);
-                }
-                return null;
-            });
-
-            const users = await Promise.all(userPromises);
-
-            // 创建用户ID到用户信息的映射
-            this.userMap = {};
-            users.forEach(user => {
-                if (user) {
-                    this.userMap[user.id] = user;
-                }
-            });
-        } catch (error) {
-            console.warn('Failed to load comment users:', error);
-            this.userMap = {};
+    getSmallAvatarPath(userId) {
+        if (!userId) {
+            return null;
         }
+        const prefix = Math.floor(userId / 10000) + 1;
+        return `/avatar/${prefix}/s_${userId}.jpg`;
+    }
+
+    renderAuthorAvatar(userName, userAvatar, userId, blogId) {
+        const isAnonymous = this.isAnonymousUser(userId);
+        const avatarPath = !isAnonymous ? (userAvatar || this.getSmallAvatarPath(userId)) : null;
+        const fallbackContent = this.getAuthorAvatarFallbackContent(userName, userId);
+        const fallbackClass = isAnonymous
+            ? 'author-avatar-fallback author-avatar-fallback--default-user'
+            : 'author-avatar-fallback';
+        const canLinkBlog = !isAnonymous && blogId;
+
+        const avatarHtml = `
+            <span class="author-avatar" aria-hidden="true">
+                ${avatarPath ? `
+                    <img src="${avatarPath}" alt=""
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                         onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
+                ` : ''}
+                <span class="${fallbackClass}" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackContent}</span>
+            </span>
+        `;
+
+        if (canLinkBlog) {
+            return `
+                <a href="/blog/${blogId}" class="author-avatar-link" title="查看博客" target="_blank" rel="noopener noreferrer">
+                    ${avatarHtml}
+                </a>
+            `;
+        }
+
+        return avatarHtml;
+    }
+
+    renderAuthorName(userName, userId, blogId) {
+        const safeAuthor = this.escapeHtml(userName || '匿名用户');
+        const isAnonymous = this.isAnonymousUser(userId);
+        const canLinkBlog = !isAnonymous && blogId;
+        const nameHtml = `<span class="author-name">${safeAuthor}</span>`;
+
+        if (canLinkBlog) {
+            return `
+                <a href="/blog/${blogId}" class="author-link" title="查看博客" target="_blank" rel="noopener noreferrer">
+                    ${nameHtml}
+                </a>
+            `;
+        }
+
+        return nameHtml;
     }
 
     /**
@@ -123,11 +161,16 @@ class ArticleCommentsCard extends BaseComponent {
         if (!this.articleData) {
             this.shadowRoot.innerHTML = `
                 <div class="card article-comments-card">
-                    <div class="card-body">
-                        <div class="loading">加载中...</div>
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            ${typeof Icons !== 'undefined' ? Icons.comments : ''}
+                            评论
+                        </h3>
                     </div>
+                    <div class="loading">加载中...</div>
                 </div>
             `;
+            this.addStyles();
             return;
         }
 
@@ -136,9 +179,12 @@ class ArticleCommentsCard extends BaseComponent {
         this.shadowRoot.innerHTML = `
             <div class="card article-comments-card">
                 <div class="card-header">
-                    <h3>评论 (${comment_count || 0})</h3>
+                    <h3 class="card-title">
+                        ${typeof Icons !== 'undefined' ? Icons.comments : ''}
+                        评论 (${comment_count || 0})
+                    </h3>
                 </div>
-                <div class="card-body">
+                <div class="card-body card-body--flush-list">
                     ${this.renderComments(comments)}
                 </div>
                 ${this.renderPagination()}
@@ -294,20 +340,144 @@ class ArticleCommentsCard extends BaseComponent {
      * 滚动到指定评论并突出显示
      */
     scrollToCommentAndHighlight(commentId) {
-        // 等待DOM渲染完成
-        setTimeout(() => {
-            const commentElement = this.shadowRoot.querySelector(`#post${commentId}`);
-            if (commentElement) {
-                // 滚动到评论位置
-                commentElement.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center'
-                });
+        void this.scrollToCommentElement(commentId);
+    }
 
-                // 添加突出显示效果
-                this.highlightComment(commentElement);
+    /**
+     * 将评论滚入视口中央。
+     */
+    scrollCommentIntoView(commentElement, behavior = 'auto') {
+        commentElement.scrollIntoView({ behavior, block: 'center' });
+    }
+
+    /**
+     * 等待文章头部、正文（含附件图）与评论列表布局就绪。
+     */
+    async _waitForArticlePageLayoutReady() {
+        const headerCard = document.querySelector('article-header-card');
+        if (headerCard?.waitForLayoutReady) {
+            await headerCard.waitForLayoutReady();
+        }
+
+        const contentCard = document.querySelector('article-content-card');
+        if (contentCard?.waitForLayoutReady) {
+            await contentCard.waitForLayoutReady();
+        }
+
+        await BaseComponent.waitForCustomElementReady(
+            'article-comments-card',
+            (element) => Boolean(element.articleData),
+        );
+
+        if (this.shadowRoot) {
+            await BaseComponent.waitForImagesInRoot(this.shadowRoot);
+        }
+
+        await BaseComponent.waitForLayoutSettle();
+    }
+
+    /**
+     * 正文附图加载或布局变化后再次校正滚动位置（不重复高亮）。
+     */
+    _attachCommentScrollCorrection(commentElement) {
+        this._detachCommentScrollCorrection();
+
+        const resync = () => {
+            if (!commentElement.isConnected) {
+                this._detachCommentScrollCorrection();
+                return;
             }
-        }, 100);
+            this.scrollCommentIntoView(commentElement);
+        };
+
+        const roots = [
+            document.querySelector('article-content-card')?.shadowRoot,
+            this.shadowRoot,
+        ].filter(Boolean);
+
+        const imageCleanups = [];
+        roots.forEach((root) => {
+            root.querySelectorAll('img').forEach((img) => {
+                if (img.complete) {
+                    return;
+                }
+                const onImageSettled = () => resync();
+                img.addEventListener('load', onImageSettled, { once: true });
+                img.addEventListener('error', onImageSettled, { once: true });
+                imageCleanups.push(() => {
+                    img.removeEventListener('load', onImageSettled);
+                    img.removeEventListener('error', onImageSettled);
+                });
+            });
+        });
+
+        let resizeFrame = null;
+        const resizeObserver = new ResizeObserver(() => {
+            if (resizeFrame !== null) {
+                cancelAnimationFrame(resizeFrame);
+            }
+            resizeFrame = requestAnimationFrame(() => {
+                resizeFrame = null;
+                resync();
+            });
+        });
+
+        roots.forEach((root) => {
+            resizeObserver.observe(root);
+        });
+
+        this._commentScrollCleanupTimer = setTimeout(() => {
+            this._detachCommentScrollCorrection();
+        }, 30000);
+
+        this._commentScrollCorrection = {
+            resizeObserver,
+            imageCleanups,
+            cancelResizeFrame: () => {
+                if (resizeFrame !== null) {
+                    cancelAnimationFrame(resizeFrame);
+                    resizeFrame = null;
+                }
+            }
+        };
+    }
+
+    _detachCommentScrollCorrection() {
+        if (this._commentScrollCleanupTimer) {
+            clearTimeout(this._commentScrollCleanupTimer);
+            this._commentScrollCleanupTimer = null;
+        }
+
+        const state = this._commentScrollCorrection;
+        if (!state) {
+            return;
+        }
+
+        state.cancelResizeFrame();
+        state.resizeObserver.disconnect();
+        state.imageCleanups.forEach((cleanup) => cleanup());
+        this._commentScrollCorrection = null;
+    }
+
+    /**
+     * 定位到评论：等内容与评论都就绪后再滚动并高亮。
+     */
+    async scrollToCommentElement(commentId) {
+        this._detachCommentScrollCorrection();
+
+        await this._waitForArticlePageLayoutReady();
+
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+            const commentElement = this.shadowRoot?.querySelector(`#post${commentId}`);
+            if (commentElement) {
+                await BaseComponent.waitForLayoutSettle();
+                this.scrollCommentIntoView(commentElement);
+                this.highlightComment(commentElement);
+                this._attachCommentScrollCorrection(commentElement);
+                return;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 100));
+        }
     }
 
     /** 锚点定位评论的蓝色边框闪烁总时长（毫秒），与原先整行高亮一致 */
@@ -330,29 +500,13 @@ class ArticleCommentsCard extends BaseComponent {
      * 检查URL锚点并滚动到对应评论
      */
     checkAndScrollToComment() {
-        // 获取URL中的锚点
         const hash = window.location.hash;
         if (!hash) return;
 
-        // 检查锚点格式是否为 #post{commentId}
         const match = hash.match(/^#post(\d+)$/);
         if (!match) return;
 
-        const commentId = match[1];
-
-        // 等待DOM渲染完成后再滚动
-        setTimeout(() => {
-            // 查找对应的评论元素
-            const commentElement = this.shadowRoot.querySelector(`#post${commentId}`);
-            if (commentElement) {
-                // 滚动到评论位置
-                commentElement.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center'
-                });
-                this.highlightComment(commentElement);
-            }
-        }, 500); // 增加延迟，确保评论完全渲染
+        void this.scrollToCommentElement(match[1]);
     }
 
     /**
@@ -368,9 +522,9 @@ class ArticleCommentsCard extends BaseComponent {
         }
 
         return `
-            <div class="comments-list">
+            <ul class="comments-list list-divider-rows">
                 ${comments.map(comment => this.renderComment(comment)).join('')}
-            </div>
+            </ul>
         `;
     }
 
@@ -378,99 +532,70 @@ class ArticleCommentsCard extends BaseComponent {
      * 渲染单个评论
      */
     renderComment(comment) {
-        const { id, content, user_id, post_time, reply_count } = comment;
+        const { id, content, user_id, post_time, reply_count, author_name, author_avatar, author_blog_id } = comment;
 
-        // 获取用户名和博客ID，如果没有则显示用户ID或匿名
-        let userName = '匿名';
-        let blogId = null;
-        let userAvatar = null;
+        let userName = author_name || '匿名';
+        let blogId = (user_id && user_id !== 0 && author_blog_id) ? author_blog_id : null;
+        let userAvatar = author_avatar || null;
 
-        // 检查当前用户是否有删除权限
         const canDelete = this.canDeleteComment(comment);
 
         if (user_id) {
             if (this.userMap && this.userMap[user_id]) {
                 const user = this.userMap[user_id];
-                userName = user.name || `用户${user_id}`;
-                blogId = user.projectid || null;
-
-                // 构建头像路径
-                if (user.id) {
-                    const prefix = Math.floor(user.id / 10000) + 1;
-                    userAvatar = `/avatar/${prefix}/${user.id}.jpg`;
+                userName = user.name || userName;
+                if (!blogId && user.projectid) {
+                    blogId = user.projectid;
                 }
-            } else {
+                if (!userAvatar && user.avatar) {
+                    userAvatar = user.avatar;
+                }
+            } else if (!author_name) {
                 userName = `用户${user_id}`;
             }
         }
 
         return `
-            <div class="comment-item" id="post${id}" data-comment-id="${id}">
-                <div class="comment-avatar">
-                    ${blogId ? `
-                        <a href="/blog/${blogId}" class="avatar-link" title="查看博客" target="_blank" rel="noopener noreferrer">
-                            <div class="user-avatar">
-                                ${userAvatar ?
-                                    `<img src="${userAvatar}" alt="${this.escapeHtml(userName)}"
-                                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-                                          onload="this.style.display='block'; this.nextElementSibling.style.display='none';"
-                                          style="display: block;">` :
-                                    ''
-                                }
-                                <span style="display: ${userAvatar ? 'none' : 'flex'}; color: var(--gray-600);">${userName.charAt(0).toUpperCase()}</span>
+            <li class="comment-item" id="post${id}" data-comment-id="${id}">
+                <div class="comment-row">
+                    <div class="comment-avatar-col">
+                        ${this.renderAuthorAvatar(userName, userAvatar, user_id, blogId)}
+                    </div>
+                    <div class="comment-body-col">
+                        <div class="comment-header">
+                            <div class="comment-author-line">
+                                ${this.renderAuthorName(userName, user_id, blogId)}
                             </div>
-                        </a>
-                    ` : `
-                        <div class="user-avatar">
-                            <span style="color: var(--gray-600);">?</span>
+                            <span class="comment-time">${this.formatDate(post_time)}</span>
                         </div>
-                    `}
-                </div>
-
-                <div class="comment-content-wrapper">
-                    <div class="comment-header">
-                        <div class="comment-user">
-                            ${blogId ? `
-                                <a href="/blog/${blogId}" class="user-link" title="查看博客" target="_blank" rel="noopener noreferrer">
-                                    <span class="user-name">${this.escapeHtml(userName)}</span>
-                                </a>
-                            ` : `
-                                <span class="user-name">${this.escapeHtml(userName)}</span>
-                            `}
-                        </div>
+                        <div class="comment-text">${HtmlUtils.linkifyPlainTextToHtml(content || '')}</div>
+                        ${reply_count > 0 ? `
+                            <div class="comment-replies">
+                                <span class="reply-count">${reply_count} 条回复</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                    ${canDelete ? `
                         <div class="comment-actions">
-                            <div class="comment-time">
-                                ${this.formatDate(post_time)}
-                            </div>
-                            ${canDelete ? `
-                                <button class="delete-comment-btn"
-                                        data-comment-id="${id}"
-                                        title="删除评论">
-                                    <i class="fas fa-trash"></i>
-                                    删除
-                                </button>
-                            ` : ''}
-                        </div>
-                    </div>
-
-                    <div class="comment-content">
-                        ${this.processTextWithLinks(content || '')}
-                    </div>
-
-                    ${reply_count > 0 ? `
-                        <div class="comment-replies">
-                            <span class="reply-count">${reply_count} 条回复</span>
+                            <button type="button" class="btn btn-danger btn-sm btn-icon-only delete-comment-btn"
+                                    data-comment-id="${id}"
+                                    title="删除评论"
+                                    aria-label="删除评论">
+                                ${this.getDeleteBtnIcon()}
+                            </button>
                         </div>
                     ` : ''}
                 </div>
-            </div>
+            </li>
         `;
     }
 
-    /**
-     * HTML转义并处理换行
-     */
-
+    getDeleteBtnIcon() {
+        if (typeof Icons !== 'undefined') {
+            return Icons.asBtnIcon(Icons.delete);
+        }
+        return `<svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/></svg>`;
+    }
 
     /**
      * 验证URL是否安全有效
@@ -489,37 +614,18 @@ class ArticleCommentsCard extends BaseComponent {
     }
 
     /**
-     * 处理文本中的链接，安全地转换为可点击的链接
-     */
-    processTextWithLinks(text) {
-        if (!text || typeof text !== 'string') {
-            return '';
-        }
-
-        // 通用的URL正则表达式，匹配任何 aaa://bbb 形式的链接
-        const urlRegex = /([a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^\s<>"']+)/gi;
-
-        return text.replace(urlRegex, (url) => {
-            // 使用严格的URL验证
-            if (this.isValidUrl(url)) {
-                const safeUrl = this.escapeHtml(url);
-                const displayUrl = this.escapeHtml(url);
-                return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="auto-link">${displayUrl}</a>`;
-            }
-            // 如果URL不安全，只转义显示
-            return this.escapeHtml(url);
-        });
-    }
-
-    /**
      * 显示错误信息
      */
     showError(message) {
         this.shadowRoot.innerHTML = `
             <div class="card article-comments-card">
-                <div class="card-body">
-                    <div class="error-message">${message}</div>
+                <div class="card-header">
+                    <h3 class="card-title">
+                        ${typeof Icons !== 'undefined' ? Icons.comments : ''}
+                        评论
+                    </h3>
                 </div>
+                <div class="error-message">${message}</div>
             </div>
         `;
         this.addStyles();
@@ -600,7 +706,7 @@ class ArticleCommentsCard extends BaseComponent {
         this.currentPage = page;
         await this.loadArticleData();
         this.render();
-        this.checkAndScrollToComment();
+        this.scrollPaginatedCardToTop();
     }
 
     /**
@@ -628,47 +734,45 @@ class ArticleCommentsCard extends BaseComponent {
             const style = document.createElement('style');
             style.textContent = `
                 @import url('/static/css/common-components.css');
-                .card { margin-bottom: 0; }
 
-                .card-header {
-                    padding: var(--spacing-4) var(--spacing-6);
-                    border-bottom: 1px solid var(--gray-200);
-                    background-color: var(--gray-50);
+                .card { margin-bottom: 0; overflow: visible; }
+
+                .card-title {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
                 }
 
-                .card-header h3 {
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--gray-800);
-                    margin: 0;
+                .title-icon {
+                    width: 20px;
+                    height: 20px;
+                    color: var(--primary-color);
                 }
 
                 .comments-list {
-                    /* 移除高度限制和滚动，分页后一次显示所有评论 */
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
                 }
 
-                .comment-item {
-                    display: flex;
-                    gap: var(--spacing-4);
-                    padding: var(--spacing-4);
-                    border-bottom: 1px solid var(--gray-100);
-                    transition: background-color var(--transition-fast);
-                }
-
-                .comment-item:last-child {
-                    border-bottom: none;
-                }
-
-                .comment-item:hover {
-                    background-color: var(--gray-50);
-                }
-
-                /* 从 #post{id} 进入：仅边缘蓝色闪烁，不改变正文背景色，总时长 3s（6×0.5s） */
-                .comment-hash-flash {
-                    border-radius: var(--radius-md, 8px);
+                /* 从 #post{id} 进入：圆角蓝框闪烁（::after 避免被 list-divider-rows 的 border-radius:0 覆盖） */
+                .comments-list.list-divider-rows > li.comment-item.comment-hash-flash {
                     position: relative;
                     z-index: 1;
+                }
+
+                .comments-list.list-divider-rows > li.comment-item.comment-hash-flash::after {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    border-radius: var(--radius-md);
+                    pointer-events: none;
                     animation: commentHashBorderBlink 0.5s ease-in-out 6;
+                }
+
+                .comment-item:hover .author-name,
+                .comment-item:focus-within .author-name {
+                    color: var(--interactive-hover-text);
                 }
 
                 @keyframes commentHashBorderBlink {
@@ -680,114 +784,167 @@ class ArticleCommentsCard extends BaseComponent {
                     }
                 }
 
-                .comment-avatar {
+                .comment-row {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: var(--spacing-3);
+                    min-width: 0;
+                }
+
+                .comment-avatar-col {
                     flex-shrink: 0;
                 }
 
-                .avatar-link {
-                    text-decoration: none;
-                    color: inherit;
-                    display: block;
-                }
-
-                .user-avatar {
-                    width: 48px;
-                    height: 48px;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: var(--gray-100);
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--gray-600);
-                    border: 2px solid var(--gray-200);
-                    overflow: hidden;
-                }
-
-                .user-avatar img {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                }
-
-                .comment-content-wrapper {
+                .comment-body-col {
                     flex: 1;
                     min-width: 0;
                 }
 
                 .comment-header {
                     display: flex;
-                    justify-content: space-between;
                     align-items: center;
-                    margin-bottom: var(--spacing-3);
+                    justify-content: space-between;
+                    gap: var(--spacing-2);
+                    margin-bottom: var(--spacing-1);
                 }
 
-                .comment-user .user-name {
-                    font-weight: 600;
-                    color: var(--primary-color);
-                    font-size: var(--font-size-sm);
+                .comment-author-line {
+                    min-width: 0;
+                    flex: 1;
                 }
 
-                .user-link {
+                .author-avatar-link {
+                    display: block;
                     text-decoration: none;
                     color: inherit;
-                    transition: color var(--transition-fast);
                 }
 
-                .user-link:hover .user-name {
-                    color: var(--primary-hover);
-                    text-decoration: underline;
+                .author-avatar-link:hover {
+                    text-decoration: none;
+                }
+
+                .comment-avatar-col .author-avatar {
+                    width: 32px;
+                    height: 32px;
+                }
+
+                .meta-item {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: var(--spacing-1);
+                    min-width: 0;
+                    color: var(--gray-500);
+                    font-size: var(--font-size-xs);
+                    white-space: nowrap;
+                }
+
+                .meta-item-author {
+                    gap: var(--spacing-2);
+                }
+
+                .author-link {
+                    display: inline;
+                    text-decoration: none;
+                    color: inherit;
+                    min-width: 0;
+                }
+
+                .author-link:hover {
+                    text-decoration: none;
+                }
+
+                .author-link:hover .author-name {
+                    color: var(--interactive-hover-text);
+                }
+
+                .author-avatar {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    flex-shrink: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: var(--gray-100);
+                    border: 1px solid var(--gray-200);
+                    overflow: hidden;
+                }
+
+                .author-avatar img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    display: block;
+                }
+
+                .author-avatar-fallback {
+                    width: 100%;
+                    height: 100%;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: var(--font-size-xs);
+                    font-weight: 600;
+                    color: var(--gray-600);
+                }
+
+                .author-name {
+                    font-size: var(--font-size-xs);
+                    font-weight: 500;
+                    color: var(--gray-700);
+                    transition: color var(--transition-fast);
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
                 }
 
                 .comment-actions {
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-2);
+                    flex-shrink: 0;
+                    margin: 0;
+                    padding: 0;
                 }
 
                 .comment-time {
                     font-size: var(--font-size-xs);
                     color: var(--gray-500);
+                    line-height: 1.3;
+                    white-space: nowrap;
                 }
 
-                .delete-comment-btn {
-                    padding: var(--spacing-2) var(--spacing-3);
+                .btn.btn-sm {
+                    min-height: 36px;
+                    padding: 0 12px;
+                    gap: 6px;
                     font-size: var(--font-size-sm);
-                    border: 1px solid var(--red-300);
-                    color: var(--red-600);
-                    background-color: transparent;
-                    border-radius: var(--border-radius-md);
-                    cursor: pointer;
-                    transition: all var(--transition-fast);
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-2);
-                    font-weight: 500;
-                    min-height: 32px;
+                    line-height: 1.25;
                 }
 
-                .delete-comment-btn:hover {
-                    background-color: var(--red-50);
-                    border-color: var(--red-400);
-                    color: var(--red-700);
+                .btn.btn-sm.btn-icon-only {
+                    width: 36px;
+                    height: 36px;
+                    min-width: 36px;
+                    min-height: 36px;
+                    padding: 0;
+                    gap: 0;
                 }
 
-                .delete-comment-btn:active {
-                    background-color: var(--red-100);
-                    transform: translateY(1px);
+                .btn .btn-icon {
+                    width: 18px;
+                    height: 18px;
                 }
 
-                .comment-content {
+                .comment-text {
                     line-height: 1.6;
-                    color: var(--gray-700);
-                    margin-bottom: var(--spacing-3);
+                    color: var(--gray-600);
+                    font-size: var(--font-size-sm);
+                    font-weight: 400;
+                    margin: 0;
+                    padding: 0;
                     word-wrap: break-word;
                     white-space: pre-line;
                     overflow-wrap: break-word;
                 }
 
-                .comment-content a {
+                .comment-text a {
                     word-break: break-all;
                     overflow-wrap: anywhere;
                     max-width: 100%;
@@ -797,6 +954,7 @@ class ArticleCommentsCard extends BaseComponent {
                 .comment-replies {
                     display: flex;
                     justify-content: flex-end;
+                    margin-top: var(--spacing-1);
                 }
 
                 .reply-count {
@@ -812,7 +970,7 @@ class ArticleCommentsCard extends BaseComponent {
 
                 .no-comments {
                     text-align: center;
-                    padding: var(--spacing-8);
+                    padding: var(--spacing-3) var(--spacing-4);
                     color: var(--gray-500);
                 }
 
@@ -821,16 +979,23 @@ class ArticleCommentsCard extends BaseComponent {
                     font-style: italic;
                 }
 
+                .pagination-container {
+                    padding: var(--spacing-2) var(--spacing-4);
+                    border-top: 1px solid var(--gray-100);
+                    background: var(--gray-50);
+                }
+
                 .loading {
                     text-align: center;
                     color: var(--gray-500);
-                    padding: var(--spacing-8);
+                    padding: var(--spacing-3) var(--spacing-4);
                 }
 
                 .error-message {
                     text-align: center;
                     color: var(--error-color);
-                    padding: var(--spacing-8);
+                    padding: var(--spacing-3) var(--spacing-4);
+                    background: var(--gray-50);
                 }
             `;
             this.shadowRoot.appendChild(style);

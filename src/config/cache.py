@@ -186,6 +186,11 @@ class CacheKeyGenerator:
             str: 博客评论缓存键
         """
         return CacheKeyGenerator._build_key("blog", "comments", blog_id)
+
+    @staticmethod
+    def site_recent_comments(limit: int = 5) -> str:
+        """全站最近评论缓存键（/comments/recent）"""
+        return CacheKeyGenerator._build_key("blog", "comments", "recent", limit)
     
     @staticmethod
     def user_blogs(user_id: int, page: int = 1) -> str:
@@ -202,18 +207,11 @@ class CacheKeyGenerator:
         return CacheKeyGenerator._build_key("user", "blogs", user_id, page)
     
     @staticmethod
-    def search_results(query: str, page: int = 1) -> str:
+    def search_results(query: str, page: int = 1, search_type: str = "all", sort: str = "relevance", limit: int = 10) -> str:
         """
         搜索结果缓存键
-        
-        Args:
-            query: 搜索查询
-            page: 页码
-            
-        Returns:
-            str: 搜索结果缓存键
         """
-        return CacheKeyGenerator._build_key("search", query, page)
+        return CacheKeyGenerator._build_key("search", query, page, search_type, sort, limit)
     
     @staticmethod
     def metadata() -> str:
@@ -226,19 +224,28 @@ class CacheKeyGenerator:
         return CacheKeyGenerator._build_key("metadata", "site")
     
     @staticmethod
-    def article_detail(article_id: int, page: int = 1, per_page: int = 10) -> str:
+    def article_detail(
+        article_id: int,
+        page: int = 1,
+        per_page: int = 10,
+        include_comments: bool = False,
+    ) -> str:
         """
-        文章详情缓存键（含评论分页）
+        文章详情缓存键（含评论分页；默认不含评论以减小缓存体积）
         
         Args:
             article_id: 文章ID
             page: 评论页码
             per_page: 每页评论数
+            include_comments: 是否嵌入评论列表
             
         Returns:
             str: 文章详情缓存键
         """
-        return CacheKeyGenerator._build_key("article", "detail", article_id, page, per_page)
+        comments_flag = "with_comments" if include_comments else "no_comments"
+        return CacheKeyGenerator._build_key(
+            "article", "detail", article_id, comments_flag, page, per_page
+        )
     
     @staticmethod
     def article_comments(article_id: int, page: int = 1, limit: int = 20) -> str:
@@ -284,34 +291,29 @@ class CacheKeyGenerator:
         return CacheKeyGenerator._build_key("project", "detail", project_id)
     
     @staticmethod
-    def project_posts(project_id: int, page: int = 1, page_size: int = 10, post_type: str = "original", folder_id: Optional[int] = None) -> str:
+    def project_posts(project_id: int, page: int = 1, page_size: int = 10, post_type: str = "original", folder_id: Optional[int] = None, include_deleted: bool = False) -> str:
         """
         项目文章列表缓存键
-        
-        Args:
-            project_id: 项目ID
-            page: 页码
-            page_size: 每页数量
-            post_type: 文章类型
-            folder_id: 文件夹ID（可选，用于按分类筛选时区分缓存）
-            
-        Returns:
-            str: 项目文章列表缓存键
         """
-        return CacheKeyGenerator._build_key("project", "posts", project_id, page, page_size, post_type, folder_id if folder_id is not None else "all")
+        return CacheKeyGenerator._build_key(
+            "project", "posts", project_id, page, page_size, post_type,
+            folder_id if folder_id is not None else "all",
+            "deleted" if include_deleted else "active",
+        )
     
     @staticmethod
-    def project_comments(project_id: int) -> str:
+    def project_comments(project_id: int, limit: int = 5) -> str:
         """
-        项目评论缓存键
+        项目最近评论缓存键
         
         Args:
             project_id: 项目ID
+            limit: 返回数量限制
             
         Returns:
             str: 项目评论缓存键
         """
-        return CacheKeyGenerator._build_key("project", "comments", project_id, "recent")
+        return CacheKeyGenerator._build_key("project", "comments", project_id, "recent", limit)
     
     @staticmethod
     def project_categories(project_id: int) -> str:
@@ -381,51 +383,30 @@ class CacheKeyGenerator:
     # ==================== RSS相关缓存键 ====================
     
     @staticmethod
-    def site_rss() -> str:
-        """
-        站点RSS缓存键
-        
-        Returns:
-            str: 站点RSS缓存键
-        """
-        return CacheKeyGenerator._build_key("rss", "site")
-    
+    def site_rss(limit: int = 20) -> str:
+        """站点RSS缓存键"""
+        return CacheKeyGenerator._build_key("rss", "site", limit)
+
     @staticmethod
-    def blog_rss(project_id: int) -> str:
-        """
-        博客RSS缓存键
-        
-        Args:
-            project_id: 项目ID
-            
-        Returns:
-            str: 博客RSS缓存键
-        """
-        return CacheKeyGenerator._build_key("rss", "blog", project_id)
-    
+    def blog_rss(project_id: int, limit: int = 20) -> str:
+        """博客RSS缓存键"""
+        return CacheKeyGenerator._build_key("rss", "blog", project_id, limit)
+
     @staticmethod
-    def site_rss_full() -> str:
-        """
-        完整站点RSS缓存键
-        
-        Returns:
-            str: 完整站点RSS缓存键
-        """
-        return CacheKeyGenerator._build_key("rss", "site", "full")
-    
+    def site_rss_full(limit: int = 20) -> str:
+        """完整站点RSS缓存键"""
+        return CacheKeyGenerator._build_key("rss", "site", "full", limit)
+
     @staticmethod
-    def blog_rss_full(project_id: int) -> str:
-        """
-        完整博客RSS缓存键
-        
-        Args:
-            project_id: 项目ID
-            
-        Returns:
-            str: 完整博客RSS缓存键
-        """
-        return CacheKeyGenerator._build_key("rss", "blog", project_id, "full")
-    
+    def blog_rss_full(project_id: int, limit: int = 20) -> str:
+        """完整博客RSS缓存键"""
+        return CacheKeyGenerator._build_key("rss", "blog", project_id, "full", limit)
+
+    @staticmethod
+    def blogs_joined_recent(limit: int = 10) -> str:
+        """最新加入博客列表缓存键（/blogs/recent）"""
+        return CacheKeyGenerator._build_key("blogs", "joined", "recent", limit)
+
     # ==================== 友情链接相关缓存键 ====================
     
     @staticmethod

@@ -64,12 +64,20 @@
 - **文件**: `src/static/js/components/recent-comments-card.js`
 - **图标**: 对话气泡图标 (Material 3 Expressive线段风格)
 - **功能**:
-  - 动态从API获取数据
+  - 动态从API获取数据（全站或当前博客上下文）
   - 评论内容展示（自动截断为20字）
   - 时间格式化
-  - 文章关联显示
-  - **点击跳转**: 点击评论可跳转到相应博文页面
+  - 标题行内联 24px 作者头像（`renderAuthorMetaItem`，与 `blog-list-card` 一致）
+  - **点击跳转**: 点击评论跳转到 `/article/{projectitemid}#post{commentId}`
   - **文本处理**: 自动清理换行符和特殊字符
+
+#### 最近更新组件
+- **文件**: `src/static/js/components/recent-updates-card.js`
+- **功能**:
+  - 数据来源 `GET /api/blogs/posts/latest`
+  - 博客页可 `exclude` 当前博客
+  - 头部行内联 24px 头像 + 博客名，整行跳转 `/article/{id}`
+  - 详见 [RECENT_UPDATES_CARD_IMPROVEMENT.md](./RECENT_UPDATES_CARD_IMPROVEMENT.md)
 
 ### 3. Material 3 Expressive图标设计
 
@@ -155,8 +163,9 @@ GET /api/comments/recent?limit=5
     "author": "BuLaoGe",
     "content": "评论内容...",
     "time": "2小时前",
-    "post": "博文标题",
-    "projectitemid": 123
+    "projectitemid": 123,
+    "userid": 456,
+    "avatar": "/avatar/1/s_456.jpg"
   }
 ]
 ```
@@ -165,7 +174,7 @@ GET /api/comments/recent?limit=5
 
 ### 评论点击跳转
 - 用户点击最近评论列表中的任意评论
-- 系统跳转到对应的博文页面：`/post/{projectitemid}`
+- 系统跳转到对应文章页并定位楼层：`/article/{projectitemid}#post{commentId}`
 - 提供直观的导航体验
 
 ## 测试

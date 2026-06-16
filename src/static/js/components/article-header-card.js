@@ -35,6 +35,22 @@ class ArticleHeaderCard extends BaseComponent {
         this.updatePageTitle();
     }
 
+    /**
+     * 头部信息渲染完成后再返回，供评论锚点定位使用。
+     */
+    async waitForLayoutReady() {
+        await BaseComponent.waitForCustomElementReady(
+            'article-header-card',
+            (element) => Boolean(element.articleData),
+        );
+
+        if (!this.shadowRoot || !this.articleData) {
+            return;
+        }
+
+        await BaseComponent.waitForImagesInRoot(this.shadowRoot);
+    }
+
     disconnectedCallback() {
         this._detachLayoutSingleColumnObserver();
     }
@@ -113,7 +129,7 @@ class ArticleHeaderCard extends BaseComponent {
             return;
         }
 
-        const { title, author, project, category, hits, itemsize, created_at, updated_at, comment_count, itemtype } = this.articleData;
+        const { title, author, project, category, hits, itemsize, created_at, comment_count, itemtype } = this.articleData;
 
         // 检查是否显示工具栏
         const showToolbar = this.isAdmin || this.isAuthor;
@@ -133,82 +149,16 @@ class ArticleHeaderCard extends BaseComponent {
                         <h1>${title || '无标题'}</h1>
                     </div>
                     
-                    <div class="article-meta">
-                        <div class="meta-item">
-                            <span class="meta-label">作者:</span>
-                            <span class="meta-value">${author?.name || '未知作者'}</span>
-                        </div>
-                        
-                        <div class="meta-item">
-                            <span class="meta-label">发布时间:</span>
-                            <span class="meta-value">${this.formatDate(created_at)}</span>
-                        </div>
-                        
-                        ${updated_at && updated_at !== created_at ? `
-                            <div class="meta-item">
-                                <span class="meta-label">更新时间:</span>
-                                <span class="meta-value">${this.formatDate(updated_at)}</span>
-                            </div>
-                        ` : ''}
-                        
-                        ${category?.name ? `
-                            <div class="meta-item">
-                                <span class="meta-label">分类:</span>
-                                <span class="meta-value">${category.name}</span>
-                            </div>
-                        ` : ''}
-                        
-                        <div class="meta-item">
-                            <span class="meta-label">点击数:</span>
-                            <span class="meta-value">${hits || 0}</span>
-                        </div>
-                        
-                        <div class="meta-item">
-                            <span class="meta-label">文章长度:</span>
-                            <span class="meta-value">${this.formatFileSize(itemsize || 0)}</span>
-                        </div>
-                        
-                        <div class="meta-item">
-                            <span class="meta-label">评论数:</span>
-                            <span class="meta-value">${comment_count || 0}</span>
-                        </div>
-                        
-                        <div class="meta-item">
-                            <span class="meta-label">文章状态:</span>
-                            <span class="meta-value status-${itemtype}">${this.getStatusText(itemtype)}</span>
-                        </div>
-                    </div>
-                    
-                    ${showToolbar ? `
-                        <div class="article-toolbar">
-                            ${showSetSiteIntroButton ? `
-                                <button class="btn btn-info btn-sm" id="set-site-intro-btn">
-                                    <i class="icon-globe"></i>
-                                    设为网站介绍
-                                </button>
-                            ` : ''}
-                            ${showSetIntroButton ? `
-                                <button class="btn btn-success btn-sm" id="set-intro-btn">
-                                    <i class="icon-user"></i>
-                                    设为个人介绍
-                                </button>
-                            ` : ''}
-                            <button class="btn btn-primary btn-sm" id="edit-article-btn">
-                                <i class="icon-edit"></i>
-                                修改文章
-                            </button>
-                            <button class="btn btn-danger btn-sm" id="delete-article-btn">
-                                <i class="icon-trash"></i>
-                                删除文章
-                            </button>
-                            ${this.isAdmin ? `
-                                <button class="btn btn-warning btn-sm" id="permanent-delete-article-btn">
-                                    <i class="icon-delete"></i>
-                                    彻底删除
-                                </button>
-                            ` : ''}
-                        </div>
-                    ` : ''}
+                    ${this.renderArticleMeta({
+                        author,
+                        project,
+                        category,
+                        created_at,
+                        itemtype,
+                        isAdmin: this.isAdmin,
+                    })}
+                    ${this.renderArticleStats(hits, comment_count, itemsize)}
+                    ${showToolbar ? this.renderArticleToolbar(showSetSiteIntroButton, showSetIntroButton) : ''}
                 </div>
             </div>
         `;
@@ -456,6 +406,185 @@ class ArticleHeaderCard extends BaseComponent {
         }
     }
 
+    static get ICON_STROKE() {
+        return '#475569';
+    }
+
+    getStatIcons() {
+        const s = ArticleHeaderCard.ICON_STROKE;
+        const svg = (paths) =>
+            `<svg class="stat-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${s}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+        return {
+            views: svg('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'),
+            comments: svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
+            size: svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>'),
+        };
+    }
+
+    getMetaIcon(type) {
+        const s = ArticleHeaderCard.ICON_STROKE;
+        const svg = (paths) =>
+            `<svg class="meta-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${s}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+        switch (type) {
+            case 'user':
+                return svg('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>');
+            case 'category':
+                return svg('<path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 0 1 0 2.828l-7 7a2 2 0 0 1-2.828 0l-7-7A1.994 1.994 0 0 1 3 12V7a4 4 0 0 1 4-4z"/>');
+            case 'created':
+                return svg('<path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>');
+            case 'updated':
+            default:
+                return svg('<circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/>');
+        }
+    }
+
+    renderStatItem(iconSvg, label, value) {
+        return `
+            <div class="stat-item">
+                ${iconSvg}
+                <span class="stat-label">${label}</span>
+                <span class="stat-number">${value}</span>
+            </div>
+        `;
+    }
+
+    renderArticleStats(hits, commentCount, itemsize) {
+        const icons = this.getStatIcons();
+        return `
+            <div class="article-stats">
+                ${this.renderStatItem(icons.views, '点击', hits || 0)}
+                ${this.renderStatItem(icons.comments, '评论', commentCount || 0)}
+                ${this.renderStatItem(icons.size, '长度', this.formatFileSize(itemsize || 0))}
+            </div>
+        `;
+    }
+
+    renderArticleToolbar(showSetSiteIntroButton, showSetIntroButton) {
+        return `
+            <div class="btn-toolbar">
+                ${showSetSiteIntroButton ? `
+                    <button type="button" class="btn btn-secondary btn-sm btn-icon-only" id="set-site-intro-btn" title="设为网站介绍" aria-label="设为网站介绍">
+                        ${this.getBtnIcon('globe')}
+                    </button>
+                ` : ''}
+                ${showSetIntroButton ? `
+                    <button type="button" class="btn btn-secondary btn-sm btn-icon-only" id="set-intro-btn" title="设为个人介绍" aria-label="设为个人介绍">
+                        ${this.getBtnIcon('user')}
+                    </button>
+                ` : ''}
+                <button type="button" class="btn btn-primary btn-sm btn-icon-only" id="edit-article-btn" title="修改文章" aria-label="修改文章">
+                    ${this.getBtnIcon('edit')}
+                </button>
+                <button type="button" class="btn btn-danger btn-sm" id="delete-article-btn">
+                    ${this.getBtnIcon('delete')}<span>删除文章</span>
+                </button>
+                ${this.isAdmin ? `
+                    <button type="button" class="btn btn-danger btn-sm" id="permanent-delete-article-btn">
+                        ${this.getBtnIcon('delete')}<span>彻底删除</span>
+                    </button>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    getSmallAvatarPath(userId) {
+        if (!userId) {
+            return null;
+        }
+        const prefix = Math.floor(userId / 10000) + 1;
+        return `/avatar/${prefix}/s_${userId}.jpg`;
+    }
+
+    renderAuthorMetaItem(author, project) {
+        const safeAuthor = this.escapeHtml(author?.name || '未知作者');
+        const blogId = project?.id;
+        const avatarPath = author?.avatar || this.getSmallAvatarPath(author?.id);
+        const fallbackLetter = safeAuthor.charAt(0).toUpperCase();
+
+        const avatarHtml = `
+            <span class="author-avatar" aria-hidden="true">
+                ${avatarPath ? `
+                    <img src="${avatarPath}" alt=""
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                         onload="this.style.display='block'; this.nextElementSibling.style.display='none';">
+                ` : ''}
+                <span class="author-avatar-fallback" style="display: ${avatarPath ? 'none' : 'flex'};">${fallbackLetter}</span>
+            </span>
+        `;
+        const nameHtml = `<span class="author-name">${safeAuthor}</span>`;
+
+        if (blogId) {
+            return `
+                <div class="meta-item meta-item-author">
+                    <a href="/blog/${blogId}" class="author-link" title="查看博客" target="_blank" rel="noopener noreferrer">
+                        ${avatarHtml}
+                        ${nameHtml}
+                    </a>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="meta-item meta-item-author">
+                ${avatarHtml}
+                ${nameHtml}
+            </div>
+        `;
+    }
+
+    renderArticleMeta({ author, project, category, created_at, itemtype, isAdmin }) {
+        const safeCategory = category?.name ? this.escapeHtml(category.name) : '';
+        const createDate = this.formatDate(created_at);
+        const statusText = this.getStatusText(itemtype);
+        const showStatus = itemtype !== 0 || isAdmin;
+
+        return `
+            <div class="article-meta">
+                <div class="meta-items-left">
+                    ${this.renderAuthorMetaItem(author, project)}
+                    <div class="meta-item">
+                        ${this.getMetaIcon('created')}
+                        <span>发布于 ${createDate}</span>
+                    </div>
+                    ${safeCategory ? `
+                        <div class="meta-item">
+                            ${this.getMetaIcon('category')}
+                            <span>${safeCategory}</span>
+                        </div>
+                    ` : ''}
+                    ${showStatus ? `
+                        <div class="meta-item">
+                            <span class="status-${itemtype}">${statusText}</span>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    getBtnIcon(type) {
+        if (typeof Icons !== 'undefined') {
+            const iconMap = {
+                edit: Icons.edit,
+                delete: Icons.delete,
+                user: Icons.user,
+                globe: Icons.globe,
+            };
+            if (iconMap[type]) {
+                return Icons.asBtnIcon(iconMap[type]);
+            }
+        }
+        const wrap = (paths) =>
+            `<svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+        if (type === 'globe') {
+            return wrap('<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>');
+        }
+        if (type === 'edit') {
+            return wrap('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>');
+        }
+        return wrap('<polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/>');
+    }
+
     /**
      * 格式化文件大小显示
      */
@@ -542,117 +671,184 @@ class ArticleHeaderCard extends BaseComponent {
             style.textContent = `
                 @import url('/static/css/common-components.css');
                 .card { margin-bottom: 0; }
-                
-                .article-title h1 {
-                    font-size: var(--font-size-3xl);
-                    font-weight: 700;
-                    color: var(--gray-900);
-                    margin-bottom: var(--spacing-6);
-                    line-height: 1.2;
-                }
-                
-                .article-meta {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: var(--spacing-4);
-                    padding: var(--spacing-4);
-                    background-color: var(--gray-50);
-                    border-radius: var(--radius-lg);
-                    border: 1px solid var(--gray-200);
-                }
-                
-                .meta-item {
-                    display: flex;
-                    align-items: center;
-                    gap: var(--spacing-2);
-                }
-                
-                .meta-label {
-                    font-weight: 600;
-                    color: var(--gray-600);
-                    min-width: 80px;
-                }
-                
-                .meta-value {
-                    color: var(--gray-800);
-                }
-                
-                .article-toolbar {
-                    margin-top: 24px;
-                    padding-top: 16px;
-                    border-top: 1px solid #e5e7eb;
-                    display: flex !important;
-                    gap: 12px;
-                    justify-content: flex-end;
-                    width: 100%;
-                }
-                
-                .article-toolbar .btn {
-                    display: inline-flex !important;
-                    align-items: center;
-                    gap: 8px;
-                    padding: 8px 16px;
-                    border: none;
-                    border-radius: 6px;
-                    font-size: 14px;
-                    font-weight: 500;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    text-decoration: none;
-                    margin-left: 8px;
-                }
-                
-                .article-toolbar .btn-primary {
-                    background-color: #2563eb !important;
-                    color: white !important;
-                }
-                
-                .article-toolbar .btn-primary:hover {
-                    background-color: #1d4ed8 !important;
-                }
-                
-                .article-toolbar .btn-danger {
-                    background-color: #dc2626 !important;
-                    color: white !important;
-                }
-                
-                .article-toolbar .btn-danger:hover {
-                    background-color: #b91c1c !important;
-                }
-                
-                .article-toolbar .btn-warning {
-                    background-color: #f59e0b !important;
-                    color: white !important;
-                }
-                
-                .article-toolbar .btn-warning:hover {
-                    background-color: #d97706 !important;
-                }
-                
-                .article-toolbar .btn-success {
-                    background-color: #059669 !important;
-                    color: white !important;
-                }
-                
-                .article-toolbar .btn-success:hover {
-                    background-color: #047857 !important;
-                }
-                
-                .article-toolbar .btn i {
-                    font-size: 14px;
+
+                .card-body {
+                    padding: 20px;
                 }
 
-                /* 宿主 data-layout-single-column 由 BaseComponent._attachLayoutSingleColumnObserver 与 body 同步 */
-                :host([data-layout-single-column]) .article-toolbar {
-                    flex-direction: column;
-                    align-items: stretch;
+                .article-title h1 {
+                    font-size: var(--font-size-xl);
+                    font-weight: 700;
+                    color: var(--gray-900);
+                    margin: 0 0 var(--spacing-3);
+                    line-height: 1.3;
+                }
+
+                .article-stats {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: var(--spacing-2);
+                    padding-top: var(--spacing-2);
+                    border-top: 1px solid var(--gray-100);
+                }
+
+                .stat-item {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: var(--spacing-1);
+                    padding: var(--spacing-1) var(--spacing-2);
+                    background: var(--gray-50);
+                    border: 1px solid var(--gray-200);
+                    border-radius: var(--radius-sm);
+                    font-size: var(--font-size-xs);
+                    color: var(--gray-600);
+                    line-height: 1.3;
+                }
+
+                .stat-icon,
+                .meta-icon,
+                .btn-icon {
+                    display: block;
+                    width: 18px;
+                    height: 18px;
+                    flex-shrink: 0;
+                }
+
+                .stat-label {
+                    font-weight: 500;
+                    color: var(--gray-600);
+                }
+
+                .stat-number {
+                    font-weight: 600;
+                    color: var(--gray-900);
+                }
+
+                .article-meta {
+                    display: flex;
+                    flex-wrap: wrap;
+                    align-items: center;
+                    gap: var(--spacing-2) var(--spacing-3);
+                    margin-bottom: var(--spacing-2);
+                }
+
+                .meta-items-left {
+                    display: flex;
+                    flex-wrap: wrap;
+                    align-items: center;
+                    gap: var(--spacing-3);
+                    min-width: 0;
+                }
+
+                .meta-item {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: var(--spacing-1);
+                    color: var(--gray-500);
+                    font-size: var(--font-size-xs);
+                    white-space: nowrap;
+                }
+
+                .meta-item-author {
+                    gap: var(--spacing-2);
+                }
+
+                .author-link {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                    color: inherit;
+                    text-decoration: none;
+                    transition: color var(--transition-fast);
+                }
+
+                .author-link:hover {
+                    color: var(--primary-color);
+                }
+
+                .author-link:focus {
+                    outline: none;
+                }
+
+                .author-link:focus-visible {
+                    outline: 2px solid var(--primary-color);
+                    outline-offset: 2px;
+                    border-radius: var(--radius-sm);
+                }
+
+                .author-avatar {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    flex-shrink: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: var(--gray-100);
+                    border: 1px solid var(--gray-200);
+                    overflow: hidden;
+                }
+
+                .author-avatar img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    display: block;
+                }
+
+                .author-avatar-fallback {
+                    width: 100%;
+                    height: 100%;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: var(--font-size-xs);
+                    font-weight: 600;
+                    color: var(--gray-600);
+                }
+
+                .author-name {
+                    font-weight: 500;
+                    color: var(--gray-700);
+                }
+
+                .author-link:hover .author-name {
+                    color: var(--primary-color);
+                }
+
+                .article-stats + .btn-toolbar {
+                    margin-top: var(--spacing-2);
                     justify-content: flex-start;
                 }
-                :host([data-layout-single-column]) .article-toolbar .btn {
-                    margin-left: 0 !important;
-                    width: 100%;
-                    box-sizing: border-box;
-                    justify-content: center;
+
+                .btn.btn-sm {
+                    min-height: 36px;
+                    padding: 0 12px;
+                    gap: 6px;
+                    font-size: var(--font-size-sm);
+                    line-height: 1.25;
+                }
+
+                .btn.btn-sm.btn-icon-only {
+                    width: 36px;
+                    height: 36px;
+                    min-width: 36px;
+                    min-height: 36px;
+                    padding: 0;
+                    gap: 0;
+                }
+
+                .btn .btn-icon {
+                    width: 18px;
+                    height: 18px;
+                }
+
+                :host([data-layout-single-column]) .article-meta {
+                    flex-direction: column;
+                    align-items: stretch;
+                }
+
+                :host([data-layout-single-column]) .meta-items-left {
+                    justify-content: flex-start;
                 }
 
                 .status-0 {

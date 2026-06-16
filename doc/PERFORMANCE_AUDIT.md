@@ -42,24 +42,27 @@
 **问题**：以下组件各自请求同一条文章接口：
 - `article-header-card`
 - `article-content-card`
-- `article-comments-card`（带 page 参数，语义略不同但可能含文章基础信息）
 - `comment-form-card`
 - `comment-settings-card`
 
-**已实现**：在 `BaseComponent` 中增加静态方法 `getArticle(articleId)`，同页多组件共用同一请求。文章页的 article-header-card、article-content-card、comment-form-card、comment-settings-card 以及 edit-post-form 均改为调用 `BaseComponent.getArticle(this.articleId)`。article-comments-card 仍单独请求（带 page/per_page 的列表接口）。
+**已实现**：
+- 在 `BaseComponent` 中增加静态方法 `getArticle(articleId)`，上述组件共用同一请求。
+- `article-comments-card` 改为请求独立接口 `GET /api/articles/{id}/comments?page=&limit=`，不再拉取整篇文章；评论项含 `author_name`、`author_avatar`，避免逐条请求 `/api/users/{id}`。
 
 ---
 
 ## 4. 串行 await checkOwnership 再 loadData
 
 **位置**：
-- `subscriptions-list-card.js`：`await checkOwnership()` 后再 `loadSubscriptions()`
-- `categories-card.js`：`await checkOwnership()` 后再 `loadData()`
-- `friend-links-card.js`：`await checkOwnership()` 后再 `loadData()`
+- `subscriptions-list-card.js`
+- `friend-links-card.js`
+- `blog_list_card.js`（分类菜单）
 
-**问题**：与 09c3ccf 修复前的博客列表类似，首屏需等 project 请求完成再请求列表，总耗时 = 两次串行往返。
+**问题**：首屏需等 project 请求完成再请求列表，总耗时 = 两次串行往返。
 
-**建议**：将「所有权检查」与「列表数据加载」并行（例如 `Promise.all([checkOwnership(), loadData()])`），或先发起列表请求，再在后台做 checkOwnership，仅用于更新 UI（如显示/隐藏维护按钮），不阻塞首屏列表展示。
+**已实现**：
+- `subscriptions-list-card`、`friend-links-card`：`checkOwnership` 与列表加载并行。
+- `blog_list_card`：分类/所有权与 `loadContent` 并行；`loadPageSizeConfig` 通过 `BaseComponent.getAppConfig()` 共享。
 
 ---
 
@@ -75,7 +78,19 @@
 
 - **留言列表**：`messages-list-card` 从 URL 读取 `page` 并用于首屏请求。
 - **订阅列表**：`subscriptions-list-card` 中 checkOwnership 与 loadSubscriptions 并行执行；首屏从 URL 读取 `page` 并请求对应页。
-- **分类卡片**：`categories-card` 中 checkOwnership 与 loadData 并行执行。
 - **友链卡片**：`friend-links-card` 中 checkOwnership 与 loadData 并行执行。
-- **博客页**：`BaseComponent.getProject(projectId)` 共享项目数据，blog-header、blog-posts-list-card、categories、blog-navigation、blog-profile、friend-links、subscriptions、manage-friend-links 等均改用该接口。
-- **文章页**：`BaseComponent.getArticle(articleId)` 共享文章数据，article-header、article-content、comment-form、comment-settings、edit-post-form、blog-profile（文章页分支）等均改用该接口。
+- **博客页**：`BaseComponent.getProject()` / `getUser()` / `getMetadata()` / `getAppConfig()` 共享请求；侧边栏卡片可见时再加载。
+- **文章页**：`getArticle()` 共享正文；评论走 `/api/articles/{id}/comments`。
+- **博文列表 API**：响应只含摘要，避免传输完整正文。
+
+---
+
+## 6. 前端共享请求与首屏加载
+
+**位置**：`base-component.js`、`header-component.js`、各 sidebar 卡片
+
+**已实现**：
+- `getMetadata()` / `getUser()` / `getAppConfig()`：同页多组件共用内存缓存与进行中的 Promise。
+- `blog_list_card`：翻页时只更新列表区域，不全量重建 shadow DOM。
+- `article.html`：脚本使用 `defer`。
+- `recent-comments-card`、`recent-updates-card`、`friend-links-card`：进入视口后再 `loadData()`。

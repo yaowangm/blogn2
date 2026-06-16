@@ -9,9 +9,7 @@
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/components.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/js/libs/katex/katex.min.css">
 
     <!-- RSS自动发现链接 -->
     <link rel="alternate" type="application/rss+xml" title="博客RSS" href="/api/rss/blog/4">
@@ -69,36 +67,39 @@
     <!-- 底栏组件 -->
     <footer-component></footer-component>
 
-    <!-- Markdown解析库 -->
-    <script src="/static/js/libs/marked.min.js"></script>
+    <!-- Markdown / 数学公式（本地库） -->
+    <script defer src="/static/js/libs/katex/katex.min.js"></script>
+    <script defer src="/static/js/libs/katex/mhchem.min.js"></script>
+    <script defer src="/static/js/libs/marked.min.js"></script>
 
     <!-- 图标库 -->
-    <script src="/static/js/components/icons.js"></script>
+    <script defer src="/static/js/components/icons.js"></script>
 
     <!-- 用户管理工具 -->
-    <script src="/static/js/utils/user-manager.js"></script>
+    <script defer src="/static/js/utils/user-manager.js"></script>
 
     <!-- Web Components -->
-        <script src="/static/js/utils/html-utils.js"></script>
-    <script src="/static/js/utils/confirm-dialog.js"></script>
-    <script src="/static/js/components/base-component.js"></script>
-    <script src="/static/js/components/header-component.js"></script>
-    <script src="/static/js/components/footer-component.js"></script>
-    <script src="/static/js/components/blog-profile-card.js"></script>
-    <script src="/static/js/components/blog-navigation-card.js"></script>
-    <script src="/static/js/components/navigation-card.js"></script>
-    <script src="/static/js/components/recent-comments-card.js"></script>
-    <script src="/static/js/components/recent-updates-card.js"></script>
-    <script src="/static/js/components/friend-links-card.js"></script>
-    <script src="/static/js/components/article-header-card.js"></script>
-    <script src="/static/js/components/article-content-card.js"></script>
-    <script src="/static/js/components/comment-settings-card.js"></script>
-    <script src="/static/js/components/article-comments-card.js"></script>
-    <script src="/static/js/components/comment-form-card.js"></script>
+    <script defer src="/static/js/utils/html-utils.js"></script>
+    <script defer src="/static/js/utils/markdown-utils.js"></script>
+    <script defer src="/static/js/utils/confirm-dialog.js"></script>
+    <script defer src="/static/js/components/base-component.js"></script>
+    <script defer src="/static/js/components/header-component.js"></script>
+    <script defer src="/static/js/components/footer-component.js"></script>
+    <script defer src="/static/js/components/blog-profile-card.js"></script>
+    <script defer src="/static/js/components/blog-navigation-card.js"></script>
+    <script defer src="/static/js/components/navigation-card.js"></script>
+    <script defer src="/static/js/components/recent-comments-card.js"></script>
+    <script defer src="/static/js/components/recent-updates-card.js"></script>
+    <script defer src="/static/js/components/friend-links-card.js"></script>
+    <script defer src="/static/js/components/article-header-card.js"></script>
+    <script defer src="/static/js/components/article-content-card.js"></script>
+    <script defer src="/static/js/components/comment-settings-card.js"></script>
+    <script defer src="/static/js/components/article-comments-card.js"></script>
+    <script defer src="/static/js/components/comment-form-card.js"></script>
     <!-- 移动端左侧栏折叠（合并布局时仅显示标题，可展开/收起） -->
-    <script src="/static/js/sidebar-collapse.js"></script>
+    <script defer src="/static/js/sidebar-collapse.js"></script>
 
     <!-- RSS自动发现脚本 -->
-    <script src="/static/js/rss-discovery.js"></script>
+    <script defer src="/static/js/rss-discovery.js"></script>
 </body>
 </html>

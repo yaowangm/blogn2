@@ -7,7 +7,7 @@ class NavigationCard extends BaseComponent {
     }
 
     static get observedAttributes() {
-        return ['mode', 'pagination', 'on-page-change'];
+        return ['mode', 'pagination', 'on-page-change', 'compact'];
     }
 
     connectedCallback() {
@@ -71,90 +71,79 @@ class NavigationCard extends BaseComponent {
     renderNavigation() {
         this.shadowRoot.innerHTML = `
             <style>
-                :host {
-                    display: block;
-                }
-
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    transition: var(--transition-normal);
-                }
-
-                .card:hover {
-                    box-shadow: var(--shadow-md);
-                    transform: translateY(-2px);
-                }
-
-                .card-header {
-                    padding: var(--spacing-4) var(--spacing-5);
-                    border-bottom: 1px solid var(--gray-200);
-                    background: var(--gray-50);
-                }
+                @import url('/static/css/common-components.css');
 
                 .card-title {
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--gray-900);
-                    margin: 0;
-                }
-
-                .card-body {
-                    padding: var(--spacing-5);
-                }
-
-                .nav-list {
                     display: flex;
-                    flex-direction: column;
+                    align-items: center;
                     gap: var(--spacing-2);
                 }
 
+                .card-title svg {
+                    width: 20px;
+                    height: 20px;
+                    color: var(--primary-color);
+                    flex-shrink: 0;
+                }
+
+                .nav-list {
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
+                }
+
                 .nav-item {
+                    border-bottom: 1px solid var(--gray-100);
+                }
+
+                .nav-item:last-child {
+                    border-bottom: none;
+                }
+
+                .nav-link {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-3);
-                    padding: var(--spacing-3);
-                    border-radius: var(--radius-md);
-                    transition: var(--transition-fast);
-                    text-decoration: none;
+                    padding: var(--spacing-3) var(--spacing-4);
                     color: var(--gray-700);
+                    text-decoration: none;
+                    transition: var(--transition-fast);
+                    font-size: var(--font-size-sm);
                 }
 
-                .nav-item:hover {
-                    background: var(--gray-50);
-                    color: var(--primary-color);
+                .nav-link:hover,
+                .nav-link:focus-visible {
+                    background: var(--interactive-hover-bg);
+                    color: var(--interactive-hover-text);
                 }
 
-                .nav-icon {
-                    width: 20px;
-                    height: 20px;
-                    color: var(--gray-500);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
+                .nav-link:focus {
+                    outline: none;
                 }
 
-                .nav-item:hover .nav-icon {
-                    color: var(--primary-color);
+                .nav-link svg {
+                    width: 18px;
+                    height: 18px;
+                    flex-shrink: 0;
                 }
 
-                .nav-text {
+                .link-text {
                     font-weight: 500;
                 }
             </style>
 
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">全站导航</h3>
+                    <h3 class="card-title">
+                        ${Icons.menu}
+                        全站导航
+                    </h3>
                 </div>
-                <div class="card-body">
-                    <div class="nav-list">
+                <nav>
+                    <ul class="nav-list">
                         ${this.renderNavigationItems()}
-                    </div>
-                </div>
+                    </ul>
+                </nav>
             </div>
         `;
     }
@@ -162,10 +151,12 @@ class NavigationCard extends BaseComponent {
     renderNavigationItems() {
         const items = this.navigationItems || this.getDefaultNavigationItems();
         return items.map(item => `
-            <a href="${item.href}" class="nav-item" ${item.target ? `target="${item.target}"` : ''}>
-                <div class="nav-icon">${item.icon}</div>
-                <span class="nav-text">${item.text}</span>
-            </a>
+            <li class="nav-item">
+                <a href="${item.href}" class="nav-link" ${item.target ? `target="${item.target}"` : ''}>
+                    ${item.icon}
+                    <span class="link-text">${item.text}</span>
+                </a>
+            </li>
         `).join('');
     }
 
@@ -188,12 +179,20 @@ class NavigationCard extends BaseComponent {
 
                 .pagination {
                     display: flex;
-                    flex-direction: column;
-                    align-items: stretch;
-                    gap: var(--spacing-2);
+                    flex-wrap: wrap;
+                    align-items: center;
+                    justify-content: center;
+                    column-gap: var(--spacing-3);
+                    row-gap: var(--spacing-2);
+                    margin: 0;
                     padding: var(--spacing-3) 0;
                     max-width: 100%;
                     box-sizing: border-box;
+                }
+
+                :host([compact]) .pagination {
+                    margin: 0;
+                    padding: 0;
                 }
 
                 .pagination-pages {
@@ -202,6 +201,7 @@ class NavigationCard extends BaseComponent {
                     justify-content: center;
                     align-content: flex-start;
                     gap: 0.375rem;
+                    flex: 0 1 auto;
                     max-width: 100%;
                 }
 
@@ -209,8 +209,9 @@ class NavigationCard extends BaseComponent {
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
-                    min-width: 2rem;
-                    height: 2rem;
+                    min-width: var(--btn-height, 36px);
+                    height: var(--btn-height, 36px);
+                    min-height: var(--btn-height, 36px);
                     padding: 0 0.5rem;
                     border: 1px solid var(--gray-300);
                     border-radius: var(--radius-sm);
@@ -240,10 +241,19 @@ class NavigationCard extends BaseComponent {
                 }
 
                 .pagination-btn.active {
-                    background: var(--primary-color);
-                    border-color: var(--primary-color);
-                    color: var(--white);
+                    background: var(--gray-100);
+                    border-color: var(--gray-500);
+                    color: var(--gray-900);
                     font-weight: 600;
+                }
+
+                .pagination-btn:focus {
+                    outline: none;
+                }
+
+                .pagination-btn:focus-visible {
+                    outline: 2px solid var(--primary-color);
+                    outline-offset: 1px;
                 }
 
                 .pagination-btn.disabled,
@@ -261,11 +271,13 @@ class NavigationCard extends BaseComponent {
                 }
 
                 .pagination-meta {
-                    width: 100%;
+                    flex: 0 1 auto;
+                    max-width: 100%;
                     text-align: center;
                     font-size: var(--font-size-xs);
                     color: var(--gray-500);
                     line-height: 1.5;
+                    white-space: nowrap;
                 }
             </style>
 

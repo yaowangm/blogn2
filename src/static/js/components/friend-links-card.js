@@ -14,12 +14,13 @@ class FriendLinksCard extends BaseComponent {
         this.isAdmin = false;
     }
 
-
     async connectedCallback() {
         this.projectId = this.getProjectIdFromUrl();
         this.render();
-        await Promise.all([this.checkOwnership(), this.loadData()]);
-        this.render();
+        BaseComponent.observeWhenVisible(this, async () => {
+            await Promise.all([this.checkOwnership(), this.loadData()]);
+            this.render();
+        });
     }
 
     getProjectIdFromUrl() {
@@ -113,106 +114,77 @@ class FriendLinksCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
-                :host {
-                    display: block;
-                }
-
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    transition: var(--transition-normal);
-                }
-
-                .card:hover {
-                    box-shadow: var(--shadow-md);
-                    transform: translateY(-2px);
-                }
-
-                .card-header {
-                    padding: var(--spacing-4) var(--spacing-5);
-                    border-bottom: 1px solid var(--gray-200);
-                    background: var(--gray-50);
-                }
-
+                @import url('/static/css/common-components.css');
                 .card-title {
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--gray-900);
-                    margin: 0;
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                }
-
-                .card-title-left {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-2);
-                }
-
-                .manage-button {
-                    padding: var(--spacing-1) var(--spacing-2);
-                    background: var(--primary-color);
-                    color: var(--white);
-                    border: none;
-                    border-radius: var(--radius-sm);
-                    font-size: var(--font-size-xs);
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                    text-decoration: none;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: var(--spacing-1);
-                }
-
-                .manage-button:hover {
-                    background: var(--primary-dark);
-                    transform: translateY(-1px);
+                    min-width: 0;
                 }
 
                 .card-title-icon {
                     width: 20px;
                     height: 20px;
                     color: var(--primary-color);
+                    flex-shrink: 0;
                 }
 
-                .card-body {
-                    padding: var(--spacing-5);
+                .manage-button {
+                    flex-shrink: 0;
                 }
-
                 .friend-links {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-                    gap: var(--spacing-2);
+                    list-style: none;
+                    display: flex;
+                    flex-direction: column;
                 }
 
                 .friend-link {
-                    padding: var(--spacing-2) var(--spacing-3);
-                    background: var(--gray-50);
-                    border: 1px solid var(--gray-200);
-                    border-radius: var(--radius-md);
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
                     text-decoration: none;
                     color: var(--gray-700);
                     font-size: var(--font-size-sm);
-                    text-align: center;
-                    transition: var(--transition-fast);
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    min-height: 40px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
+                    line-height: 1.35;
+                    transition:
+                        background-color var(--transition-fast),
+                        color var(--transition-fast);
+                    min-width: 0;
                 }
 
-                .friend-link:hover {
-                    background: var(--primary-color);
-                    color: var(--white);
-                    border-color: var(--primary-color);
-                    transform: translateY(-1px);
+                .friend-link-text {
+                    flex: 1;
+                    min-width: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
+                .friend-link-icon {
+                    flex-shrink: 0;
+                    width: 14px;
+                    height: 14px;
+                    color: var(--gray-400);
+                    transition: color var(--transition-fast);
+                }
+
+                .friend-link:hover,
+                .friend-link:focus-visible {
+                    color: var(--interactive-hover-text);
+                }
+
+                .friend-link:hover .friend-link-icon,
+                .friend-link:focus-visible .friend-link-icon {
+                    color: var(--interactive-hover-text);
+                }
+
+                .friend-link:focus {
+                    outline: none;
+                }
+
+                .friend-link:focus-visible {
+                    outline: 2px solid var(--primary-color);
+                    outline-offset: 1px;
                 }
 
                 .loading {
@@ -228,54 +200,28 @@ class FriendLinksCard extends BaseComponent {
                     font-style: italic;
                 }
 
-                /* 响应式设计 */
-                @media (max-width: 768px) {
-                    .friend-links {
-                        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-                        gap: var(--spacing-2);
-                    }
-
-                    .friend-link {
-                        padding: var(--spacing-2) var(--spacing-3);
-                        font-size: var(--font-size-sm);
-                        min-height: 36px;
-                    }
-                }
-
-                @media (max-width: 480px) {
-                    .friend-links {
-                        grid-template-columns: repeat(2, 1fr);
-                    }
-                }
-
-
             </style>
 
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">
-                        <div class="card-title-left">
-                            <svg class="card-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                            </svg>
-                            友情链接
-                        </div>
-                        ${(this.isOwner || this.isAdmin) ? `
-                            <a href="/manage-friend-links?project_id=${this.projectId}" 
-                               class="manage-button" 
-                               target="_blank" 
-                               title="管理友情链接">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                                </svg>
-                                管理
-                            </a>
-                        ` : ''}
+                        <svg class="card-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                        友情链接
                     </h3>
+                    ${(this.isOwner || this.isAdmin) ? `
+                        <a href="/manage-friend-links?project_id=${this.projectId}"
+                           class="btn btn-secondary btn-sm btn-icon-only manage-button"
+                           target="_blank"
+                           title="管理友情链接"
+                           aria-label="管理友情链接">
+                            ${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.settings) : ''}
+                        </a>
+                    ` : ''}
                 </div>
-                <div class="card-body">
+                <div class="card-body card-body--flush-list">
                     ${this.loading ? this.renderLoading() : 
                       this.friendLinks.length > 0 ? this.renderFriendLinks() : 
                       this.renderEmptyState()}
@@ -290,19 +236,29 @@ class FriendLinksCard extends BaseComponent {
 
     renderFriendLinks() {
         return `
-            <div class="friend-links">
-                ${this.friendLinks.map(link => {
-                    // 安全处理所有文本字段，防止HTML注入和XSS攻击
+            <ul class="friend-links list-divider-rows">
+                ${this.friendLinks.map((link) => {
                     const safeSubject = this.escapeHtml(link.subject);
                     const safeLinkStr = this.escapeHtml(link.linkstr);
-                    
+
                     return `
-                        <a href="${safeLinkStr}" class="friend-link" target="_blank" rel="noopener noreferrer" title="${safeSubject}">
-                            ${safeSubject}
-                        </a>
+                        <li>
+                            <a href="${safeLinkStr}"
+                               class="friend-link"
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               title="${safeSubject}">
+                                <span class="friend-link-text">${safeSubject}</span>
+                                <svg class="friend-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                                </svg>
+                            </a>
+                        </li>
                     `;
                 }).join('')}
-            </div>
+            </ul>
         `;
     }
 

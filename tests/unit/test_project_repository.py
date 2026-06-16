@@ -10,7 +10,7 @@ from src.repositories.project_repository import (
 )
 from src.models.project import Project
 from src.models.project_item import ProjectItem
-from src.constants import ArticleStatus
+from src.constants import ArticleStatus, ProjectStatus
 
 
 class TestProjectRepository:
@@ -61,6 +61,19 @@ class TestProjectRepository:
         assert result[0]["userid"] == 123
         assert result[0]["author_name"] == "测试作者"
         mock_session.exec.assert_called_once()
+
+    @pytest.mark.unit
+    async def test_get_recent_projects_filters_active_state(self, project_repository, mock_session):
+        """正常博客列表仅包含 project.state=0（ProjectStatus.ACTIVE）"""
+        mock_result = MagicMock()
+        mock_result.all.return_value = []
+        mock_session.exec.return_value = mock_result
+
+        await project_repository.get_recent_projects(5)
+
+        statement = mock_session.exec.call_args[0][0]
+        sql = str(statement.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}))
+        assert f"project.state = {ProjectStatus.ACTIVE}" in sql
     
     @pytest.mark.unit
     async def test_get_popular_projects_success(self, project_repository, mock_session):

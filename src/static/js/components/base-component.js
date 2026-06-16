@@ -16,6 +16,12 @@ class BaseComponent extends HTMLElement {
     static _projectPromises = {};
     static _articleCache = {};
     static _articlePromises = {};
+    static _metadataCache = null;
+    static _metadataPromise = null;
+    static _userCache = {};
+    static _userPromises = {};
+    static _appConfigCache = null;
+    static _appConfigPromise = null;
 
     constructor() {
         super();
@@ -28,18 +34,196 @@ class BaseComponent extends HTMLElement {
      * 所有组件共享的元数据加载逻辑
      */
     async loadMetadata() {
-        try {
-            const response = await fetch('/api/metadata/');
-            if (response.ok) {
-                this.metadata = await response.json();
-            } else {
-                this.logError('Failed to load metadata', response.status);
-                this.metadata = this.getDefaultMetadata();
+        this.metadata = await BaseComponent.getMetadata();
+    }
+
+    static async getMetadata() {
+        if (BaseComponent._metadataCache) return BaseComponent._metadataCache;
+        if (BaseComponent._metadataPromise) return BaseComponent._metadataPromise;
+        BaseComponent._metadataPromise = (async () => {
+            try {
+                const response = await fetch('/api/metadata/');
+                if (response.ok) {
+                    BaseComponent._metadataCache = await response.json();
+                    return BaseComponent._metadataCache;
+                }
+            } catch (error) {
+                console.error('Error loading metadata:', error);
             }
-        } catch (error) {
-            this.logError('Error loading metadata', error);
-            this.metadata = this.getDefaultMetadata();
+            const fallback = {
+                site_name: 'BlogN',
+                logo_url: '/static/images/logo.svg',
+                user_count: 0,
+                post_count: 0,
+            };
+            BaseComponent._metadataCache = fallback;
+            return fallback;
+        })();
+        try {
+            return await BaseComponent._metadataPromise;
+        } finally {
+            BaseComponent._metadataPromise = null;
         }
+    }
+
+    static async getUser(userId) {
+        if (!userId) return null;
+        if (BaseComponent._userCache[userId]) return BaseComponent._userCache[userId];
+        if (BaseComponent._userPromises[userId]) return BaseComponent._userPromises[userId];
+        BaseComponent._userPromises[userId] = (async () => {
+            try {
+                const response = await fetch(`/api/users/${userId}`);
+                if (!response.ok) return null;
+                const data = await response.json();
+                BaseComponent._userCache[userId] = data;
+                return data;
+            } catch (error) {
+                console.warn(`Failed to load user ${userId}:`, error);
+                return null;
+            } finally {
+                delete BaseComponent._userPromises[userId];
+            }
+        })();
+        return BaseComponent._userPromises[userId];
+    }
+
+    static async getAppConfig() {
+        if (BaseComponent._appConfigCache) return BaseComponent._appConfigCache;
+        if (BaseComponent._appConfigPromise) return BaseComponent._appConfigPromise;
+        BaseComponent._appConfigPromise = (async () => {
+            try {
+                const response = await fetch('/api/config/app');
+                if (response.ok) {
+                    BaseComponent._appConfigCache = await response.json();
+                    return BaseComponent._appConfigCache;
+                }
+            } catch (error) {
+                console.warn('Failed to load app config:', error);
+            }
+            const fallback = { blog_posts_page_size: 10, max_attachments_per_article: 5 };
+            BaseComponent._appConfigCache = fallback;
+            return fallback;
+        })();
+        try {
+            return await BaseComponent._appConfigPromise;
+        } finally {
+            BaseComponent._appConfigPromise = null;
+        }
+    }
+
+    static observeWhenVisible(element, callback, rootMargin = '120px') {
+        if (!element || typeof callback !== 'function') return;
+        if (!('IntersectionObserver' in window)) {
+            callback();
+            return;
+        }
+        const observer = new IntersectionObserver((entries) => {
+            if (entries.some((entry) => entry.isIntersecting)) {
+                observer.disconnect();
+                callback();
+            }
+        }, { rootMargin });
+        observer.observe(element);
+    }
+
+    /**
+     * 等待两帧布局稳定（字体、KaTeX、图片占位等）。
+     */
+    static waitForLayoutSettle() {
+        return new Promise((resolve) => {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(resolve);
+            });
+        });
+    }
+
+    /**
+     * 等待 Shadow DOM / 容器内图片加载完成后再继续（含 lazy 图 promoted 为 eager）。
+     */
+    static waitForImagesInRoot(root, timeoutMs = 15000) {
+        if (!root) {
+            return BaseComponent.waitForLayoutSettle();
+        }
+
+        const images = [...root.querySelectorAll('img')];
+        images.forEach((img) => {
+            if (!img.complete && img.loading === 'lazy') {
+                img.loading = 'eager';
+            }
+        });
+
+        const pending = images.filter((img) => !img.complete);
+        if (pending.length === 0) {
+            return BaseComponent.waitForLayoutSettle();
+        }
+
+        return new Promise((resolve) => {
+            let settled = 0;
+            const finish = () => {
+                settled += 1;
+                if (settled >= pending.length) {
+                    clearTimeout(timer);
+                    resolve();
+                }
+            };
+            const timer = setTimeout(resolve, timeoutMs);
+            pending.forEach((img) => {
+                img.addEventListener('load', finish, { once: true });
+                img.addEventListener('error', finish, { once: true });
+            });
+        }).then(() => BaseComponent.waitForLayoutSettle());
+    }
+
+    /**
+     * 等待自定义元素满足就绪条件（如数据已加载）。
+     */
+    static async waitForCustomElementReady(selector, isReady, timeoutMs = 15000) {
+        const start = Date.now();
+        while (Date.now() - start < timeoutMs) {
+            const element = document.querySelector(selector);
+            if (element && isReady(element)) {
+                return element;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        return null;
+    }
+
+    /**
+     * 固定顶栏（header-component）占用的高度，用于 scroll 偏移。
+     */
+    static getScrollTopOffset(extra = 8) {
+        const header = document.querySelector('header-component');
+        const headerHeight = header ? header.getBoundingClientRect().height : 64;
+        return headerHeight + extra;
+    }
+
+    /**
+     * 将元素滚入视口，并留出 sticky 顶栏空间。
+     */
+    static scrollElementIntoView(element, options = {}) {
+        if (!element) {
+            return;
+        }
+        const behavior = options.behavior ?? 'auto';
+        const offset = options.offset ?? BaseComponent.getScrollTopOffset();
+        const top = window.scrollY + element.getBoundingClientRect().top - offset;
+        window.scrollTo({ top: Math.max(0, top), behavior });
+    }
+
+    /**
+     * 翻页后将所属卡片顶部滚入视口（留出 sticky 顶栏空间）。
+     */
+    scrollPaginatedCardToTop(options = {}) {
+        const behavior = options.behavior ?? 'auto';
+
+        void BaseComponent.waitForLayoutSettle().then(() => {
+            const card = this.shadowRoot?.querySelector('.card') ?? this;
+            BaseComponent.scrollElementIntoView(card, {
+                behavior,
+                offset: options.offset,
+            });
+        });
     }
 
     /**
@@ -437,6 +621,28 @@ class BaseComponent extends HTMLElement {
         return HtmlUtils.stripMarkdown(text);
     }
 
+    isAnonymousUser(userId) {
+        return !userId || userId === 0;
+    }
+
+    getDefaultUserAvatarIconHtml() {
+        if (typeof Icons !== 'undefined' && Icons.user) {
+            return Icons.user.replace(
+                /<svg[^>]*>/,
+                '<svg class="author-avatar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">'
+            );
+        }
+        return '用';
+    }
+
+    getAuthorAvatarFallbackContent(authorName, userId) {
+        if (this.isAnonymousUser(userId)) {
+            return this.getDefaultUserAvatarIconHtml();
+        }
+        const name = authorName || '用户';
+        return this.escapeHtml(name).charAt(0).toUpperCase();
+    }
+
     /**
      * 与 `sidebar-collapse` 同步整页单列模式：`document.body` 含 `layout-single-column` 时
      * 在宿主上设置 `data-layout-single-column`，供 Shadow 内 `:host([...])` 使用（`:host-context` 在 Shadow 中不可靠）。
@@ -468,6 +674,32 @@ class BaseComponent extends HTMLElement {
         }
     }
 }
+
+// 鼠标点击后移除焦点环（尤其 target="_blank" 的卡片链接）
+(function initBlognUiFocusHandlers() {
+    if (typeof document === 'undefined' || document.__blognUiFocusInit) {
+        return;
+    }
+    document.__blognUiFocusInit = true;
+
+    document.addEventListener('click', (event) => {
+        if (event.detail === 0) {
+            return;
+        }
+        const path = event.composedPath();
+        const el = path.find((node) => {
+            if (!(node instanceof Element)) {
+                return false;
+            }
+            return node.matches(
+                'a[target="_blank"], a.post-item, a.blog-item, a.blog-profile-link, .nav-item, button.tab, .pagination-btn, .create-post-button'
+            );
+        });
+        if (el && typeof el.blur === 'function') {
+            requestAnimationFrame(() => el.blur());
+        }
+    });
+})();
 
 // 注册基础组件（不直接使用，仅作为基类）
 customElements.define('base-component', BaseComponent); 

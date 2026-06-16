@@ -32,20 +32,20 @@ class TestArticlePageFeatures:
         assert expected_anchor.endswith(str(comment_id))
     
     def test_link_detection(self):
-        """测试链接检测"""
+        """测试链接检测（RFC 3986 字符集，CJK/全角标点不进入 URL）"""
+        from tests.unit.autolink_helpers import find_autolink_urls, linkify_plain_text_to_html
+
         content = "访问 https://example.com 获取更多信息"
-        
-        # 验证内容包含链接
-        assert "https://example.com" in content
-        
-        # 模拟链接检测
-        import re
-        url_pattern = r'https?://[^\s\u4e00-\u9fff]+'
-        detected_links = re.findall(url_pattern, content)
-        
-        # 验证检测结果
-        assert len(detected_links) == 1
-        assert "https://example.com" in detected_links
+        detected_links = find_autolink_urls(content)
+        assert detected_links == ["https://example.com"]
+
+        beelink = "http://club.beelink.com.cn/index.asp?boardid=168），禁书挺多的"
+        assert find_autolink_urls(beelink) == [
+            "http://club.beelink.com.cn/index.asp?boardid=168"
+        ]
+        html = linkify_plain_text_to_html(beelink)
+        assert 'href="http://club.beelink.com.cn/index.asp?boardid=168"' in html
+        assert "），禁书挺多的" in html
     
     def test_blog_profile_email_removal(self):
         """测试博客资料中电子邮件的移除"""

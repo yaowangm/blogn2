@@ -31,7 +31,7 @@
 | comment | TEXT | NULL | NULL | 项目描述 |
 | recordcount | INTEGER | NULL | NULL | 记录数量 |
 | lastitem | INTEGER | NULL | NULL | 最后条目ID |
-| state | INTEGER | NULL | 1 | 项目状态：1=正常，0=禁用 |
+| state | INTEGER | NULL | 0 | 博客状态：`0`=正常（`ProjectStatus.ACTIVE`），`1`=禁用（`ProjectStatus.DISABLED`）。生产库均为 `0`。与 `users.state`、`status` 字段的 `1=正常` 约定不同，代码中请使用 `ProjectStatus` 常量 |
 | createtime | DATETIME | NULL | NULL | 创建时间（继承自TimestampMixin） |
 | updatetime | DATETIME | NULL | NULL | 更新时间（继承自TimestampMixin） |
 | userid | INTEGER | NULL | NULL | 用户ID（继承自UserMixin） |
@@ -324,4 +324,5 @@
 3. **向量字段**：向量字段需要PostgreSQL的pgvector扩展支持
 4. **时间字段**：大部分时间字段使用DATETIME类型，向量表使用TIMESTAMP类型
 5. **默认值**：大部分可选字段都有合理的默认值
-6. **索引优化**：向量搜索相关表有专门的HNSW索引用于高效相似度搜索
+6. **`project.state` 语义**：历史生产库以 `0` 表示正常博客、`1` 表示禁用；与 `users.state` 及 `StatusMixin.status`（`1`=正常）相反，应用层统一使用 `src/constants.py` 中的 `ProjectStatus`
+7. **索引优化**：向量搜索相关表有专门的HNSW索引用于高效相似度搜索

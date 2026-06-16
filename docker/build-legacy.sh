@@ -8,10 +8,18 @@ IMAGE="${IMAGE:-blogn2-app:${TAG}}"
 
 export DOCKER_BUILDKIT=0
 
+if [ -z "${STATIC_VERSION:-}" ]; then
+  STATIC_VERSION="$("${ROOT}/scripts/generate-static-version.sh" --write "${ROOT}")"
+else
+  printf '%s\n' "$STATIC_VERSION" > "${ROOT}/.static_version"
+fi
+
 echo "==> 构建 ${IMAGE} （经典构建器）"
 echo "    推荐日常发版: ./docker/build-base.sh && ./docker/build-app.sh"
+echo "    STATIC_VERSION=${STATIC_VERSION}"
 docker build \
   -f "${ROOT}/docker/Dockerfile" \
+  --build-arg "STATIC_VERSION=${STATIC_VERSION}" \
   -t "${IMAGE}" \
   "${ROOT}"
 

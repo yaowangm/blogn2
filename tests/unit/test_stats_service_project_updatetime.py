@@ -33,7 +33,7 @@ class TestStatsServiceProjectUpdatetime:
         mock_repo.sync_updatetime_from_latest_published_article.assert_called_once_with(
             42, mock_project
         )
-        session.commit.assert_awaited()
+        session.commit.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_decrement_project_record_count_syncs_updatetime(self):
@@ -58,7 +58,7 @@ class TestStatsServiceProjectUpdatetime:
         mock_repo.sync_updatetime_from_latest_published_article.assert_called_once_with(
             7, mock_project
         )
-        session.commit.assert_awaited()
+        session.commit.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_increment_project_comment_count_does_not_instantiate_project_repo_for_sync(self):

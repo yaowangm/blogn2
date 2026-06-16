@@ -126,23 +126,21 @@ class TestComponentsEnhanced:
     
     def test_auto_link_detection(self):
         """测试自动链接检测功能"""
-        # 测试用例：文本内容和期望的链接
+        from tests.unit.autolink_helpers import find_autolink_urls
+
         test_cases = [
             ("访问 https://example.com 获取更多信息", ["https://example.com"]),
             ("多个链接: http://site1.com 和 https://site2.com", ["http://site1.com", "https://site2.com"]),
             ("没有链接的普通文本", []),
-            ("混合内容: 文本 https://link.com 更多文本", ["https://link.com"])
+            ("混合内容: 文本 https://link.com 更多文本", ["https://link.com"]),
+            (
+                "http://club.beelink.com.cn/index.asp?boardid=168），禁书挺多的",
+                ["http://club.beelink.com.cn/index.asp?boardid=168"],
+            ),
         ]
-        
+
         for text, expected_links in test_cases:
-            # 模拟链接检测逻辑
-            detected_links = []
-            import re
-            url_pattern = r'https?://[^\s\u4e00-\u9fff]+'
-            matches = re.findall(url_pattern, text)
-            detected_links = matches
-            
-            # 验证检测结果
+            detected_links = find_autolink_urls(text)
             assert len(detected_links) == len(expected_links), f"文本: {text}"
             for link in expected_links:
                 assert link in detected_links, f"未检测到链接: {link}"

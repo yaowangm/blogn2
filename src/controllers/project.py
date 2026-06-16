@@ -22,9 +22,10 @@ from src.utils.auth_dependencies import get_current_user, get_optional_current_u
 from src.utils.permission_manager import permission_manager
 from src.services.blog_service import BlogService
 from src.repositories.user_repository import UserRepository
-from src.constants import ArticleStatus
+from src.constants import ArticleStatus, ProjectStatus
 from src.utils.file_utils import promote_temp_relative_path
 from src.utils.time_utils import TimeUtils
+from src.utils.text_utils import plain_text_excerpt, truncate_excerpt
 from src.config.app import validate_app_config
 
 logger = logging.getLogger(__name__)
@@ -119,16 +120,19 @@ async def get_project_posts(
                     total,
                 )
 
-        # 获取分类信息
+        # 获取分类信息（folderid=0 表示未分类，为有效筛选值）
         category_name = "全部文章"
-        if folderid:
-            folder_repo = FolderRepository(session)
-            try:
-                folder = await folder_repo.get_by_id(folderid)
-                if folder:
-                    category_name = folder.name
-            except Exception:
-                logger.exception("获取分类名称失败 folderid=%s", folderid)
+        if folderid is not None:
+            if folderid == 0:
+                category_name = "未分类"
+            else:
+                folder_repo = FolderRepository(session)
+                try:
+                    folder = await folder_repo.get_by_id(folderid)
+                    if folder:
+                        category_name = folder.name
+                except Exception:
+                    logger.exception("获取分类名称失败 folderid=%s", folderid)
         
         # 转换为字典格式
         posts_data = []
@@ -144,14 +148,17 @@ async def get_project_posts(
             if post["userid"]:
                 avatar_path = blog_service._check_avatar_exists(post["userid"])
             
+            plain_excerpt = plain_text_excerpt(post["comment"])
             posts_data.append({
                 "id": post["id"],
                 "name": post["name"],
-                "comment": post["comment"],
+                "comment": plain_excerpt,
+                "excerpt": plain_excerpt,
                 "createtime": post["createtime"],
                 "accesscount": post["accesscount"],
                 "commentcount": post["commentcount"],
-                "category": category_name,
+                "category": (post.get("category") or "未分类").strip(),
+                "folderid": post.get("folderid"),
                 "author_name": post["author_name"],
                 "userid": post["userid"],
                 "avatar": avatar_path,
@@ -211,7 +218,8 @@ async def get_project_recent_comments(
             "time": comment["post_time"],    # 改为time以匹配现有组件
             "projectitemid": comment["projectitemid"],
             "userid": comment["userid"],
-            "avatar": avatar_path
+            "avatar": avatar_path,
+            "blog_id": comment.get("author_blog_id"),
         })
     
     return comments_data
@@ -394,7 +402,7 @@ async def create_project(
                 userid=userid,
                 createtime=TimeUtils.now_utc(),
                 updatetime=TimeUtils.now_utc(),
-                state=1,  # 正常状态
+                state=ProjectStatus.ACTIVE,
                 recordcount=0,
                 accesscount=0,
                 commentcount=0
@@ -552,9 +560,6 @@ async def create_post(
                 )
                 await attachment_repo.create(attachment)
         
-        # 更新项目的记录数和更新时间
-        await project_repo.increment_record_count(project_id)
-        
         # 更新用户积分（每发表一篇文章获得10积分，每日最多10分）
         user_repo = UserRepository(session)
         point_added = await user_repo.increment_point(current_user["id"], 10, "article_create")
@@ -563,25 +568,7 @@ async def create_post(
         if not point_added:
             logger.info("用户 %s 今日积分已达上限，未获得积分奖励", current_user["id"])
         
-        # 更新全局项目项数量统计
-        from src.services.global_stats_service import GlobalStatsService
-        stats_service = GlobalStatsService(session)
-        await stats_service.update_project_item_count(increment=True)
-        
-        # 在主事务提交前进行向量化处理
-        try:
-            from src.services.vectorization_update_service import get_vectorization_update_service
-            vectorization_service = get_vectorization_update_service(session)
-            
-            # 创建向量
-            await vectorization_service.update_article_vectors(
-                created_post.id, created_post.name, created_post.comment
-            )
-            
-        except Exception as e:
-            logger.error("向量化创建失败: %s", e)
-        
-        # 提交事务（所有操作在同一个事务中）
+        # 提交事务
         await session.commit()
 
         await invalidate_project_post_list_caches(project_id, project.userid)
@@ -594,11 +581,17 @@ async def create_post(
         except Exception as e:
             # 广播失败不影响文章创建，静默处理
             pass
+
+        from src.utils.vectorization_tasks import schedule_article_vectorization
+
+        schedule_article_vectorization(
+            created_post.id, created_post.name, created_post.comment
+        )
         
         return {
             "id": created_post.id,
             "name": created_post.name,
-            "comment": created_post.comment,
+            "comment": truncate_excerpt(created_post.comment),
             "itemtype": created_post.itemtype,
             "itemsize": created_post.itemsize,
             "attachment": created_post.attachment,

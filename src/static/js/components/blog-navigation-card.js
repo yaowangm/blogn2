@@ -35,10 +35,7 @@ class BlogNavigationCard extends BaseComponent {
                 return;
             }
             if (projectData.userid) {
-                const userResponse = await fetch(`/api/users/${projectData.userid}`);
-                if (userResponse.ok) {
-                    this.userData = await userResponse.json();
-                }
+                this.userData = await BaseComponent.getUser(projectData.userid);
             }
         } catch (error) {
             console.error('Error loading user data:', error);
@@ -51,31 +48,8 @@ class BlogNavigationCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
-                :host {
-                    display: block;
-                    font-family: var(--font-family);
-                }
-
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-xl);
-                    box-shadow: var(--shadow-md);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    margin-bottom: var(--card-margin);
-                }
-
-                .card-header {
-                    padding: var(--spacing-4) var(--spacing-6);
-                    background: var(--gray-50);
-                    border-bottom: 1px solid var(--gray-200);
-                }
-
+                @import url('/static/css/common-components.css');
                 .card-title {
-                    margin: 0;
-                    font-size: var(--font-size-lg);
-                    font-weight: 600;
-                    color: var(--gray-800);
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-2);
@@ -105,7 +79,7 @@ class BlogNavigationCard extends BaseComponent {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-3);
-                    padding: var(--spacing-4) var(--spacing-6);
+                    padding: var(--spacing-3) var(--spacing-4);
                     color: var(--gray-700);
                     text-decoration: none;
                     transition: var(--transition-fast);
@@ -158,7 +132,7 @@ class BlogNavigationCard extends BaseComponent {
 
                 .rss-link:hover {
                     background: var(--gray-200);
-                    color: var(--gray-800);
+                    color: var(--gray-900);
                 }
 
                 .loading {

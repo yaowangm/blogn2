@@ -252,6 +252,8 @@ def cache_decorator(
 
             try:
                 await cache_manager.initialize()
+                if not cache_manager.is_available():
+                    return await func(*args, **kwargs)
 
                 # 生成缓存键
                 if key_builder:
@@ -377,9 +379,15 @@ def cache_blog_list(ttl: int = None, enable_cache: bool = True):
 
 
 def cache_blog_recent_list(ttl: int = None):
-    """最新博客列表缓存装饰器"""
+    """最新博文列表缓存装饰器（/blogs/posts/latest）"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
                           f"blog:recent:list:{kwargs.get('page', 1)}:{kwargs.get('page_size', 10)}:{kwargs.get('exclude', 'none')}:{kwargs.get('blogid', 'none')}")
+
+
+def cache_blogs_joined_recent(ttl: int = None):
+    """最新加入博客列表缓存装饰器（/blogs/recent）"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
+                          CacheKeyGenerator.blogs_joined_recent(kwargs.get('limit', 10)))
 
 
 def cache_blog_popular_list(ttl: int = None):
@@ -395,9 +403,9 @@ def cache_blog_detail(ttl: int = None):
 
 
 def cache_blog_comments(ttl: int = None):
-    """博客评论缓存装饰器"""
+    """全站最近评论缓存装饰器（/comments/recent）"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
-                          CacheKeyGenerator.blog_comments(kwargs.get('blog_id', 0)))
+                          CacheKeyGenerator.site_recent_comments(kwargs.get('limit', 5)))
 
 
 def _blog_messages_recent_cache_key(*args, **kwargs) -> str:
@@ -441,7 +449,18 @@ def cache_blog_message_thread(ttl: int = None):
 def cache_search_results(ttl: int = None):
     """搜索结果缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
-                          CacheKeyGenerator.search_results(kwargs.get('query', ''), kwargs.get('page', 1)))
+                          CacheKeyGenerator.search_results(
+                              kwargs.get('q') or kwargs.get('query', ''),
+                              kwargs.get('page', 1),
+                              kwargs.get('type', kwargs.get('search_type', 'all')),
+                              kwargs.get('sort', 'relevance'),
+                              kwargs.get('limit', 10),
+                          ))
+
+
+def cache_global_stats(ttl: int = 60):
+    """全局统计缓存装饰器（短 TTL）"""
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: "stats:global")
 
 
 def cache_metadata(ttl: int = None):
@@ -456,7 +475,8 @@ def cache_article_detail(ttl: int = None):
                           CacheKeyGenerator.article_detail(
                               kwargs.get('article_id', 0),
                               kwargs.get('page', 1),
-                              kwargs.get('per_page', 10)
+                              kwargs.get('per_page', 10),
+                              kwargs.get('include_comments', False),
                           ))
 
 
@@ -492,13 +512,17 @@ def cache_project_posts(ttl: int = None):
                               kwargs.get('limit', 10),
                               kwargs.get('type', 'original'),
                               kwargs.get('folderid'),
+                              kwargs.get('include_deleted', False),
                           ))
 
 
 def cache_project_comments(ttl: int = None):
-    """项目评论缓存装饰器"""
+    """项目最近评论缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
-                          CacheKeyGenerator.project_comments(kwargs.get('project_id', 0)))
+                          CacheKeyGenerator.project_comments(
+                              kwargs.get('project_id', 0),
+                              kwargs.get('limit', 5),
+                          ))
 
 
 def cache_project_categories(ttl: int = None):
@@ -534,24 +558,26 @@ def cache_user_projects(ttl: int = None):
 # RSS相关缓存装饰器
 def cache_site_rss(ttl: int = None):
     """站点RSS缓存装饰器"""
-    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: CacheKeyGenerator.site_rss())
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
+                          CacheKeyGenerator.site_rss(kwargs.get('limit', 20)))
 
 
 def cache_blog_rss(ttl: int = None):
     """博客RSS缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
-                          CacheKeyGenerator.blog_rss(kwargs.get('project_id', 0)))
+                          CacheKeyGenerator.blog_rss(kwargs.get('project_id', 0), kwargs.get('limit', 20)))
 
 
 def cache_site_rss_full(ttl: int = None):
     """完整站点RSS缓存装饰器"""
-    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs: CacheKeyGenerator.site_rss_full())
+    return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
+                          CacheKeyGenerator.site_rss_full(kwargs.get('limit', 20)))
 
 
 def cache_blog_rss_full(ttl: int = None):
     """完整博客RSS缓存装饰器"""
     return cache_decorator(ttl=ttl, key_builder=lambda *args, **kwargs:
-                          CacheKeyGenerator.blog_rss_full(kwargs.get('project_id', 0)))
+                          CacheKeyGenerator.blog_rss_full(kwargs.get('project_id', 0), kwargs.get('limit', 20)))
 
 
 # 友情链接相关缓存装饰器
@@ -690,6 +716,23 @@ async def invalidate_project_post_list_caches(
             logger.warning("清除缓存模式失败 %s: %s", pattern, e)
 
 
+async def invalidate_site_recent_comments_cache() -> None:
+    """评论增减后：失效全站最近评论缓存。"""
+    if not cache_settings.enable_cache:
+        return
+    try:
+        await cache_manager.initialize()
+    except Exception as e:
+        logger.warning("缓存未初始化，跳过全站最近评论缓存失效: %s", e)
+        return
+    if not cache_manager.is_available():
+        return
+    try:
+        await cache_manager.clear_pattern("blog:comments:recent:*")
+    except Exception as e:
+        logger.warning("清除缓存模式失败 blog:comments:recent:*: %s", e)
+
+
 async def invalidate_project_recent_comments_cache(project_id: int) -> None:
     """评论增减后：博客「最近评论」及依赖评论计数的 project 详情/统计缓存。"""
     if not cache_settings.enable_cache:
@@ -710,6 +753,7 @@ async def invalidate_project_recent_comments_cache(project_id: int) -> None:
             await cache_manager.clear_pattern(pattern)
         except Exception as e:
             logger.warning("清除缓存模式失败 %s: %s", pattern, e)
+    await invalidate_site_recent_comments_cache()
 
 
 async def invalidate_project_categories_cache(project_id: int) -> None:

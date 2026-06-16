@@ -1,251 +1,77 @@
-# 最近更新卡片UI改进总结
+# 最近更新卡片 UI 改进总结
 
 ## 改进概述
 
-我们对最近更新卡片的用户界面进行了重要改进，添加了用户头像显示，并让整个条目可点击，链接到文章页面，提升了用户体验和视觉吸引力。
+最近更新卡片（`recent-updates-card.js`）在条目头部行内显示 **24×24** 小头像，样式与 `blog-list-card` 文章列表的作者 meta 一致；整行可点击跳转至文章页。
 
-## 主要改进内容
+## 当前布局
 
-### 1. 用户头像显示
-
-**新增功能：**
-- 在每个条目左侧显示用户头像
-- 支持真实头像图片和文字头像回退
-- 头像尺寸：40x40像素，圆形设计
-
-**头像显示逻辑：**
-```javascript
-<div class="user-avatar">
-    ${update.avatar ? 
-        `<img src="${update.avatar}" alt="${update.blog_name}" />` : 
-        `<span>${update.blog_name.charAt(0)}</span>`
-    }
-</div>
-```
-
-**样式特点：**
-- 圆形头像设计
-- 边框和背景色
-- 文字头像使用博客名称首字母
-- 响应式布局
-
-### 2. 整体条目点击
-
-**改进前：**
-- 只有博客名称可点击
-- 链接到博客页面
-
-**改进后：**
-- 整个条目可点击
-- 点击跳转到文章页面：`/article/{projectitemid}`
-- 移除单独的博客链接
-
-**点击处理：**
-```javascript
-setupEventListeners() {
-    this.shadowRoot.addEventListener('click', (event) => {
-        const updateItem = event.target.closest('.update-item');
-        if (updateItem) {
-            const updateIndex = updateItem.getAttribute('data-update-index');
-            if (updateIndex !== null) {
-                const index = parseInt(updateIndex);
-                if (!isNaN(index) && index >= 0 && index < this.recentUpdates.length) {
-                    this.handleItemClick(this.recentUpdates[index]);
-                }
-            }
-        }
-    });
-}
-
-handleItemClick(update) {
-    if (update.id) {
-        window.location.href = `/article/${update.id}`;
-    }
-}
-```
-
-### 3. 布局优化
-
-**新的布局结构：**
 ```
 ┌─────────────────────────────────────────┐
-│ [头像] 博客名称          时间           │
-│        文章标题                         │
+│ [24px头像] 博客名称          时间       │
+│ 文章标题（截断）                        │
 └─────────────────────────────────────────┘
 ```
 
-**CSS改进：**
-- 使用Flexbox布局
-- 头像固定尺寸，内容区域自适应
-- 添加hover效果和过渡动画
-- 优化间距和对齐
+- 头像与名称在同一行（`.meta-item-author`），不再使用左侧 40px 大头像列
+- 点击整行（`<a class="update-link">`）打开 `/article/{id}`，新标签页
 
-### 4. 交互体验提升
+## 头像显示逻辑
 
-**视觉反馈：**
-- 鼠标悬停时背景色变化
-- 平滑的过渡动画
-- 清晰的点击指示（cursor: pointer）
+与 `blog-list-card` 的 `renderAuthorMetaItem` 对齐：
 
-**用户体验：**
-- 更大的点击区域
-- 直观的视觉层次
-- 一致的交互动画
+```javascript
+getSmallAvatarPath(userId) {
+    if (!userId) return null;
+    const prefix = Math.floor(userId / 10000) + 1;
+    return `/avatar/${prefix}/s_${userId}.jpg`;
+}
 
-## 技术实现细节
+renderAuthorMetaItem(authorName, avatar, userId) {
+    const avatarPath = avatar || this.getSmallAvatarPath(userId);
+    // 24×24 .author-avatar + .author-name
+}
+```
 
-### 1. CSS样式改进
+- **显示名称**：`blog_name`（博客名）
+- **头像来源**：API 字段 `avatar`，或按 `userid` 推导小图路径
+- **fallback**：无图时显示名称首字母
 
-**头像样式：**
+## 样式要点
+
 ```css
-.user-avatar {
-    width: 40px;
-    height: 40px;
+.author-avatar {
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
-    flex-shrink: 0;
+    border: 1px solid var(--gray-200);
+}
+
+.meta-item-author {
     display: flex;
     align-items: center;
-    justify-content: center;
-    background: var(--gray-100);
-    font-size: var(--font-size-lg);
-    font-weight: 600;
-    color: var(--gray-600);
-    border: 2px solid var(--gray-200);
+    gap: var(--spacing-2);
+    min-width: 0;
+}
+
+.author-name {
+    font-weight: 700;
     overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 ```
 
-**条目布局：**
-```css
-.update-item {
-    cursor: pointer;
-    transition: var(--transition-normal);
-    display: flex;
-    align-items: flex-start;
-    gap: var(--spacing-3);
-}
+## 数据与 API
 
-.update-item:hover {
-    background: var(--gray-50);
-}
-```
+数据来源仍为 `GET /api/blogs/posts/latest?limit=5`（博客页可加 `exclude={project_id}`）。响应中每条 post 含 `id`、`title`、`blog_name`、`author`、`avatar`、`userid`、`time` 等字段。
 
-### 2. 事件处理
+## 相关组件
 
-**事件委托：**
-- 使用事件委托处理点击事件
-- 通过data属性标识条目索引
-- 支持动态内容更新
+- `recent-comments-card.js`：同样采用 24px 内联头像，显示 **作者名**（`author`）
+- `blog-list-card.js`：作者 meta 的参考实现
+- `messages-list-card.js`、`thread-card.js`：留言/帖子页亦使用相同 24px 头像约定
 
-**点击处理：**
-- 验证数据有效性
-- 跳转到正确的文章页面
-- 错误处理和日志记录
+## 历史变更说明
 
-### 3. 数据结构支持
-
-**API数据：**
-- 确保avatar字段可用
-- 支持图片和文字头像
-- 保持向后兼容性
-
-**模拟数据：**
-- 更新模拟数据结构
-- 包含avatar字段
-- 用于开发和测试
-
-## 使用效果
-
-### 1. 视觉改进
-
-- **头像显示**：每个条目都有用户头像，提升识别度
-- **布局清晰**：头像、博客名称、时间、标题层次分明
-- **交互反馈**：hover效果和点击状态清晰
-
-### 2. 功能改进
-
-- **点击体验**：整个条目可点击，操作更直观
-- **导航优化**：直接跳转到文章页面，减少用户操作步骤
-- **信息展示**：头像帮助用户快速识别博客作者
-
-### 3. 用户体验
-
-- **一致性**：与其他卡片组件的交互方式保持一致
-- **可访问性**：更大的点击区域，适合移动设备
-- **响应性**：平滑的动画和过渡效果
-
-## 兼容性说明
-
-### 1. 向后兼容
-
-- 现有功能不受影响
-- API数据结构保持一致
-- 组件行为向后兼容
-
-### 2. 浏览器支持
-
-- 现代浏览器完全支持
-- Flexbox布局兼容性好
-- CSS变量支持广泛
-
-### 3. 移动设备
-
-- 触摸友好的点击区域
-- 响应式头像尺寸
-- 优化的触摸反馈
-
-## 测试验证
-
-### 1. 功能测试
-
-- ✅ 头像显示正常（图片和文字）
-- ✅ 整个条目可点击
-- ✅ 跳转到正确的文章页面
-- ✅ hover效果正常
-- ✅ 事件处理正确
-
-### 2. 视觉测试
-
-- ✅ 头像尺寸和样式正确
-- ✅ 布局对齐和间距合适
-- ✅ 颜色和字体一致
-- ✅ 动画效果流畅
-
-### 3. 交互测试
-
-- ✅ 点击区域覆盖整个条目
-- ✅ 鼠标悬停效果正常
-- ✅ 键盘导航支持
-- ✅ 触摸设备兼容
-
-## 后续优化建议
-
-### 1. 头像功能扩展
-
-- 支持更多头像格式
-- 添加头像加载状态
-- 实现头像缓存机制
-
-### 2. 交互增强
-
-- 添加点击动画效果
-- 支持键盘快捷键
-- 实现拖拽排序功能
-
-### 3. 性能优化
-
-- 图片懒加载
-- 头像预加载
-- 减少重绘和回流
-
-## 总结
-
-通过这次UI改进，最近更新卡片实现了：
-
-1. **视觉提升** - 添加用户头像，提升识别度和美观性
-2. **交互优化** - 整个条目可点击，操作更直观
-3. **布局改进** - 使用Flexbox布局，响应式设计
-4. **体验增强** - hover效果、过渡动画、点击反馈
-5. **功能完善** - 直接跳转到文章页面，减少操作步骤
-
-这些改进使得最近更新卡片不仅信息更丰富，而且交互更友好，为用户提供了更好的浏览和导航体验。
+早期版本曾在条目左侧使用 **40×40** 大头像列；自 UI 统一化后改为与文章列表一致的内联小头像，以减少侧边栏横向占用并保持视觉一致。

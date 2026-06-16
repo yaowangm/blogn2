@@ -18,6 +18,8 @@ class LoginModal extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
+                @import url('/static/css/common-components.css');
+
                 :host {
                     display: none;
                     position: fixed;
@@ -59,22 +61,6 @@ class LoginModal extends BaseComponent {
                     font-weight: 600;
                     color: var(--gray-900);
                     margin: 0;
-                }
-
-                .close-button {
-                    background: none;
-                    border: none;
-                    font-size: var(--font-size-xl);
-                    color: var(--gray-500);
-                    cursor: pointer;
-                    padding: var(--spacing-1);
-                    border-radius: var(--radius-md);
-                    transition: var(--transition-fast);
-                }
-
-                .close-button:hover {
-                    background: var(--gray-100);
-                    color: var(--gray-700);
                 }
 
                 .modal-body {
@@ -124,27 +110,8 @@ class LoginModal extends BaseComponent {
                     display: block;
                 }
 
-                .login-button {
-                    width: 100%;
-                    background: var(--primary-color);
-                    color: var(--white);
-                    border: none;
-                    padding: var(--spacing-3);
-                    border-radius: var(--radius-md);
-                    font-size: var(--font-size-sm);
-                    font-weight: 500;
-                    cursor: pointer;
-                    transition: var(--transition-fast);
+                #loginButton {
                     margin-top: var(--spacing-4);
-                }
-
-                .login-button:hover:not(:disabled) {
-                    background: var(--primary-hover);
-                }
-
-                .login-button:disabled {
-                    background: var(--gray-400);
-                    cursor: not-allowed;
                 }
 
                 .loading-spinner {
@@ -220,7 +187,7 @@ class LoginModal extends BaseComponent {
             <div class="modal-container">
                 <div class="modal-header">
                     <h2 class="modal-title">用户登录</h2>
-                    <button class="close-button" aria-label="关闭">×</button>
+                    <button type="button" class="modal-close" aria-label="关闭">×</button>
                 </div>
 
                 <div class="modal-body">
@@ -258,7 +225,7 @@ class LoginModal extends BaseComponent {
                             <a href="/forgot-password" class="forgot-password-link">忘记密码？</a>
                         </div>
 
-                        <button type="submit" class="login-button" id="loginButton">
+                        <button type="submit" class="btn btn-primary btn-block" id="loginButton">
                             <span class="loading-spinner" id="loadingSpinner" style="display: none;"></span>
                             <span id="buttonText">登录</span>
                         </button>
@@ -276,7 +243,7 @@ class LoginModal extends BaseComponent {
     }
 
     addEventListeners() {
-        const closeButton = this.shadowRoot.querySelector('.close-button');
+        const closeButton = this.shadowRoot.querySelector('.modal-close');
         closeButton.addEventListener('click', () => this.hide());
 
         // 移除点击背景关闭模态框的功能

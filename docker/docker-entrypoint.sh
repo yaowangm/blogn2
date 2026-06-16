@@ -107,6 +107,13 @@ else
     echo "⚠️  模型目录不存在，请检查 docker-compose volumes 挂载"
 fi
 
+# 静态资源版本：优先使用编排注入的 STATIC_VERSION，否则读取构建时写入的 .static_version
+if [ -z "${STATIC_VERSION:-}" ] && [ -f /app/.static_version ]; then
+    STATIC_VERSION="$(tr -d '[:space:]' < /app/.static_version)"
+    export STATIC_VERSION
+    echo "  - 静态资源版本: ${STATIC_VERSION}"
+fi
+
 # 检查必要的环境变量
 if [ -z "$DATABASE_URL" ]; then
     echo "❌ 错误: DATABASE_URL 环境变量未设置"

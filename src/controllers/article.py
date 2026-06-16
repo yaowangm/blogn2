@@ -11,6 +11,7 @@
 所有接口都支持缓存以提高性能。
 """
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Body, Response
@@ -62,6 +63,7 @@ async def get_article_detail(
     response: Response,
     page: int = 1,
     per_page: int = 10,
+    include_comments: bool = False,
     session: AsyncSession = Depends(get_async_session),
     current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
 ):
@@ -106,9 +108,7 @@ async def get_article_detail(
         if should_count:
             counted_ok = False
             try:
-                await project_item_repo.increment_access_count(article_id)
-                if article.projectid:
-                    await project_repo.increment_access_count(article.projectid)
+                await project_item_repo.increment_access_count(article_id, article.projectid)
                 counted_ok = True
             except Exception:
                 logger.warning(
@@ -134,30 +134,64 @@ async def get_article_detail(
         else:
             hits_display = article.accesscount or 0
 
-        # 获取作者信息
-        author = None
-        if article.userid:
-            author = await user_repo.get_by_id(article.userid)
+        # 并行获取作者、项目、分类、评论、附件
+        async def fetch_author():
+            if not article.userid:
+                return None, None
+            author_obj = await user_repo.get_by_id(article.userid)
+            if not author_obj:
+                return None, None
+            from src.utils.dependencies import get_blog_service
+            blog_service = await get_blog_service(session)
+            return author_obj, blog_service._check_avatar_exists(author_obj.id)
 
-        # 获取项目信息
-        project = None
-        if article.projectid:
-            project = await project_repo.get_by_id(article.projectid)
+        async def fetch_project():
+            if not article.projectid:
+                return None
+            return await project_repo.get_by_id(article.projectid)
 
-        # 获取分类信息
-        category = None
-        if article.folderid:
+        async def fetch_category():
+            if not article.folderid:
+                return None
             from src.repositories.folder_repository import FolderRepository
             folder_repo = FolderRepository(session)
-            category = await folder_repo.get_by_id(article.folderid)
+            return await folder_repo.get_by_id(article.folderid)
 
-        # 获取文章评论（分页）
-        comments_data = await post_repo.get_by_project_item_id_paginated(article_id, page, per_page)
-        comments = comments_data["comments"]
-        pagination = comments_data["pagination"]
+        if include_comments:
+            (
+                author_result,
+                project,
+                category,
+                comments_data,
+                attachments,
+            ) = await asyncio.gather(
+                fetch_author(),
+                fetch_project(),
+                fetch_category(),
+                post_repo.get_by_project_item_id_paginated(article_id, page, per_page),
+                attachment_repo.get_by_project_item_id(article_id),
+            )
+            comments = comments_data["comments"]
+            pagination = comments_data["pagination"]
+        else:
+            author_result, project, category, attachments = await asyncio.gather(
+                fetch_author(),
+                fetch_project(),
+                fetch_category(),
+                attachment_repo.get_by_project_item_id(article_id),
+            )
+            comment_total = article.commentcount or 0
+            comments = []
+            pagination = {
+                "page": page,
+                "per_page": per_page,
+                "total": comment_total,
+                "total_pages": (
+                    (comment_total + per_page - 1) // per_page if per_page else 0
+                ),
+            }
 
-        # 获取文章附件图片
-        attachments = await attachment_repo.get_by_project_item_id(article_id)
+        author, author_avatar = author_result
 
         return {
             "id": article.id,
@@ -176,7 +210,7 @@ async def get_article_detail(
             "author": {
                 "id": author.id if author else None,
                 "name": author.name if author else "未知作者",
-                "avatar": None  # users表没有logo字段
+                "avatar": author_avatar,
             } if author else None,
             "project": {
                 "id": project.id if project else None,
@@ -192,15 +226,7 @@ async def get_article_detail(
             "created_at": article.createtime,
             "updated_at": article.updatetime,
             "comment_count": article.commentcount or 0,
-            "comments": [
-                {
-                    "id": comment.id,
-                    "content": comment.content,
-                    "user_id": comment.userid,
-                    "post_time": comment.posttime,
-                    "reply_count": comment.replycount or 0
-                } for comment in comments
-            ] if comments else [],
+            "comments": comments if comments else [],
             "comments_pagination": pagination
         }
 
@@ -327,7 +353,7 @@ async def delete_article_comment(
         raise HTTPException(status_code=500, detail=f"删除评论失败: {str(e)}")
 
 
-@router.get("/articles/{article_id}/comments", response_model=List[Dict[str, Any]])
+@router.get("/articles/{article_id}/comments", response_model=Dict[str, Any])
 @cache_article_comments(ttl=900)  # 缓存15分钟
 async def get_article_comments(
     article_id: int,
@@ -338,19 +364,8 @@ async def get_article_comments(
     """
     获取指定文章的评论列表（分页）
 
-    Args:
-        article_id: 文章ID
-        page: 页码，默认1
-        limit: 每页数量，默认20
-        session: 数据库会话
-
     Returns:
-        List[Dict[str, Any]]: 评论列表，每个评论包含：
-        - id: 评论ID
-        - content: 评论内容
-        - user_id: 用户ID
-        - post_time: 评论时间
-        - reply_count: 回复数量
+        Dict[str, Any]: comments、pagination、comment_count
     """
     post_repo = PostRepository(session)
     project_item_repo = ProjectItemRepository(session)
@@ -361,23 +376,13 @@ async def get_article_comments(
         if not article:
             raise HTTPException(status_code=404, detail="文章不存在")
 
-        # 获取评论列表
-        comments = await post_repo.get_by_project_item_id(article_id)
-
-        # 简单的分页处理
-        start = (page - 1) * limit
-        end = start + limit
-        paginated_comments = comments[start:end]
-
-        return [
-            {
-                "id": comment.id,
-                "content": comment.content,
-                "user_id": comment.userid,
-                "post_time": comment.posttime,
-                "reply_count": comment.replycount or 0
-            } for comment in paginated_comments
-        ]
+        comments_data = await post_repo.get_by_project_item_id_paginated(article_id, page, limit)
+        pagination = comments_data["pagination"]
+        return {
+            "comments": comments_data["comments"],
+            "pagination": pagination,
+            "comment_count": pagination.get("total", 0),
+        }
 
     except HTTPException:
         raise
@@ -609,23 +614,8 @@ async def update_article(
         await clear_article_detail_cache(article_id)
         await clear_article_comments_cache(article_id)
 
-        # 异步更新向量化索引
-        try:
-            from src.services.vectorization_update_service import get_vectorization_update_service
-            vectorization_service = get_vectorization_update_service(session)
-
-            # 获取更新后的文章内容
-            updated_title = article_data.get("name", updated_article.name)
-            updated_content = article_data.get("comment", updated_article.comment)
-
-            # 异步更新向量
-            await vectorization_service.update_article_vectors(
-                article_id, updated_title, updated_content
-            )
-
-        except Exception as e:
-            # 向量化更新失败不影响文章更新成功
-            logger.error("向量化更新失败: %s", e)
+        updated_title = article_data.get("name", updated_article.name)
+        updated_content = article_data.get("comment", updated_article.comment)
 
         if updated_article.projectid:
             project_repo = ProjectRepository(session)
@@ -634,6 +624,10 @@ async def update_article(
             await invalidate_project_post_list_caches(
                 updated_article.projectid, updated_article.userid
             )
+
+        from src.utils.vectorization_tasks import schedule_article_vectorization
+
+        schedule_article_vectorization(article_id, updated_title, updated_content)
 
         return {"message": "文章更新成功"}
 
@@ -683,20 +677,14 @@ async def delete_article(
         article.itemtype = ArticleStatus.DELETED
         session.add(article)
 
-        # 更新project表：减少recordcount，更新updatetime
-        from src.repositories.project_repository import ProjectRepository
-        project_repo = ProjectRepository(session)
-        await project_repo.decrement_record_count(article.projectid)
-
-        # 更新users表：减少10积分
+        from src.services.stats_service import StatsService
         from src.repositories.user_repository import UserRepository
+
+        stats_service = StatsService(session)
+        await stats_service.handle_article_deletion(article)
+
         user_repo = UserRepository(session)
         await user_repo.decrement_point(article.userid, 10)
-
-        # 更新全局项目项数量统计
-        from src.services.global_stats_service import GlobalStatsService
-        stats_service = GlobalStatsService(session)
-        await stats_service.update_project_item_count(increment=False)
 
         # 软删除时不删除向量化数据，保留用于搜索
 
@@ -771,29 +759,25 @@ async def permanently_delete_article(
         if article.attachment:
             await delete_article_images(article.attachment, article_id, session)
 
-        # 删除该文章下所有评论，避免仅删除 projectitem 后在 post 表残留孤儿数据
         post_repo = PostRepository(session)
-        await post_repo.delete_all_posts_for_project_item(article_id)
+        from src.services.stats_service import StatsService
+        from src.repositories.user_repository import UserRepository
 
-        # 从projectitem表中删除记录
-        await project_item_repo.delete(article_id)
+        stats_service = StatsService(session)
 
-        # 如果文章不是已删除状态，需要更新相关统计信息
+        # 删除该文章下所有评论，并同步博客/分类评论统计
+        removed_comment_count = await post_repo.delete_all_posts_for_project_item(article_id)
+        if removed_comment_count > 0:
+            await stats_service.handle_article_comments_bulk_removal(
+                article, removed_comment_count
+            )
+
+        # 从 projectitem 表删除；软删过的文章统计已在软删时扣减
+        await project_item_repo.delete(article_id, update_stats=not was_deleted)
+
         if not was_deleted:
-            # 更新project表：减少recordcount，更新updatetime
-            from src.repositories.project_repository import ProjectRepository
-            project_repo = ProjectRepository(session)
-            await project_repo.decrement_record_count(article.projectid)
-
-            # 更新users表：减少10积分
-            from src.repositories.user_repository import UserRepository
             user_repo = UserRepository(session)
             await user_repo.decrement_point(article.userid, 10)
-
-            # 更新全局项目项数量统计
-            from src.services.global_stats_service import GlobalStatsService
-            stats_service = GlobalStatsService(session)
-            await stats_service.update_project_item_count(increment=False)
 
         # 提交事务
         await session.commit()

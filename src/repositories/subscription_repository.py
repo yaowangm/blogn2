@@ -5,6 +5,8 @@ from src.models.subscription import Subscription
 from src.models.project_item import ProjectItem
 from src.models.project import Project
 from src.models.user import User
+from src.utils.text_utils import POST_LIST_EXCERPT_MAX_LENGTH, plain_text_excerpt
+from src.utils.avatar_utils import check_avatar_exists
 
 class SubscriptionRepository:
     """订阅数据访问层
@@ -30,8 +32,21 @@ class SubscriptionRepository:
         offset = (page - 1) * limit
         
         # 通过subsc表关联查询订阅的文章
+        comment_excerpt = func.substr(ProjectItem.comment, 1, POST_LIST_EXCERPT_MAX_LENGTH).label("comment")
         query = (
-            select(ProjectItem, Project.name.label("blog_name"), User.name.label("author_name"))
+            select(
+                ProjectItem.id,
+                ProjectItem.name,
+                comment_excerpt,
+                ProjectItem.createtime,
+                ProjectItem.accesscount,
+                ProjectItem.commentcount,
+                ProjectItem.projectid,
+                ProjectItem.userid,
+                ProjectItem.attachment,
+                Project.name.label("blog_name"),
+                User.name.label("author_name"),
+            )
             .join(Subscription, ProjectItem.id == Subscription.piid)
             .join(Project, ProjectItem.projectid == Project.id)
             .join(User, ProjectItem.userid == User.id)
@@ -44,34 +59,30 @@ class SubscriptionRepository:
         
         result = await self.session.exec(query)
         posts = []
-        
-        for project_item, blog_name, author_name in result:
-            # 生成头像路径
+        avatar_cache: Dict[int, str | None] = {}
+
+        for row in result:
             avatar_path = None
-            if project_item.userid:
-                # 检查头像文件是否存在
-                import os
-                from src.config.app import validate_app_config
-                config = validate_app_config()
-                avatar_dir = config["avatar_dir"]
-                prefix = (project_item.userid // 10000) + 1
-                real_path = os.path.join(avatar_dir, str(prefix), f"s_{project_item.userid}.jpg")
-                if os.path.exists(real_path):
-                    avatar_path = f"/avatar/{prefix}/s_{project_item.userid}.jpg"
+            if row.userid:
+                if row.userid not in avatar_cache:
+                    avatar_cache[row.userid] = check_avatar_exists(row.userid)
+                avatar_path = avatar_cache[row.userid]
             
+            plain_excerpt = plain_text_excerpt(row.comment)
             posts.append({
-                "id": project_item.id,
-                "name": project_item.name,
-                "comment": project_item.comment,
-                "createtime": project_item.createtime,
-                "accesscount": project_item.accesscount,
-                "commentcount": project_item.commentcount,
-                "blog_name": blog_name,
-                "author_name": author_name,
-                "blog_id": project_item.projectid,
-                "userid": project_item.userid,
+                "id": row.id,
+                "name": row.name,
+                "comment": plain_excerpt,
+                "excerpt": plain_excerpt,
+                "createtime": row.createtime,
+                "accesscount": row.accesscount,
+                "commentcount": row.commentcount,
+                "blog_name": row.blog_name,
+                "author_name": row.author_name,
+                "blog_id": row.projectid,
+                "userid": row.userid,
                 "avatar": avatar_path,
-                "image": f"/upload/{project_item.attachment}" if project_item.attachment else None
+                "image": f"/upload/{row.attachment}" if row.attachment else None
             })
         
         # 获取总数
@@ -105,6 +116,26 @@ class SubscriptionRepository:
         result = await self.session.exec(statement)
         return result.first() or 0
     
+    async def get_existing_broadcast_project_ids(self, article_id: int, project_ids: List[int]) -> set[int]:
+        """批量查询已广播过的订阅者项目ID"""
+        if not project_ids:
+            return set()
+        statement = select(Subscription.projectid).where(
+            Subscription.piid == article_id,
+            Subscription.projectid.in_(project_ids),
+        )
+        result = await self.session.exec(statement)
+        return set(result.all())
+
+    async def create_broadcasts_bulk(self, broadcasts: List[Subscription]) -> int:
+        """批量创建广播记录（单次 commit）"""
+        if not broadcasts:
+            return 0
+        for broadcast in broadcasts:
+            self.session.add(broadcast)
+        await self.session.commit()
+        return len(broadcasts)
+
     async def create_broadcast(self, broadcast: Subscription) -> Subscription:
         """创建广播记录"""
         self.session.add(broadcast)

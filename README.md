@@ -8,13 +8,15 @@
 
 > **分享与爬虫预览**：微信等爬虫读取首包 HTML 时的 Open Graph 注入与 `BASE_URL` 合并逻辑见 **[doc/SHARE_PREVIEW.md](doc/SHARE_PREVIEW.md)**（实现位于 `src/utils/share_preview.py`）。
 
+> **Markdown 与数学公式**：文章正文与编辑器预览支持 GFM Markdown 及本地 **KaTeX** 公式渲染（无 CDN 依赖），详见 **[doc/MARKDOWN_KATEX.md](doc/MARKDOWN_KATEX.md)**。
+
 ## 🚀 主要特性
 
 - **高性能后端**: 基于FastAPI框架，支持异步操作
 - **智能缓存系统**: Redis 可选业务缓存（`CACHE_ENABLE_CACHE`），见 [doc/README_CACHE.md](doc/README_CACHE.md)
 - **现代化前端**: Web Components架构，响应式设计
 - **用户管理系统**: 完整的用户注册、登录、资料管理
-- **博客发布系统**: 支持富文本编辑、分类管理
+- **博客发布系统**: Markdown 正文（GFM）、KaTeX 数学/化学公式、分类管理
 - **评论互动**: 实时评论系统，支持回复功能
 - **文件管理**: 安全的文件上传和头像管理
 - **智能搜索**: 基于BERT的语义搜索和向量化
@@ -35,6 +37,7 @@
 - **Web Components**: 原生组件系统
 - **现代CSS**: CSS变量、Grid、Flexbox
 - **原生JavaScript**: ES6+特性
+- **Markdown / KaTeX**: [marked](https://marked.js.org/) v9.1.6 + [KaTeX](https://katex.org/) v0.16.11（本地 `src/static/js/libs/`，含 mhchem 扩展）
 - **响应式设计**: 移动优先的设计理念
 - **Material 3**: 现代化UI设计风格
 - **前端工具**：`openConfirmDialog`、注册码格式化等说明见 [`src/static/js/utils/README.md`](src/static/js/utils/README.md)
@@ -88,6 +91,8 @@ blogn2/
 │   │   ├── blog.html            # 博客页面
 │   │   ├── css/                 # 样式文件
 │   │   └── js/                  # JavaScript文件
+│   │       ├── libs/            # 第三方前端库（marked、KaTeX 等，本地托管）
+│   │       └── utils/           # html-utils、markdown-utils 等
 │   ├── database.py              # 数据库配置
 │   └── main.py                  # 主应用入口
 ├── tests/                        # 测试目录
@@ -103,6 +108,7 @@ blogn2/
 ├── doc/                          # 文档目录
 │   ├── DATABASE_SCHEMA.md       # 数据库架构文档
 │   ├── PERMISSION_SYSTEM_README.md # 权限系统文档
+│   ├── MARKDOWN_KATEX.md        # Markdown / KaTeX 用法与第三方许可
 │   └── README_*.md              # 各种功能文档
 ├── requirements.txt              # Python依赖
 ├── .env.example                  # 环境变量模板
@@ -276,6 +282,25 @@ BlogN集成了基于BERT的智能搜索系统：
 本项目采用 BSD 3-Clause 许可证 - 查看 [BSD 3-Clause License](https://opensource.org/licenses/BSD-3-Clause) 了解详情。
 
 ### 第三方组件与致谢
+
+#### 前端 Markdown 与数学公式
+
+文章阅读（`/article/{id}`）、发表与编辑预览使用以下组件，**均 vendored 至 `src/static/js/libs/`，不引用外网 CDN**：
+
+| 组件 | 版本 | 许可 | 说明 |
+|------|------|------|------|
+| [KaTeX](https://katex.org/) | 0.16.11 | MIT | 行内/块级数学公式；资源目录 `src/static/js/libs/katex/`（含 `LICENSE` 与 `fonts/`） |
+| KaTeX mhchem | （随 KaTeX contrib） | MIT | 化学式 `\ce{}`、`\pu{}`；`mhchem.min.js` |
+| [marked](https://marked.js.org/) | 9.1.6 | MIT | GitHub 风格 Markdown；`marked.min.js` |
+
+**版权声明（摘要）**
+
+- **KaTeX**：Copyright (c) 2013-2020 Khan Academy and other contributors. 完整 MIT 许可正文见 [`src/static/js/libs/katex/LICENSE`](src/static/js/libs/katex/LICENSE)。
+- **marked**：Copyright (c) 2018+, MarkedJS (https://github.com/markedjs/marked). 许可信息见 `marked.min.js` 文件头部注释。
+
+用法、定界符示例与实现说明见 **[doc/MARKDOWN_KATEX.md](doc/MARKDOWN_KATEX.md)**。
+
+#### 其他
 
 - `.cursor/rules/analyze-pr-changes.mdc` 文件基于开源项目 [AI-PR-Reviewer-Tasks](https://github.com/holasoymalva/AI-PR-Reviewer-Tasks) 中的同名规则改编而来。原始项目由 `holasoymalva` 等贡献者维护，并在 **Apache License 2.0** 许可下发布。根据该许可条款，我们在此明确标注来源与许可证信息；完整许可证文本可参阅其仓库中的 `LICENSE` 文件或 [Apache License 2.0 官方页面](http://www.apache.org/licenses/LICENSE-2.0)。
 

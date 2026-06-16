@@ -15,9 +15,10 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: var(--layout-max-width);
             margin: 0 auto;
-            padding: 0 var(--spacing-4);
+            padding: 0 var(--layout-gutter);
+            box-sizing: border-box;
         }
 
         .page-header {
@@ -60,47 +61,33 @@
         .search-input:focus {
             outline: none;
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            box-shadow: 0 0 0 3px var(--primary-color-10);
         }
 
         .search-button,
         .clear-button {
             position: absolute;
-            right: var(--spacing-2);
-            width: 32px;
-            height: 32px;
-            border: none;
-            background: transparent;
-            color: var(--gray-500);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: var(--radius-sm);
-            transition: var(--transition-fast);
+            top: 50%;
+            transform: translateY(-50%);
         }
 
-        .search-button:hover,
-        .clear-button:hover {
-            background: var(--gray-100);
-            color: var(--gray-700);
+        .search-button {
+            right: var(--spacing-2);
         }
 
         .clear-button {
-            right: var(--spacing-10);
+            right: calc(var(--spacing-2) + var(--btn-height) + var(--spacing-1));
         }
 
-        .search-button svg,
-        .clear-button svg {
-            width: 16px;
-            height: 16px;
+        .user-actions .btn {
+            margin: 0 2px;
         }
 
         .table-container {
             background: var(--white);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--gray-200);
+            border-radius: var(--card-radius);
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--card-border);
             overflow: hidden;
         }
 
@@ -117,7 +104,7 @@
         }
 
         .table th {
-            background: var(--gray-50);
+            background: var(--card-header-bg);
             font-weight: 600;
             color: var(--gray-900);
             font-size: var(--font-size-sm);
@@ -131,7 +118,7 @@
         }
 
         .table tbody tr:hover {
-            background: var(--gray-50);
+            background: var(--interactive-hover-bg);
         }
 
         .user-id {
@@ -242,53 +229,6 @@
             white-space: nowrap;
         }
 
-        .action-button {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin: 0 2px;
-        }
-
-        .freeze-button {
-            background-color: #ef4444;
-            color: white;
-        }
-
-        .freeze-button:hover {
-            background-color: #dc2626;
-            transform: translateY(-1px);
-        }
-
-        .restore-button {
-            background-color: #10b981;
-            color: white;
-        }
-
-        .restore-button:hover {
-            background-color: #059669;
-            transform: translateY(-1px);
-        }
-
-        .action-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .reset-password-button {
-            background-color: #3b82f6;
-            color: white;
-        }
-
-        .reset-password-button:hover {
-            background-color: #2563eb;
-            transform: translateY(-1px);
-        }
-
         .modal-overlay {
             display: none;
             position: fixed;
@@ -301,8 +241,9 @@
         .modal-overlay.show { display: flex; }
         .reset-password-modal {
             background: var(--white);
-            border-radius: var(--radius-lg);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            border-radius: var(--card-radius);
+            box-shadow: var(--shadow-xl);
+            border: 1px solid var(--card-border);
             padding: var(--spacing-6);
             max-width: 420px;
             width: 90%;
@@ -315,17 +256,9 @@
         .reset-password-modal .form-input.error { border-color: var(--error-color); }
         .reset-password-modal .form-error { color: var(--error-color); font-size: var(--font-size-sm); margin-top: var(--spacing-1); display: none; }
         .reset-password-modal .form-error.show { display: block; }
-        .reset-password-modal .modal-actions { display: flex; gap: var(--spacing-3); justify-content: flex-end; margin-top: var(--spacing-6); }
-        .reset-password-modal .modal-actions button { padding: var(--spacing-2) var(--spacing-4); border-radius: var(--radius-md); font-size: var(--font-size-base); font-weight: 500; cursor: pointer; }
-        .reset-password-modal .btn-cancel { background: var(--gray-100); color: var(--gray-700); border: none; }
-        .reset-password-modal .btn-cancel:hover { background: var(--gray-200); }
-        .reset-password-modal .btn-submit { background: var(--primary-color); color: white; border: none; }
-        .reset-password-modal .btn-submit:hover:not(:disabled) { background: var(--primary-hover); }
-        .reset-password-modal .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .reset-password-modal .modal-actions { display: flex; gap: var(--spacing-3); justify-content: flex-end; margin-top: var(--spacing-6); align-items: center; }
         .suggested-password-row .suggested-password-wrap { display: flex; gap: var(--spacing-2); align-items: center; }
-        .suggested-password-row .suggested-password-wrap .form-input { flex: 1; }
-        .reset-password-modal .btn-refresh-suggested { padding: var(--spacing-2) var(--spacing-3); border-radius: var(--radius-md); font-size: var(--font-size-sm); background: var(--gray-100); color: var(--gray-700); border: 1px solid var(--gray-300); cursor: pointer; white-space: nowrap; }
-        .reset-password-modal .btn-refresh-suggested:hover { background: var(--gray-200); }
+        .suggested-password-row .form-input { flex: 1; }
 
         @keyframes slideIn {
             from {
@@ -368,18 +301,8 @@
             <div class="search-container">
                 <div class="search-box">
                     <input type="text" id="searchInput" placeholder="搜索用户名..." class="search-input">
-                    <button id="searchButton" class="search-button">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <path d="m21 21-4.35-4.35"></path>
-                        </svg>
-                    </button>
-                    <button id="clearButton" class="clear-button" style="display: none;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>
+                    <button type="button" id="searchButton" class="btn btn-secondary btn-sm btn-icon-only search-button" title="搜索" aria-label="搜索"></button>
+                    <button type="button" id="clearButton" class="btn btn-secondary btn-sm btn-icon-only clear-button" style="display: none;" title="清除" aria-label="清除"></button>
                 </div>
             </div>
 
@@ -445,12 +368,12 @@
                     <label for="resetPasswordSuggested">参考密码（可复制使用）</label>
                     <div class="suggested-password-wrap">
                         <input type="text" id="resetPasswordSuggested" class="form-input" readonly placeholder="点击刷新生成">
-                        <button type="button" class="btn-refresh-suggested" id="resetPasswordRefreshSuggested" title="重新生成">刷新</button>
+                        <button type="button" class="btn btn-secondary btn-sm btn-icon-only" id="resetPasswordRefreshSuggested" title="重新生成" aria-label="重新生成"></button>
                     </div>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn-cancel" id="resetPasswordCancel">取消</button>
-                    <button type="submit" class="btn-submit" id="resetPasswordSubmit">确认重置</button>
+                    <button type="button" class="btn btn-secondary btn-sm btn-icon-only" id="resetPasswordCancel" title="取消" aria-label="取消"></button>
+                    <button type="submit" class="btn btn-primary btn-sm" id="resetPasswordSubmit">确认重置</button>
                 </div>
             </form>
         </div>
@@ -458,16 +381,14 @@
 
     <footer-component></footer-component>
 
-        <script src="/static/js/utils/html-utils.js"></script>
-<script src="/static/js/components/base-component.js"></script>
-    <script src="/static/js/components/header-component.js"></script>
-    <script src="/static/js/components/footer-component.js"></script>
     <script src="/static/js/components/icons.js"></script>
-
-    <!-- 用户管理工具 -->
     <script src="/static/js/utils/user-manager.js"></script>
+    <script src="/static/js/utils/html-utils.js"></script>
     <script src="/static/js/utils/confirm-dialog.js"></script>
     <script src="/static/js/utils/password-validation.js"></script>
+    <script src="/static/js/components/base-component.js"></script>
+    <script src="/static/js/components/header-component.js"></script>
+    <script src="/static/js/components/footer-component.js"></script>
     <script src="/static/js/components/navigation-card.js"></script>
     <script>
         /**
@@ -710,28 +631,34 @@
              * @returns {string} 操作按钮HTML
              */
             renderUserActions(user) {
+                const iconOrText = (icon, label) =>
+                    (typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons[icon]) : label);
                 const resetBtn = `
-                    <button class="action-button reset-password-button"
+                    <button type="button" class="btn btn-primary btn-sm btn-icon-only"
                             data-user-id="${user.id}"
                             data-user-name="${this.escapeHtml(user.name)}"
-                            data-action="reset-password">
-                        重置密码
+                            data-action="reset-password"
+                            title="重置密码"
+                            aria-label="重置密码">
+                        ${iconOrText('key', '重置密码')}
                     </button>
                 `;
-                // 管理员用户只显示重置密码
                 if (user.state === 10) {
                     return resetBtn;
                 }
                 const isFrozen = user.state === 2 || user.state === 0;
                 const buttonText = isFrozen ? '恢复' : '冻结';
-                const buttonClass = isFrozen ? 'action-button restore-button' : 'action-button freeze-button';
                 const action = isFrozen ? 'restore' : 'freeze';
+                const actionIcon = isFrozen ? 'restore' : 'freeze';
+                const buttonClass = isFrozen ? 'btn btn-success btn-sm btn-icon-only' : 'btn btn-danger btn-sm btn-icon-only';
                 return `
-                    <button class="${buttonClass}"
+                    <button type="button" class="${buttonClass}"
                             data-user-id="${user.id}"
                             data-user-name="${this.escapeHtml(user.name)}"
-                            data-action="${action}">
-                        ${buttonText}
+                            data-action="${action}"
+                            title="${buttonText}"
+                            aria-label="${buttonText}">
+                        ${iconOrText(actionIcon, buttonText)}
                     </button>
                     ${resetBtn}
                 `;
@@ -800,12 +727,12 @@
              * 绑定操作按钮事件
              */
             bindActionButtons() {
-                const actionButtons = document.querySelectorAll('.action-button');
-                actionButtons.forEach(button => {
+                document.querySelectorAll('[data-action]').forEach((button) => {
                     button.addEventListener('click', (e) => {
-                        const userId = e.target.getAttribute('data-user-id');
-                        const userName = e.target.getAttribute('data-user-name');
-                        const action = e.target.getAttribute('data-action');
+                        const btn = e.currentTarget;
+                        const userId = btn.getAttribute('data-user-id');
+                        const userName = btn.getAttribute('data-user-name');
+                        const action = btn.getAttribute('data-action');
 
                         if (action === 'freeze') {
                             this.freezeUser(userId, userName);
@@ -957,7 +884,7 @@
                 } else if (type === 'error') {
                     messageDiv.style.backgroundColor = '#ef4444';
                 } else {
-                    messageDiv.style.backgroundColor = '#3b82f6';
+                    messageDiv.style.backgroundColor = 'var(--primary-color)';
                 }
 
                 // 添加到页面
@@ -1135,6 +1062,16 @@
 
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', () => {
+            if (typeof Icons !== 'undefined') {
+                const refreshBtn = document.getElementById('resetPasswordRefreshSuggested');
+                if (refreshBtn) refreshBtn.innerHTML = Icons.asBtnIcon(Icons.refresh);
+                const cancelBtn = document.getElementById('resetPasswordCancel');
+                if (cancelBtn) cancelBtn.innerHTML = Icons.asBtnIcon(Icons.close);
+                const searchBtn = document.getElementById('searchButton');
+                if (searchBtn) searchBtn.innerHTML = Icons.asBtnIcon(Icons.search);
+                const clearBtn = document.getElementById('clearButton');
+                if (clearBtn) clearBtn.innerHTML = Icons.asBtnIcon(Icons.close);
+            }
             const page = new UsersListPage();
             page.bindResetPasswordModal();
         });

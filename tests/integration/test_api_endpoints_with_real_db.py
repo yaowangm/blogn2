@@ -42,7 +42,7 @@ class TestAPIEndpointsWithRealDB:
         assert response.status_code == 404
 
     @pytest.mark.integration
-    def test_get_user_summary_with_real_db(self, test_client, real_sync_session_with_commit, test_data_tracker):
+    def test_get_user_summary_with_real_db(self, test_client, real_sync_session_with_commit):
         """测试获取用户摘要 - 使用真实数据库"""
         # 创建测试用户数据 - 不指定ID，让数据库自动生成
         user1 = User(
@@ -61,8 +61,6 @@ class TestAPIEndpointsWithRealDB:
         real_sync_session_with_commit.add(user1)
         real_sync_session_with_commit.add(user2)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        test_data_tracker.add_user(user1.id)  # 跟踪用户ID
-        test_data_tracker.add_user(user2.id)  # 跟踪用户ID
         # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/users/summary")
@@ -73,7 +71,7 @@ class TestAPIEndpointsWithRealDB:
         assert data["total_users"] >= 1  # 至少有1个用户（初始化用户）
 
     @pytest.mark.integration
-    def test_get_user_count_with_real_db(self, test_client, real_sync_session_with_commit, test_data_tracker):
+    def test_get_user_count_with_real_db(self, test_client, real_sync_session_with_commit):
         """测试获取用户总数 - 使用真实数据库"""
         # 确保有测试数据 - 不指定ID，让数据库自动生成
         user = User(
@@ -84,7 +82,6 @@ class TestAPIEndpointsWithRealDB:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/users/count")
@@ -95,7 +92,7 @@ class TestAPIEndpointsWithRealDB:
         assert data["count"] >= 1
 
     @pytest.mark.integration
-    def test_get_user_by_id_with_real_db(self, test_client, real_sync_session_with_commit, test_data_tracker):
+    def test_get_user_by_id_with_real_db(self, test_client, real_sync_session_with_commit):
         """测试根据ID获取用户 - 使用真实数据库"""
         # 使用一个已存在的用户ID进行测试
         # 查询数据库中的第一个用户
@@ -120,7 +117,7 @@ class TestAPIEndpointsWithRealDB:
         assert response.status_code == 404
 
     @pytest.mark.integration
-    def test_get_recent_blogs_with_real_db(self, test_client, real_sync_session_with_commit, test_data_tracker):
+    def test_get_recent_blogs_with_real_db(self, test_client, real_sync_session_with_commit):
         """测试获取最新博客 - 使用真实数据库"""
         # 创建测试项目 - 不指定ID，让数据库自动生成
         project = Project(
@@ -132,7 +129,6 @@ class TestAPIEndpointsWithRealDB:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        test_data_tracker.add_project(project.id)  # 跟踪项目ID
         # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/blogs/recent")
@@ -142,7 +138,7 @@ class TestAPIEndpointsWithRealDB:
         assert isinstance(data, list)
 
     @pytest.mark.integration
-    def test_get_popular_blogs_with_real_db(self, test_client, real_sync_session_with_commit, test_data_tracker):
+    def test_get_popular_blogs_with_real_db(self, test_client, real_sync_session_with_commit):
         """测试获取热门博客 - 使用真实数据库"""
         # 创建测试项目 - 不指定ID，让数据库自动生成
         project = Project(
@@ -154,7 +150,6 @@ class TestAPIEndpointsWithRealDB:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        test_data_tracker.add_project(project.id)  # 跟踪项目ID
         # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/blogs/popular")
@@ -164,7 +159,7 @@ class TestAPIEndpointsWithRealDB:
         assert isinstance(data, list)
 
     @pytest.mark.integration
-    def test_get_about_content_with_real_db(self, test_client, real_sync_session_with_commit, test_data_tracker):
+    def test_get_about_content_with_real_db(self, test_client, real_sync_session_with_commit):
         """测试获取关于内容 - 使用真实数据库"""
         # 先创建测试用户 - 不指定ID，让数据库自动生成
         user = User(
@@ -175,7 +170,6 @@ class TestAPIEndpointsWithRealDB:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         
         # 创建测试项目 - 不指定ID，让数据库自动生成
         project = Project(
@@ -187,7 +181,6 @@ class TestAPIEndpointsWithRealDB:
         )
         real_sync_session_with_commit.add(project)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        test_data_tracker.add_project(project.id)  # 跟踪项目ID
         
         # 创建测试项目项 - 使用刚创建的项目ID
         project_item = ProjectItem(
@@ -201,7 +194,6 @@ class TestAPIEndpointsWithRealDB:
         )
         real_sync_session_with_commit.add(project_item)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        test_data_tracker.add_article(project_item.id)  # 跟踪文章ID
         # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/blogs/about")
@@ -214,7 +206,7 @@ class TestAPIEndpointsWithRealDB:
         assert data["title"] == "Why Blogn"
 
     @pytest.mark.integration
-    def test_get_site_metadata_with_real_db(self, test_client, real_sync_session_with_commit, test_data_tracker):
+    def test_get_site_metadata_with_real_db(self, test_client, real_sync_session_with_commit):
         """测试获取站点元数据 - 使用真实数据库"""
         # 确保有用户数据 - 不指定ID，让数据库自动生成
         user = User(
@@ -225,7 +217,6 @@ class TestAPIEndpointsWithRealDB:
         )
         real_sync_session_with_commit.add(user)
         real_sync_session_with_commit.flush()  # 刷新以获取ID
-        test_data_tracker.add_user(user.id)  # 跟踪用户ID
         # 注意：不要调用commit()，让fixture处理事务回滚
         
         response = test_client.get("/api/metadata/")

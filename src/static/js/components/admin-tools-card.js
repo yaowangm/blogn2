@@ -21,59 +21,49 @@ class AdminToolsCard extends BaseComponent {
         this.style.display = '';
         this.shadowRoot.innerHTML = `
             <style>
-                :host { display: block; margin-bottom: var(--card-margin, 24px); }
-                .card-wrap {
-                    background: var(--card-bg, #fff);
-                    border-radius: var(--card-radius, 8px);
-                    box-shadow: var(--card-shadow, 0 1px 3px rgba(0,0,0,.1));
-                    padding: var(--card-padding, 24px);
-                    border: 1px solid var(--gray-200, #e5e7eb);
-                }
-                .card-header {
-                    margin-bottom: 16px;
-                    padding-bottom: 12px;
-                    border-bottom: 1px solid var(--gray-200, #e5e7eb);
-                }
+                @import url('/static/css/common-components.css');
+                :host { display: block; }
                 .card-title {
-                    margin: 0;
-                    font-size: 20px;
-                    font-weight: 600;
-                    color: var(--gray-800, #111827);
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-2);
+                }
+                .title-icon {
+                    width: 20px;
+                    height: 20px;
+                    color: var(--primary-color);
+                    flex-shrink: 0;
+                }
+                .title-icon svg {
+                    width: 100%;
+                    height: 100%;
+                    display: block;
                 }
                 .hint {
-                    font-size: 13px;
-                    color: var(--gray-600, #4b5563);
-                    margin-bottom: 16px;
+                    font-size: var(--font-size-sm);
+                    color: var(--gray-600);
+                    margin: 0 0 var(--spacing-3);
                     line-height: 1.5;
                 }
-                .btn-primary {
-                    background: var(--primary-color, #2563eb);
-                    color: #fff;
-                    border: none;
-                    padding: 10px 18px;
-                    border-radius: 6px;
-                    font-size: 14px;
-                    font-weight: 500;
-                    cursor: pointer;
+                .msg {
+                    margin-top: var(--spacing-3);
+                    font-size: var(--font-size-sm);
                 }
-                .btn-primary:hover:not(:disabled) {
-                    filter: brightness(0.95);
-                }
-                .btn-primary:disabled {
-                    opacity: 0.6;
-                    cursor: not-allowed;
-                }
-                .msg { margin-top: 12px; font-size: 14px; }
-                .msg.ok { color: #059669; }
-                .msg.err { color: #dc2626; }
+                .msg.ok { color: var(--success-color, #059669); }
+                .msg.err { color: var(--error-color); }
             </style>
-            <div class="card-wrap">
+            <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">管理工具</h2>
+                    <h2 class="card-title">
+                        <span class="title-icon">${Icons.settings}</span>
+                        管理工具
+                    </h2>
                 </div>
-                <p class="hint">根据每篇已发布文章的发表/编辑时间，批量重算并写回所有博客的「更新时间」字段（用于历史数据修复）。</p>
-                <button type="button" class="btn-primary" id="recalcBtn">重新计算博客的更新时间</button>
-                <div class="msg" id="recalcMsg" style="display:none;"></div>
+                <div class="card-body">
+                    <p class="hint">根据每篇已发布文章的发表/编辑时间，批量重算并写回所有博客的「更新时间」字段（用于历史数据修复）。</p>
+                    <button type="button" class="btn btn-primary btn-sm btn-icon-only" id="recalcBtn" title="重新计算博客的更新时间" aria-label="重新计算博客的更新时间">${Icons.asBtnIcon(Icons.refresh)}</button>
+                    <div class="msg" id="recalcMsg" style="display:none;"></div>
+                </div>
             </div>
         `;
 

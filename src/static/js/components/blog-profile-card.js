@@ -128,10 +128,7 @@ class BlogProfileCard extends BaseComponent {
             }
             this.projectData = projectData;
             if (projectData.userid) {
-                const userResponse = await fetch(`/api/users/${projectData.userid}`);
-                if (userResponse.ok) {
-                    this.userData = await userResponse.json();
-                }
+                this.userData = await BaseComponent.getUser(projectData.userid);
             }
         } catch (error) {
             console.error('Error loading blog profile data:', error);
@@ -148,49 +145,42 @@ class BlogProfileCard extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
+                @import url('/static/css/common-components.css');
+
                 :host {
                     display: block;
-                    font-family: var(--font-family);
                 }
 
-                .card {
-                    background: var(--white);
-                    border-radius: var(--radius-xl);
-                    box-shadow: var(--shadow-md);
-                    border: 1px solid var(--gray-200);
-                    overflow: hidden;
-                    margin-bottom: var(--card-margin);
-                    transition: all 0.2s ease;
+                .blog-profile-link {
+                    text-decoration: none;
+                    color: inherit;
+                    display: block;
                 }
 
-                .card:hover {
-                    transform: translateY(-2px);
-                    box-shadow: var(--shadow-lg);
-                    border-color: var(--primary-color);
+                .blog-profile-link:focus {
+                    outline: none;
                 }
 
-                .card-header {
-                    padding: var(--spacing-6);
-                    background: var(--gray-50);
-                    color: var(--gray-800);
-                    text-align: center;
-                    border-bottom: 1px solid var(--gray-200);
+                .profile-main {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-3);
+                    padding: var(--spacing-3) var(--spacing-4);
                 }
 
                 .user-avatar {
-                    width: 100px;
-                    height: 100px;
+                    width: 56px;
+                    height: 56px;
                     border-radius: 50%;
-                    margin: 0 auto var(--spacing-4);
+                    flex-shrink: 0;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     background: var(--gray-100);
-                    font-size: var(--font-size-3xl);
+                    font-size: var(--font-size-base);
                     font-weight: 600;
                     color: var(--gray-600);
-                    border: 3px solid var(--gray-200);
-                    box-shadow: var(--shadow-lg);
+                    border: 1px solid var(--gray-200);
                     overflow: hidden;
                 }
 
@@ -200,85 +190,61 @@ class BlogProfileCard extends BaseComponent {
                     object-fit: cover;
                 }
 
+                .profile-text {
+                    min-width: 0;
+                    flex: 1;
+                }
+
                 .blog-name {
                     margin: 0;
-                    font-size: var(--font-size-xl);
+                    font-size: var(--font-size-base);
                     font-weight: 600;
-                    color: var(--gray-800);
-                }
-
-
-
-                .card-body {
-                    padding: var(--spacing-6);
-                }
-
-                .user-info {
-                    text-align: center;
-                    margin-bottom: var(--spacing-4);
+                    color: var(--gray-900);
+                    line-height: 1.3;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
                 }
 
                 .user-name {
-                    font-size: var(--font-size-lg);
-                    font-weight: 500;
-                    color: var(--gray-800);
-                    margin: 0;
-                }
-
-                .blog-stats {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: var(--spacing-4);
-                    margin-top: var(--spacing-4);
-                }
-
-                .stat-item {
-                    text-align: center;
-                    padding: var(--spacing-3);
-                    background: var(--gray-50);
-                    border-radius: var(--radius-lg);
-                }
-
-                .stat-number {
-                    font-size: var(--font-size-xl);
-                    font-weight: 600;
-                    color: var(--primary-color);
-                    margin: 0;
-                }
-
-                .stat-label {
-                    font-size: var(--font-size-xs);
+                    margin: var(--spacing-1) 0 0;
+                    font-size: var(--font-size-sm);
+                    font-weight: 400;
                     color: var(--gray-500);
-                    margin: var(--spacing-1) 0 0 0;
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
+                    line-height: 1.3;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+
+                .profile-stats {
+                    display: flex;
+                    align-items: center;
+                    gap: var(--spacing-4);
+                    padding: var(--spacing-2) var(--spacing-4) var(--spacing-3);
+                    border-top: 1px solid var(--gray-100);
+                    font-size: var(--font-size-xs);
+                    color: var(--gray-600);
+                }
+
+                .profile-stat strong {
+                    font-weight: 600;
+                    color: var(--gray-900);
+                    margin-right: var(--spacing-1);
                 }
 
                 .loading {
                     text-align: center;
-                    padding: var(--spacing-8);
+                    padding: var(--spacing-4);
                     color: var(--gray-500);
+                    font-size: var(--font-size-sm);
                 }
 
                 .error {
                     text-align: center;
-                    padding: var(--spacing-6);
+                    padding: var(--spacing-4);
                     color: var(--error-color);
-                    background: var(--gray-50);
-                    border-radius: var(--radius-lg);
-                }
-
-
-
-                .blog-profile-link {
-                    text-decoration: none;
-                    color: inherit;
-                    display: block;
-                    cursor: pointer;
-                }
-
-                .blog-profile-link:hover {
-                    text-decoration: none;
+                    font-size: var(--font-size-sm);
                 }
             </style>
 
@@ -313,10 +279,12 @@ class BlogProfileCard extends BaseComponent {
         }
 
         const blogLink = this.projectId ? `/blog/${this.projectId}` : '#';
+        const postCount = this.projectData ? (this.projectData.recordcount || 0) : 0;
+        const commentCount = this.projectData ? (this.projectData.commentcount || 0) : 0;
         
         return `
             <a href="${blogLink}" class="blog-profile-link" title="查看博客主页" target="_blank" rel="noopener noreferrer">
-                <div class="card-header">
+                <div class="profile-main">
                     <div class="user-avatar">
                         ${avatarPath ? 
                             `<img src="${avatarPath}" alt="${safeUserName}" 
@@ -327,23 +295,14 @@ class BlogProfileCard extends BaseComponent {
                         }
                         <span style="display: ${avatarPath ? 'none' : 'flex'}; color: var(--gray-600);">${safeAvatarText}</span>
                     </div>
-                    <h2 class="blog-name">${safeBlogName}</h2>
+                    <div class="profile-text">
+                        <h2 class="blog-name">${safeBlogName}</h2>
+                        <p class="user-name">${safeUserName}</p>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="user-info">
-                        <h3 class="user-name">${safeUserName}</h3>
-                    </div>
-                    <div class="blog-stats">
-                        <div class="stat-item">
-                            <div class="stat-number">${this.projectData ? (this.projectData.recordcount || 0) : 0}</div>
-                            <div class="stat-label">文章</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-number">${this.projectData ? (this.projectData.commentcount || 0) : 0}</div>
-                            <div class="stat-label">评论</div>
-                        </div>
-                    </div>
-
+                <div class="profile-stats">
+                    <span class="profile-stat"><strong>${postCount}</strong>文章</span>
+                    <span class="profile-stat"><strong>${commentCount}</strong>评论</span>
                 </div>
             </a>
         `;

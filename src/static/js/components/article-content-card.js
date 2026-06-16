@@ -26,6 +26,9 @@ function isArticleImagePath(path) {
 }
 
 class ArticleContentCard extends BaseComponent {
+    /** 自此日期（含）起发布的文章按 Markdown 渲染；此前为纯文本 + 自动链接 */
+    static MARKDOWN_CONTENT_SINCE = '2026-03-28T00:00:00Z';
+
     constructor() {
         super();
         this.articleId = null;
@@ -93,13 +96,16 @@ class ArticleContentCard extends BaseComponent {
             return;
         }
 
-        const { content, attachment, attachments } = this.articleData;
+        const { content, attachment, attachments, created_at } = this.articleData;
+        const contentModeClass = this.usesMarkdownContent(created_at)
+            ? 'markdown-content'
+            : 'plain-text-content';
 
         this.shadowRoot.innerHTML = `
             <div class="card article-content-card">
                 <div class="card-body">
-                    <div class="article-content markdown-content">
-                        ${this.formatContent(content)}
+                    <div class="article-content ${contentModeClass}">
+                        ${this.formatContent(content, created_at)}
                     </div>
 
                     ${this.renderAllAttachments(attachment, attachments)}
@@ -109,66 +115,84 @@ class ArticleContentCard extends BaseComponent {
 
         // 在设置 innerHTML 之后添加样式
         this.addStyles();
+        if (contentModeClass === 'markdown-content') {
+            MarkdownUtils.ensureKatexStyles(this.shadowRoot);
+        }
 
         // 设置图片模态框事件监听器
         this.setupImageModalEvents();
     }
 
     /**
+     * 正文与附件渲染完成且图片加载后再返回，供评论锚点定位使用。
+     */
+    async waitForLayoutReady() {
+        await BaseComponent.waitForCustomElementReady(
+            'article-content-card',
+            (element) => Boolean(element.articleData),
+        );
+
+        if (!this.shadowRoot || !this.articleData) {
+            return;
+        }
+
+        await BaseComponent.waitForImagesInRoot(this.shadowRoot);
+    }
+
+    /**
+     * 是否按 Markdown 渲染正文（2026-03-28 及之后发表的文章）。
+     */
+    usesMarkdownContent(createdAt) {
+        if (!createdAt) {
+            return false;
+        }
+        const created = new Date(createdAt);
+        if (Number.isNaN(created.getTime())) {
+            return false;
+        }
+        const cutoff = new Date(ArticleContentCard.MARKDOWN_CONTENT_SINCE);
+        return created.getTime() >= cutoff.getTime();
+    }
+
+    /**
      * 格式化文章内容
      */
-    formatContent(content) {
+    formatContent(content, createdAt = this.articleData?.created_at) {
         if (!content) {
             return '<p class="no-content">暂无内容</p>';
         }
 
+        if (!this.usesMarkdownContent(createdAt)) {
+            return this.formatContentPlainText(content);
+        }
+
         try {
-            // 检查marked.js是否可用
-            const markedParser = typeof marked !== 'undefined' ? marked : window.marked;
-            if (!markedParser) {
-                console.warn('marked.js not available, using fallback formatting');
-                return this.formatContentFallback(content);
+            if (typeof MarkdownUtils === 'undefined') {
+                console.warn('MarkdownUtils not available, using plain text formatting');
+                return this.formatContentPlainText(content);
             }
 
-            // 配置marked.js选项（与预览功能保持一致）
-            const options = {
-                breaks: true,  // 支持换行符
-                gfm: true,     // 启用GitHub风格的Markdown
-                pedantic: false
-            };
+            const html = MarkdownUtils.parseMarkdown(content);
 
-            // 使用marked.js解析Markdown
-            const html = markedParser.parse(content, options);
-
-            // 对解析后的HTML进行安全过滤
-            const safeHtml = this.sanitizeHtml(html);
-
-            // 处理文本中的链接（包括ed2k等非标准协议），采用DOM遍历避免破坏HTML结构
-            const processedHtml = this.processTextWithLinks(safeHtml);
-
-            return processedHtml;
+            return HtmlUtils.processRichTextLinks(html);
         } catch (error) {
             this.logError('Markdown parsing failed', error);
-            // 如果Markdown解析失败，回退到原始文本处理
-            return this.formatContentFallback(content);
+            return this.formatContentPlainText(content);
         }
     }
 
     /**
-     * 回退的内容格式化方法（当Markdown解析失败时使用）
+     * 纯文本正文：转义后按行分段，仅将 URL 转为可点击链接。
      */
-    formatContentFallback(content) {
-        // 首先对内容进行HTML转义，防止XSS攻击
+    formatContentPlainText(content) {
         const escapedContent = this.escapeHtml(content);
-
-        // 将换行符转换为HTML段落
-        const paragraphs = escapedContent.split(/\r?\n/).filter(p => p.trim());
+        const paragraphs = escapedContent.split(/\r?\n/).filter((p) => p.trim());
 
         if (paragraphs.length === 0) {
             return '<p class="no-content">暂无内容</p>';
         }
 
-        return paragraphs.map(p => `<p>${this.processTextWithLinks(p)}</p>`).join('');
+        return paragraphs.map((p) => `<p>${HtmlUtils.linkifyPlainTextToHtml(p)}</p>`).join('');
     }
 
     /**
@@ -240,7 +264,7 @@ class ArticleContentCard extends BaseComponent {
                     <div class="attachment-image"
                          data-image-src="/upload/${attachment}"
                          data-image-title="">
-                        <img src="/upload/${attachment}" alt="文章附件" loading="lazy">
+                        <img src="/upload/${attachment}" alt="文章附件" loading="eager">
                     </div>
                 </div>
             `;
@@ -282,7 +306,7 @@ class ArticleContentCard extends BaseComponent {
                             <div class="attachment-image">
                                 <img src="/upload/${att.linkstr}"
                                      alt="${this.escapeHtml(att.comment || '图片附件')}"
-                                     loading="lazy"
+                                     loading="eager"
                                      title="${captionForAttr}">
                             </div>
                             <div class="attachment-comment">
@@ -451,79 +475,6 @@ class ArticleContentCard extends BaseComponent {
         });
     }
 
-
-    /**
-     * 处理文本中的链接，安全地转换为可点击的链接
-     */
-    processTextWithLinks(htmlOrText) {
-        if (!htmlOrText || typeof htmlOrText !== 'string') {
-            return '';
-        }
-        // 通用URL正则，匹配 aaa://...
-        const urlRegex = /([a-zA-Z][a-zA-Z0-9+.-]*:\/\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]+)/g;
-        // 用于测试的正则（无全局标志，避免 lastIndex 状态问题）
-        const urlTestRegex = /[a-zA-Z][a-zA-Z0-9+.-]*:\/\/[\w\-._~:/?#\[\]@!$&'()*+,;=%]+/;
-
-        // 使用DOM解析，避免正则直接切分HTML导致结构损坏
-        const container = document.createElement('div');
-        container.innerHTML = htmlOrText;
-
-        const SKIP_TAGS = new Set(['A', 'CODE', 'PRE', 'SCRIPT', 'STYLE']);
-
-        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
-            acceptNode: (node) => {
-                const parent = node.parentNode;
-                if (!parent) return NodeFilter.FILTER_REJECT;
-                let el = parent;
-                while (el && el.nodeType === 1) {
-                    if (SKIP_TAGS.has(el.nodeName)) return NodeFilter.FILTER_REJECT;
-                    el = el.parentNode;
-                }
-                // 使用无全局标志的正则进行测试，避免 lastIndex 状态问题
-                return urlTestRegex.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
-            }
-        });
-
-        const nodes = [];
-        let n;
-        while ((n = walker.nextNode())) nodes.push(n);
-
-        for (const textNode of nodes) {
-            const text = textNode.nodeValue;
-            const parts = [];
-            let lastIndex = 0;
-            text.replace(urlRegex, (match, url, offset) => {
-                if (offset > lastIndex) parts.push(document.createTextNode(text.slice(lastIndex, offset)));
-                try {
-                    if (this.isValidUrl(url)) {
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.target = '_blank';
-                        a.rel = 'noopener noreferrer';
-                        a.className = 'auto-link';
-                        a.textContent = url;
-                        parts.push(a);
-                    } else {
-                        parts.push(document.createTextNode(url));
-                    }
-                } catch (_) {
-                    parts.push(document.createTextNode(url));
-                }
-                lastIndex = offset + match.length;
-                return match;
-            });
-            if (lastIndex < text.length) parts.push(document.createTextNode(text.slice(lastIndex)));
-
-            const parent = textNode.parentNode;
-            if (parent) {
-                for (const part of parts) parent.insertBefore(part, textNode);
-                parent.removeChild(textNode);
-            }
-        }
-
-        return container.innerHTML;
-    }
-
     /**
      * 显示错误信息
      */
@@ -549,6 +500,10 @@ class ArticleContentCard extends BaseComponent {
                 @import url('/static/css/components.css');
                 .card { margin-bottom: 0; }
 
+                .card-body {
+                    padding: 20px;
+                }
+
                 :host {
                     display: block;
                     max-width: 100%;
@@ -562,10 +517,26 @@ class ArticleContentCard extends BaseComponent {
                     word-break: break-word;   /* 在必要时对长单词/连续字符串进行断行 */
                     max-width: 100%;
                 }
-                /* 对所有后代启用任意位置换行，兜底避免极端长串文本导致变形 */
-                .article-content * {
+                /* 对所有后代启用任意位置换行，兜底避免极端长串文本导致变形（排除 KaTeX） */
+                .article-content *:not(.katex):not(.katex-display):not(.math-pending) {
                     overflow-wrap: anywhere;
                     word-break: break-word;
+                }
+
+                .article-content .katex,
+                .article-content .katex-display,
+                .article-content .katex * {
+                    overflow-wrap: normal !important;
+                    word-break: normal !important;
+                }
+
+                .article-content .katex-display {
+                    display: block;
+                    margin: var(--spacing-4) 0;
+                    text-align: center;
+                    overflow-x: auto;
+                    overflow-y: hidden;
+                    max-width: 100%;
                 }
 
                 .article-content a {
@@ -577,6 +548,14 @@ class ArticleContentCard extends BaseComponent {
 
                 .article-content p {
                     text-align: justify;
+                }
+
+                .plain-text-content p {
+                    margin: 0 0 var(--spacing-3);
+                }
+
+                .plain-text-content p:last-child {
+                    margin-bottom: 0;
                 }
 
                 /* 代码块样式修复 - 防止变形并添加滚动条；移动端用 100% 避免向右溢出 */
@@ -626,7 +605,7 @@ class ArticleContentCard extends BaseComponent {
 
                 .article-attachment h3,
                 .article-attachments h3 {
-                    font-size: var(--font-size-lg);
+                    font-size: var(--font-size-base);
                     font-weight: 600;
                     color: var(--gray-700);
                     margin-bottom: var(--spacing-4);
@@ -644,7 +623,7 @@ class ArticleContentCard extends BaseComponent {
                 }
 
                 .attachment-file {
-                    padding: var(--spacing-4);
+                    padding: var(--spacing-3);
                     background-color: var(--gray-50);
                     border-radius: var(--radius-lg);
                     border: 1px solid var(--gray-200);
@@ -692,13 +671,17 @@ class ArticleContentCard extends BaseComponent {
                     background: var(--white);
                     overflow: hidden;
                     box-shadow: var(--shadow-sm);
-                    transition: box-shadow var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+                    transition:
+                        background-color var(--transition-fast),
+                        box-shadow var(--transition-fast),
+                        border-color var(--transition-fast);
                 }
 
-                .attachment-item:hover {
+                .attachment-item:hover,
+                .attachment-item:focus-within {
+                    background: var(--interactive-hover-bg);
+                    border-color: var(--interactive-hover-border, var(--gray-200));
                     box-shadow: var(--shadow-md);
-                    border-color: var(--gray-300);
-                    transform: translateY(-2px);
                 }
 
                 .attachment-item .attachment-image {
@@ -728,17 +711,18 @@ class ArticleContentCard extends BaseComponent {
                     text-align: left;
                 }
 
-                .attachment-comment,
+                .attachment-comment {
+                    border-top: 1px solid var(--gray-200);
+                    min-height: 2.75rem;
+                    font-size: var(--font-size-sm);
+                    color: var(--gray-700);
+                    line-height: 1.45;
+                }
+
                 .modal-lightbox-footer {
                     background-color: var(--gray-50);
                     border-top: 1px solid var(--gray-200);
                     min-height: 2.75rem;
-                }
-
-                .attachment-comment {
-                    font-size: var(--font-size-sm);
-                    color: var(--gray-700);
-                    line-height: 1.45;
                 }
 
                 .attachment-comment-placeholder {
@@ -825,7 +809,7 @@ class ArticleContentCard extends BaseComponent {
                     font-family: inherit;
                     font-size: var(--font-size-base);
                     line-height: 1.8;
-                    color: var(--gray-800);
+                    color: var(--gray-900);
                 }
 
                 .modal-lightbox-caption {
@@ -840,8 +824,10 @@ class ArticleContentCard extends BaseComponent {
                     flex-shrink: 0;
                     position: relative;
                     box-sizing: border-box;
-                    width: 2rem;
-                    height: 2rem;
+                    width: var(--btn-height);
+                    height: var(--btn-height);
+                    min-width: var(--btn-height);
+                    min-height: var(--btn-height);
                     margin: 0;
                     padding: 0;
                     border: none;

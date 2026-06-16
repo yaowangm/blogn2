@@ -39,6 +39,46 @@ class EditPostForm extends BaseComponent {
         this.imageDeleted = false; // 图片是否被删除
         this.maxAttachments = 10; // 最大附件数量，默认10
         this.previewMode = false; // 预览模式状态
+        this._draftCacheKey = null;
+        this._draftAutoSaver = null;
+    }
+
+    disconnectedCallback() {
+        PostFormDraftMixin.disconnected(this);
+    }
+
+    initDraftCache() {
+        const userId = UserManager.getCurrentUserId();
+        PostFormDraftMixin.init(this, PostFormDraftCache.getEditKey(userId, this.articleId));
+    }
+
+    getDraftFormData() {
+        return PostFormDraftMixin.getDraftFormData(this);
+    }
+
+    restoreDraftIfAny() {
+        const serverBaseline = PostFormDraftCache.pickDraftFields(this.formData);
+        return PostFormDraftMixin.restoreDraftIfAny(this, serverBaseline);
+    }
+
+    applyDraft(draft) {
+        PostFormDraftMixin.applyDraft(this, draft);
+    }
+
+    syncFormFieldsFromDraft(draft) {
+        PostFormDraftMixin.syncFormFieldsFromDraft(this, draft);
+    }
+
+    clearDraftCache() {
+        PostFormDraftMixin.clearDraftCache(this);
+    }
+
+    clearDraftOnSessionInvalid() {
+        PostFormDraftMixin.clearDraftOnSessionInvalid(this);
+    }
+
+    startDraftAutoSave() {
+        PostFormDraftMixin.startDraftAutoSave(this);
     }
 
     async connectedCallback() {
@@ -61,9 +101,19 @@ class EditPostForm extends BaseComponent {
         await this.loadAppConfig();
         
         await this.loadArticleData();
+        if (!this.originalArticleData) {
+            return;
+        }
+
+        this.initDraftCache();
+        const draftRestored = this.restoreDraftIfAny();
         await this.loadCategories();
         this.render();
+        if (draftRestored) {
+            PostFormDraftCache.showDraftRestoredHint(this.shadowRoot);
+        }
         this.addEventListeners();
+        this.startDraftAutoSave();
     }
 
     async loadAppConfig() {
@@ -158,9 +208,6 @@ class EditPostForm extends BaseComponent {
                 
                 // 设置项目ID
                 this.projectId = this.originalArticleData.project?.id || null;
-                
-                // 重新渲染表单以显示数据
-                this.render();
             } else {
                 this.showError('文章不存在');
             }
@@ -216,22 +263,29 @@ class EditPostForm extends BaseComponent {
         
         const editor = this.shadowRoot.querySelector('.content-editor');
         const preview = this.shadowRoot.querySelector('.content-preview');
-        const previewText = this.shadowRoot.querySelector('.preview-text');
-        const editText = this.shadowRoot.querySelector('.edit-text');
+        const previewIcon = this.shadowRoot.querySelector('.preview-icon');
+        const editIcon = this.shadowRoot.querySelector('.edit-icon');
+        const toggleBtn = this.shadowRoot.querySelector('#previewToggleBtn');
         
         if (this.previewMode) {
-            // 切换到预览模式
             editor.style.display = 'none';
             preview.style.display = 'block';
-            previewText.style.display = 'none';
-            editText.style.display = 'inline';
+            if (previewIcon) previewIcon.style.display = 'none';
+            if (editIcon) editIcon.style.display = 'inline-flex';
+            if (toggleBtn) {
+                toggleBtn.title = '返回编辑';
+                toggleBtn.setAttribute('aria-label', '返回编辑');
+            }
             this.updatePreview();
         } else {
-            // 切换到编辑模式
             editor.style.display = 'block';
             preview.style.display = 'none';
-            previewText.style.display = 'inline';
-            editText.style.display = 'none';
+            if (previewIcon) previewIcon.style.display = 'inline-flex';
+            if (editIcon) editIcon.style.display = 'none';
+            if (toggleBtn) {
+                toggleBtn.title = '预览';
+                toggleBtn.setAttribute('aria-label', '预览');
+            }
         }
     }
 
@@ -252,30 +306,17 @@ class EditPostForm extends BaseComponent {
             return;
         }
         
-        // 检查marked.js是否可用
-        if (typeof marked === 'undefined' && typeof window.marked === 'undefined') {
-            console.error('marked.js is not available');
-            previewContent.innerHTML = '<p style="color: red;">错误：Markdown解析库未加载，请刷新页面重试</p>';
+        if (typeof MarkdownUtils === 'undefined') {
+            console.error('MarkdownUtils is not available');
+            previewContent.innerHTML = '<p style="color: red;">错误：Markdown 解析库未加载，请刷新页面重试</p>';
             return;
         }
         
         try {
-            // 使用marked.js解析Markdown，优先使用全局的marked对象
-            const markedParser = typeof marked !== 'undefined' ? marked : window.marked;
-            
-            // 配置marked.js选项
-            const options = {
-                breaks: true,  // 支持换行符
-                gfm: true,     // 启用GitHub风格的Markdown
-                pedantic: false
-            };
-            
-            const html = markedParser.parse(content, options);
-            
-            // 对解析后的HTML进行安全过滤
-            const safeHtml = this.sanitizeHtml(html);
-            
-            previewContent.innerHTML = safeHtml;
+            MarkdownUtils.ensureKatexStyles(this.shadowRoot);
+            const html = MarkdownUtils.parseMarkdown(content);
+
+            previewContent.innerHTML = HtmlUtils.processRichTextLinks(html);
         } catch (error) {
             console.error('Markdown parsing failed in preview', error);
             this.logError('Markdown parsing failed in preview', error);
@@ -559,6 +600,7 @@ class EditPostForm extends BaseComponent {
         // 再次检查登录状态
         if (!UserManager.isLoggedIn()) {
             this.showError('请先登录后再编辑文章');
+            this.clearDraftOnSessionInvalid();
             this.resetSubmitState();
             return;
         }
@@ -595,12 +637,15 @@ class EditPostForm extends BaseComponent {
             const tokenManager = window.tokenManager;
             if (!tokenManager) {
                 this.showError('Token管理器未初始化，请刷新页面重试');
+                this.resetSubmitState();
                 return;
             }
 
             const token = await tokenManager.getValidAccessToken();
             if (!token) {
                 this.showError('登录状态已过期，请重新登录');
+                this.clearDraftOnSessionInvalid();
+                this.resetSubmitState();
                 return;
             }
 
@@ -633,6 +678,8 @@ class EditPostForm extends BaseComponent {
 
             if (response.ok) {
                 const result = await response.json();
+                this.clearDraftCache();
+                this._draftAutoSaver?.stop();
                 this.showSuccess(`文章修改成功！`);
                 setTimeout(() => {
                     window.location.href = `/article/${this.articleId}`;
@@ -651,6 +698,7 @@ class EditPostForm extends BaseComponent {
                 
                 if (response.status === 401) {
                     errorMessage = '登录状态已过期，请重新登录';
+                    this.clearDraftOnSessionInvalid();
                     // 清除本地存储的认证信息
                     localStorage.removeItem('access_token');
                     localStorage.removeItem('refresh_token');
@@ -837,32 +885,6 @@ class EditPostForm extends BaseComponent {
                     margin-bottom: var(--spacing-6);
                     line-height: 1.6;
                 }
-                
-                .btn {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: var(--spacing-3) var(--spacing-6);
-                    font-size: var(--font-size-sm);
-                    font-weight: 500;
-                    border-radius: var(--radius-md);
-                    border: 1px solid transparent;
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                    text-decoration: none;
-                    line-height: 1;
-                }
-                
-                .btn-primary {
-                    background-color: var(--primary-color);
-                    color: var(--white);
-                    border-color: var(--primary-color);
-                }
-                
-                .btn-primary:hover {
-                    background-color: var(--primary-hover);
-                    border-color: var(--primary-hover);
-                }
             </style>
 
             <div class="card">
@@ -934,6 +956,9 @@ class EditPostForm extends BaseComponent {
     render() {
         this.shadowRoot.innerHTML = `
             <style>
+                @import url('/static/css/common-components.css');
+                @import url('/static/css/form-components.css');
+
                 :host {
                     display: block;
                     font-family: var(--font-family);
@@ -1003,7 +1028,7 @@ class EditPostForm extends BaseComponent {
                 .form-select:focus {
                     outline: none;
                     border-color: var(--primary-color);
-                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                    box-shadow: 0 0 0 3px var(--primary-color-10);
                 }
 
                 .form-textarea {
@@ -1014,6 +1039,21 @@ class EditPostForm extends BaseComponent {
 
                 .form-textarea.large {
                     min-height: 400px;
+                }
+
+                .form-input.post-title-input {
+                    font-size: var(--font-size-xl);
+                    font-weight: 700;
+                    line-height: 1.3;
+                    color: var(--gray-900);
+                }
+
+                .form-textarea.post-content-input,
+                .content-editor.post-content-input {
+                    font-family: var(--font-family);
+                    font-size: var(--font-size-base);
+                    line-height: 1.8;
+                    color: var(--gray-800);
                 }
 
                 .form-actions {
@@ -1031,47 +1071,19 @@ class EditPostForm extends BaseComponent {
                     margin-top: var(--spacing-1);
                 }
 
-                /* 按钮样式 */
-                .btn {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: var(--spacing-3) var(--spacing-6);
-                    font-size: var(--font-size-sm);
-                    font-weight: 500;
-                    border-radius: var(--radius-md);
-                    border: 1px solid transparent;
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                    text-decoration: none;
-                    line-height: 1;
+                .draft-cache-hint {
+                    margin-bottom: var(--spacing-3);
+                    padding: var(--spacing-2) var(--spacing-3);
+                    font-size: var(--font-size-xs);
+                    color: var(--gray-600);
+                    background: var(--gray-50);
+                    border: 1px solid var(--gray-200);
+                    border-radius: var(--radius-sm);
+                    line-height: 1.4;
                 }
 
-                .btn-primary {
-                    background-color: var(--primary-color);
-                    color: var(--white);
-                    border-color: var(--primary-color);
-                }
-
-                .btn-primary:hover:not(:disabled) {
-                    background-color: var(--primary-hover);
-                    border-color: var(--primary-hover);
-                }
-
-                .btn-secondary {
-                    background-color: var(--white);
-                    color: var(--gray-700);
-                    border-color: var(--gray-300);
-                }
-
-                .btn-secondary:hover:not(:disabled) {
-                    background-color: var(--gray-50);
-                    border-color: var(--gray-400);
-                }
-
-                .btn:disabled {
-                    opacity: 0.6;
-                    cursor: not-allowed;
+                .draft-cache-hint[hidden] {
+                    display: none;
                 }
 
                 /* 消息样式 */
@@ -1132,25 +1144,6 @@ class EditPostForm extends BaseComponent {
                     align-items: center;
                 }
 
-                .btn-preview {
-                    display: inline-flex;
-                    align-items: center;
-                    padding: var(--spacing-2) var(--spacing-3);
-                    font-size: var(--font-size-xs);
-                    font-weight: 500;
-                    color: var(--primary-color);
-                    background-color: var(--white);
-                    border: 1px solid var(--primary-color);
-                    border-radius: var(--radius-sm);
-                    cursor: pointer;
-                    transition: var(--transition-fast);
-                }
-
-                .btn-preview:hover {
-                    background-color: var(--primary-color);
-                    color: var(--white);
-                }
-
                 .content-container {
                     position: relative;
                 }
@@ -1172,7 +1165,7 @@ class EditPostForm extends BaseComponent {
 
                 /* Markdown预览样式 */
                 .preview-content.markdown-content {
-                    line-height: 1.6;
+                    line-height: 1.8;
                     color: var(--gray-800);
                 }
 
@@ -1249,7 +1242,7 @@ class EditPostForm extends BaseComponent {
                     color: var(--gray-800);
                     padding: 2px 4px;
                     border-radius: var(--radius-sm);
-                    font-family: 'Consolas', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+                    font-family: var(--font-family-mono);
                     font-size: 0.9em;
                 }
 
@@ -1261,7 +1254,7 @@ class EditPostForm extends BaseComponent {
                     border-radius: var(--radius-md);
                     overflow-x: auto;
                     margin: var(--spacing-4) 0;
-                    font-family: 'Consolas', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+                    font-family: var(--font-family-mono);
                     font-size: 0.9em;
                     line-height: 1.5;
                 }
@@ -1368,31 +1361,6 @@ class EditPostForm extends BaseComponent {
                     color: var(--gray-500);
                 }
 
-                .btn-remove-image {
-                    position: absolute !important;
-                    top: 8px !important;
-                    right: 8px !important;
-                    width: 24px !important;
-                    height: 24px !important;
-                    border: none !important;
-                    background: #dc2626 !important;
-                    color: white !important;
-                    border-radius: 50% !important;
-                    cursor: pointer !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    transition: all 0.2s ease !important;
-                    z-index: 10 !important;
-                    font-size: 12px !important;
-                    font-weight: bold !important;
-                }
-
-                .btn-remove-image:hover {
-                    background: #b91c1c !important;
-                    transform: scale(1.1) !important;
-                }
-
                 .main-image-preview {
                     position: relative;
                     display: flex;
@@ -1467,17 +1435,6 @@ class EditPostForm extends BaseComponent {
                     color: var(--gray-500);
                     display: block;
                 }
-
-                .image-item .btn-remove-image {
-                    position: absolute;
-                    top: var(--spacing-1);
-                    right: var(--spacing-1);
-                    width: 20px;
-                    height: 20px;
-                    font-size: 12px;
-                    padding: 0;
-                    z-index: 10;
-                }
                 
             </style>
 
@@ -1492,6 +1449,7 @@ class EditPostForm extends BaseComponent {
                     </h2>
                 </div>
                 <div class="card-body">
+                    <div class="draft-cache-hint" hidden>草稿已经保存到本地缓存</div>
                     <div class="error-message"></div>
                     <div class="success-message"></div>
                     
@@ -1501,9 +1459,10 @@ class EditPostForm extends BaseComponent {
                             <input 
                                 type="text" 
                                 id="name" 
-                                class="form-input" 
+                                class="form-input post-title-input" 
                                 placeholder="请输入文章标题"
                                 value="${this.formData.name}"
+                                oninput="this.getRootNode().host.handleInputChange('name', this.value)"
                                 onchange="this.getRootNode().host.handleInputChange('name', this.value)"
                                 required
                             >
@@ -1514,16 +1473,16 @@ class EditPostForm extends BaseComponent {
                             <div class="form-label-container">
                                 <label class="form-label required" for="comment">文章内容</label>
                                 <div class="preview-toggle">
-                                    <button type="button" class="btn-preview" onclick="this.getRootNode().host.togglePreview()">
-                                        <span class="preview-text">预览</span>
-                                        <span class="edit-text" style="display: none;">编辑</span>
+                                    <button type="button" class="btn-preview btn-icon-only" id="previewToggleBtn" title="预览" aria-label="预览" onclick="this.getRootNode().host.togglePreview()">
+                                        <span class="preview-icon">${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.preview) : '预览'}</span>
+                                        <span class="edit-icon" style="display: none;">${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.edit) : '编辑'}</span>
                                     </button>
                                 </div>
                             </div>
                             <div class="content-container">
                                 <textarea 
                                     id="comment" 
-                                    class="form-textarea large content-editor" 
+                                    class="form-textarea large content-editor post-content-input" 
                                     placeholder="请输入文章内容..."
                                     oninput="this.getRootNode().host.handleInputChange('comment', this.value)"
                                     required
@@ -1583,8 +1542,8 @@ class EditPostForm extends BaseComponent {
                         </div>
 
                         <div class="form-actions">
-                            <button type="button" class="btn btn-secondary" onclick="this.getRootNode().host.handleCancel()">
-                                取消
+                            <button type="button" class="btn btn-secondary btn-icon-only" title="取消" aria-label="取消" onclick="this.getRootNode().host.handleCancel()">
+                                ${typeof Icons !== 'undefined' ? Icons.asBtnIcon(Icons.close) : '取消'}
                             </button>
                             <button type="submit" class="btn btn-primary" ${!this.canSubmit() ? 'disabled' : ''}>
                                 ${!this.canSubmit() ? `
@@ -1599,6 +1558,10 @@ class EditPostForm extends BaseComponent {
                 </div>
             </div>
         `;
+
+        if (typeof MarkdownUtils !== 'undefined') {
+            MarkdownUtils.ensureKatexStyles(this.shadowRoot);
+        }
         
         // 立即绑定事件监听器（因为innerHTML会清除之前的事件）
         // 使用setTimeout确保DOM更新完成后再绑定事件
