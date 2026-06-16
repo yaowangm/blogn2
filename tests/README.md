@@ -204,8 +204,9 @@ assert "expected message" in str(exc_info.value)
    - 检查 `PYTHONPATH` 设置
 
 2. **数据库连接错误**
-   - 集成测试（含 BERT 向量化）使用真实 PostgreSQL，需配置 `DATABASE_URL`
-   - 确保测试环境变量正确设置
+   - 集成测试使用 PostgreSQL；`.env` 中的 `DATABASE_URL` 仅用于解析连接信息
+   - `pytest` 启动时会自动 `CREATE DATABASE blogn_pytest_<pid>`、初始化表结构，结束后 `DROP`
+   - 勿将生产库名当作测试目标；调试旧行为可设 `BLOGN_SKIP_TEST_DB_LIFECYCLE=1`（慎用）
 
 3. **异步测试失败**
    - 使用 `@pytest.mark.asyncio` 装饰器

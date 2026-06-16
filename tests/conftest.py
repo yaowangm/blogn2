@@ -256,7 +256,7 @@ def cleanup_test_data_by_ids(tracker: TestDataTracker):
     from sqlalchemy import create_engine as create_sync_engine
 
     # 创建同步引擎
-    sync_engine = create_sync_engine(REAL_SYNC_DATABASE_URL, echo=False)
+    sync_engine = create_sync_engine(get_sync_database_url(), echo=False)
 
     try:
         with sync_engine.connect() as conn:
@@ -587,13 +587,34 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-# 使用真实的PostgreSQL数据库进行集成测试
-# 必须从环境变量获取数据库URL，不允许硬编码密码
-REAL_DATABASE_URL = os.getenv("DATABASE_URL")
-if not REAL_DATABASE_URL:
-    raise ValueError("DATABASE_URL 环境变量未设置，请在 .env 文件中配置数据库连接信息")
+def get_database_url() -> str:
+    """当前 pytest 会话使用的数据库 URL（configure 后为临时测试库）。"""
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        raise ValueError("DATABASE_URL 环境变量未设置，请在 .env 文件中配置数据库连接信息")
+    return url
 
-REAL_SYNC_DATABASE_URL = REAL_DATABASE_URL.replace("+asyncpg", "+psycopg2")
+
+def get_sync_database_url() -> str:
+    return get_database_url().replace("+asyncpg", "+psycopg2")
+
+
+def pytest_configure(config):
+    """pytest 启动时创建独立临时库，避免写入 .env 中的生产库。"""
+    if os.getenv("BLOGN_SKIP_TEST_DB_LIFECYCLE", "").strip().lower() in ("1", "true", "yes"):
+        return
+    from tests.db_lifecycle import provision_test_database
+
+    provision_test_database()
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """pytest 结束时删除临时测试库。"""
+    if os.getenv("BLOGN_SKIP_TEST_DB_LIFECYCLE", "").strip().lower() in ("1", "true", "yes"):
+        return
+    from tests.db_lifecycle import destroy_test_database
+
+    destroy_test_database()
 
 @pytest.fixture(scope="session")
 def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
@@ -610,7 +631,7 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 def real_async_engine():
     """创建真实PostgreSQL异步引擎 - 每个测试独立"""
     engine = create_async_engine(
-        REAL_DATABASE_URL,
+        get_database_url(),
         echo=False,  # 测试时不显示SQL
         future=True,
         pool_pre_ping=True,  # 连接前检查
@@ -654,7 +675,7 @@ def real_async_engine():
 def real_sync_engine():
     """创建真实PostgreSQL同步引擎 - 每个测试独立"""
     engine = create_engine(
-        REAL_SYNC_DATABASE_URL,
+        get_sync_database_url(),
         echo=False,  # 测试时不显示SQL
         future=True,
         pool_pre_ping=True,  # 连接前检查
@@ -897,7 +918,7 @@ def setup_test_env():
     original_database_url = os.environ.get("DATABASE_URL")
 
     # 设置测试数据库URL
-    os.environ["DATABASE_URL"] = REAL_DATABASE_URL
+    os.environ["DATABASE_URL"] = get_database_url()
 
     yield
 

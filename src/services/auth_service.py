@@ -10,14 +10,11 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from fastapi import HTTPException, status
 import os
-from passlib.context import CryptContext
+from src.utils.password_hash import bcrypt_hash, bcrypt_verify
 from sqlmodel import select
 
 from src.models.user import User
 from src.repositories.user_repository import UserRepository
-
-# 创建密码上下文
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class AuthService:
     """JWT认证服务"""
@@ -41,16 +38,16 @@ class AuthService:
             # 检查是否是bcrypt格式
             if stored_hash.startswith('$2b$') and len(stored_hash) == 60:
                 # 尝试直接验证（旧格式）
-                if pwd_context.verify(plain_password, stored_hash):
+                if bcrypt_verify(plain_password, stored_hash):
                     return True
                 
                 # 如果不是直接验证，尝试MD5+bcrypt双重哈希（新格式）
                 md5_hash = hashlib.md5(plain_password.encode()).hexdigest()
-                return pwd_context.verify(md5_hash, stored_hash)
+                return bcrypt_verify(md5_hash, stored_hash)
             else:
                 # 非bcrypt格式，尝试MD5+bcrypt双重哈希
                 md5_hash = hashlib.md5(plain_password.encode()).hexdigest()
-                return pwd_context.verify(md5_hash, stored_hash)
+                return bcrypt_verify(md5_hash, stored_hash)
         except Exception:
             return False
     
@@ -60,7 +57,7 @@ class AuthService:
         用于新用户注册或密码修改
         """
         md5_hash = hashlib.md5(password.encode()).hexdigest()
-        return pwd_context.hash(md5_hash)
+        return bcrypt_hash(md5_hash)
     
     async def authenticate_user(self, username_or_email: str, password: str, client_ip: str) -> Optional[User]:
         """
