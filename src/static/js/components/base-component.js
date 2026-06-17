@@ -639,14 +639,6 @@ class BaseComponent extends HTMLElement {
     }
 
     /**
-     * 验证图片src是否安全
-     */
-    isValidImageSrc(src) {
-        return HtmlUtils.isValidImageSrc(src);
-    }
-
-
-    /**
      * 移除Markdown标记，返回纯文本
      * 用于在摘要列表中显示纯文本内容
      * 高性能版本：使用预编译正则表达式和优化的处理流程

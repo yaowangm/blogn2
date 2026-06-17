@@ -63,7 +63,7 @@ class HtmlUtils {
             lineStart: /^(#{1,6}\s+|>\s*|[\s]*[-*+]\s+|[\s]*\d+\.\s+|[-*_]{3,}$)/gm,
             // 内联格式（粗体、斜体、删除线、行内代码）
             inline: /(\*\*([^*]+)\*\*|\*([^*]+)\*|__([^_]+)__|_([^_]+)_|~~([^~]+)~~|`([^`]+)`)/g,
-            // 链接和图片
+            // 链接
             links: /!?\[([^\]]*)\]\([^)]+\)/g,
             // 表格分隔符
             table: /\|/g,
@@ -88,7 +88,7 @@ class HtmlUtils {
             return p2 || p3 || p4 || p5 || p6 || p7 || '';
         });
         
-        // 4. 处理链接和图片
+        // 4. 处理链接
         result = result.replace(patterns.links, '$1');
         
         // 5. 清理表格和空白字符
@@ -366,20 +366,6 @@ class HtmlUtils {
     }
 
     /**
-     * 验证图片src是否安全
-     * @param {string} src - 要验证的图片src
-     * @returns {boolean} 是否安全
-     */
-    static isValidImageSrc(src) {
-        try {
-            const urlObj = new URL(src);
-            return ['http:', 'https:'].includes(urlObj.protocol);
-        } catch {
-            return false;
-        }
-    }
-
-    /**
      * 安全的HTML过滤，防止XSS攻击
      * @param {string} html - 要过滤的HTML
      * @returns {string} 过滤后的安全HTML
@@ -407,7 +393,7 @@ class HtmlUtils {
             'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
             'ul', 'ol', 'li',
             'blockquote', 'pre', 'code',
-            'a', 'img',
+            'a',
             'table', 'thead', 'tbody', 'tr', 'th', 'td',
             'hr', 'div', 'span'
         ];
@@ -442,11 +428,6 @@ class HtmlUtils {
                                     newElement.setAttribute('target', '_blank');
                                     newElement.setAttribute('rel', 'noopener noreferrer');
                                 }
-                            }
-                        } else if (attrName === 'src') {
-                            const src = attr.value;
-                            if (this.isValidImageSrc(src)) {
-                                newElement.setAttribute('src', src);
                             }
                         } else {
                             newElement.setAttribute(attrName, this.escapeHtml(attr.value));

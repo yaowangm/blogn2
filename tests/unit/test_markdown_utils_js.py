@@ -44,6 +44,13 @@ class TestMarkdownUtilsJs:
         assert "renderToString" in content
         assert "output: 'html'" in content
         assert 'data-math-idx' in content
+        html_utils = (PROJECT_ROOT / "src" / "static" / "js" / "utils" / "html-utils.js").read_text(
+            encoding="utf-8"
+        )
+        assert "isValidImageSrc" not in html_utils
+        assert "'img'" not in html_utils
+        base_component = BASE_COMPONENT_JS.read_text(encoding="utf-8")
+        assert "isValidImageSrc" not in base_component
 
     def test_components_use_markdown_utils(self):
         for path in (ARTICLE_CONTENT_CARD_JS, BASE_COMPONENT_JS):
@@ -76,7 +83,6 @@ class TestMarkdownUtilsJs:
             "1. 第一件事",
             "- [x] 已完成的任务",
             "| 类型 | 示例 | 说明 |",
-            "![示例图片](https://picsum.photos/640/360)",
             "```js",
             "$E=mc^2$",
             "\\int_{-\\infty}^{\\infty}",
@@ -86,3 +92,4 @@ class TestMarkdownUtilsJs:
         ]
         for example in examples:
             assert example in doc
+        assert "![示例图片]" not in doc
