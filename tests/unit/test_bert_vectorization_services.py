@@ -297,6 +297,71 @@ class TestVectorizationUpdateService:
         assert result == "[1.0, 2.0, 3.0]"
 
     @pytest.mark.asyncio
+    async def test_process_long_text_uses_batch_vectorization(self, update_service):
+        """长文本片段应批量向量化，避免逐片段调用模型。"""
+        segments = [
+            {"text": "第一段有效内容", "length": 6, "start_pos": 0, "end_pos": 6},
+            {"text": "第二段有效内容", "length": 6, "start_pos": 6, "end_pos": 12},
+        ]
+        update_service._split_text_with_sliding_window = MagicMock(return_value=segments)
+
+        vectorization_service = AsyncMock()
+        vectors = [np.array([1.0, 0.0]), np.array([0.0, 1.0])]
+        vectorization_service.vectorize_batch = AsyncMock(return_value=vectors)
+        vectorization_service.vectorize_text = AsyncMock()
+
+        result = await update_service._process_long_text(
+            "这是一段足够长的文本，用来触发分段处理和批量向量化路径。" * 2,
+            vectorization_service,
+        )
+
+        assert len(result) == 2
+        vectorization_service.vectorize_batch.assert_awaited_once_with([
+            "第一段有效内容",
+            "第二段有效内容",
+        ])
+        vectorization_service.vectorize_text.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_save_content_segments_uses_bulk_insert(self, update_service, mock_session):
+        """保存片段时应删除一次、批量插入一次。"""
+        segments = [
+            {
+                "index": 0,
+                "text": "第一段有效内容",
+                "vector": np.array([1.0, 0.0]),
+                "length": 6,
+                "start_pos": 0,
+                "end_pos": 6,
+                "confidence_score": 1.0,
+                "semantic_density": 0.5,
+                "keyword_density": 0.1,
+                "is_key_segment": False,
+            },
+            {
+                "index": 1,
+                "text": "第二段有效内容",
+                "vector": np.array([0.0, 1.0]),
+                "length": 6,
+                "start_pos": 6,
+                "end_pos": 12,
+                "confidence_score": 1.0,
+                "semantic_density": 0.6,
+                "keyword_density": 0.2,
+                "is_key_segment": True,
+            },
+        ]
+
+        await update_service._save_content_segments(123, segments)
+
+        assert mock_session.execute.await_count == 2
+        insert_call = mock_session.execute.await_args_list[1]
+        rows = insert_call.args[1]
+        assert len(rows) == 2
+        assert rows[0]["article_vector_id"] == 123
+        assert rows[1]["segment_index"] == 1
+
+    @pytest.mark.asyncio
     async def test_should_skip_segment(self, update_service):
         """测试段落跳过逻辑"""
         # 应该跳过的段落

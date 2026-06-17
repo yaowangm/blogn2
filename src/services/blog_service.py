@@ -21,8 +21,12 @@ class BlogService(BaseService):
         self.project_repo = project_repo
         self.post_repo = post_repo
         self.glovar_repo = glovar_repo
+        self._avatar_exists_cache: dict[int, str | None] = {}
+
     def _check_avatar_exists(self, userid: int) -> str | None:
-        return check_avatar_exists(userid)
+        if userid not in self._avatar_exists_cache:
+            self._avatar_exists_cache[userid] = check_avatar_exists(userid)
+        return self._avatar_exists_cache[userid]
     
     async def get_recent_blogs(self, limit: int = 10) -> List[Dict[str, Any]]:
         """获取最新加入的博客（按创建时间倒序）"""

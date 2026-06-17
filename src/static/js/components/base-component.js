@@ -145,7 +145,10 @@ class BaseComponent extends HTMLElement {
             return BaseComponent.waitForLayoutSettle();
         }
 
-        const images = [...root.querySelectorAll('img')];
+        const images = [...root.querySelectorAll('img')].filter((img) => {
+            const rect = img.getBoundingClientRect();
+            return rect.width > 0 || rect.height > 0 || img.offsetParent !== null;
+        });
         images.forEach((img) => {
             if (!img.complete && img.loading === 'lazy') {
                 img.loading = 'eager';
@@ -159,17 +162,31 @@ class BaseComponent extends HTMLElement {
 
         return new Promise((resolve) => {
             let settled = 0;
+            const cleanups = [];
+            let resolved = false;
+            const done = () => {
+                if (resolved) {
+                    return;
+                }
+                resolved = true;
+                clearTimeout(timer);
+                cleanups.forEach((cleanup) => cleanup());
+                resolve();
+            };
             const finish = () => {
                 settled += 1;
                 if (settled >= pending.length) {
-                    clearTimeout(timer);
-                    resolve();
+                    done();
                 }
             };
-            const timer = setTimeout(resolve, timeoutMs);
+            const timer = setTimeout(done, timeoutMs);
             pending.forEach((img) => {
                 img.addEventListener('load', finish, { once: true });
                 img.addEventListener('error', finish, { once: true });
+                cleanups.push(() => {
+                    img.removeEventListener('load', finish);
+                    img.removeEventListener('error', finish);
+                });
             });
         }).then(() => BaseComponent.waitForLayoutSettle());
     }

@@ -278,12 +278,9 @@ class HierarchicalSearchService:
                     'title' as segment_type,
                     1.2 as segment_weight  -- 标题片段权重更高
                 FROM article_vectors av
+                JOIN projectitem pi_title ON av.projectitem_id = pi_title.id
                 WHERE av.title_vector IS NOT NULL
-                AND av.projectitem_id IN (
-                    SELECT DISTINCT av2.projectitem_id FROM article_vectors av2
-                    LEFT JOIN projectitem pi2 ON av2.projectitem_id = pi2.id
-                    WHERE pi2.status = 1
-                )
+                AND pi_title.status = 1
 
                 UNION ALL
 
@@ -349,9 +346,11 @@ class HierarchicalSearchService:
             LIMIT :batch_limit OFFSET :batch_offset
         """)
 
-        # 过量拉取再过滤，保证每页返回固定条数：每批取 batch_size 条，过滤后累积；拉取到无更多数据为止，用实际有效条数作 total
-        # batch_size 上限用于避免外部传入较大 limit 时 DB 批量拉取过大
-        batch_size = max(min(limit * 5, 250), 50)
+        # 过量拉取再过滤，保证每页返回固定条数。调用方给 max_items 时，一次最多拉取整个候选池，
+        # 避免对同一大 CTE 做多轮 LIMIT/OFFSET 重扫。
+        requested_end = page * limit
+        target_batch = max_items if max_items is not None else limit * 5
+        batch_size = max(min(target_batch, 250), requested_end, 50)
         all_valid: List[Dict[str, Any]] = []
         batch_offset = 0
         sql_params = {

@@ -27,7 +27,7 @@ from typing import List, Dict, Any, Optional
 
 import numpy as np
 from fastapi import FastAPI
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.services.vectorization_service import BERTVectorizationService
@@ -315,12 +315,12 @@ class VectorizationUpdateService:
         success_count = 0
         failed_count = 0
         failed_articles = []
-        
-        
+        articles_by_id = await self._get_articles_info(article_ids)
+
         for article_id in article_ids:
             try:
                 # 获取文章信息
-                article_info = await self._get_article_info(article_id)
+                article_info = articles_by_id.get(article_id)
                 if not article_info:
                     failed_count += 1
                     failed_articles.append(article_id)
@@ -352,6 +352,31 @@ class VectorizationUpdateService:
         }
         
         return result
+
+    async def _get_articles_info(self, article_ids: List[int]) -> Dict[int, Dict]:
+        """批量获取文章信息，保持 batch_update_articles 的逐项处理语义。"""
+        if not article_ids:
+            return {}
+        try:
+            unique_ids = list(dict.fromkeys(article_ids))
+            query = text("""
+                SELECT id, name, comment
+                FROM projectitem
+                WHERE id IN :article_ids
+            """).bindparams(bindparam("article_ids", expanding=True))
+
+            result = await self.session.execute(query, {"article_ids": unique_ids})
+            return {
+                row[0]: {
+                    "id": row[0],
+                    "name": row[1],
+                    "comment": row[2],
+                }
+                for row in result.fetchall()
+            }
+        except Exception as e:
+            logger.error(f"批量获取文章信息失败: {e}")
+            return {}
     
     async def _get_article_info(self, article_id: int) -> Optional[Dict]:
         """获取文章信息"""
@@ -465,8 +490,7 @@ class VectorizationUpdateService:
         # 使用滑动窗口分割文本
         segments = self._split_text_with_sliding_window(text)
         
-        # 向量化每个片段
-        segment_results = []
+        vectorizable_segments = []
         skipped_count = 0
         
         for i, segment in enumerate(segments):
@@ -475,9 +499,33 @@ class VectorizationUpdateService:
                 skipped_count += 1
                 logger.debug(f"跳过段落 {i}: '{segment['text'][:50]}...' (长度: {len(segment['text'])})")
                 continue
-                
+
+            vectorizable_segments.append((i, segment))
+
+        segment_results = []
+        if vectorizable_segments:
+            texts = [segment['text'] for _, segment in vectorizable_segments]
             try:
-                vector = await vectorization_service.vectorize_text(segment['text'])
+                if hasattr(vectorization_service, 'vectorize_batch'):
+                    vectors = await vectorization_service.vectorize_batch(texts)
+                else:
+                    vectors = [
+                        await vectorization_service.vectorize_text(segment['text'])
+                        for _, segment in vectorizable_segments
+                    ]
+            except Exception as e:
+                logger.warning(f"批量片段向量化失败，回退为逐片段处理: {e}")
+                vectors = []
+                for i, segment in vectorizable_segments:
+                    try:
+                        vectors.append(await vectorization_service.vectorize_text(segment['text']))
+                    except Exception as segment_error:
+                        logger.warning(f"片段 {i} 向量化失败: {segment_error}")
+                        vectors.append(None)
+
+            for (i, segment), vector in zip(vectorizable_segments, vectors):
+                if vector is None:
+                    continue
                 segment_results.append({
                     'index': i,
                     'text': segment['text'],
@@ -490,9 +538,6 @@ class VectorizationUpdateService:
                     'semantic_density': self._calculate_semantic_density(segment['text']),
                     'keyword_density': self._calculate_keyword_density(segment['text'])
                 })
-            except Exception as e:
-                logger.warning(f"片段 {i} 向量化失败: {e}")
-                continue
         
         if skipped_count > 0:
             logger.info(f"跳过了 {skipped_count} 个无效段落（长度<3或纯标点符号）")
@@ -728,29 +773,26 @@ class VectorizationUpdateService:
             """)
             await self.session.execute(delete_query, {"article_vector_id": article_vector_id})
             
-            # 插入新的片段向量
-            for segment in segments:
-                segment_vector_json = self._vector_to_json(segment['vector'])
-                
-                insert_query = text("""
-                    INSERT INTO content_segment_vectors (
-                        article_vector_id, segment_index, segment_text, segment_vector,
-                        segment_length, start_char_pos, end_char_pos,
-                        confidence_score, semantic_density, keyword_density,
-                        is_key_segment, segment_type, created_at
-                    ) VALUES (
-                        :article_vector_id, :segment_index, :segment_text, :segment_vector,
-                        :segment_length, :start_char_pos, :end_char_pos,
-                        :confidence_score, :semantic_density, :keyword_density,
-                        :is_key_segment, :segment_type, :created_at
-                    )
-                """)
-                
-                await self.session.execute(insert_query, {
+            insert_query = text("""
+                INSERT INTO content_segment_vectors (
+                    article_vector_id, segment_index, segment_text, segment_vector,
+                    segment_length, start_char_pos, end_char_pos,
+                    confidence_score, semantic_density, keyword_density,
+                    is_key_segment, segment_type, created_at
+                ) VALUES (
+                    :article_vector_id, :segment_index, :segment_text, :segment_vector,
+                    :segment_length, :start_char_pos, :end_char_pos,
+                    :confidence_score, :semantic_density, :keyword_density,
+                    :is_key_segment, :segment_type, :created_at
+                )
+            """)
+            now = TimeUtils.now_utc()
+            rows = [
+                {
                     "article_vector_id": article_vector_id,
                     "segment_index": segment['index'],
                     "segment_text": segment['text'],
-                    "segment_vector": segment_vector_json,
+                    "segment_vector": self._vector_to_json(segment['vector']),
                     "segment_length": segment['length'],
                     "start_char_pos": segment['start_pos'],
                     "end_char_pos": segment['end_pos'],
@@ -759,8 +801,12 @@ class VectorizationUpdateService:
                     "keyword_density": segment['keyword_density'],
                     "is_key_segment": segment['is_key_segment'],
                     "segment_type": "body",
-                    "created_at": TimeUtils.now_utc()
-                })
+                    "created_at": now
+                }
+                for segment in segments
+            ]
+            if rows:
+                await self.session.execute(insert_query, rows)
         except Exception as e:
             logger.error(f"保存文章 {article_vector_id} 片段向量失败: {e}")
             # 重新抛出异常，让上层处理事务回滚

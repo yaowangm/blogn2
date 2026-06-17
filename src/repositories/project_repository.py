@@ -159,13 +159,16 @@ class ProjectRepository:
         Returns:
             bool: 更新是否成功
         """
-        project = await self.get_by_id(project_id)
-        if project:
-            project.commentcount = (project.commentcount or 0) + 1
-            await self.session.commit()
-            await self.session.refresh(project)
-            return True
-        return False
+        result = await self.session.execute(
+            update(Project)
+            .where(Project.id == project_id)
+            .values(commentcount=func.coalesce(Project.commentcount, 0) + 1)
+            .execution_options(synchronize_session=False)
+        )
+        if (result.rowcount or 0) <= 0:
+            return False
+        await self.session.commit()
+        return True
     
     async def decrement_comment_count(self, project_id: int) -> bool:
         """
@@ -177,13 +180,16 @@ class ProjectRepository:
         Returns:
             bool: 更新是否成功
         """
-        project = await self.get_by_id(project_id)
-        if project and project.commentcount > 0:
-            project.commentcount -= 1
-            await self.session.commit()
-            await self.session.refresh(project)
-            return True
-        return False
+        result = await self.session.execute(
+            update(Project)
+            .where(Project.id == project_id, func.coalesce(Project.commentcount, 0) > 0)
+            .values(commentcount=func.greatest(func.coalesce(Project.commentcount, 0) - 1, 0))
+            .execution_options(synchronize_session=False)
+        )
+        if (result.rowcount or 0) <= 0:
+            return False
+        await self.session.commit()
+        return True
 
     async def update_project(self, project_id: int, update_data: dict) -> Optional[Project]:
         """
@@ -226,16 +232,15 @@ class ProjectRepository:
             bool: 更新是否成功
         """
         try:
-            # 使用SQLModel的方式更新，避免原始SQL的同步问题
-            from src.utils.time_utils import TimeUtils
-            
-            project = await self.get_by_id(project_id)
-            if project:
-                project.accesscount = (project.accesscount or 0) + 1
-                self.session.add(project)
-                await self.session.commit()
-                return True
-            else:
+            result = await self.session.execute(
+                update(Project)
+                .where(Project.id == project_id)
+                .values(accesscount=func.coalesce(Project.accesscount, 0) + 1)
+                .execution_options(synchronize_session=False)
+            )
+            if (result.rowcount or 0) <= 0:
                 return False
+            await self.session.commit()
+            return True
         except Exception as e:
             return False

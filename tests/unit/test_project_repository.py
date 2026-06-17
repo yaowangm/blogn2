@@ -129,6 +129,25 @@ class TestProjectRepository:
         result = await project_repository.get_by_id(999)
         
         assert result is None
+
+    @pytest.mark.unit
+    async def test_increment_access_count_uses_atomic_update(self, project_repository, mock_session):
+        """访问计数应使用原子 UPDATE，避免读改写丢增量。"""
+        mock_session.execute = AsyncMock(return_value=MagicMock(rowcount=1))
+
+        result = await project_repository.increment_access_count(7)
+
+        assert result is True
+        mock_session.execute.assert_awaited_once()
+        mock_session.commit.assert_awaited_once()
+        sql = str(mock_session.execute.await_args.args[0].compile(dialect=postgresql.dialect()))
+        assert "UPDATE project" in sql
+        assert "accesscount" in sql
+        assert (
+            mock_session.execute.await_args.args[0]
+            .get_execution_options()["synchronize_session"]
+            is False
+        )
     
     @pytest.mark.unit
     async def test_get_by_user_id_with_limit(self, project_repository, mock_session, sample_project):

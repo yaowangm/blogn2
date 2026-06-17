@@ -201,7 +201,7 @@ class CacheManager:
             cursor = 0
             deleted_count = 0
             while True:
-                cursor, keys = await self._backend.redis.scan(cursor, match=pattern, count=100)
+                cursor, keys = await self._backend.redis.scan(cursor, match=pattern, count=1000)
                 if keys:
                     await self._backend.redis.delete(*keys)
                     deleted_count += len(keys)
@@ -709,11 +709,13 @@ async def invalidate_project_post_list_caches(
     if owner_user_id is not None:
         patterns.append(f"user:projects:{owner_user_id}")
 
-    for pattern in patterns:
+    async def clear_one(pattern: str) -> None:
         try:
             await cache_manager.clear_pattern(pattern)
         except Exception as e:
             logger.warning("清除缓存模式失败 %s: %s", pattern, e)
+
+    await asyncio.gather(*(clear_one(pattern) for pattern in patterns))
 
 
 async def invalidate_site_recent_comments_cache() -> None:
@@ -744,15 +746,19 @@ async def invalidate_project_recent_comments_cache(project_id: int) -> None:
         return
     if not cache_manager.is_available():
         return
-    for pattern in (
+    patterns = (
         f"project:comments:{project_id}:*",
         f"project:detail:{project_id}",
         f"project:stats:{project_id}",
-    ):
+    )
+
+    async def clear_one(pattern: str) -> None:
         try:
             await cache_manager.clear_pattern(pattern)
         except Exception as e:
             logger.warning("清除缓存模式失败 %s: %s", pattern, e)
+
+    await asyncio.gather(*(clear_one(pattern) for pattern in patterns))
     await invalidate_site_recent_comments_cache()
 
 
@@ -785,11 +791,14 @@ async def invalidate_blog_directory_caches(user_id: int) -> None:
     if not cache_manager.is_available():
         return
     patterns = ["blog:list:*", "metadata:*", f"user:projects:{user_id}"]
-    for pattern in patterns:
+
+    async def clear_one(pattern: str) -> None:
         try:
             await cache_manager.clear_pattern(pattern)
         except Exception as e:
             logger.warning("清除缓存模式失败 %s: %s", pattern, e)
+
+    await asyncio.gather(*(clear_one(pattern) for pattern in patterns))
 
 
 # ==================== 缓存统计 ====================

@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
+from sqlalchemy.dialects import postgresql
 from sqlmodel import select, func
 from src.repositories.project_item_repository import ProjectItemRepository
 from src.models.project_item import ProjectItem
@@ -62,6 +63,39 @@ class TestProjectItemRepository:
         result = await project_item_repository.get_by_id(999)
         
         assert result is None
+
+    @pytest.mark.unit
+    async def test_increment_access_count_uses_atomic_updates(
+        self, project_item_repository, mock_session
+    ):
+        """文章访问计数和博客访问计数应在一次提交中原子递增。"""
+        mock_session.execute = AsyncMock(return_value=MagicMock(rowcount=1))
+
+        result = await project_item_repository.increment_access_count(11, project_id=22)
+
+        assert result is True
+        assert mock_session.execute.await_count == 2
+        mock_session.commit.assert_awaited_once()
+        first_sql = str(
+            mock_session.execute.await_args_list[0].args[0].compile(
+                dialect=postgresql.dialect()
+            )
+        )
+        second_sql = str(
+            mock_session.execute.await_args_list[1].args[0].compile(
+                dialect=postgresql.dialect()
+            )
+        )
+        assert "UPDATE projectitem" in first_sql
+        assert "accesscount" in first_sql
+        assert (
+            mock_session.execute.await_args_list[0]
+            .args[0]
+            .get_execution_options()["synchronize_session"]
+            is False
+        )
+        assert "UPDATE project" in second_sql
+        assert "accesscount" in second_sql
     
     @pytest.mark.unit
     async def test_get_latest_posts_success(self, project_item_repository, mock_session, sample_project_item):

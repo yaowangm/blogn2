@@ -1,5 +1,5 @@
 from sqlmodel import select, func
-from sqlalchemy import or_
+from sqlalchemy import or_, update
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional
 from src.models.project_item import ProjectItem
@@ -373,19 +373,27 @@ class ProjectItemRepository:
             bool: 更新是否成功
         """
         project_item = await self.get_by_id(project_item_id)
-        if project_item:
-            # 增加项目项的评论数
-            project_item.commentcount = (project_item.commentcount or 0) + 1
-            await self.session.commit()
-            await self.session.refresh(project_item)
-            
-            # 同时更新对应项目的评论数
-            from src.repositories.project_repository import ProjectRepository
-            project_repo = ProjectRepository(self.session)
-            await project_repo.increment_comment_count(project_item.projectid)
-            
-            return True
-        return False
+        if not project_item:
+            return False
+
+        await self.session.execute(
+            update(ProjectItem)
+            .where(ProjectItem.id == project_item_id)
+            .values(commentcount=func.coalesce(ProjectItem.commentcount, 0) + 1)
+            .execution_options(synchronize_session=False)
+        )
+
+        if project_item.projectid:
+            from src.models.project import Project
+            await self.session.execute(
+                update(Project)
+                .where(Project.id == project_item.projectid)
+                .values(commentcount=func.coalesce(Project.commentcount, 0) + 1)
+                .execution_options(synchronize_session=False)
+            )
+
+        await self.session.commit()
+        return True
     
     async def decrement_comment_count(self, project_item_id: int) -> bool:
         """
@@ -398,37 +406,53 @@ class ProjectItemRepository:
             bool: 更新是否成功
         """
         project_item = await self.get_by_id(project_item_id)
-        if project_item and project_item.commentcount > 0:
-            project_item.commentcount -= 1
-            await self.session.commit()
-            await self.session.refresh(project_item)
-            
-            # 同时更新对应项目的评论数
-            from src.repositories.project_repository import ProjectRepository
-            project_repo = ProjectRepository(self.session)
-            await project_repo.decrement_comment_count(project_item.projectid)
-            
-            return True
-        return False
+        if not project_item or (project_item.commentcount or 0) <= 0:
+            return False
+
+        await self.session.execute(
+            update(ProjectItem)
+            .where(ProjectItem.id == project_item_id)
+            .values(commentcount=func.greatest(func.coalesce(ProjectItem.commentcount, 0) - 1, 0))
+            .execution_options(synchronize_session=False)
+        )
+
+        if project_item.projectid:
+            from src.models.project import Project
+            await self.session.execute(
+                update(Project)
+                .where(Project.id == project_item.projectid)
+                .values(commentcount=func.greatest(func.coalesce(Project.commentcount, 0) - 1, 0))
+                .execution_options(synchronize_session=False)
+            )
+
+        await self.session.commit()
+        return True
     
     async def increment_access_count(self, project_item_id: int, project_id: int | None = None) -> bool:
         """增加文章访问次数，可选同时增加所属博客访问次数（单次 commit）"""
         try:
-            project_item = await self.get_by_id(project_item_id)
-            if not project_item:
+            item_result = await self.session.execute(
+                update(ProjectItem)
+                .where(ProjectItem.id == project_item_id)
+                .values(accesscount=func.coalesce(ProjectItem.accesscount, 0) + 1)
+                .execution_options(synchronize_session=False)
+            )
+            if (item_result.rowcount or 0) <= 0:
+                await self.session.rollback()
                 return False
 
-            project_item.accesscount = (project_item.accesscount or 0) + 1
-            self.session.add(project_item)
-
-            pid = project_id or project_item.projectid
+            pid = project_id
+            if not pid:
+                item = await self.get_by_id(project_item_id)
+                pid = item.projectid if item else None
             if pid:
-                from src.repositories.project_repository import ProjectRepository
-                project_repo = ProjectRepository(self.session)
-                project = await project_repo.get_by_id(pid)
-                if project:
-                    project.accesscount = (project.accesscount or 0) + 1
-                    self.session.add(project)
+                from src.models.project import Project
+                await self.session.execute(
+                    update(Project)
+                    .where(Project.id == pid)
+                    .values(accesscount=func.coalesce(Project.accesscount, 0) + 1)
+                    .execution_options(synchronize_session=False)
+                )
 
             await self.session.commit()
             return True
