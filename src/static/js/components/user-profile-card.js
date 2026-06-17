@@ -231,11 +231,66 @@ class UserProfileCard extends BaseComponent {
                 border-color: var(--primary-color);
                 box-shadow: 0 0 0 3px var(--primary-color-10);
             }
+            .password-recommendation {
+                border: 1px solid var(--gray-200);
+                border-radius: var(--radius-md);
+                background: var(--gray-50);
+                padding: var(--spacing-3);
+                display: flex;
+                flex-direction: column;
+                gap: var(--spacing-2);
+            }
+            .password-recommendation-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: var(--spacing-3);
+            }
+            .password-recommendation-title {
+                color: var(--gray-700);
+                font-size: var(--font-size-sm);
+                font-weight: 500;
+            }
+            .recommended-password-row {
+                display: flex;
+                gap: var(--spacing-2);
+            }
+            .recommended-password-value {
+                flex: 1;
+                min-width: 0;
+                font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            }
+            .password-action-btn {
+                border: 1px solid var(--gray-300);
+                border-radius: var(--radius-md);
+                background: var(--white);
+                color: var(--gray-700);
+                cursor: pointer;
+                font-size: var(--font-size-sm);
+                padding: var(--spacing-2) var(--spacing-3);
+                transition: var(--transition-fast);
+                white-space: nowrap;
+            }
+            .password-action-btn:hover {
+                border-color: var(--primary-color);
+                color: var(--primary-color);
+            }
+            .copy-password-status {
+                min-height: 1.25em;
+            }
             .modal-actions {
                 display: flex;
                 gap: var(--spacing-2);
                 justify-content: flex-end;
                 margin-top: var(--spacing-2);
+            }
+            @media (max-width: 480px) {
+                .recommended-password-row {
+                    flex-wrap: wrap;
+                }
+                .recommended-password-value {
+                    flex-basis: 100%;
+                }
             }
             .btn svg,
             .btn .btn-icon {
@@ -334,11 +389,22 @@ class UserProfileCard extends BaseComponent {
                     <form class="modal-form" id="resetPasswordForm">
                         <div class="form-group">
                             <label class="form-label" for="newPassword">新密码</label>
-                            <input type="password" id="newPassword" class="form-input" required minlength="6" placeholder="请输入新密码">
+                            <input type="password" id="newPassword" class="form-input" required minlength="6" placeholder="请输入新密码" autocomplete="new-password">
+                            <div class="password-recommendation">
+                                <div class="password-recommendation-header">
+                                    <span class="password-recommendation-title">推荐密码</span>
+                                    <button type="button" class="password-action-btn" id="refreshPasswordBtn">换一个</button>
+                                </div>
+                                <div class="recommended-password-row">
+                                    <input type="text" id="recommendedPassword" class="form-input recommended-password-value" readonly aria-label="推荐密码">
+                                    <button type="button" class="password-action-btn" id="copyPasswordBtn">复制</button>
+                                </div>
+                                <p class="form-hint copy-password-status" id="copyPasswordStatus" aria-live="polite"></p>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="confirmPassword">确认密码</label>
-                            <input type="password" id="confirmPassword" class="form-input" required minlength="6" placeholder="请再次输入新密码">
+                            <input type="password" id="confirmPassword" class="form-input" required minlength="6" placeholder="请再次输入新密码" autocomplete="new-password">
                         </div>
                         <div class="modal-actions">
                             <button type="button" class="btn btn-secondary btn-sm btn-icon-only" id="cancelResetBtn" title="取消" aria-label="取消">${Icons.asBtnIcon(Icons.close)}</button>
@@ -455,6 +521,20 @@ class UserProfileCard extends BaseComponent {
             });
         }
 
+        const refreshPasswordBtn = this.shadowRoot.querySelector('#refreshPasswordBtn');
+        if (refreshPasswordBtn) {
+            refreshPasswordBtn.addEventListener('click', () => {
+                this.refreshRecommendedPassword();
+            });
+        }
+
+        const copyPasswordBtn = this.shadowRoot.querySelector('#copyPasswordBtn');
+        if (copyPasswordBtn) {
+            copyPasswordBtn.addEventListener('click', () => {
+                this.copyRecommendedPassword();
+            });
+        }
+
         // 点击模态框外部关闭
         const resetPasswordModal = this.shadowRoot.querySelector('#resetPasswordModal');
         if (resetPasswordModal) {
@@ -484,6 +564,7 @@ class UserProfileCard extends BaseComponent {
             modal.classList.add('show');
             // 清除之前的错误信息
             this.clearResetPasswordError();
+            this.refreshRecommendedPassword();
             
             // 绑定确认按钮的点击事件
             const confirmBtn = modal.querySelector('#confirmResetBtn');
@@ -610,6 +691,77 @@ class UserProfileCard extends BaseComponent {
      */
     _passwordRuleError(pwd) {
         return window.passwordRuleError(pwd);
+    }
+
+    refreshRecommendedPassword() {
+        const recommendedPasswordInput = this.shadowRoot.querySelector('#recommendedPassword');
+        const copyPasswordStatus = this.shadowRoot.querySelector('#copyPasswordStatus');
+        if (recommendedPasswordInput) {
+            recommendedPasswordInput.value = this.generateRecommendedPassword();
+        }
+        if (copyPasswordStatus) {
+            copyPasswordStatus.textContent = '';
+        }
+    }
+
+    generateRecommendedPassword() {
+        const lowers = 'abcdefghijkmnopqrstuvwxyz';
+        const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+        const digits = '23456789';
+        const symbols = '!@#$%^&*';
+        const allChars = lowers + uppers + digits + symbols;
+        const chars = [
+            this.pickRandomChar(lowers),
+            this.pickRandomChar(uppers),
+            this.pickRandomChar(digits),
+            this.pickRandomChar(symbols)
+        ];
+
+        while (chars.length < 14) {
+            chars.push(this.pickRandomChar(allChars));
+        }
+
+        for (let i = chars.length - 1; i > 0; i -= 1) {
+            const j = this.randomIndex(i + 1);
+            [chars[i], chars[j]] = [chars[j], chars[i]];
+        }
+
+        return chars.join('');
+    }
+
+    pickRandomChar(source) {
+        return source[this.randomIndex(source.length)];
+    }
+
+    randomIndex(max) {
+        if (window.crypto && window.crypto.getRandomValues) {
+            const values = new Uint32Array(1);
+            window.crypto.getRandomValues(values);
+            return values[0] % max;
+        }
+        return Math.floor(Math.random() * max);
+    }
+
+    async copyRecommendedPassword() {
+        const recommendedPasswordInput = this.shadowRoot.querySelector('#recommendedPassword');
+        const copyPasswordStatus = this.shadowRoot.querySelector('#copyPasswordStatus');
+        if (!recommendedPasswordInput) {
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(recommendedPasswordInput.value);
+            if (copyPasswordStatus) {
+                copyPasswordStatus.textContent = '已复制';
+            }
+        } catch (error) {
+            recommendedPasswordInput.focus();
+            recommendedPasswordInput.select();
+            document.execCommand('copy');
+            if (copyPasswordStatus) {
+                copyPasswordStatus.textContent = '已复制';
+            }
+        }
     }
 
     /**
