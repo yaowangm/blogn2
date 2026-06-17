@@ -106,6 +106,71 @@
             line-height: 1.4;
         }
 
+        .password-recommendation {
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-md);
+            background: var(--gray-50);
+            padding: var(--spacing-3);
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-2);
+        }
+
+        .password-recommendation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--spacing-3);
+        }
+
+        .password-recommendation-title {
+            color: var(--gray-700);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+        }
+
+        .recommended-password-row {
+            display: flex;
+            gap: var(--spacing-2);
+        }
+
+        .recommended-password-value {
+            flex: 1;
+            min-width: 0;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+
+        .password-action-btn {
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            background: var(--white);
+            color: var(--gray-700);
+            cursor: pointer;
+            font-size: var(--font-size-sm);
+            padding: var(--spacing-2) var(--spacing-3);
+            transition: var(--transition-fast);
+            white-space: nowrap;
+        }
+
+        .password-action-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .password-action-btn.primary {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .password-action-btn.primary:hover {
+            filter: brightness(0.95);
+        }
+
+        .copy-password-status {
+            min-height: 1.25em;
+        }
+
         .general-error {
             margin-bottom: var(--spacing-4);
             text-align: center;
@@ -212,6 +277,16 @@
                 flex: 1;
             }
         }
+
+        @media (max-width: 480px) {
+            .recommended-password-row {
+                flex-wrap: wrap;
+            }
+
+            .recommended-password-value {
+                flex-basis: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -267,8 +342,42 @@
                             required
                             minlength="8"
                             maxlength="30"
+                            autocomplete="new-password"
                         >
                         <div class="form-error" id="passwordError"></div>
+                        <div class="password-recommendation">
+                            <div class="password-recommendation-header">
+                                <span class="password-recommendation-title">推荐密码</span>
+                                <button type="button" class="password-action-btn" id="refreshPasswordBtn">换一个</button>
+                            </div>
+                            <div class="recommended-password-row">
+                                <input
+                                    type="text"
+                                    id="recommendedPassword"
+                                    class="form-input recommended-password-value"
+                                    readonly
+                                    aria-label="推荐密码"
+                                >
+                                <button type="button" class="password-action-btn" id="copyPasswordBtn">复制</button>
+                            </div>
+                            <p class="form-hint copy-password-status" id="copyPasswordStatus" aria-live="polite"></p>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirmPassword" class="form-label">确认密码</label>
+                        <input
+                            type="password"
+                            id="confirmPassword"
+                            name="confirmPassword"
+                            class="form-input"
+                            placeholder="请再次输入密码"
+                            required
+                            minlength="8"
+                            maxlength="30"
+                            autocomplete="new-password"
+                        >
+                        <div class="form-error" id="confirmPasswordError"></div>
                     </div>
 
                     <div class="form-group">
@@ -330,12 +439,15 @@
                 this.form = document.getElementById('registerForm');
                 this.submitBtn = document.getElementById('submitBtn');
                 this.loginLink = document.getElementById('loginLink');
+                this.recommendedPasswordInput = document.getElementById('recommendedPassword');
+                this.copyPasswordStatus = document.getElementById('copyPasswordStatus');
                 this.init();
             }
 
             init() {
                 this.bindEvents();
                 this.setupFormValidation();
+                this.refreshRecommendedPassword();
             }
 
             bindEvents() {
@@ -348,13 +460,22 @@
                 const usernameInput = document.getElementById('username');
                 const emailInput = document.getElementById('email');
                 const passwordInput = document.getElementById('password');
+                const confirmPasswordInput = document.getElementById('confirmPassword');
                 const regkeyInput = document.getElementById('regkey');
 
                 usernameInput.addEventListener('blur', () => this.validateUsername());
                 emailInput.addEventListener('blur', () => this.validateEmail());
                 passwordInput.addEventListener('blur', () => this.validatePassword());
+                passwordInput.addEventListener('input', () => {
+                    if (confirmPasswordInput.value) {
+                        this.validateConfirmPassword();
+                    }
+                });
+                confirmPasswordInput.addEventListener('blur', () => this.validateConfirmPassword());
                 regkeyInput.addEventListener('blur', () => this.validateRegkey());
                 regkeyInput.addEventListener('input', (e) => this.formatRegkey(e));
+                document.getElementById('refreshPasswordBtn').addEventListener('click', () => this.refreshRecommendedPassword());
+                document.getElementById('copyPasswordBtn').addEventListener('click', () => this.copyRecommendedPassword());
             }
 
             setupRealTimeValidation() {
@@ -420,6 +541,77 @@
             }
             _passwordRuleError(pwd) {
                 return window.passwordRuleError(pwd);
+            }
+
+            validateConfirmPassword() {
+                const password = document.getElementById('password').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                if (!confirmPassword) {
+                    this.showError('confirmPassword', '请再次输入密码');
+                    return false;
+                }
+                if (confirmPassword !== password) {
+                    this.showError('confirmPassword', '两次输入的密码不一致');
+                    return false;
+                }
+                this.showSuccess('confirmPassword');
+                return true;
+            }
+
+            refreshRecommendedPassword() {
+                this.recommendedPasswordInput.value = this.generateRecommendedPassword();
+                this.copyPasswordStatus.textContent = '';
+            }
+
+            generateRecommendedPassword() {
+                const lowers = 'abcdefghijkmnopqrstuvwxyz';
+                const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+                const digits = '23456789';
+                const symbols = '!@#$%^&*';
+                const allChars = lowers + uppers + digits + symbols;
+                const chars = [
+                    this.pickRandomChar(lowers),
+                    this.pickRandomChar(uppers),
+                    this.pickRandomChar(digits),
+                    this.pickRandomChar(symbols)
+                ];
+
+                while (chars.length < 14) {
+                    chars.push(this.pickRandomChar(allChars));
+                }
+
+                for (let i = chars.length - 1; i > 0; i -= 1) {
+                    const j = this.randomIndex(i + 1);
+                    [chars[i], chars[j]] = [chars[j], chars[i]];
+                }
+
+                return chars.join('');
+            }
+
+            pickRandomChar(source) {
+                return source[this.randomIndex(source.length)];
+            }
+
+            randomIndex(max) {
+                if (window.crypto && window.crypto.getRandomValues) {
+                    const values = new Uint32Array(1);
+                    window.crypto.getRandomValues(values);
+                    return values[0] % max;
+                }
+                return Math.floor(Math.random() * max);
+            }
+
+            async copyRecommendedPassword() {
+                const password = this.recommendedPasswordInput.value;
+                try {
+                    await navigator.clipboard.writeText(password);
+                    this.copyPasswordStatus.textContent = '已复制';
+                } catch (error) {
+                    this.recommendedPasswordInput.focus();
+                    this.recommendedPasswordInput.select();
+                    document.execCommand('copy');
+                    this.copyPasswordStatus.textContent = '已复制';
+                }
             }
 
             validateRegkey() {
@@ -496,9 +688,10 @@
                 const isUsernameValid = this.validateUsername();
                 const isEmailValid = this.validateEmail();
                 const isPasswordValid = this.validatePassword();
+                const isConfirmPasswordValid = this.validateConfirmPassword();
                 const isRegkeyValid = this.validateRegkey();
 
-                if (!isUsernameValid || !isEmailValid || !isPasswordValid || !isRegkeyValid) {
+                if (!isUsernameValid || !isEmailValid || !isPasswordValid || !isConfirmPasswordValid || !isRegkeyValid) {
                     return;
                 }
 
@@ -659,7 +852,7 @@
             }
 
             clearAllFieldErrors() {
-                const fields = ['username', 'email', 'password', 'regkey'];
+                const fields = ['username', 'email', 'password', 'confirmPassword', 'regkey'];
                 fields.forEach(field => {
                     this.clearError(field);
                 });
