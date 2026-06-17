@@ -62,9 +62,27 @@ class TestMarkdownUtilsJs:
             assert "cdn.jsdelivr" not in html
             assert "unpkg.com" not in html
 
-    def test_documentation_covers_katex_license(self):
+    def test_markdown_example_covers_supported_formats(self):
         doc = DOC_MARKDOWN_KATEX.read_text(encoding="utf-8")
-        assert "KaTeX" in doc
-        assert "MIT" in doc
-        assert "marked" in doc
-        assert "src/static/js/libs/katex/LICENSE" in doc
+        examples = [
+            "# 一篇包含多种 Markdown 格式的示例文章",
+            "**加粗文字**",
+            "*倾斜文字*",
+            "~~删除线文字~~",
+            "`行内代码`",
+            "[示例网站](https://example.com)",
+            "> 写作时",
+            "---",
+            "1. 第一件事",
+            "- [x] 已完成的任务",
+            "| 类型 | 示例 | 说明 |",
+            "![示例图片](https://picsum.photos/640/360)",
+            "```js",
+            "$E=mc^2$",
+            "\\int_{-\\infty}^{\\infty}",
+            "\\sum_{n=1}^{\\infty}",
+            "2\\mathrm{H}_2 + \\mathrm{O}_2",
+            "###### 六级标题",
+        ]
+        for example in examples:
+            assert example in doc
