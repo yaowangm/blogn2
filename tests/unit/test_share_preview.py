@@ -6,7 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from src.constants import ArticleStatus
 from src.utils.share_preview import (
     ArticleShareMeta,
-    SITE_OG_IMAGE_PATH,
+    SITE_ICON_PATH,
+    SITE_NAME,
     absolute_url_from_site_base,
     get_request_public_base_url,
     inject_article_share_preview,
@@ -52,20 +53,26 @@ def test_merge_public_base_https_from_config_same_host():
     ) == "https://bloggern.com"
 
 
-def test_merge_public_base_keeps_inferred_when_config_other_host():
+def test_merge_public_base_upgrades_inferred_when_config_other_host():
     assert merge_public_base_with_config(
         "http://bloggern.com",
         "http://localhost:8000",
-    ) == "http://bloggern.com"
+    ) == "https://bloggern.com"
 
 
 def test_merge_public_base_empty_inferred_uses_config_origin():
     assert merge_public_base_with_config("", "https://bloggern.com/") == "https://bloggern.com"
 
 
+def test_merge_public_base_empty_inferred_upgrades_http_config_origin():
+    assert merge_public_base_with_config("", "http://bloggern.com/") == "https://bloggern.com"
+
+
 def test_merge_public_base_invalid_config_ignored():
     assert merge_public_base_with_config("https://x.com", "") == "https://x.com"
     assert merge_public_base_with_config("https://x.com", "not-a-url") == "https://x.com"
+    assert merge_public_base_with_config("http://x.com", "") == "https://x.com"
+    assert merge_public_base_with_config("http://x.com", "not-a-url") == "https://x.com"
 
 
 def test_merge_same_host_both_http_non_loopback_becomes_https():
@@ -105,6 +112,7 @@ def test_absolute_url_from_site_base():
     assert absolute_url_from_site_base("https://x.com", "/a") == "https://x.com/a"
     assert absolute_url_from_site_base("https://x.com/", "/a") == "https://x.com/a"
     assert absolute_url_from_site_base("https://x.com", "https://y/z") == "https://y/z"
+    assert absolute_url_from_site_base("https://x.com", "http://y/z") == "https://y/z"
 
 
 def test_inject_article_share_preview_absolute_og_when_public_base():
@@ -112,6 +120,7 @@ def test_inject_article_share_preview_absolute_og_when_public_base():
         page_title="T",
         description="D",
         canonical_path="/article/42",
+        image_path="/upload/cover.jpg",
     )
     template = """<html><head>
     <title>x</title>
@@ -120,9 +129,23 @@ def test_inject_article_share_preview_absolute_og_when_public_base():
     out = inject_article_share_preview(
         template, meta, public_base_url="https://bloggern.com"
     )
-    assert 'property="og:url" content="https://bloggern.com/article/42"' in out
+    assert '<link rel="canonical" href="https://bloggern.com/article/42">' in out
     assert (
-        f'property="og:image" content="https://bloggern.com{SITE_OG_IMAGE_PATH}"' in out
+        f'<link rel="icon" type="image/png" href="https://bloggern.com{SITE_ICON_PATH}" sizes="32x32">'
+        in out
+    )
+    assert (
+        f'<link rel="apple-touch-icon" href="https://bloggern.com{SITE_ICON_PATH}">'
+        in out
+    )
+    assert 'property="og:url" content="https://bloggern.com/article/42"' in out
+    assert f'property="og:site_name" content="{SITE_NAME}"' in out
+    assert (
+        'property="og:image" content="https://bloggern.com/upload/cover.jpg"' in out
+    )
+    assert (
+        'property="og:image:secure_url" content="https://bloggern.com/upload/cover.jpg"'
+        in out
     )
 
 
@@ -131,6 +154,7 @@ def test_inject_article_share_preview_og_image_is_site_logo():
         page_title='标题 "引号" <>&',
         description="摘要一行",
         canonical_path="/article/42",
+        image_path="/upload/a.png",
     )
     template = """<html><head>
     <title>博客文章 - BlogN</title>
@@ -141,10 +165,25 @@ def test_inject_article_share_preview_og_image_is_site_logo():
     assert 'property="og:type" content="article"' in out
     assert 'property="og:title"' in out
     assert 'property="og:url" content="/article/42"' in out
-    assert f'property="og:image" content="{SITE_OG_IMAGE_PATH}"' in out
+    assert f'property="og:site_name" content="{SITE_NAME}"' in out
+    assert 'property="og:image" content="/upload/a.png"' in out
+    assert 'property="og:image:alt" content="标题 &quot;引号&quot; &lt;&gt;&amp;"' in out
     assert 'name="description" content="摘要一行"' in out
     assert "twitter:" not in out
     assert "itemprop=" not in out
+
+
+def test_inject_article_share_preview_omits_og_image_without_content_image():
+    meta = ArticleShareMeta(
+        page_title="某博客",
+        description="简介",
+        canonical_path="/blog/1",
+    )
+    template = """<head><title>x</title><meta name="description" content="y"></head>"""
+    out = inject_article_share_preview(template, meta)
+    assert 'property="og:image"' not in out
+    assert 'property="og:image:secure_url"' not in out
+    assert '<link rel="apple-touch-icon" href="/static/favicon.png">' in out
 
 
 def test_inject_article_share_preview_website_og_type():
@@ -152,11 +191,12 @@ def test_inject_article_share_preview_website_og_type():
         page_title="某博客",
         description="简介",
         canonical_path="/blog/1",
+        image_path="/avatar/1/s_7.jpg",
     )
     template = """<head><title>x</title><meta name="description" content="y"></head>"""
     out = inject_article_share_preview(template, meta, og_type="website")
     assert 'property="og:type" content="website"' in out
-    assert f'property="og:image" content="{SITE_OG_IMAGE_PATH}"' in out
+    assert 'property="og:image" content="/avatar/1/s_7.jpg"' in out
     assert "itemprop=" not in out
 
 
@@ -187,22 +227,54 @@ async def test_load_article_share_meta_ok_title_and_canonical():
     article.name = "标题A"
     article.projectid = 10
     article.comment = "# x\n正文"
-    article.attachment = None
+    article.attachment = "cover.jpg"
 
     project = MagicMock()
     project.name = "博客甲"
 
     with patch("src.utils.share_preview.ProjectItemRepository") as PIR, patch(
         "src.utils.share_preview.ProjectRepository"
-    ) as PR:
+    ) as PR, patch("src.utils.share_preview.AttachmentRepository") as AR:
         PIR.return_value.get_by_id = AsyncMock(return_value=article)
         PR.return_value.get_by_id = AsyncMock(return_value=project)
+        AR.return_value.get_by_project_item_id = AsyncMock(return_value=[])
 
         meta = await load_article_share_meta(session, 42)
     assert meta is not None
     assert meta.page_title == "标题A - 博客甲 · BlogN"
     assert "正文" in meta.description
     assert meta.canonical_path == "/article/42"
+    assert meta.image_path == "/upload/cover.jpg"
+
+
+@pytest.mark.asyncio
+async def test_load_article_share_meta_uses_first_image_attachment_table_fallback():
+    session = MagicMock()
+    article = MagicMock()
+    article.itemtype = ArticleStatus.NORMAL
+    article.name = "标题A"
+    article.projectid = None
+    article.comment = "正文"
+    article.attachment = None
+
+    non_image = MagicMock()
+    non_image.linkstr = "/upload/doc.pdf"
+    image = MagicMock()
+    image.linkstr = "/upload/pic.webp"
+
+    with patch("src.utils.share_preview.ProjectItemRepository") as PIR, patch(
+        "src.utils.share_preview.ProjectRepository"
+    ) as PR, patch("src.utils.share_preview.AttachmentRepository") as AR:
+        PIR.return_value.get_by_id = AsyncMock(return_value=article)
+        PR.return_value.get_by_id = AsyncMock(return_value=None)
+        AR.return_value.get_by_project_item_id = AsyncMock(
+            return_value=[non_image, image]
+        )
+
+        meta = await load_article_share_meta(session, 42)
+
+    assert meta is not None
+    assert meta.image_path == "/upload/pic.webp"
 
 
 @pytest.mark.asyncio
@@ -221,7 +293,9 @@ async def test_load_blog_share_meta_ok():
     project.comment = "简介一行"
     project.userid = 1
 
-    with patch("src.utils.share_preview.ProjectRepository") as PR:
+    with patch("src.utils.share_preview.ProjectRepository") as PR, patch(
+        "src.utils.share_preview.check_avatar_exists", return_value="/avatar/1/s_1.jpg"
+    ):
         PR.return_value.get_by_id = AsyncMock(return_value=project)
         meta = await load_blog_share_meta(session, 7)
 
@@ -229,6 +303,7 @@ async def test_load_blog_share_meta_ok():
     assert meta.page_title == "N - BlogN"
     assert meta.description == "简介一行"
     assert meta.canonical_path == "/blog/7"
+    assert meta.image_path == "/avatar/1/s_1.jpg"
 
 
 @pytest.mark.asyncio

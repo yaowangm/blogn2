@@ -2,8 +2,8 @@
 社交分享 / 爬虫预览：在首包 HTML 中替换标题、摘要，并注入 Open Graph。
 
 微信等不执行 JavaScript，只读首包 HTML；普通浏览器仍走 SPA。
-``property="og:image"`` 使用 PNG；注入时若可解析站点前缀则写 **绝对 URL**（微信等抓取常不认相对路径）。
-站内 ``<link rel="icon">`` 仍为 ``/static/...`` 相对路径。不注入 ``itemprop``。
+``property="og:image"`` 与站点 icon 使用 PNG；注入时若可解析站点前缀则写 **绝对 URL**
+（微信等抓取常不认相对路径）。不注入 ``itemprop``。
 """
 
 from __future__ import annotations
@@ -18,9 +18,11 @@ from urllib.parse import urlparse
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.constants import ArticleStatus
+from src.repositories.attachment_repository import AttachmentRepository
 from src.repositories.post_repository import PostRepository
 from src.repositories.project_item_repository import ProjectItemRepository
 from src.repositories.project_repository import ProjectRepository
+from src.utils.avatar_utils import check_avatar_exists
 from src.utils.permission_manager import permission_manager
 
 # User-Agent 子串（大小写不敏感），覆盖微信与常见社交/预览爬虫
@@ -41,8 +43,10 @@ _SHARE_PREVIEW_UA_MARKERS: tuple[str, ...] = (
     "quora link preview",
 )
 
-# 分享预览 og:image：PNG（由 logo-light.svg 栅格化，便于微信等；路径见静态文件）
-SITE_OG_IMAGE_PATH = "/static/images/site-share-icon.png"
+# 分享预览站点标识：favicon 用于网站 icon；内容图片由文章附件或博客头像提供。
+SITE_NAME = "BlogN"
+SITE_ICON_PATH = "/static/favicon.png"
+_IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".webp")
 
 
 def is_share_preview_crawler(user_agent: Optional[str]) -> bool:
@@ -72,6 +76,31 @@ def get_request_public_base_url(
     return ""
 
 
+def _http_public_base_allowed() -> bool:
+    return os.getenv("OG_ALLOW_HTTP_PUBLIC_BASE", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
+def _is_loopback_host(hostname: Optional[str]) -> bool:
+    host = (hostname or "").lower()
+    return host in ("localhost", "127.0.0.1", "::1")
+
+
+def _upgrade_public_http_url(url: str) -> str:
+    parsed = urlparse((url or "").strip())
+    if (
+        parsed.scheme == "http"
+        and parsed.netloc
+        and not _is_loopback_host(parsed.hostname)
+        and not _http_public_base_allowed()
+    ):
+        return f"https://{parsed.netloc}{parsed.path or ''}{('?' + parsed.query) if parsed.query else ''}{('#' + parsed.fragment) if parsed.fragment else ''}"
+    return url
+
+
 def merge_public_base_with_config(inferred: str, config_base: str) -> str:
     """
     将 ``get_request_public_base_url`` 的结果与 ``get_base_url()`` 合并。
@@ -79,19 +108,22 @@ def merge_public_base_with_config(inferred: str, config_base: str) -> str:
     反向代理若未传 ``X-Forwarded-Proto``，推断结果常为 ``http://``。当配置中的主机名与推断一致时，
     采用配置中的 scheme；任一侧为 ``https`` 时结果固定为 ``https``。
 
-    若两侧仍为 ``http`` 且主机非 loopback（典型生产域名），默认升级为 ``https://…``，避免
-    ``og:image`` 使用 HTTP 导致微信等无法拉图。纯 HTTP 内网需设置环境变量
-    ``OG_ALLOW_HTTP_PUBLIC_BASE=1`` 关闭该行为。
+    若推断或配置的公开主机为非 loopback，默认升级为 ``https://…``，避免微信等分享
+    抓取端拒绝 HTTP 链接。纯 HTTP 内网需设置环境变量 ``OG_ALLOW_HTTP_PUBLIC_BASE=1`` 关闭该行为。
     """
     inferred = (inferred or "").strip().rstrip("/")
     config_base = (config_base or "").strip().rstrip("/")
     if not config_base.startswith(("http://", "https://")):
-        return inferred
+        return _upgrade_public_http_url(inferred)
     pc = urlparse(config_base)
     if not pc.scheme or not pc.netloc:
-        return inferred
+        return _upgrade_public_http_url(inferred)
     conf_origin = f"{pc.scheme}://{pc.netloc}".rstrip("/")
+    allow_http = _http_public_base_allowed()
+    conf_loopback = _is_loopback_host(pc.hostname)
     if not inferred:
+        if pc.scheme == "http" and pc.hostname and not conf_loopback and not allow_http:
+            return f"https://{pc.netloc}".rstrip("/")
         return conf_origin
     pi = urlparse(inferred)
     if not pi.scheme or not pi.netloc:
@@ -99,16 +131,13 @@ def merge_public_base_with_config(inferred: str, config_base: str) -> str:
     inf_origin = f"{pi.scheme}://{pi.netloc}".rstrip("/")
     hi = pi.hostname.lower() if pi.hostname else ""
     hc = pc.hostname.lower() if pc.hostname else ""
+    inf_loopback = _is_loopback_host(pi.hostname)
+    if pi.scheme == "http" and hi and not inf_loopback and not allow_http:
+        inf_origin = f"https://{pi.netloc}".rstrip("/")
     if not hi or not hc or hi != hc:
         return inf_origin
 
-    allow_http = os.getenv("OG_ALLOW_HTTP_PUBLIC_BASE", "").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-    )
-    loopback = hi in ("localhost", "127.0.0.1", "[::1]")
-    if loopback or allow_http:
+    if inf_loopback or allow_http:
         return conf_origin
     if pi.scheme == "https" or pc.scheme == "https":
         return f"https://{pc.netloc}".rstrip("/")
@@ -122,9 +151,9 @@ def absolute_url_from_site_base(public_base_url: str, path: str) -> str:
     base = (public_base_url or "").strip().rstrip("/")
     p = (path or "").strip()
     if not base or not p:
-        return p
+        return _upgrade_public_http_url(p)
     if p.startswith(("http://", "https://", "//")):
-        return p
+        return _upgrade_public_http_url(p)
     if p.startswith("/"):
         return f"{base}{p}"
     return f"{base}/{p.lstrip('/')}"
@@ -151,6 +180,20 @@ def _markdown_to_plain_preview(
     return s or empty_fallback
 
 
+def _image_share_path(path: Optional[str]) -> Optional[str]:
+    if not path or not str(path).strip():
+        return None
+    value = str(path).strip()
+    lower_path = urlparse(value).path.lower()
+    if not lower_path.endswith(_IMAGE_EXTENSIONS):
+        return None
+    if value.startswith(("http://", "https://", "//")):
+        return value
+    if value.startswith("/upload/") or value.startswith("/avatar/"):
+        return value
+    return f"/upload/{value.lstrip('/')}"
+
+
 @dataclass
 class ArticleShareMeta:
     """分享注入用元数据（文章 / 博客首页 / 留言主题）。
@@ -161,6 +204,7 @@ class ArticleShareMeta:
     page_title: str
     description: str
     canonical_path: str
+    image_path: Optional[str] = None
 
 
 async def load_article_share_meta(
@@ -172,6 +216,7 @@ async def load_article_share_meta(
     """
     item_repo = ProjectItemRepository(session)
     project_repo = ProjectRepository(session)
+    attachment_repo = AttachmentRepository(session)
 
     article = await item_repo.get_by_id(article_id)
     if not article:
@@ -193,11 +238,19 @@ async def load_article_share_meta(
 
     description = _markdown_to_plain_preview(article.comment)
     canonical_path = f"/article/{article_id}"
+    image_path = _image_share_path(article.attachment)
+    if image_path is None:
+        attachments = await attachment_repo.get_by_project_item_id(article_id)
+        for attachment in attachments:
+            image_path = _image_share_path(getattr(attachment, "linkstr", None))
+            if image_path:
+                break
 
     return ArticleShareMeta(
         page_title=page_title,
         description=description,
         canonical_path=canonical_path,
+        image_path=image_path,
     )
 
 
@@ -255,11 +308,13 @@ async def load_blog_share_meta(
     )
 
     canonical_path = f"/blog/{project_id}"
+    image_path = _image_share_path(check_avatar_exists(getattr(project, "userid", None)))
 
     return ArticleShareMeta(
         page_title=page_title,
         description=description,
         canonical_path=canonical_path,
+        image_path=image_path,
     )
 
 
@@ -282,9 +337,16 @@ def inject_article_share_preview(
     esc_title = html.escape(meta.page_title, quote=True)
     esc_desc = html.escape(meta.description, quote=True)
     og_url = absolute_url_from_site_base(public_base_url, meta.canonical_path)
-    og_image = absolute_url_from_site_base(public_base_url, SITE_OG_IMAGE_PATH)
+    site_icon = absolute_url_from_site_base(public_base_url, SITE_ICON_PATH)
+    og_image = (
+        absolute_url_from_site_base(public_base_url, meta.image_path)
+        if meta.image_path
+        else ""
+    )
     esc_path = html.escape(og_url, quote=True)
+    esc_site_icon = html.escape(site_icon, quote=True)
     esc_image = html.escape(og_image, quote=True)
+    esc_site_name = html.escape(SITE_NAME, quote=True)
 
     html_out = re.sub(
         r"<title>.*?</title>",
@@ -304,13 +366,25 @@ def inject_article_share_preview(
     esc_og_type = html.escape(og_type, quote=True)
 
     og_lines = [
+        f'    <link rel="canonical" href="{esc_path}">',
+        f'    <link rel="icon" type="image/png" href="{esc_site_icon}" sizes="32x32">',
+        f'    <link rel="apple-touch-icon" href="{esc_site_icon}">',
+        f'    <meta name="application-name" content="{esc_site_name}">',
+        f'    <meta name="apple-mobile-web-app-title" content="{esc_site_name}">',
         f'    <meta property="og:type" content="{esc_og_type}">',
         f'    <meta property="og:title" content="{esc_title}">',
         f'    <meta property="og:description" content="{esc_desc}">',
         f'    <meta property="og:url" content="{esc_path}">',
-        f'    <meta property="og:image" content="{esc_image}">',
-        f'    <meta property="og:site_name" content="BlogN">',
+        f'    <meta property="og:site_name" content="{esc_site_name}">',
     ]
+    if esc_image:
+        og_lines.extend(
+            [
+                f'    <meta property="og:image" content="{esc_image}">',
+                f'    <meta property="og:image:secure_url" content="{esc_image}">',
+                f'    <meta property="og:image:alt" content="{esc_title}">',
+            ]
+        )
     og_block = "\n".join(og_lines) + "\n"
 
     html_out = html_out.replace("</head>", og_block + "\n</head>", 1)
