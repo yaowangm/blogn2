@@ -39,7 +39,7 @@ class TestMetadataService:
         
         assert result["site_name"] == "BlogN"
         assert result["version"] == "V1"
-        assert result["logo_url"] == "/static/images/logo-light.svg"
+        assert result["logo_url"] == "/static/favicon.svg"
         assert result["user_count"] == 150
         assert result["post_count"] == 300
         

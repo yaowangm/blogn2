@@ -23,7 +23,7 @@ class MetadataService(BaseService):
         metadata = {
             "site_name": "BlogN",
             "version": "V1",
-            "logo_url": "/static/images/logo-light.svg",
+            "logo_url": "/static/favicon.svg",
             "user_count": user_count,
             "post_count": post_count
         }

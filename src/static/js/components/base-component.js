@@ -52,7 +52,7 @@ class BaseComponent extends HTMLElement {
             }
             const fallback = {
                 site_name: 'BlogN',
-                logo_url: '/static/images/logo.svg',
+                logo_url: '/static/favicon.svg',
                 user_count: 0,
                 post_count: 0,
             };
@@ -260,7 +260,7 @@ class BaseComponent extends HTMLElement {
     getDefaultMetadata() {
         return {
             site_name: 'BlogN',
-            logo_url: '/static/images/logo.svg',
+            logo_url: '/static/favicon.svg',
             user_count: 0,
             post_count: 0
         };
@@ -268,17 +268,10 @@ class BaseComponent extends HTMLElement {
 
     /**
      * 获取Logo URL
-     * 根据当前主题返回相应的Logo URL
+     * 站点 Logo 与 favicon 共用同一 SVG，不做主题切换。
      */
     getLogoUrl() {
-        const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const baseUrl = this.metadata?.logo_url || '/static/images/logo.svg';
-        
-        if (isDarkMode) {
-            return baseUrl.replace('logo.svg', 'logo-dark.svg');
-        } else {
-            return baseUrl.replace('logo.svg', 'logo-light.svg');
-        }
+        return this.metadata?.logo_url || '/static/favicon.svg';
     }
 
     /**
