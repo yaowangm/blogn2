@@ -198,7 +198,8 @@ def _image_share_path(path: Optional[str]) -> Optional[str]:
 class ArticleShareMeta:
     """分享注入用元数据（文章 / 博客首页 / 留言主题）。
 
-    ``canonical_path`` 为以 ``/`` 开头的站内路径。预览图 URL 由注入函数固定为 ``SITE_OG_IMAGE_PATH``（PNG）。
+    ``canonical_path`` 为以 ``/`` 开头的站内路径。``image_path`` 为可选内容预览图；
+    站点 icon 独立使用 ``SITE_ICON_PATH``。
     """
 
     page_title: str
@@ -369,6 +370,7 @@ def inject_article_share_preview(
         f'    <link rel="canonical" href="{esc_path}">',
         f'    <link rel="icon" type="image/png" href="{esc_site_icon}" sizes="32x32">',
         f'    <link rel="apple-touch-icon" href="{esc_site_icon}">',
+        f'    <link rel="shortcut icon" type="image/png" href="{esc_site_icon}">',
         f'    <meta name="application-name" content="{esc_site_name}">',
         f'    <meta name="apple-mobile-web-app-title" content="{esc_site_name}">',
         f'    <meta property="og:type" content="{esc_og_type}">',

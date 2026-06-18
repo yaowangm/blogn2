@@ -138,6 +138,10 @@ def test_inject_article_share_preview_absolute_og_when_public_base():
         f'<link rel="apple-touch-icon" href="https://bloggern.com{SITE_ICON_PATH}">'
         in out
     )
+    assert (
+        f'<link rel="shortcut icon" type="image/png" href="https://bloggern.com{SITE_ICON_PATH}">'
+        in out
+    )
     assert 'property="og:url" content="https://bloggern.com/article/42"' in out
     assert f'property="og:site_name" content="{SITE_NAME}"' in out
     assert (
@@ -184,6 +188,7 @@ def test_inject_article_share_preview_omits_og_image_without_content_image():
     assert 'property="og:image"' not in out
     assert 'property="og:image:secure_url"' not in out
     assert '<link rel="apple-touch-icon" href="/static/favicon.png">' in out
+    assert '<link rel="shortcut icon" type="image/png" href="/static/favicon.png">' in out
 
 
 def test_inject_article_share_preview_website_og_type():
